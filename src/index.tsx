@@ -1,11 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
 import Loading from './Loading';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import reportWebVitals from './reportWebVitals';
 
 // Global imports
+import './index.css';
 import '@solana/webcrypto-ed25519-polyfill';
 import ErrorBoundary from './ErrorBoundary';
 
@@ -23,7 +23,6 @@ root.render(
 		</React.Suspense>
 	</React.StrictMode>
 );
-
 
 // A global var is set in index.html to allow detecting if we're in a dev environment.
 // @ts-ignore

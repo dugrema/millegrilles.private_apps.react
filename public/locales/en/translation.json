@@ -1,0 +1,28 @@
+{
+    "millegrilles": "MilleGrilles",
+    "name": "Authentication",
+    "title": "MilleGrilles Applications",
+    "language": {
+        "english": "English",
+        "french": "Français"
+    },
+    "labels": {
+        "username": "User name",
+        "language": "Language",
+        "applicationName": "Name: ",
+        "applicationVersion": "Version: ",
+        "applicationBuildDate": "Build Date: ",
+        "applicationIdmg": "IDMG: ",
+        "versionInformation": "Version information",
+        "activationCode": "Activation code",
+        "changeLanguage": "Change language",
+        "logout": "Logout"
+    },
+    "buttons": {
+        "next": "Next",
+        "cancel": "Cancel",
+        "done": "Done"
+    },
+    "screens": {
+    }
+}

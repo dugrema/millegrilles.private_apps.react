@@ -1,0 +1,22 @@
+{
+    "defaults": {
+        "domain": "CoreMaitreDesComptes",
+        "exchange": "2.prive"
+    },
+    "requests": [
+        {"domain": "CoreTopologie", "action": "listeApplicationsDeployees"}
+    ],
+    "commands": [
+        {"domain": "ollama_relai", "action": "generate"},
+        {"domain": "ollama_relai", "action": "chat"},
+        {"domain": "ollama_relai", "action": "model"}
+    ],
+    "subscriptions": {
+        "aichatChatListener": {
+            "exchanges": ["2.prive"],
+            "routingKeys": [
+                "evenement.ollama_relai.{chatId}.*"
+            ]
+        }
+    }
+}
