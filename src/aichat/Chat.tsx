@@ -2,11 +2,16 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { proxy } from 'comlink';
 import { Link } from 'react-router-dom';
 
-import useWorkers from '../workers/workers'
+import { certificates } from 'millegrilles.cryptography';
+
+import useWorkers from '../workers/workers';
+import useConnectionStore from '../connectionStore';
 
 export default function Chat() {
 
     let workers = useWorkers();
+
+    let certificatsChiffrage = useConnectionStore(state=>state.chiffrage);
 
     let [chatInput, setChatInput] = useState('');
     let [chatId, setChatId] = useState('');
@@ -46,6 +51,7 @@ export default function Chat() {
 
     let submitHandler = useCallback(() => {
         if(!workers) throw new Error('workers not initialized');
+
         let messages = [{'role': 'user', 'content': chatInput}];
         let command = {model: 'llama3.1', messages, stream: false};
         console.debug("Submit ", chatInput);
@@ -64,7 +70,7 @@ export default function Chat() {
                 console.error("Error ", err);
                 setWaiting(false);
             })
-    }, [workers, chatInput, setChatId, chatCallback, setResponse, setWaiting]);
+    }, [workers, chatInput, setChatId, chatCallback, setResponse, setWaiting, certificatsChiffrage]);
 
     return (
         <div>
@@ -76,7 +82,7 @@ export default function Chat() {
                     className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500' onClick={submitHandler}>
                         Submit
                 </button>
-                <Link to='/apps' className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500' onClick={submitHandler}>Done</Link>
+                <Link to='/apps' className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>Done</Link>
             </div>
 
             {waiting?
