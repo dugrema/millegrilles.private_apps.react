@@ -14,9 +14,7 @@
     "subscriptions": {
         "aichatChatListener": {
             "exchanges": ["2.prive"],
-            "routingKeys": [
-                "evenement.ollama_relai.{chatId}.*"
-            ]
+            "routingKeys": ["evenement.ollama_relai.{chatId}.evenement"]
         }
     }
 }

@@ -1,9 +1,12 @@
 import { useMemo, useEffect } from "react";
 import { proxy } from "comlink";
 
+import { certificates } from 'millegrilles.cryptography';
 import { ConnectionCallbackParameters } from "millegrilles.reactdeps.typescript";
+
 import useWorkers, { AppWorkers, initWorkers, InitWorkersResult } from "./workers";
 import useConnectionStore from "../connectionStore";
+import { userStoreIdb, CommonTypes } from 'millegrilles.reactdeps.typescript';
 
 /**
  * Initializes the Web Workers and a few other elements to connect to the back-end.
@@ -70,6 +73,12 @@ function InitializeWorkers() {
                 setFiche(result.idmg, result.ca, result.chiffrage);
                 // Set the worker state to ready, allows the remainder of the application to load.
                 setWorkersReady(true);
+
+                if(username) {
+                    await authenticateConnectionWorker(result.workers, username, true)
+                } else {
+                    throw new Error("Session not active");
+                }
             })
             .catch((err: any) => {
                 console.error(
@@ -137,4 +146,55 @@ async function maintain(workers: AppWorkers) {
     } catch(err) {
         console.error("Error maintaining connection ", err);
     }
+}
+
+/**
+ * Connect using socket-io.
+ * @param workers 
+ * @param username 
+ * @param userSessionActive 
+ * @returns 
+ */
+async function authenticateConnectionWorker(workers: AppWorkers, username: string, 
+    userSessionActive: boolean): Promise<CommonTypes.PerformLoginResult> 
+{
+    if(!workers) return {};  // Waiting for a connection
+
+    if(!userSessionActive || !username) {
+        // User session is not active. We need to manually authenticate.
+        // setMustManuallyAuthenticate(true);
+        return { mustManuallyAuthenticate: true };
+    }
+
+    // There is a user session (cookie) and a username in the server session. 
+    // Check if we have a valid signing key/certificate for this user.
+    let userDbInfo = await userStoreIdb.getUser(username)
+    if(!userDbInfo) {
+        // No local information (certificate). 
+        return { mustManuallyAuthenticate: true };
+    }
+
+    let certificateInfo = userDbInfo.certificate;
+    if(!certificateInfo) {
+        // No certificate. The user must authenticate manually.
+        return { mustManuallyAuthenticate: true };
+    }
+
+    let wrapper = new certificates.CertificateWrapper(certificateInfo.certificate);
+
+    // Check if the certificate is expired
+    let expiration = wrapper.certificate.notAfter;
+    let now = new Date();
+    if(now > expiration) {
+        throw new Error("User certificate is expired");
+    }
+
+    // Initialize the message factory with the user's information.
+    let { privateKey, certificate } = certificateInfo;
+    await workers.connection.prepareMessageFactory(privateKey, certificate);
+
+    // Authenticate the connection
+    if(!await workers.connection.authenticate(true)) throw new Error('Authentication failed (api mapping)');
+
+    return { authenticated: true };
 }
