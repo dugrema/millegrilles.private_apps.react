@@ -7,14 +7,8 @@
         {"domain": "CoreTopologie", "action": "listeApplicationsDeployees"}
     ],
     "commands": [
-        {"domain": "ollama_relai", "action": "generate"},
+        {"domain": "ollama_relai", "action": "generate", "stream": true},
         {"domain": "ollama_relai", "action": "chat", "stream": true},
         {"domain": "ollama_relai", "action": "model"}
-    ],
-    "subscriptions": {
-        "aichatChatListener": {
-            "exchanges": ["2.prive"],
-            "routingKeys": ["evenement.ollama_relai.{chatId}.evenement"]
-        }
-    }
+    ]
 }

@@ -1,5 +1,4 @@
 import { expose } from 'comlink';
-import { messageStruct } from 'millegrilles.cryptography'
 import { ConnectionWorker, MessageResponse } from 'millegrilles.reactdeps.typescript';
 
 import '@solana/webcrypto-ed25519-polyfill';

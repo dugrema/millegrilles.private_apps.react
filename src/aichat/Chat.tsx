@@ -27,7 +27,16 @@ export default function Chat() {
     }, [setChatInput]);
 
     let chatCallback = useMemo(() => proxy(async (event: any) => {
+        // console.debug("Chat Event callback ", event);
         let message = event.message;
+        if(!message) { // Status message
+            if(!event.ok) {
+                console.error("Erreur processing response, ", event.err);
+            }
+            setWaiting(false);
+            return;
+        }
+
         let content = message.content;
         appendCurrentResponse(content);
         let done = event.done;
@@ -46,10 +55,8 @@ export default function Chat() {
         
         // let command = {model: 'llama3.1', messages, stream: false};
         let command = {model: 'llama3.1:8b-instruct-q5_0', messages: messagesAvecQuery, stream: false};
-        console.debug("Submit ", chatInput);
         setWaiting(true);
         Promise.resolve().then(async () => {
-                console.debug("Do chat with input ", chatInput);
                 if(!workers) throw new Error("Workers not initialized");
                 await workers.connection.sendChatMessage(command, chatCallback);
                 setWaiting(false);

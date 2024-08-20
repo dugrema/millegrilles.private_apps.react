@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { proxy } from "comlink";
 
 import { certificates } from 'millegrilles.cryptography';
@@ -24,7 +24,8 @@ function InitializeWorkers() {
     let setFiche = useConnectionStore((state) => state.setFiche);
     let setUsername = useConnectionStore((state) => state.setUsername);
     let setUserSessionActive = useConnectionStore((state) => state.setUserSessionActive);
-    let setMustManuallyAuthenticate = useConnectionStore((state) => state.setMustManuallyAuthenticate);
+    // let setMustManuallyAuthenticate = useConnectionStore((state) => state.setMustManuallyAuthenticate);
+    let setConnectionAuthenticated = useConnectionStore((state) => state.setConnectionAuthenticated);
 
     let setConnectionReady = useConnectionStore(
         (state) => state.setConnectionReady
@@ -32,16 +33,21 @@ function InitializeWorkers() {
 
     let connectionCallback = useMemo(() => {
         return proxy((params: ConnectionCallbackParameters) => {
-            setConnectionReady(params.connected);
-            if (params.username && params.userId && params.authenticated) {
-                setUsername(params.username);
-                setUserSessionActive(params.authenticated);
+            // console.debug("Connection callback : %O", params);
+            let connected = !!params.connected;
+            if(!connected) {
+                setUserSessionActive(false);
+                setConnectionReady(false);
+                setConnectionAuthenticated(false);
             }
-            if(params.authenticated !== undefined && !params.authenticated) {
-                setMustManuallyAuthenticate(true);
+            if(params.connected !== undefined) {
+                setConnectionReady(params.connected);
+            }
+            if(params.authenticated !== undefined) {
+                setConnectionAuthenticated(!!params.authenticated);
             }
         });
-    }, [setConnectionReady, setMustManuallyAuthenticate, setUsername, setUserSessionActive]);
+    }, [setConnectionReady, setConnectionAuthenticated, setUserSessionActive]);
 
     // Load the workers with a useMemo that returns a Promise. Allows throwing the promise
     // and catching it with the <React.Suspense> element in index.tsx.
@@ -115,7 +121,12 @@ export default InitializeWorkers;
 function MaintainConnection() {
     let workers = useWorkers();
     let workersReady = useConnectionStore((state) => state.workersReady);
-    
+    let connectionReady = useConnectionStore((state) => state.connectionReady);
+    let connectionAuthenticated = useConnectionStore((state) => state.connectionAuthenticated);
+    let username = useConnectionStore((state) => state.username);
+
+    let [reconnection, setReconnection] = useState(false);
+
     useEffect(() => {
         if (!workers) return;
   
@@ -135,6 +146,29 @@ function MaintainConnection() {
         }, 30_000);
         return () => clearInterval(maintenanceInterval);
     }, [workersReady, workers]);
+
+    // Reconnect authentication handler
+    useEffect(()=>{
+        if(!reconnection) return;  // Avoids double connection on page load
+
+        //console.debug('InitializeWorkers connectionReady: %s, connectionAuthenticated: %s', connectionReady, connectionAuthenticated);
+        if(connectionReady && !connectionAuthenticated) {
+            if(workers && username) {
+                // Ensure this is a reconnection
+                authenticateConnectionWorker(workers, username, true, false)
+                    .catch(err=>console.error("Error authenticating ", err))
+            } else {
+                console.error("Session not active");
+            }
+        }
+    }, [workers, connectionReady, connectionAuthenticated, username, reconnection])
+
+    // Toggle to avoid double authentication on page load
+    useEffect(()=>{
+        if(connectionReady && connectionAuthenticated) {
+            setReconnection(true);
+        }
+    }, [connectionReady, connectionAuthenticated, setReconnection])
 
     return <span></span>
 }
@@ -156,9 +190,10 @@ async function maintain(workers: AppWorkers) {
  * @returns 
  */
 async function authenticateConnectionWorker(workers: AppWorkers, username: string, 
-    userSessionActive: boolean): Promise<CommonTypes.PerformLoginResult> 
+    userSessionActive: boolean, reconnect?: boolean): Promise<CommonTypes.PerformLoginResult> 
 {
     if(!workers) return {};  // Waiting for a connection
+    if(reconnect !== false) reconnect = true;
 
     if(!userSessionActive || !username) {
         // User session is not active. We need to manually authenticate.
@@ -194,7 +229,7 @@ async function authenticateConnectionWorker(workers: AppWorkers, username: strin
     await workers.connection.prepareMessageFactory(privateKey, certificate);
 
     // Authenticate the connection
-    if(!await workers.connection.authenticate(true)) throw new Error('Authentication failed (api mapping)');
+    if(!await workers.connection.authenticate(reconnect)) throw new Error('Authentication failed (api mapping)');
 
     return { authenticated: true };
 }
