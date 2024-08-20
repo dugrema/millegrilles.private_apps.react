@@ -24,27 +24,10 @@ export class AppsConnectionWorker extends ConnectionWorker {
     }
 
     // AI Chat application
-    async sendChatMessage(command: any, callback: (e: any) => void): Promise<MessageResponse> {
+    async sendChatMessage(command: any, callback: any): Promise<boolean> {
         if(!this.connection) throw new Error("Connection is not initialized");
-
-        // let signedMessage = await this.connection.createRoutedMessage(
-        //     messageStruct.MessageKind.Command, command, {domaine: 'ollama_relai', action: 'chat'});
-
         let signedMessage = await this.connection.createEncryptedCommand(command, {domaine: 'ollama_relai', action: 'chat'});
-        let chatId = signedMessage.id;
-
-        // Subscribe immediately to get the confirmations on processing start / failure
-        let subscribeResult = await this.subscribe('aichatChatListener', callback, {chatId});
-
-        // let response = await this.connection.sendCommand(command, 'ollama_relai', 'chat') as any;
-        let response = await this.connection.emitWithAck('route_message', signedMessage, {domain: 'ollama_relai'});
-
-        // Remove the listeners for aichatChatListener
-        if(!response.ok) {
-            await this.unsubscribe('aichatChatListener', callback, {chatId});
-        }
-
-        return response;
+        return await this.connection.emitCallbackResponses(signedMessage, callback, {domain: 'ollama_relai'});
     }
 
 }
