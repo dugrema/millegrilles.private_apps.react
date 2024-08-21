@@ -170,7 +170,7 @@ function MaintainConnection() {
         }
     }, [connectionReady, connectionAuthenticated, setReconnection])
 
-    return <span></span>
+    return <></>
 }
 
 /** Regular maintenance on the connection. */

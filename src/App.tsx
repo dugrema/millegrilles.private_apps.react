@@ -35,15 +35,13 @@ function App() {
     }, []);
 
     return (
-        <div className="App">
-            <header className="App-header h-screen text-slate-300 flex-1 content-center">
-                <div className='overflow-auto pt-4 pb-4'>
-                    <RouterProvider router={router} />
-                </div>
-            </header>
+        <>
+            <div className="App-background text-slate-300">
+                <RouterProvider router={router} />
+            </div>
             <InitializeWorkers />
             {/* <AuthenticationCheck /> */}
-        </div>
+        </>
     );
 }
 
@@ -51,7 +49,7 @@ export default App;
 
 function ApplicationList() {
     return (
-        <div>
+        <div className=''>
             <p>Todo</p>
 
             <div>
