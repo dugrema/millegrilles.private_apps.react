@@ -4,9 +4,11 @@ import Chat from './Chat';
 
 export default function AppAiChat() {
     return (
-        <div>
-            <p>App AI Chat</p>
+        <>
+            <header>
+                <h1>App AI Chat</h1>
+            </header>
             <Chat />
-        </div>
+        </>
     )
 }

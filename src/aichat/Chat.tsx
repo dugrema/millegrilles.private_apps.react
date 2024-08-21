@@ -66,35 +66,33 @@ export default function Chat() {
             })
     }, [workers, messages, chatInput, setChatInput, chatCallback, setWaiting, certificatsChiffrage, pushUserQuery]);
 
-    let clearHandler = useCallback(clearConversation, [clearConversation]);
+    let clearHandler = useCallback(()=>{
+        clearConversation();
+        setChatInput('');
+    }, [clearConversation, setChatInput]);
 
     return (
-        <div>
-            <p>Chat</p>
-
-            <main>
-                <section className='fixed top-20 bottom-32 overflow-y-auto pl-4 pr-4 w-full'>
-                    <h1>Chat history</h1>
-                    <ViewHistory />
-                </section>
-                
-                <div className='fixed bottom-0 w-full pl-2 pr-2 pb-3 text-center'>
-                    <textarea value={chatInput} onChange={chatInputOnChange} 
-                        placeholder='Entrez votre question ici. Exemple : Donne-moi une liste de films sortis en 1980.'
-                        className='text-black w-full rounded-md' />
-                    <button disabled={waiting} 
-                        className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500' onClick={submitHandler}>
-                            Submit
-                    </button>
-                    <button disabled={waiting} 
-                        className='btn bg-slate-700 hover:bg-slate-600 active:bg-slate-500' onClick={clearHandler}>
-                            Clear
-                    </button>
-                    <Link to='/apps' className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>Done</Link>
-                </div>
-            </main>
-
-        </div>
+        <main>
+            <section className='fixed top-8 bottom-32 overflow-y-auto pl-4 pr-4 w-full'>
+                <h1>Chat history</h1>
+                <ViewHistory />
+            </section>
+            
+            <div className='fixed bottom-0 w-full pl-2 pr-2 pb-3 text-center'>
+                <textarea value={chatInput} onChange={chatInputOnChange} 
+                    placeholder='Entrez votre question ou commentaire ici. Exemple : Donne-moi une liste de films sortis en 1980.'
+                    className='text-black w-full rounded-md' />
+                <button disabled={waiting} 
+                    className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500' onClick={submitHandler}>
+                        Submit
+                </button>
+                <button disabled={waiting} 
+                    className='btn bg-slate-700 hover:bg-slate-600 active:bg-slate-500' onClick={clearHandler}>
+                        Clear
+                </button>
+                <Link to='/apps' className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>Done</Link>
+            </div>
+        </main>
     )
 }
 
@@ -106,12 +104,10 @@ function ViewHistory() {
     let refBottom = useRef(null);
 
     useEffect(()=>{
-        if(!refBottom || !currentResponse) return;
-        if(refBottom.current) {
-            // @ts-ignore
-            refBottom.current.scrollIntoView({behavior: 'smooth'});
-        }
-    }, [refBottom, currentResponse]);
+        if(!refBottom || !currentResponse || !messages) return;
+        // @ts-ignore
+        refBottom.current?.scrollIntoView({behavior: 'smooth'});
+    }, [refBottom, currentResponse, messages]);
 
     return (
         <div className='text-left w-full pr-4'>
