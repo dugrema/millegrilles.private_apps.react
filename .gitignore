@@ -10,6 +10,8 @@
 
 # production
 /build
+/static
+*.tar.gz
 
 # misc
 .DS_Store
