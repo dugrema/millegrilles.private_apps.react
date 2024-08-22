@@ -6,8 +6,11 @@ import InitializeWorkers from './workers/InitializeWorkers';
 // import useWorkers from './workers/workers';
 // import useConnectionStore from "./connectionStore";
 
+import HeaderMenu from './Menu';
+
 import './i18n';
 import './App.css';
+import Footer from './Footer';
 
 const AppAiChat = React.lazy(()=>import('./aichat/AppAiChat'));
 const AppSenseursPassifs = React.lazy(()=>import('./senseurspassifs/AppSenseursPassifs'));
@@ -49,13 +52,20 @@ export default App;
 
 function ApplicationList() {
     return (
-        <div className=''>
-            <p>Todo</p>
+        <div className='pl-2 pr-2'>
+            <HeaderMenu title='MilleGrilles' />
 
-            <div>
-                <p><Link to='/apps/aichat'>Ai Chat</Link></p>
-                <p><Link to='/apps/senseurspassifs'>SenseursPassifs</Link></p>
-            </div>
+            <main className='fixed top-6 bottom-8 overflow-y-auto pt-4 pb-2 w-full'>
+                <section>
+                    <h1>Application list</h1>
+                    <nav>
+                        <p><Link to='/apps/aichat'>Ai Chat</Link></p>
+                        <p><Link to='/apps/senseurspassifs'>SenseursPassifs</Link></p>
+                    </nav>
+                </section>
+            </main>
+            
+            <Footer />
         </div>
     )
 }

@@ -7,6 +7,8 @@ import useWorkers from '../workers/workers';
 import useConnectionStore from '../connectionStore';
 import useChatStore, { ChatMessages } from './chatStore';
 
+import Footer from '../Footer';
+
 export default function Chat() {
 
     let workers = useWorkers();
@@ -72,13 +74,13 @@ export default function Chat() {
     }, [clearConversation, setChatInput]);
 
     return (
-        <main>
-            <section className='fixed top-8 bottom-32 overflow-y-auto pl-4 pr-4 w-full'>
+        <>
+            <section className='fixed top-8 bottom-40 overflow-y-auto pl-4 pr-4 w-full'>
                 <h1>Chat history</h1>
                 <ViewHistory />
             </section>
             
-            <div className='fixed bottom-0 w-full pl-2 pr-2 pb-3 text-center'>
+            <div className='fixed bottom-0 w-full pl-2 pr-6 pb-12 text-center'>
                 <textarea value={chatInput} onChange={chatInputOnChange} 
                     placeholder='Entrez votre question ou commentaire ici. Exemple : Donne-moi une liste de films sortis en 1980.'
                     className='text-black w-full rounded-md' />
@@ -92,7 +94,9 @@ export default function Chat() {
                 </button>
                 <Link to='/apps' className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>Done</Link>
             </div>
-        </main>
+
+            <Footer />
+        </>
     )
 }
 
@@ -136,8 +140,8 @@ function ChatBubble(props: MessageRowProps) {
 
     let [roleName, bubbleSide] = useMemo(()=>{
         switch(role) {
-            case 'user': return ['toé', 'left'];
-            case 'assistant': return ['l\'autre', 'right'];
+            case 'user': return ['toé', 'right'];
+            case 'assistant': return ['l\'autre', 'left'];
             default: return ['N/D', 'right'];
         };
     }, [role]);
@@ -145,7 +149,7 @@ function ChatBubble(props: MessageRowProps) {
     if(bubbleSide === 'left') {
         return (
             <div className="flex items-start gap-2.5 pb-2">
-                <div className="flex flex-col gap-1 w-full pr-20">
+                <div className="flex flex-col gap-1 pr-20">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
                         <span className="text-sm font-normal text-gray-300">{messageDateStr}</span>
@@ -164,7 +168,7 @@ function ChatBubble(props: MessageRowProps) {
                         <span className="text-sm font-semibold text-white">{roleName}</span>
                         <span className="text-sm font-normal text-gray-300">{messageDateStr}</span>
                     </div>
-                    <div className="flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-s-xl rounded-ee-xl w-full">
+                    <div className="flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-s-xl rounded-ee-xl">
                         <Markdown className="text-sm font-normal text-gray-900 dark:text-white">{content}</Markdown>
                     </div>
                 </div>
