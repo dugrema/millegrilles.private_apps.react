@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-NAME=millegrilles_private_apps_typescript
+NAME=millegrilles_private_apps_react
 BRANCH=`git rev-parse --abbrev-ref HEAD`
 BUILD='DEV'
 VERSION=$BRANCH.$BUILD
@@ -67,6 +67,6 @@ makeManifest() {
 REP_COURANT=`pwd`
 REP_STATIC_GLOBAL=${REP_COURANT}/static
 BUILD_FILE="${NAME}.${VERSION}.tar.gz"
-BUILD_PATH="git/millegrilles.authentication.typescript"
+BUILD_PATH="git/millegrilles.private_apps.react"
 
 build_react millegrilles
