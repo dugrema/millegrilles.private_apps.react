@@ -88,7 +88,7 @@ function InitializeWorkers() {
             })
             .catch((err: any) => {
                 console.error(
-                    "Error initializing web workers. Retrying in 5 seconds.",
+                    "Error initializing web workers. Retrying in 5 seconds. %O",
                     err
                 );
                 let promise = new Promise((resolve: any) => {

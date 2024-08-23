@@ -1,7 +1,6 @@
+import '@solana/webcrypto-ed25519-polyfill';
 import { expose } from 'comlink';
 import { ConnectionWorker, MessageResponse } from 'millegrilles.reactdeps.typescript';
-
-import '@solana/webcrypto-ed25519-polyfill';
 import apiMapping from './apiMapping.json';
 
 export type ActivationCodeResponse = MessageResponse & {
