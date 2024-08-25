@@ -29,8 +29,10 @@ export type DeviceReadings = {
 
 interface SenseursPassifsStoreState {
     devices: {[key: string]: DeviceReadings},
+    deviceConfiguration: {[key: string]: DeviceConfiguration},
     setDevices: (devices: {[key: string]: DeviceReadings}) => void,
-    updateDevice: (device: DeviceReadings) => void
+    updateDevice: (device: DeviceReadings) => void,
+    updateConfiguration: (uuid_appareil: string, configuration: DeviceConfiguration) => void
     clear: () => void,
 };
 
@@ -38,8 +40,20 @@ const useSenseursPassifsStore = create<SenseursPassifsStoreState>()(
     devtools(
         (set) => ({
             devices: {},
-            setDevices: (devices) => set(() => ({ devices })),
+            deviceConfiguration: {},
+            setDevices: (devices) => {
+                // Extract deviceConfiguration
+                let deviceConfiguration = Object.values(devices).reduce(
+                    (acc: {[key: string]: DeviceConfiguration}, item: DeviceReadings)=>{
+                        let {uuid_appareil, configuration} = item;
+                        if(uuid_appareil && configuration) acc[uuid_appareil] = configuration; 
+                        return acc;
+                }, {});
+                // Set
+                set({devices, deviceConfiguration});
+            },
             updateDevice: (device) => set(state => ({devices: {...state.devices, [device.uuid_appareil]: device}})),
+            updateConfiguration: (uuid_appareil, configuration) => set((state) => ({deviceConfiguration: {...state.deviceConfiguration, [uuid_appareil]: configuration}})),
             clear: () => set(() => ({devices: {}})),
         })
     ),

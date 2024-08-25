@@ -1,60 +1,12 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from "react-router-dom";
-import { proxy } from 'comlink';
 
-import useWorkers from '../workers/workers';
-import useConnectionStore from '../connectionStore';
+import { Formatters } from 'millegrilles.reactdeps.typescript';
+
 import useSenseursPassifsStore, { DeviceReadings, DeviceReadingValue } from './senseursPassifsStore';
-import { SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
+import ReadingFormatter from './ReadingFormatter';
 
 export default function Devices() {
-
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let setDevices = useSenseursPassifsStore(state=>state.setDevices);
-    let updateDevice = useSenseursPassifsStore(state=>state.updateDevice);
-    
-    let deviceEventCb = useMemo(()=>{
-        return proxy((event: SubscriptionMessage)=>{
-            let message = event.message as DeviceReadings;
-            if(message && message.senseurs) updateDevice(message);
-        })
-    }, [updateDevice])
-
-    useEffect(()=>{
-        if(!workers || !ready || !deviceEventCb) return;
-
-        // Load user devices
-        workers.connection.getUserDevices()
-            .then(deviceResponse=>{
-                if(deviceResponse.ok) {
-                    // Build list into a map of uuid_appareils:device
-                    let mappedReadings = deviceResponse.appareils.reduce((acc: {[key: string]: DeviceReadings}, device)=>{
-                        acc[device.uuid_appareil] = device;
-                        return acc;
-                    }, {})
-                    setDevices(mappedReadings);
-                } else {
-                    console.error("Error loading devices: %O", deviceResponse.err)
-                }
-            })
-            .catch(err=>console.error("Error loading device list", err));
-
-        // Subscribe to device events
-        workers.connection.subscribeUserDevices(deviceEventCb)
-            .catch(err=>{
-                console.debug("Error subscribing to user events", err);
-            })
-
-        // Subscription cleanup
-        return () => {
-            if(workers) workers.connection.unsubscribeUserDevices(deviceEventCb)
-                .catch(err=>{
-                    console.info("Error unsubscribing to user events", err);
-                })
-        }
-    }, [workers, ready, setDevices, deviceEventCb])
-
     return (
         <>
             <div>
@@ -102,15 +54,20 @@ type DisplayDeviceReadingsProps = {
     value: DeviceReadings,
 }
 
-function DisplayDevices(props: DisplayDeviceReadingsProps) {
+export function DisplayDevices(props: DisplayDeviceReadingsProps) {
     let device = props.value;
+
+    let { uuid_appareil } = device;
+
     return (
         <>
             <div className='col-span-8'>
-                {device.uuid_appareil}
+                <Link to={'/apps/senseurspassifs/device/' + uuid_appareil}>
+                    <DisplayDeviceName value={device} />
+                </Link>
             </div>
             <div className='col-span-4'>
-                {device.derniere_lecture}
+                <Formatters.FormatterDate value={device.derniere_lecture} />
             </div>
             {device.senseurs?
                 Object.keys(device.senseurs).map(sensorName=>{
@@ -118,7 +75,7 @@ function DisplayDevices(props: DisplayDeviceReadingsProps) {
                     
                     if(sensorReading) {
                         let sensorType = device.types_donnees?device.types_donnees[sensorName]:null;
-                        return <DisplayDeviceReading key={sensorName} name={sensorName} value={sensorReading} type={sensorType} />
+                        return <DisplayDeviceReading key={sensorName} name={sensorName} value={sensorReading} type={sensorType} device={device} />
                     } else {
                         return <span></span>
                     }
@@ -133,24 +90,48 @@ type DisplayDeviceReading = {
     name: string,
     value: DeviceReadingValue
     type?: string | null,
+    device: DeviceReadings,
 }
 
 function DisplayDeviceReading(props: DisplayDeviceReading) {
 
-    let {name, value, type} = props;
+    let {name, value, type, device} = props;
     type = value?.type || type;
+    let uuid_appareil = device.uuid_appareil;
+
+    let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);        
+
+    let sensorName = useMemo(()=>{
+        let deviceConf = deviceConfiguration[uuid_appareil];
+        let sensorConf = deviceConf?.descriptif_senseurs;
+        if(sensorConf) name = sensorConf[name] || name;
+        return name;
+    }, [name, deviceConfiguration, uuid_appareil])
 
     return (
         <>
-            <div className='col-span-4'>
-                {name}
+            <div className='col-span-8'>
+                {sensorName}
             </div>
             <div className='col-span-4'>
-                {value.valeur}
-            </div>
-            <div className='col-span-4'>
-                {type}
+                <ReadingFormatter value={value.valeur} type={type} />
             </div>
         </>
     )
+}
+
+export function DisplayDeviceName(props: DisplayDeviceReadingsProps) {
+
+    let device = props.value;
+
+    let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);    
+
+    let name = useMemo(()=>{
+        if(!device) return '';
+        let uuid_appareil = device.uuid_appareil;
+        let deviceConf = deviceConfiguration[uuid_appareil];
+        return deviceConf?.descriptif || device.uuid_appareil;
+    }, [device, deviceConfiguration])
+
+    return <span>{name}</span>;
 }

@@ -19,6 +19,7 @@ const AppAiChat = React.lazy(()=>import('./aichat/AppAiChat'));
 const AppSenseursPassifs = React.lazy(()=>import('./senseurspassifs/App'));
 const SenseursPassifsMain = React.lazy(()=>import('./senseurspassifs/Main'));
 const SenseursPassifsAllDevices = React.lazy(()=>import('./senseurspassifs/Devices'));
+const SenseursPassifsDevice = React.lazy(()=>import('./senseurspassifs/Device'));
 
 const router = createBrowserRouter([
 	{
@@ -36,6 +37,7 @@ const router = createBrowserRouter([
         children: [
             { path: "/apps/senseurspassifs", element: <SenseursPassifsMain /> },
             { path: "/apps/senseurspassifs/devices", element: <SenseursPassifsAllDevices /> },
+            { path: "/apps/senseurspassifs/device/:deviceId", element: <SenseursPassifsDevice /> },
         ]
   	},
 ]);
