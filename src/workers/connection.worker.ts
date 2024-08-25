@@ -28,6 +28,8 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.emitCallbackResponses(signedMessage, callback, {domain: 'ollama_relai'});
     }
 
+    // SenseursPassifs
+    
 }
 
 var worker = new AppsConnectionWorker();
