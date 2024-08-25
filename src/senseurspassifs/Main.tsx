@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import HeaderMenu from "../Menu";
 
 export default function Main() {
     return (

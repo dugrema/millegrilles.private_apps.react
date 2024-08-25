@@ -3,22 +3,44 @@ import { devtools } from 'zustand/middleware';
 
 export type Devices = {};
 
+export type DeviceConfiguration = {
+    cacher_senseurs?: boolean,
+    descriptif?: string,
+    descriptif_senseurs?: {[key: string]: string},
+    displays?: Object,
+    geoposition?: {latitude: number, longitude: number, accuracy?: number},
+    programmes?: Object
+};
+
+export type DeviceReadingValue = {
+    timestamp: number, 
+    type: string, 
+    valeur: number | string
+};
+
+export type DeviceReadings = {
+    uuid_appareil: string,
+    instance_id: string,
+    derniere_lecture: number,
+    senseurs?: {[key: string]: DeviceReadingValue},
+    types_donnees?: {[key: string]: string},
+    configuration?: DeviceConfiguration,
+}
+
 interface SenseursPassifsStoreState {
-    devices: Array<Devices>,
-    // appendCurrentResponse: (chunk: string) => void,
-    // pushAssistantResponse: () => void,
-    // pushUserQuery: (query: string) => void,
-    // clear: () => void,
+    devices: {[key: string]: DeviceReadings},
+    setDevices: (devices: {[key: string]: DeviceReadings}) => void,
+    updateDevice: (device: DeviceReadings) => void
+    clear: () => void,
 };
 
 const useSenseursPassifsStore = create<SenseursPassifsStoreState>()(
     devtools(
         (set) => ({
-            devices: [],
-            // appendCurrentResponse: (chunk) => set((state) => ({ currentResponse: state.currentResponse + chunk })),
-            // pushAssistantResponse: () => set((state) => ({ currentResponse: '', messages: [...state.messages, {role: 'assistant', content: state.currentResponse, date: Math.floor(new Date().getTime()/1000)}] })),
-            // pushUserQuery: (query) => set((state) => ({ messages: [...state.messages, {role: 'user', content: query, date: Math.floor(new Date().getTime()/1000)}]})),
-            // clear: () => set(() => ({messages: [], currentResponse: ''})),
+            devices: {},
+            setDevices: (devices) => set(() => ({ devices })),
+            updateDevice: (device) => set(state => ({devices: {...state.devices, [device.uuid_appareil]: device}})),
+            clear: () => set(() => ({devices: {}})),
         })
     ),
 );

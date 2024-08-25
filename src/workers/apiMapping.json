@@ -1,14 +1,24 @@
 {
     "defaults": {
-        "domain": "CoreMaitreDesComptes",
+        "domain": "",
         "exchange": "2.prive"
     },
     "requests": [
-        {"domain": "CoreTopologie", "action": "listeApplicationsDeployees"}
+        {"domain": "SenseursPassifs", "action": "getAppareilsUsager"}
     ],
     "commands": [
         {"domain": "ollama_relai", "action": "generate", "stream": true},
         {"domain": "ollama_relai", "action": "chat", "stream": true},
         {"domain": "ollama_relai", "action": "model"}
-    ]
+    ],
+    "subscriptions": {
+        "userDeviceEvents": {
+            "exchanges": ["2.prive"],
+            "routingKeys": [
+                "evenement.SenseursPassifs.{USER_ID}.lectureConfirmee",
+                "evenement.SenseursPassifs.{USER_ID}.majAppareil",
+                "evenement.SenseursPassifs.{USER_ID}.presenceAppareil"
+            ]
+        }
+    }
 }
