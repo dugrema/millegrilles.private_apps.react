@@ -25,6 +25,7 @@ export type DeviceReadings = {
     senseurs?: {[key: string]: DeviceReadingValue},
     types_donnees?: {[key: string]: string},
     configuration?: DeviceConfiguration,
+    csr_present: boolean,
 }
 
 interface SenseursPassifsStoreState {

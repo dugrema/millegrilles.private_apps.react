@@ -20,6 +20,8 @@ export type GetUserDevicesResponse = MessageResponse & {
     appareils: Array<DeviceReadings>,
 };
 
+export type ChallengeResponse = MessageResponse;
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -45,14 +47,24 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendRequest({}, DOMAINE_SENSEURSPASSIFS, 'getAppareilsUsager') as GetUserDevicesResponse;
     }
 
-    async subscribeUserDevices(cb: SubscriptionCallback) {
+    async subscribeUserDevices(cb: SubscriptionCallback): Promise<void> {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.subscribe('userDeviceEvents', cb)
     }
 
-    async unsubscribeUserDevices(cb: SubscriptionCallback) {
+    async unsubscribeUserDevices(cb: SubscriptionCallback): Promise<void> {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.unsubscribe('userDeviceEvents', cb)
+    }
+
+    async challengeDevice(params: {uuid_appareil: string, challenge: Array<number>}): Promise<MessageResponse> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(params, DOMAINE_SENSEURSPASSIFS, 'challengeAppareil');
+    }
+
+    async confirmDevice(params: {uuid_appareil: string, challenge: Array<number>}): Promise<MessageResponse> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(params, DOMAINE_SENSEURSPASSIFS, 'signerAppareil');
     }
 
 }

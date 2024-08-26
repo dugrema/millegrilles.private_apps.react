@@ -18,7 +18,6 @@ export default function DeviceEvents() {
 
     let deviceEventCb = useMemo(()=>{
         return proxy((event: SubscriptionMessage)=>{
-            console.debug("Message ", event)
             let message = event.message as DeviceReadings;
             if(message) {
                 updateDevice(message);

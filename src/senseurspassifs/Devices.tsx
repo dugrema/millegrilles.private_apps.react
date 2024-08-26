@@ -52,6 +52,7 @@ function ListDeviceReadings() {
 
 type DisplayDeviceReadingsProps = {
     value: DeviceReadings,
+    skipHeader?: boolean,
 }
 
 export function DisplayDevices(props: DisplayDeviceReadingsProps) {
@@ -61,14 +62,24 @@ export function DisplayDevices(props: DisplayDeviceReadingsProps) {
 
     return (
         <>
-            <div className='col-span-8'>
-                <Link to={'/apps/senseurspassifs/device/' + uuid_appareil}>
-                    <DisplayDeviceName value={device} />
-                </Link>
-            </div>
-            <div className='col-span-4'>
-                <Formatters.FormatterDate value={device.derniere_lecture} />
-            </div>
+            {(!props.skipHeader)?
+                <>
+                    <div className='col-span-8'>
+                        <Link to={'/apps/senseurspassifs/device/' + uuid_appareil}>
+                            <DisplayDeviceName value={device} />
+                        </Link>
+                    </div>
+                    <div className='col-span-3'>
+                        {device.csr_present?
+                            <Link to={'/apps/senseurspassifs/device/' + uuid_appareil}
+                                className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'><span>Register</span></Link>
+                        :
+                            <Formatters.FormatterDate value={device.derniere_lecture} />
+                        }
+                        
+                    </div>
+                </>
+            :<></>}
             {device.senseurs?
                 Object.keys(device.senseurs).map(sensorName=>{
                     let sensorReading = device.senseurs?device.senseurs[sensorName]:null;
@@ -80,7 +91,9 @@ export function DisplayDevices(props: DisplayDeviceReadingsProps) {
                         return <span></span>
                     }
                 })
-            :''}
+            :
+                <div className='col-span-12'>There are no sensors or switches currently reported on this device. You may need to register it.</div>
+            }
             
         </>
     )
