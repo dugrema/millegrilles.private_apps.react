@@ -20,12 +20,8 @@ export default function Device() {
         if(!devices || !deviceConfiguration) return [null, null];
         let uuid_appareil = params.deviceId as string;
 
-        console.debug("Loading app %O, deviceInfo: %O, config: %O", uuid_appareil, devices, deviceConfiguration);
-
         let device = devices[uuid_appareil];
         let configuration = deviceConfiguration[uuid_appareil];
-
-        console.debug("Device %O, configuration %O", device, configuration);
 
         return [device, configuration];
     }, [params, devices, deviceConfiguration])
@@ -79,16 +75,15 @@ function Register(props: RegisterProps) {
 
     let registerHandler = useCallback(()=>{
         if(!workers) throw new Error("Not initialized");
+        setConfirmationReady(false);
+        setMessage('');
 
         let sequence = generateChallenge();
         setChallenge(sequence);
-        setConfirmationReady(false);
 
         const command = { uuid_appareil: device.uuid_appareil, challenge: sequence }
-        console.debug("Sending challenge to device ", command);
         workers.connection.challengeDevice(command)
             .then( response => {
-                console.debug("Challenge response: ", response);
                 if(response.ok) {
                     setConfirmationReady(true);
                     setMessage('The code has been sent. Check on your device that it matches then click confirm.');
@@ -101,6 +96,8 @@ function Register(props: RegisterProps) {
             .catch(err=>{
                 console.error('Register error %O', err);
                 setChallenge(null);
+                setConfirmationReady(false);
+                setMessage('There was an error, try again');
             });
     }, [workers, device, setChallenge, setConfirmationReady, setMessage]);
 
@@ -108,12 +105,18 @@ function Register(props: RegisterProps) {
         if(!workers) throw new Error("Not initialized");
         if(!challenge) throw new Error("Challenge missing");
         const command = { uuid_appareil: device.uuid_appareil, challenge }
-        console.debug("Confirming device ", command);
         workers.connection.confirmDevice(command)
             .then( response => {
-                console.debug("Confirmation response: ", response);
-                setMessage('Device registered succesfully. It may take a few minutes for it to update.');
-                setConfirmed(true);
+                if(response.ok) {
+                    setMessage('Device registered succesfully. It may take a few minutes for it to update.');
+                    setConfirmed(true);
+                } else {
+                    console.error("Confirmation error", response.err);
+                    setChallenge(null);
+                    setConfirmationReady(false);
+                    setConfirmed(false);
+                    setMessage('There was an error, try again');
+                }
             })
             .catch( err => {
                 console.error("Confirmation error", err);
