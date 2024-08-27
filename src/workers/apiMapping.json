@@ -11,7 +11,8 @@
         {"domain": "ollama_relai", "action": "chat", "stream": true},
         {"domain": "ollama_relai", "action": "model"},
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},
-        {"domain": "SenseursPassifs", "action": "signerAppareil"}
+        {"domain": "SenseursPassifs", "action": "signerAppareil"},
+        {"domain": "senseurspassifs_relai", "action": "commandeAppareil"}
     ],
     "subscriptions": {
         "userDeviceEvents": {

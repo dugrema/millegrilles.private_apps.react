@@ -53,7 +53,7 @@ export default function Device() {
 
             <div className='pt-10'>
                 <Link to='/apps/senseurspassifs/devices' 
-                    className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
+                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         Back
                 </Link>
             </div>

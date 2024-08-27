@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link } from "react-router-dom";
 
 import { Formatters } from 'millegrilles.reactdeps.typescript';
 
 import useSenseursPassifsStore, { DeviceReadings, DeviceReadingValue } from './senseursPassifsStore';
-import ReadingFormatter from './ReadingFormatter';
+import ReadingFormatter, { SwitchButton } from './ReadingFormatter';
 import { BluetoothAvailableCheck } from './bluetooth/Bluetooth';
 import useBluetoothStore from './bluetooth/bluetoothStore';
 
@@ -15,7 +15,12 @@ export default function Devices() {
     return (
         <>
             <div>
-                <nav><Link to='/apps/senseurspassifs'>Back</Link></nav>
+                <nav>
+                    <Link to='/apps/senseurspassifs'
+                        className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                            Back
+                    </Link>
+                </nav>
                 {bluetoothAvailable?
                     <nav>
                         <Link to='/apps/senseurspassifs/bluetooth' 
@@ -78,12 +83,12 @@ export function DisplayDevices(props: DisplayDeviceReadingsProps) {
         <>
             {(!props.skipHeader)?
                 <>
-                    <div className='col-span-8'>
+                    <div className='col-span-8 mt-3 pl-1 pb-2 bg-cyan-600 bg-opacity-30'>
                         <Link to={'/apps/senseurspassifs/device/' + uuid_appareil}>
                             <DisplayDeviceName value={device} />
                         </Link>
                     </div>
-                    <div className='col-span-3'>
+                    <div className='col-span-3 mt-3 pl-1 pb-2 bg-cyan-600 bg-opacity-30'>
                         {device.csr_present?
                             <Link to={'/apps/senseurspassifs/device/' + uuid_appareil}
                                 className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'><span>Register</span></Link>
@@ -106,7 +111,7 @@ export function DisplayDevices(props: DisplayDeviceReadingsProps) {
                     }
                 })
             :
-                <div className='col-span-12'>There are no sensors or switches currently reported on this device. You may need to register it.</div>
+                <div className='col-span-12 pl-3'>There are no sensors or switches currently reported on this device. You may need to register it.</div>
             }
             
         </>
@@ -126,6 +131,13 @@ function DisplayDeviceReading(props: DisplayDeviceReading) {
     type = value?.type || type;
     let uuid_appareil = device.uuid_appareil;
 
+    let [toggling, setToggling] = useState(false);
+    let startTogglingHandler = useCallback(()=>{
+        if(toggling) return;  // Skip
+        setToggling(true);
+        setTimeout(()=>setToggling(false), 3_000);
+    }, [toggling, setToggling])
+
     let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);        
 
     let sensorName = useMemo(()=>{
@@ -137,11 +149,18 @@ function DisplayDeviceReading(props: DisplayDeviceReading) {
 
     return (
         <>
-            <div className='col-span-8'>
+            <div className='col-span-6 pl-3'>
                 {sensorName}
             </div>
-            <div className='col-span-4'>
-                <ReadingFormatter value={value.valeur} type={type} />
+            <div className='col-span-3'>
+                {type==='switch'?
+                    <SwitchButton device={device} senseurId={name} value={value.valeur} toggling={toggling} 
+                        startTogglingCb={startTogglingHandler} />
+                :
+                    <ReadingFormatter value={value.valeur} type={type} />
+                }
+            </div>
+            <div>
             </div>
         </>
     )

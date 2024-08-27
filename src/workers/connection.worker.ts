@@ -7,6 +7,7 @@ import { DeviceReadings } from '../senseurspassifs/senseursPassifsStore';
 
 const DOMAINE_CORETOPOLOGIE = 'CoreTopologie';
 const DOMAINE_SENSEURSPASSIFS = 'SenseursPassifs';
+const DOMAINE_SENSEURSPASSIFS_RELAI = 'senseurspassifs_relai';
 
 export type ActivationCodeResponse = MessageResponse & {
     code?: number | string,
@@ -65,6 +66,22 @@ export class AppsConnectionWorker extends ConnectionWorker {
     async confirmDevice(params: {uuid_appareil: string, challenge: Array<number>}): Promise<MessageResponse> {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendCommand(params, DOMAINE_SENSEURSPASSIFS, 'signerAppareil');
+    }
+
+    // function commandeAppareil(instance_id, commande) {
+    // commande = commande || {}
+    // return connexionClient.emit('commandeAppareil', commande, {
+    //     kind: MESSAGE_KINDS.KIND_COMMANDE, 
+    //     domaine: CONST_SENSEURSPASSIFS_RELAI, 
+    //     partition: instance_id,
+    //     action: 'commandeAppareil', 
+    //     ajouterCertificat: true,
+    // })
+    // }
+    async deviceCommand(params: {instance_id: string, uuid_appareil: string, senseur_id: string, valeur: string | number, commande_action: string}) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        let partition = params.instance_id;
+        return await this.connection.sendCommand(params, DOMAINE_SENSEURSPASSIFS_RELAI, 'commandeAppareil', {partition, nowait: true});
     }
 
 }
