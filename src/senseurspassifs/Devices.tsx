@@ -11,6 +11,7 @@ export default function Devices() {
         <>
             <div>
                 <nav><Link to='/apps/senseurspassifs'>Back</Link></nav>
+                <nav><Link to='/apps/senseurspassifs/bluetooth'>Add Device</Link></nav>
             </div>
             <ListDeviceReadings />
         </>
