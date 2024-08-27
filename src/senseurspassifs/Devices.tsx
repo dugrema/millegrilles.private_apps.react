@@ -5,15 +5,28 @@ import { Formatters } from 'millegrilles.reactdeps.typescript';
 
 import useSenseursPassifsStore, { DeviceReadings, DeviceReadingValue } from './senseursPassifsStore';
 import ReadingFormatter from './ReadingFormatter';
+import { BluetoothAvailableCheck } from './bluetooth/Bluetooth';
+import useBluetoothStore from './bluetooth/bluetoothStore';
 
 export default function Devices() {
+
+    let bluetoothAvailable = useBluetoothStore(state=>state.bluetoothAvailable);
+
     return (
         <>
             <div>
                 <nav><Link to='/apps/senseurspassifs'>Back</Link></nav>
-                <nav><Link to='/apps/senseurspassifs/bluetooth'>Add Device</Link></nav>
-            </div>
+                {bluetoothAvailable?
+                    <nav>
+                        <Link to='/apps/senseurspassifs/bluetooth' 
+                            className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500'>
+                                Bluetooth
+                        </Link>
+                    </nav>                
+                    :<></>}
+                </div>
             <ListDeviceReadings />
+            <BluetoothAvailableCheck hide={true} />
         </>
     )
 }

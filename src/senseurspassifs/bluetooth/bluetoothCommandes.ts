@@ -65,12 +65,12 @@ export async function authentifier(workers: AppWorkers, server: BluetoothRemoteG
     // const keyPair = genererKeyPairX25519();
     let keyPair = await x25519.generateX25519KeyPair();
     // const publicString = Buffer.from(keyPair.public).toString('hex');
-    const publicString = multiencoding.decodeHex(keyPair.public);
+    const publicString = multiencoding.encodeHex(keyPair.publicKey);
     console.debug("Keypair : %O, public %s", keyPair, publicString);
 
     // Calculer shared secret
     // const sharedSecret = await calculerSharedKey(keyPair.private, publicPeer);
-    const sharedSecret = await x25519.sharedSecretFromX22519(keyPair.private, publicPeer);
+    const sharedSecret = await x25519.sharedSecretFromX22519(keyPair.privateKey, publicPeer);
     // console.debug("Shared secret : %s %O", Buffer.from(sharedSecret).toString('hex'), sharedSecret)
 
     const now = Math.floor(new Date().getTime()/1000);
@@ -193,7 +193,7 @@ async function chargerClePublique(server: BluetoothRemoteGATTServer): Promise<Da
     throw Error('characteristic auth not found');
 }
 
-type SwitchState = { present: boolean, valeur: boolean };
+export type SwitchState = { present: boolean, valeur: boolean };
 
 export type DeviceState = {
     userId?: string, idmg?: string, 
@@ -433,7 +433,7 @@ export async function transmettreDictChiffre(workers: AppWorkers, server: Blueto
     console.debug("Commande chiffree : %O (key input: %O)", ciphertext, authSharedSecret)
     // let ciphertext = Buffer.from(resultat.ciphertext).toString('base64');
     let commandeChiffree = {
-        ciphertext,
+        ciphertext: multiencoding.encodeBase64(ciphertext),
         nonce: multiencoding.encodeBase64(nonce),  //  Buffer.from(resultat.nonce.slice(1), 'base64').toString('base64'),
         tag: multiencoding.encodeBase64(tag),      // Buffer.from(resultat.rawTag).toString('base64'),
     };

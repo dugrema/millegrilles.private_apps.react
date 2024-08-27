@@ -10,7 +10,7 @@ export default function SenseursPassifs() {
     return (
         <div className='pl-2 pr-2'>
             <HeaderMenu title='Senseurs Passifs' backLink={true} />
-            <div id="main" className="pt-8"><Outlet /></div>
+            <div id="main" className="pt-8 pb-10"><Outlet /></div>
             <Footer />
             <DeviceEvents />
         </div>
