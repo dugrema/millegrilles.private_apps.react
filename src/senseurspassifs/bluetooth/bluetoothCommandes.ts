@@ -30,7 +30,6 @@ export async function requestDevice(): Promise<BluetoothDevice | null> {
           etatUuid  = CONST_SERVICES.services.etat.uuid,
           environmentalUuid = 0x181a;
 
-    console.debug("Services %s, %s", configurerUuid, etatUuid)
     try {
         device = await bluetooth?.requestDevice({
             // Requis : service de configuration
@@ -51,7 +50,6 @@ export async function requestDevice(): Promise<BluetoothDevice | null> {
             filters: [{services: [configurerUuid, etatUuid]}],
         });
     }
-    console.debug("Device choisi ", device)
     return device
 }
 
@@ -59,14 +57,12 @@ export async function authentifier(workers: AppWorkers, server: BluetoothRemoteG
     // Recuperer la cle publique de l'appareil
     const publicPeerDataview = await chargerClePublique(server);
     const publicPeer = new Uint8Array(publicPeerDataview.buffer);
-    console.debug("Cle publique peer pour auth ", publicPeer);
 
     // Generer keypair pour le chiffrage des commandes
     // const keyPair = genererKeyPairX25519();
     let keyPair = await x25519.generateX25519KeyPair();
     // const publicString = Buffer.from(keyPair.public).toString('hex');
     const publicString = multiencoding.encodeHex(keyPair.publicKey);
-    console.debug("Keypair : %O, public %s", keyPair, publicString);
 
     // Calculer shared secret
     // const sharedSecret = await calculerSharedKey(keyPair.private, publicPeer);
@@ -96,14 +92,11 @@ export async function authentifier(workers: AppWorkers, server: BluetoothRemoteG
         const polling = async () => {
             try {
                 // Verifier que la characteristic auth est vide (len: 0). Indique succes.
-                console.debug("Fingerprint certificat signature : ", fingerprint);
                 for(let i=0; i<3; i++) {
                     const confirmation = await chargerClePublique(server);
                     // const confirmationKeyString = Buffer.from(confirmation.buffer).toString('hex')
                     const confirmationKeyString = multiencoding.encodeHex(confirmation.buffer);
-                    console.debug("Confirmation auth : %s (%O)", confirmationKeyString, confirmation);
                     if(confirmationKeyString === fingerprint) {
-                        console.debug("Auth succes");
                         return resolve(true);
                     }
                     // Sleep
@@ -118,13 +111,11 @@ export async function authentifier(workers: AppWorkers, server: BluetoothRemoteG
         let timeoutPolling = null as any;
 
         authHandler = (e: any) => {
-            console.debug("Event auth : ", e);
             try {
                 const value = e.currentTarget.value;
                 // const confirmationKeyString = Buffer.from(value.buffer).toString('hex');
                 const confirmationKeyString = multiencoding.encodeHex(value.buffer);
                 if(fingerprint === confirmationKeyString) {
-                    console.debug("Auth reussie");
                     resolve(true);
                     if(timeoutPolling) clearTimeout(timeoutPolling);  // Annuler polling
                 }
@@ -162,7 +153,6 @@ export async function chargerEtatAppareil(server: BluetoothRemoteGATTServer): Pr
             throw new Error("GATT connection - failure");
         }
         const service = await server.getPrimaryService(CONST_SERVICES.services.etat.uuid)
-        // console.debug("Service : ", service)
         const characteristics = await service.getCharacteristics()
         const etat = await lireEtatCharacteristics(characteristics)
 
@@ -181,7 +171,6 @@ async function chargerClePublique(server: BluetoothRemoteGATTServer): Promise<Da
     const characteristics = await service.getCharacteristics();
     
     for await(const characteristic of characteristics) {
-        // console.debug("Lire characteristic " + characteristic.uuid)
         const uuidLowercase = characteristic.uuid.toLowerCase();
         switch(uuidLowercase) {
             case CONST_SERVICES.services.commandes.characteristics.getAuth:
@@ -239,7 +228,6 @@ function convertirBytesIp(adresse: Uint8Array): string {
 
 async function readWifi(characteristic: BluetoothRemoteGATTCharacteristic) {
     const value = await characteristic.readValue()
-    console.debug("readWifi value %O", value)
     return decoderWifi(value)
 }
 
@@ -270,7 +258,6 @@ export function decoderWifi(value: DataView) {
 
 async function readLectures(characteristic: BluetoothRemoteGATTCharacteristic) {
     const value = await characteristic.readValue()
-    console.debug("readLectures value %O", value)
     return decoderLectures(value)
 }
 
@@ -285,10 +272,8 @@ export function decoderLectures(value: DataView) {
 
     const etatNtp = value.getUint8(0) === 1
     const timeSliceVal = new Uint32Array(value.buffer.slice(1, 5))
-    // console.debug("Time slice val ", timeSliceVal)
     const timeVal = timeSliceVal[0]
     const dateTime = new Date(timeVal * 1000)
-    // console.debug("Time val : %O, Date %O", timeVal, dateTime)
 
     const lecturesNumeriques = new Int16Array(value.buffer.slice(5, 11))
     const temp1 = decoderValeurSmallint(lecturesNumeriques[0]),
@@ -313,7 +298,6 @@ function decoderSwitches(val: number) {
         const boolVal = (val & 1 << i)?1:0
         valeursListe.push(boolVal)
     }
-    // console.debug("Valeurs liste : ", valeursListe)
     const switches = []
     for(let sw=0; sw < 4; sw++) {
         const switchValue = {present: valeursListe[2*sw]?true:false} as SwitchState;
@@ -352,16 +336,12 @@ async function submitParamAppareil(server: BluetoothRemoteGATTServer, serviceUui
     if(!serviceUuid) throw new Error('serviceUuid vide')
     if(!characteristicUuid) throw new Error('characteristicUuid vide')
 
-    console.debug("submitParamAppareil serviceUuid %s, characteristicUuid %s", serviceUuid, characteristicUuid)
-
     try {
         if(!server.connected) {
             console.error("GATT connexion - echec")
             return
         }
-        console.debug("GATT server ", server)
         const service = await server.getPrimaryService(serviceUuid)
-        console.debug("GATT service ", service)
         
         const characteristic = await service.getCharacteristic(characteristicUuid.toLowerCase())
         await callback(characteristic)
@@ -380,7 +360,6 @@ export async function addEventListener(
     if(!characteristicUuid) throw new TypeError('characteristicUuid vide');
     if(!callback) throw new TypeError('callback vide');
 
-    console.debug("addEventListener serviceUuid %s, characteristicUuid %s", serviceUuid, characteristicUuid)
     if(!server.connected) {
         console.error("GATT connexion - echec");
         return;
@@ -393,7 +372,6 @@ export async function addEventListener(
     const c = await characteristic.startNotifications();
     if(c) {
         characteristic.addEventListener('characteristicvaluechanged', callback);
-        console.debug("addEventListener Characteristic %O notification active", characteristic);
     } else {
         throw new Error("addEventListener erreur startNotifications");
     }
@@ -405,7 +383,6 @@ export async function removeEventListener(server: BluetoothRemoteGATTServer, ser
     if(!serviceUuid) throw new TypeError('serviceUuid vide')
     if(!characteristicUuid) throw new TypeError('characteristicUuid vide')
 
-    console.debug("removeEventListener serviceUuid %s, characteristicUuid %s", serviceUuid, characteristicUuid)
     if(!server.connected) {
         console.error("GATT connexion - echec")
         return;
@@ -413,7 +390,6 @@ export async function removeEventListener(server: BluetoothRemoteGATTServer, ser
 
     const service = await server.getPrimaryService(serviceUuid);
     const characteristic = await service.getCharacteristic(characteristicUuid.toLowerCase());
-    console.debug("removeEventListener Characteristic %O", characteristic);
 
     const c = await characteristic.stopNotifications();
     c.removeEventListener('characteristicvaluechanged', callback);
@@ -430,7 +406,6 @@ export async function transmettreDictChiffre(workers: AppWorkers, server: Blueto
     let ciphertext = await encryption.encryptChacha20Poly1305(commandeBytes, nonce, authSharedSecret);
     let tag = ciphertext.slice(ciphertext.length-16);  // Compute tag
     ciphertext = ciphertext.slice(0, ciphertext.length-16);  // Separate compute tag
-    console.debug("Commande chiffree : %O (key input: %O)", ciphertext, authSharedSecret)
     // let ciphertext = Buffer.from(resultat.ciphertext).toString('base64');
     let commandeChiffree = {
         ciphertext: multiencoding.encodeBase64(ciphertext),
@@ -461,9 +436,7 @@ export async function submitConfiguration(server: BluetoothRemoteGATTServer, rel
     }
 
     await submitParamAppareil(server, commandesUuid, setCommandUuid, cbRelai);
-    console.debug("Params relai envoyes");
     await submitParamAppareil(server, commandesUuid, setCommandUuid, cbUser);
-    console.debug("Params user envoyes");
 }
 
 export async function submitWifi(server: BluetoothRemoteGATTServer, ssid: string, wifiPassword: string) {

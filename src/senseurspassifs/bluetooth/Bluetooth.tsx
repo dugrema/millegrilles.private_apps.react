@@ -58,7 +58,6 @@ export function BluetoothAvailableCheck(props: {hide?: boolean}) {
         }
         checkBluetoothAvailable()
             .then(result=>{
-                console.debug("Bluetooth available : ", result);
                 setBluetoothAvailable(result);
             })
             .catch(err=>console.error("Error checking if Bluetooth is avaiable", err))
@@ -149,7 +148,6 @@ function DeviceScan(props: DeviceScanProps) {
 
     let { setSelectedDevice } = props;
     const scanCb = useCallback(()=>{
-        console.debug("Request device")
         requestDevice()
             .then(device=>{
                 if(!device) return  // Cancelled
@@ -198,7 +196,6 @@ function DeviceConnection(props: DeviceConnectionProps) {
         let server: BluetoothRemoteGATTServer;
         if(selectedDevice?.gatt) {
             // Se connecter
-            console.debug("Connexion bluetooth a %O", selectedDevice)
             selectedDevice.gatt.connect()
                 .then(gattServer=>{
                     setBluetoothGattServer(gattServer);
@@ -209,7 +206,6 @@ function DeviceConnection(props: DeviceConnectionProps) {
             // Connection cleanup
             return () => {
                 if(server) {
-                    console.debug("Deconnexion bluetooth de %O", server);
                     setBluetoothGattServer(undefined);
                     server.disconnect();
                 }
@@ -255,16 +251,12 @@ function DeviceDetail(props: DeviceDetailProps) {
             return;
         }
         setRefreshing(true);
-        console.debug("refreshDevice");
         chargerEtatAppareil(server)
             .then(etat=>{
-                console.debug("Etat appareil %O", etat)
-                // setEtatAppareil(etat)
                 mergeDeviceState(etat);
             })
             .catch(err=>{
-                console.debug("Erreur chargement etat appareil ", err)
-                // fermer()
+                console.info("Erreur chargement etat appareil ", err)
             })
             .finally(()=>{
                 setRefreshing(false);
@@ -272,11 +264,9 @@ function DeviceDetail(props: DeviceDetailProps) {
     }, [server, setRefreshing]);
 
     const updateLecturesHandler = useCallback( (e: any) => {
-        console.debug("updateLecturesHandler Event lectures : ", e)
         try {
             const valeur = e.target.value
             const etatLectures = bleDecoderLectures(valeur)
-            // console.debug("Lectures decode : ", etatLectures)
             mergeDeviceState(etatLectures)
         } catch(err) {
             console.error("Erreur decodage lectures ", err)
@@ -284,11 +274,9 @@ function DeviceDetail(props: DeviceDetailProps) {
     }, [mergeDeviceState])
 
     const updateWifiHandler = useCallback((e: any) => {
-        console.debug("Event wifi : ", e)
         try {
             const valeur = e.target.value
             const etatWifi = bleDecoderWifi(valeur)
-            // console.debug("Wifi decode : ", etatWifi)
             mergeDeviceState(etatWifi)
         } catch(err) {
             console.error("Erreur decodage lectures ", err)
@@ -341,7 +329,6 @@ function DeviceDetail(props: DeviceDetailProps) {
         setAuthSharedSecret(null);
         bleAuthentifier(workers, server)
             .then(result=>{
-                console.debug("Authentifier resultat : ", result)
                 if(result && result.sharedSecret) {
                     setAuthSharedSecret(result.sharedSecret)
                 } else {
@@ -526,7 +513,6 @@ function SubmitConfiguration(props: SubmitConfigurationProps) {
 
 
     const submitConfigurationServer = useCallback((e: any) => {
-        console.debug("Submit usager ", e)
         e.stopPropagation()
         e.preventDefault()
 
@@ -542,7 +528,6 @@ function SubmitConfiguration(props: SubmitConfigurationProps) {
     }, [server, idmg, userId, relayUrl])
 
     let submitWifi = useCallback((e: any)=>{
-        console.debug("Submit wifi ", e)
         e.stopPropagation()
         e.preventDefault()
 
