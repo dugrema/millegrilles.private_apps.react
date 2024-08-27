@@ -349,6 +349,8 @@ function DeviceDetail(props: DeviceDetailProps) {
         <>
             <ShowDeviceState />
             <ShowDeviceReadings server={server} authSharedSecret={sharedSecret}/>
+            <hr/>
+            <RebootButton server={server} authSharedSecret={sharedSecret} />
         </>
     );
 }
@@ -540,7 +542,7 @@ function SubmitConfiguration(props: SubmitConfigurationProps) {
                 // setMessageErreur({err, message: 'Les parametres wifi n\'ont pas ete recus par l\'appareil.'})
             })
     }, [server, ssid, wifiPassword])
-
+    
     return (
         <div>
             <br/>
@@ -555,5 +557,33 @@ function SubmitConfiguration(props: SubmitConfigurationProps) {
             </button>
             <p></p>
         </div>
+    )
+}
+
+type RebootButtonProps = { server: BluetoothRemoteGATTServer, authSharedSecret: Uint8Array | null }
+
+function RebootButton(props: RebootButtonProps) {
+
+    let { server, authSharedSecret } = props;
+
+    let workers = useWorkers();
+
+    const rebootCb = useCallback(()=>{
+        if(!workers) throw new Error("Workers not initialized");
+        if(!authSharedSecret) throw new Error("Not authenticated");
+
+        const command = { commande: 'reboot' }
+        transmettreDictChiffre(workers, server, authSharedSecret, command)
+            .then(()=>{
+                console.debug("Reboot command transmitted");
+            })
+            .catch(err=>console.error("Erreur reboot ", err))
+    }, [workers, server, authSharedSecret])
+
+    return (
+        <button onClick={rebootCb} disabled={!authSharedSecret}
+            className='btn inline-block text-center bg-red-700 hover:bg-red-600 active:bg-red-500'>
+                Reboot
+        </button>
     )
 }
