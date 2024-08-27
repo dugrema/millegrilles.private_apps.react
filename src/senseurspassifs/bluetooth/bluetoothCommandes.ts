@@ -8,7 +8,7 @@ const CONST_TAILLE_BUFFER_COMMANDE = 100
 
 const bluetooth = navigator.bluetooth as Bluetooth;
 
-export async function verifierBluetoothAvailable() {
+export async function checkBluetoothAvailable() {
     if(bluetooth) {
         try {
             const available = await bluetooth.getAvailability()
@@ -156,21 +156,21 @@ export async function authentifier(workers: AppWorkers, server: BluetoothRemoteG
     }    
 }
 
-export async function chargerEtatAppareil(server: BluetoothRemoteGATTServer) {
+export async function chargerEtatAppareil(server: BluetoothRemoteGATTServer): Promise<DeviceState> {
     try {
         if(!server.connected) {
-            console.error("GATT connexion - echec")
-            return
+            throw new Error("GATT connection - failure");
         }
         const service = await server.getPrimaryService(CONST_SERVICES.services.etat.uuid)
         // console.debug("Service : ", service)
         const characteristics = await service.getCharacteristics()
         const etat = await lireEtatCharacteristics(characteristics)
 
-        return etat
+        return etat;
     } catch(err) {
         console.error("Erreur chargerEtatAppareil %O", err)
     }
+    throw new Error("GATT state loading - failure");
 }
 
 async function chargerClePublique(server: BluetoothRemoteGATTServer): Promise<DataView> {
@@ -195,15 +195,15 @@ async function chargerClePublique(server: BluetoothRemoteGATTServer): Promise<Da
 
 type SwitchState = { present: boolean, valeur: boolean };
 
-type EtatDevice = {
+export type DeviceState = {
     userId?: string, idmg?: string, 
-    connected?: boolean, status?: number, channel?: number, ip: string, subnet: string, gateway: string,  dns: string, ssid: string,
-    ntp: boolean, time?: number, temp1?: number, temp2?: number, hum?: number, switches?: Array<SwitchState>
+    connected?: boolean, status?: number, channel?: number, ip?: string, subnet?: string, gateway?: string,  dns?: string, ssid?: string,
+    ntp?: boolean, time?: number, temp1?: number, temp2?: number, hum?: number, switches?: Array<SwitchState>
 }
 
-async function lireEtatCharacteristics(characteristics: BluetoothRemoteGATTCharacteristic[]): Promise<EtatDevice> {
+async function lireEtatCharacteristics(characteristics: BluetoothRemoteGATTCharacteristic[]): Promise<DeviceState> {
     // console.debug("Nombre characteristics : " + characteristics.length)
-    const etat = {} as EtatDevice;
+    const etat = {} as DeviceState;
     for await(const characteristic of characteristics) {
         // console.debug("Lire characteristic " + characteristic.uuid)
         const uuidLowercase = characteristic.uuid.toLowerCase()
@@ -303,7 +303,7 @@ export function decoderLectures(value: DataView) {
 function decoderValeurSmallint(val: number, opts?: {facteur?: number}) {
     opts = opts || {}
     const facteur = opts.facteur || 100.0
-    if(val === -32768) return null
+    if(val === -32768) return undefined;
     return val / facteur
 }
 
@@ -375,27 +375,27 @@ export async function addEventListener(
     server: BluetoothRemoteGATTServer, serviceUuid: string, characteristicUuid: string, 
     callback: (event: any) => void) 
 {
-    if(!server) throw new TypeError("Server manquant")
-    if(!serviceUuid) throw new TypeError('serviceUuid vide')
-    if(!characteristicUuid) throw new TypeError('characteristicUuid vide')
-    if(!callback) throw new TypeError('callback vide')
+    if(!server) throw new TypeError("Server manquant");
+    if(!serviceUuid) throw new TypeError('serviceUuid vide');
+    if(!characteristicUuid) throw new TypeError('characteristicUuid vide');
+    if(!callback) throw new TypeError('callback vide');
 
     console.debug("addEventListener serviceUuid %s, characteristicUuid %s", serviceUuid, characteristicUuid)
     if(!server.connected) {
-        console.error("GATT connexion - echec")
-        return
+        console.error("GATT connexion - echec");
+        return;
     }
 
-    const service = await server.getPrimaryService(serviceUuid)
-    const characteristic = await service.getCharacteristic(characteristicUuid.toLowerCase())
+    const service = await server.getPrimaryService(serviceUuid);
+    const characteristic = await service.getCharacteristic(characteristicUuid.toLowerCase());
 
     // characteristic.oncharacteristicvaluechanged = callback
-    const c = await characteristic.startNotifications()
+    const c = await characteristic.startNotifications();
     if(c) {
-        characteristic.addEventListener('characteristicvaluechanged', callback)
-        console.debug("addEventListener Characteristic %O notification active", characteristic)
+        characteristic.addEventListener('characteristicvaluechanged', callback);
+        console.debug("addEventListener Characteristic %O notification active", characteristic);
     } else {
-        throw new Error("addEventListener erreur startNotifications")
+        throw new Error("addEventListener erreur startNotifications");
     }
 }
 
