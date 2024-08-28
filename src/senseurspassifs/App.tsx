@@ -10,9 +10,11 @@ export default function SenseursPassifs() {
     // Note : loading of device information and event updates are handled in <DeviceEvents />
 
     return (
-        <div className='pl-2 pr-2'>
+        <div>
             <HeaderMenu title='Senseurs Passifs' backLink={true} />
-            <div id="main" className="pt-8 pb-10"><Outlet /></div>
+            <div id="main" className='fixed top-8 bottom-10 overflow-y-auto pt-4 pb-2 pl-2 pr-2 w-full'>
+                <Outlet />
+            </div>
             <Footer />
             <DeviceEvents />
         </div>

@@ -75,6 +75,6 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "https://localhost:4001",
+  "proxy": "https://localhost:443",
   "homepage": "/apps"
 }

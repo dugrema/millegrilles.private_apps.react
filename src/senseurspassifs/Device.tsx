@@ -23,8 +23,6 @@ export default function Device() {
         let device = devices[uuid_appareil];
         let configuration = deviceConfiguration[uuid_appareil];
 
-        console.debug("Device: %O, configuration: %O", device, configuration);
-
         return [device, configuration];
     }, [params, devices, deviceConfiguration])
 
@@ -54,7 +52,6 @@ export default function Device() {
                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         <i className='fa fa-arrow-left'/> Back
                 </Link>
-                <Register value={device} />
                 <button className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500'>
                     <i className='fa fa-edit'/> Edit
                 </button>
@@ -64,6 +61,8 @@ export default function Device() {
             </nav>
 
             <h1 className='font-bold text-lg pt-2 pb-4'>Device <DisplayDeviceName value={device} /></h1>
+
+            <Register value={device} />
 
             <section>
                 <h2 className='font-semibold pt-1 pb-1'>Parameters</h2>
@@ -217,7 +216,7 @@ function Geoposition(props: GeopositionProps) {
 
     let configuration = props.value;
 
-    if(configuration.geoposition) {
+    if(configuration?.geoposition) {
         let { latitude, longitude }  = configuration.geoposition;
 
         if(!latitude || !longitude) return <>N/A</>;
