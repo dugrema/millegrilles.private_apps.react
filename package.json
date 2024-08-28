@@ -19,6 +19,7 @@
     "comlink": "^4.4.1",
     "flowbite": "^2.5.1",
     "flowbite-react": "^0.10.1",
+    "font-awesome": "^4.7.0",
     "i18next": "^23.12.2",
     "i18next-browser-languagedetector": "^8.0.0",
     "i18next-http-backend": "^2.5.2",

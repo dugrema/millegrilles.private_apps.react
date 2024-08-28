@@ -20,7 +20,12 @@ export default function DeviceEvents() {
         return proxy((event: SubscriptionMessage)=>{
             let message = event.message as DeviceReadings;
             if(message) {
-                updateDevice(message);
+                let action = event.routingKey.split('.').pop() || 'NA';
+                if(['presenceAppareil', 'lectureConfirmee'].includes(action)) {
+                    updateDevice(message);
+                } else {
+                    console.warn("Unknown message type: %s", action);
+                }
                 // Update configuration separately. Not all messages contain it.
                 if(message.configuration) updateConfiguration(message.uuid_appareil, message.configuration);
             }

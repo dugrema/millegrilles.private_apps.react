@@ -83,17 +83,20 @@ export function DisplayDevices(props: DisplayDeviceReadingsProps) {
         <>
             {(!props.skipHeader)?
                 <>
-                    <div className='col-span-8 mt-3 pl-1 pb-2 bg-cyan-600 bg-opacity-30'>
+                    <div className='col-span-8 mt-3 pl-1 pr-1 pt-1 pb-2 bg-cyan-600 bg-opacity-30'>
                         <Link to={'/apps/senseurspassifs/device/' + uuid_appareil}>
                             <DisplayDeviceName value={device} />
                         </Link>
                     </div>
-                    <div className='col-span-3 mt-3 pl-1 pb-2 bg-cyan-600 bg-opacity-30'>
+                    <div className='col-span-3 mt-3 pl-1 pr-1 pt-1 pb-2 text-right bg-cyan-600 bg-opacity-30'>
                         {device.csr_present?
                             <Link to={'/apps/senseurspassifs/device/' + uuid_appareil}
                                 className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'><span>Register</span></Link>
                         :
-                            <Formatters.FormatterDate value={device.derniere_lecture} />
+                            <>
+                                <DeviceConnectedIcon value={device} />
+                                <Formatters.FormatterDate value={device.derniere_lecture} />
+                            </>
                         }
                         
                     </div>
@@ -116,6 +119,18 @@ export function DisplayDevices(props: DisplayDeviceReadingsProps) {
             
         </>
     )
+}
+
+type DeviceConnectedIconProps = { value: DeviceReadings };
+
+function DeviceConnectedIcon(props: DeviceConnectedIconProps) {
+    let device = props.value;
+    if(device.connecte) {
+        return <span><i className='fa fa-wifi text-green-500 pr-1'/></span>;
+    } else if(device.connecte === false) {
+        return <span><i className='fa fa-wifi text-red-500 pr-1'/></span>;
+    }
+    return <></>;
 }
 
 type DisplayDeviceReading = {

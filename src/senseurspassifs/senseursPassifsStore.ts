@@ -26,6 +26,7 @@ export type DeviceReadings = {
     types_donnees?: {[key: string]: string},
     configuration?: DeviceConfiguration,
     csr_present: boolean,
+    connecte?: boolean,
 }
 
 interface SenseursPassifsStoreState {
@@ -33,6 +34,7 @@ interface SenseursPassifsStoreState {
     deviceConfiguration: {[key: string]: DeviceConfiguration},
     setDevices: (devices: {[key: string]: DeviceReadings}) => void,
     updateDevice: (device: DeviceReadings) => void,
+    updatePresence: (device: DeviceReadings) => void,
     updateConfiguration: (uuid_appareil: string, configuration: DeviceConfiguration) => void
     clear: () => void,
 };
@@ -53,7 +55,11 @@ const useSenseursPassifsStore = create<SenseursPassifsStoreState>()(
                 // Set
                 set({devices, deviceConfiguration});
             },
-            updateDevice: (device) => set(state => ({devices: {...state.devices, [device.uuid_appareil]: device}})),
+            updateDevice: (device) => set(state => {
+                let currentDevice = state.devices[device.uuid_appareil] || {};
+                return ({devices: {...state.devices, [device.uuid_appareil]: {...currentDevice, ...device}}});
+            }),
+            updatePresence: (device) => set(state => ({devices: {...state.devices, [device.uuid_appareil]: device}})),
             updateConfiguration: (uuid_appareil, configuration) => set((state) => ({deviceConfiguration: {...state.deviceConfiguration, [uuid_appareil]: configuration}})),
             clear: () => set(() => ({devices: {}})),
         })

@@ -57,6 +57,7 @@ export function SwitchButton(props: SwitchButtonProps) {
     let { instance_id, uuid_appareil } = device;
 
     let workers = useWorkers();
+    let deviceConnected = device.connecte;
 
     let toggleSwitchHandler = useCallback(()=>{
         if(!workers) throw new Error("Workers not initialized");
@@ -74,7 +75,7 @@ export function SwitchButton(props: SwitchButtonProps) {
 
     return (
         <label className="inline-flex items-center cursor-pointer">
-            <input type="checkbox" className="sr-only peer" checked={value===1} onChange={toggleSwitchHandler} disabled={toggling} />
+            <input type="checkbox" className="sr-only peer" checked={value===1} onChange={toggleSwitchHandler} disabled={toggling||!deviceConnected} />
             <div 
                 className="
                     relative w-11 h-6 bg-gray-300 
