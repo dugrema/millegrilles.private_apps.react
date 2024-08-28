@@ -3,7 +3,7 @@ import { expose } from 'comlink';
 import { ConnectionWorker, MessageResponse, SubscriptionCallback } from 'millegrilles.reactdeps.typescript';
 import apiMapping from './apiMapping.json';
 
-import { DeviceReadings } from '../senseurspassifs/senseursPassifsStore';
+import { DeviceConfiguration, DeviceReadings } from '../senseurspassifs/senseursPassifsStore';
 
 const DOMAINE_CORETOPOLOGIE = 'CoreTopologie';
 const DOMAINE_SENSEURSPASSIFS = 'SenseursPassifs';
@@ -82,6 +82,11 @@ export class AppsConnectionWorker extends ConnectionWorker {
         if(!this.connection) throw new Error("Connection is not initialized");
         let partition = params.instance_id;
         return await this.connection.sendCommand(params, DOMAINE_SENSEURSPASSIFS_RELAI, 'commandeAppareil', {partition, nowait: true});
+    }
+
+    async updateDeviceConfiguration(params: {uuid_appareil: string, configuration: DeviceConfiguration}) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(params, DOMAINE_SENSEURSPASSIFS, 'majAppareil');
     }
 
 }

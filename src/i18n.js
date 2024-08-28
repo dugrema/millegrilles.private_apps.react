@@ -29,7 +29,7 @@ i18n
         // debug: true,
 
         backend: {
-        loadPath: '/millegrilles/locales/{{lng}}/{{ns}}.json',
+        loadPath: '/apps/locales/{{lng}}/{{ns}}.json',
         },
 
         interpolation: {

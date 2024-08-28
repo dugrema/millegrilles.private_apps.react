@@ -4,7 +4,7 @@ import { devtools } from 'zustand/middleware';
 export type Devices = {};
 
 export type DeviceConfiguration = {
-    cacher_senseurs?: boolean,
+    cacher_senseurs?: Array<string>,
     descriptif?: string,
     descriptif_senseurs?: {[key: string]: string},
     displays?: Object,

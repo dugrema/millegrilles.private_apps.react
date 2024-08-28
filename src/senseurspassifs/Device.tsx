@@ -1,10 +1,11 @@
-import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo, useEffect, useState, useCallback, ChangeEvent } from 'react';
 import { Link, useParams } from "react-router-dom";
 import useSenseursPassifsStore, { DeviceConfiguration, DeviceReadings } from "./senseursPassifsStore";
 import useWorkers from '../workers/workers';
 import useConnectionStore from '../connectionStore';
-import { DeviceConnectedIcon, DisplayDeviceName, DisplayDevices, DisplayReadingsDate } from './Devices';
+import { DeviceConnectedIcon, DisplayDeviceName, DisplayDeviceComponents, DisplayReadingsDate } from './Devices';
 import { random } from 'millegrilles.cryptography';
+import EditDevice from './EditDevice';
 
 export default function Device() {
 
@@ -15,6 +16,10 @@ export default function Device() {
     let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);    
 
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    let [edit, setEdit] = useState(false);
+    let editStartHandler = useCallback(()=>setEdit(true), [setEdit]);
+    let editCloseHandler = useCallback(()=>setEdit(false), [setEdit]);
 
     const [device, configuration] = useMemo(()=>{
         if(!devices || !deviceConfiguration) return [null, null];
@@ -32,18 +37,9 @@ export default function Device() {
         return 'Default';
     }, [configuration])
 
-    useEffect(()=>{
-        if(!workers || !ready || !params.uuid_appareil) return;  // Nothing to do
-
-        // Initial load or reload of the device
-
-        // Subscribe to events
-
-        // Unsubscribe from events
-
-    }, [workers, ready, params]);
-
     if(!device) return <p>Loading ...</p>;
+
+    if(edit) return <EditDevice close={editCloseHandler} />;
 
     return (
         <>
@@ -52,7 +48,7 @@ export default function Device() {
                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         <i className='fa fa-arrow-left'/> Back
                 </Link>
-                <button className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500'>
+                <button onClick={editStartHandler} className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500'>
                     <i className='fa fa-edit'/> Edit
                 </button>
                 <button className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
@@ -94,7 +90,7 @@ export default function Device() {
                         <DisplayReadingsDate value={device.derniere_lecture} />
                     </div>
 
-                    <DisplayDevices value={device} skipHeader={true} />
+                    <DisplayDeviceComponents value={device} skipHeader={true} />
                 </div>
             </section>
 

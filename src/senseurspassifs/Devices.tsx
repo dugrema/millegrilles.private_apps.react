@@ -44,13 +44,27 @@ export default function Devices() {
 function ListDeviceReadings() {
     let devices = useSenseursPassifsStore(state=>state.devices);
 
+    let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);    
+
     let deviceList = useMemo(()=>{
         if(devices) {
-            let values = Object.values(devices);
-            if(values.length > 0) return values;
+            let deviceIds = Object.keys(devices);
+            if(deviceIds.length > 0) {
+                let devicesSort = deviceIds.map(item => {
+                    let configuration = deviceConfiguration[item];
+                    let name = configuration?.descriptif || item;
+                    return {uuid_appareil: item, name};
+                });
+                //     let uuid_appareil = device.uuid_appareil;
+                //     let deviceConf = deviceConfiguration[uuid_appareil];
+                //     return deviceConf?.descriptif || device.uuid_appareil;
+                // }, [device, deviceConfiguration])
+                devicesSort.sort((a,b)=>a.name.localeCompare(b.name));
+                return devicesSort.map(item=>devices[item.uuid_appareil]);
+            }
         }
         return null;
-    }, [devices])
+    }, [devices, deviceConfiguration])
 
     if(deviceList) {
         return (
@@ -58,7 +72,7 @@ function ListDeviceReadings() {
                 <h2 className='pb-6'>Devices</h2>
                 <div className='grid grid-cols-12'>
                     {deviceList.map(item=>{
-                        return <DisplayDevices key={item.uuid_appareil} value={item} />
+                        return <DisplayDeviceComponents key={item.uuid_appareil} value={item} />
                     })}
                 </div>
             </section>
@@ -79,10 +93,27 @@ type DisplayDeviceReadingsProps = {
     skipHeader?: boolean,
 }
 
-export function DisplayDevices(props: DisplayDeviceReadingsProps) {
+export function DisplayDeviceComponents(props: DisplayDeviceReadingsProps) {
     let device = props.value;
 
-    let { uuid_appareil } = device;
+    let { uuid_appareil, senseurs: components } = device;
+
+    let componentElems = useMemo(()=>{
+        if(!components) return null;  // nothing to display.
+        
+        let names = Object.keys(components);
+        let componentsMap = names.map(item=>{
+            if(!components) return {name: '', component: <></>};
+            let component = components[item];
+            let componentType = device.types_donnees?device.types_donnees[item]:null;
+            return {name: item, component: <DisplayDeviceReading key={item} name={item} value={component} type={componentType} device={device} />};
+        });
+
+        // Sort by name
+        componentsMap.sort((a, b)=>a.name.localeCompare(b.name));
+
+        return componentsMap.map(item=>item.component);
+    }, [components, device])
 
     return (
         <>
@@ -107,17 +138,7 @@ export function DisplayDevices(props: DisplayDeviceReadingsProps) {
                     </div>
                 </>
             :<></>}
-            {device.senseurs?
-                Object.keys(device.senseurs).map(sensorName=>{
-                    let sensorReading = device.senseurs?device.senseurs[sensorName]:null;
-                    
-                    if(sensorReading) {
-                        let sensorType = device.types_donnees?device.types_donnees[sensorName]:null;
-                        return <DisplayDeviceReading key={sensorName} name={sensorName} value={sensorReading} type={sensorType} device={device} />
-                    } else {
-                        return <span></span>
-                    }
-                })
+            {componentElems?componentElems
             :
                 <div className='col-span-12 pl-3'>There are no sensors or switches currently reported on this device. You may need to register it.</div>
             }

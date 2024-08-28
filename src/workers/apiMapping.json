@@ -12,6 +12,7 @@
         {"domain": "ollama_relai", "action": "model"},
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},
         {"domain": "SenseursPassifs", "action": "signerAppareil"},
+        {"domain": "SenseursPassifs", "action": "majAppareil"},
         {"domain": "senseurspassifs_relai", "action": "commandeAppareil"}
     ],
     "subscriptions": {
