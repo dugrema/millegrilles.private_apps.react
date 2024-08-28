@@ -8,6 +8,11 @@ import ReadingFormatter, { SwitchButton } from './ReadingFormatter';
 import { BluetoothAvailableCheck } from './bluetooth/Bluetooth';
 import useBluetoothStore from './bluetooth/bluetoothStore';
 
+// Age (seconds) when readings become stale and when the device is de-facto offline.
+const CONST_READINGS_STALE = 60;
+const CONST_READINGS_OFFLINE = 1800;
+
+
 export default function Devices() {
 
     let bluetoothAvailable = useBluetoothStore(state=>state.bluetoothAvailable);
@@ -88,14 +93,14 @@ export function DisplayDevices(props: DisplayDeviceReadingsProps) {
                             <DisplayDeviceName value={device} />
                         </Link>
                     </div>
-                    <div className='col-span-3 mt-3 pl-1 pr-1 pt-1 pb-2 text-right bg-cyan-600 bg-opacity-30'>
+                    <div className='col-span-4 mt-3 pl-1 pr-1 pt-1 pb-2 text-right bg-cyan-600 bg-opacity-30'>
                         {device.csr_present?
                             <Link to={'/apps/senseurspassifs/device/' + uuid_appareil}
                                 className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'><span>Register</span></Link>
                         :
                             <>
                                 <DeviceConnectedIcon value={device} />
-                                <Formatters.FormatterDate value={device.derniere_lecture} />
+                                <DisplayReadingsDate value={device.derniere_lecture} />
                             </>
                         }
                         
@@ -123,7 +128,7 @@ export function DisplayDevices(props: DisplayDeviceReadingsProps) {
 
 type DeviceConnectedIconProps = { value: DeviceReadings };
 
-function DeviceConnectedIcon(props: DeviceConnectedIconProps) {
+export function DeviceConnectedIcon(props: DeviceConnectedIconProps) {
     let device = props.value;
     if(device.connecte) {
         return <span><i className='fa fa-wifi text-green-500 pr-1'/></span>;
@@ -133,14 +138,14 @@ function DeviceConnectedIcon(props: DeviceConnectedIconProps) {
     return <></>;
 }
 
-type DisplayDeviceReading = {
+type DisplayDeviceReadingProps = {
     name: string,
     value: DeviceReadingValue
     type?: string | null,
     device: DeviceReadings,
 }
 
-function DisplayDeviceReading(props: DisplayDeviceReading) {
+function DisplayDeviceReading(props: DisplayDeviceReadingProps) {
 
     let {name, value, type, device} = props;
     type = value?.type || type;
@@ -156,10 +161,11 @@ function DisplayDeviceReading(props: DisplayDeviceReading) {
     let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);        
 
     let sensorName = useMemo(()=>{
+        let newName = name;
         let deviceConf = deviceConfiguration[uuid_appareil];
         let sensorConf = deviceConf?.descriptif_senseurs;
-        if(sensorConf) name = sensorConf[name] || name;
-        return name;
+        if(sensorConf) newName = sensorConf[name] || name;
+        return newName;
     }, [name, deviceConfiguration, uuid_appareil])
 
     return (
@@ -195,4 +201,26 @@ export function DisplayDeviceName(props: DisplayDeviceReadingsProps) {
     }, [device, deviceConfiguration])
 
     return <span>{name}</span>;
+}
+
+export function DisplayReadingsDate(props: {value: number}) {
+
+    let readingDate = props.value;
+
+    let now = useSenseursPassifsStore(state=>state.now);
+
+    let className = useMemo(()=>{
+        if(now - CONST_READINGS_OFFLINE > readingDate) {
+            return 'text-red-600'
+        } else if (now - CONST_READINGS_STALE > readingDate) {
+            return 'text-yellow-300';
+        }
+        return '';
+    }, [now, readingDate])
+
+    return (
+        <span className={className}>
+            <Formatters.FormatterDate value={readingDate} />
+        </span>
+    )
 }

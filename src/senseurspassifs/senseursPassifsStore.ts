@@ -9,6 +9,7 @@ export type DeviceConfiguration = {
     descriptif_senseurs?: {[key: string]: string},
     displays?: Object,
     geoposition?: {latitude: number, longitude: number, accuracy?: number},
+    timezone?: string,
     programmes?: Object
 };
 
@@ -27,16 +28,19 @@ export type DeviceReadings = {
     configuration?: DeviceConfiguration,
     csr_present: boolean,
     connecte?: boolean,
+    version?: string,
 }
 
 interface SenseursPassifsStoreState {
     devices: {[key: string]: DeviceReadings},
     deviceConfiguration: {[key: string]: DeviceConfiguration},
+    now: number,
     setDevices: (devices: {[key: string]: DeviceReadings}) => void,
     updateDevice: (device: DeviceReadings) => void,
     updatePresence: (device: DeviceReadings) => void,
     updateConfiguration: (uuid_appareil: string, configuration: DeviceConfiguration) => void
     clear: () => void,
+    setNow: (now: number) => void,
 };
 
 const useSenseursPassifsStore = create<SenseursPassifsStoreState>()(
@@ -44,6 +48,7 @@ const useSenseursPassifsStore = create<SenseursPassifsStoreState>()(
         (set) => ({
             devices: {},
             deviceConfiguration: {},
+            now: 0,
             setDevices: (devices) => {
                 // Extract deviceConfiguration
                 let deviceConfiguration = Object.values(devices).reduce(
@@ -62,6 +67,7 @@ const useSenseursPassifsStore = create<SenseursPassifsStoreState>()(
             updatePresence: (device) => set(state => ({devices: {...state.devices, [device.uuid_appareil]: device}})),
             updateConfiguration: (uuid_appareil, configuration) => set((state) => ({deviceConfiguration: {...state.deviceConfiguration, [uuid_appareil]: configuration}})),
             clear: () => set(() => ({devices: {}})),
+            setNow: (now) => set(()=>({now})),
         })
     ),
 );

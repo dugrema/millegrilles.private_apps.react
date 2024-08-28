@@ -62,7 +62,7 @@ export function BluetoothAvailableCheck(props: {hide?: boolean}) {
             })
             .catch(err=>console.error("Error checking if Bluetooth is avaiable", err))
             .finally(()=>setDone(true));
-    }, [available, setDone, setBluetoothAvailable]);
+    }, [available, done, setDone, setBluetoothAvailable]);
 
     if(props.hide) return <></>;
 
@@ -261,7 +261,7 @@ function DeviceDetail(props: DeviceDetailProps) {
             .finally(()=>{
                 setRefreshing(false);
             })
-    }, [server, setRefreshing]);
+    }, [server, setRefreshing, mergeDeviceState]);
 
     const updateLecturesHandler = useCallback( (e: any) => {
         try {
@@ -465,7 +465,7 @@ function SwitchBluetooth(props: SwitchReadingProps) {
                 console.debug("Commande switch transmise")
             })
             .catch(err=>console.error("Erreur switch BLE : ", err))
-    }, [workers, idx, server, authSharedSecret])
+    }, [workers, server, authSharedSecret])
 
     if(!value.present) return <></>;
 

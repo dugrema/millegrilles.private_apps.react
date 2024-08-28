@@ -1,16 +1,16 @@
 {
-    "pubkey": "b0f1885cf526c750dc6db18eae85d8214a5ef6d94d4103785b0b811c618437f9",
-    "estampille": 1724342789,
-    "kind": 2,
-    "contenu": "{\"commands\":[{\"action\":\"generate\",\"domain\":\"ollama_relai\",\"stream\":true},{\"action\":\"chat\",\"domain\":\"ollama_relai\",\"stream\":true},{\"action\":\"model\",\"domain\":\"ollama_relai\"}],\"defaults\":{\"domain\":\"CoreMaitreDesComptes\",\"exchange\":\"2.prive\"},\"requests\":[{\"action\":\"listeApplicationsDeployees\",\"domain\":\"CoreTopologie\"}]}",
-    "routage": {
-      "action": "configuration",
-      "domaine": "webapi"
-    },
-    "id": "63b5b861575a89337f02fc0bb5cae140de46b5b13170c79e0296ea4f08642c9d",
-    "sig": "411e5e5ae52de451bcf812eb291703ea72bd0ed740aeb8ffb3fdc1945f83c1e0ec5287f3c34c3c3aa09a30396d39afc59a48b7cde298b9d4b482c4a747eefd0f",
-    "certificat": [
-      "-----BEGIN CERTIFICATE-----\nMIIBqjCCAVygAwIBAgIUerM/X77+89WoWIQ+wkw5mkB5xTowBQYDK2VwMBYxFDAS\nBgNVBAMTC01pbGxlR3JpbGxlMB4XDTI0MDgwMjE3NDEyOFoXDTI0MDkwMjE3NDE0\nOFowazESMBAGA1UEAwwJU2lnbmF0dXJlMRIwEAYDVQQLDAlzaWduYXR1cmUxQTA/\nBgNVBAoMOHplWW5jUnFFcVo2ZVRFbVVaOHdoSkZ1SEc3OTZlU3ZDVFdFNE00MzJp\nelhycDIyYkF0d0dtN0pmMCowBQYDK2VwAyEAsPGIXPUmx1DcbbGOroXYIUpe9tlN\nQQN4WwuBHGGEN/mjZzBlMCMGBCoDBAEEG3NpZ25hdHVyZSxjYXRhbG9ndWVzLHdl\nYmFwaTAfBgNVHSMEGDAWgBTTiP/MFw4DDwXqQ/J2LLYPRUkkETAdBgNVHQ4EFgQU\nUOipJfCK+blx0kFPnpoo7RGtHGgwBQYDK2VwA0EAH9awzWbbhOAzgSg10E97IfVm\nYUXhNI6rEs5lViUQk1Yb3cybTUpqPn1GRtYfbEp02279zVdXm1rzHEgzJehoBA==\n-----END CERTIFICATE-----"
-    ],
-    "millegrille": "-----BEGIN CERTIFICATE-----\nMIIBQzCB9qADAgECAgoHBykXJoaCCWAAMAUGAytlcDAWMRQwEgYDVQQDEwtNaWxs\nZUdyaWxsZTAeFw0yMjAxMTMyMjQ3NDBaFw00MjAxMTMyMjQ3NDBaMBYxFDASBgNV\nBAMTC01pbGxlR3JpbGxlMCowBQYDK2VwAyEAnnixameVCZAzfx4dO+L63DOk/34I\n/TC4fIA1Rxn19+KjYDBeMA8GA1UdEwEB/wQFMAMBAf8wCwYDVR0PBAQDAgLkMB0G\nA1UdDgQWBBTTiP/MFw4DDwXqQ/J2LLYPRUkkETAfBgNVHSMEGDAWgBTTiP/MFw4D\nDwXqQ/J2LLYPRUkkETAFBgMrZXADQQBSb0vXhw3pw25qrWoMjqROjawe7/kMlu7p\nMJyb/Ppa2C6PraSVPgJGWKl+/5S5tBr58KFNg+0H94CH4d1VCPwI\n-----END CERTIFICATE-----"
-  }
+  "pubkey": "b0f1885cf526c750dc6db18eae85d8214a5ef6d94d4103785b0b811c618437f9",
+  "estampille": 1724849758,
+  "kind": 2,
+  "contenu": "{\"commands\":[{\"action\":\"generate\",\"domain\":\"ollama_relai\",\"stream\":true},{\"action\":\"chat\",\"domain\":\"ollama_relai\",\"stream\":true},{\"action\":\"model\",\"domain\":\"ollama_relai\"},{\"action\":\"challengeAppareil\",\"domain\":\"SenseursPassifs\"},{\"action\":\"signerAppareil\",\"domain\":\"SenseursPassifs\"},{\"action\":\"commandeAppareil\",\"domain\":\"senseurspassifs_relai\"}],\"defaults\":{\"domain\":\"\",\"exchange\":\"2.prive\"},\"requests\":[{\"action\":\"getAppareilsUsager\",\"domain\":\"SenseursPassifs\"}],\"subscriptions\":{\"userDeviceEvents\":{\"exchanges\":[\"2.prive\"],\"routingKeys\":[\"evenement.SenseursPassifs.{USER_ID}.lectureConfirmee\",\"evenement.SenseursPassifs.{USER_ID}.majAppareil\",\"evenement.SenseursPassifs.{USER_ID}.presenceAppareil\"]}}}",
+  "routage": {
+    "action": "configuration",
+    "domaine": "webapi"
+  },
+  "id": "4cb3c5bb54fafa44d302f8de680acd2703a539b73bf4c74407e7d5a4a534c3b5",
+  "sig": "fbeaf5f5826cdd57ea861afb9b78ccfba01e1aaf4b0dd2e089151823be1b3a95c09847f336e4fbf85372d644a12c164f4c8e684983b100fbd2270c53bb277706",
+  "certificat": [
+    "-----BEGIN CERTIFICATE-----\nMIIBqjCCAVygAwIBAgIUerM/X77+89WoWIQ+wkw5mkB5xTowBQYDK2VwMBYxFDAS\nBgNVBAMTC01pbGxlR3JpbGxlMB4XDTI0MDgwMjE3NDEyOFoXDTI0MDkwMjE3NDE0\nOFowazESMBAGA1UEAwwJU2lnbmF0dXJlMRIwEAYDVQQLDAlzaWduYXR1cmUxQTA/\nBgNVBAoMOHplWW5jUnFFcVo2ZVRFbVVaOHdoSkZ1SEc3OTZlU3ZDVFdFNE00MzJp\nelhycDIyYkF0d0dtN0pmMCowBQYDK2VwAyEAsPGIXPUmx1DcbbGOroXYIUpe9tlN\nQQN4WwuBHGGEN/mjZzBlMCMGBCoDBAEEG3NpZ25hdHVyZSxjYXRhbG9ndWVzLHdl\nYmFwaTAfBgNVHSMEGDAWgBTTiP/MFw4DDwXqQ/J2LLYPRUkkETAdBgNVHQ4EFgQU\nUOipJfCK+blx0kFPnpoo7RGtHGgwBQYDK2VwA0EAH9awzWbbhOAzgSg10E97IfVm\nYUXhNI6rEs5lViUQk1Yb3cybTUpqPn1GRtYfbEp02279zVdXm1rzHEgzJehoBA==\n-----END CERTIFICATE-----"
+  ],
+  "millegrille": "-----BEGIN CERTIFICATE-----\nMIIBQzCB9qADAgECAgoHBykXJoaCCWAAMAUGAytlcDAWMRQwEgYDVQQDEwtNaWxs\nZUdyaWxsZTAeFw0yMjAxMTMyMjQ3NDBaFw00MjAxMTMyMjQ3NDBaMBYxFDASBgNV\nBAMTC01pbGxlR3JpbGxlMCowBQYDK2VwAyEAnnixameVCZAzfx4dO+L63DOk/34I\n/TC4fIA1Rxn19+KjYDBeMA8GA1UdEwEB/wQFMAMBAf8wCwYDVR0PBAQDAgLkMB0G\nA1UdDgQWBBTTiP/MFw4DDwXqQ/J2LLYPRUkkETAfBgNVHSMEGDAWgBTTiP/MFw4D\nDwXqQ/J2LLYPRUkkETAFBgMrZXADQQBSb0vXhw3pw25qrWoMjqROjawe7/kMlu7p\nMJyb/Ppa2C6PraSVPgJGWKl+/5S5tBr58KFNg+0H94CH4d1VCPwI\n-----END CERTIFICATE-----"
+}

@@ -4,7 +4,6 @@ import { proxy } from 'comlink';
 import { Link } from 'react-router-dom';
 
 import useWorkers from '../workers/workers';
-import useConnectionStore from '../connectionStore';
 import useChatStore, { ChatMessages } from './chatStore';
 
 import Footer from '../Footer';
@@ -18,7 +17,7 @@ export default function Chat() {
     let pushUserQuery = useChatStore(state=>state.pushUserQuery);
     let clearConversation = useChatStore(state=>state.clear);
 
-    let certificatsChiffrage = useConnectionStore(state=>state.chiffrage);
+    // let certificatsChiffrage = useConnectionStore(state=>state.chiffrage);
 
     let [chatInput, setChatInput] = useState('');
     let [waiting, setWaiting] = useState(false);
@@ -46,7 +45,7 @@ export default function Chat() {
             setWaiting(false);
             pushAssistantResponse();
         }
-    }), [appendCurrentResponse, setWaiting]);
+    }), [appendCurrentResponse, setWaiting, pushAssistantResponse]);
 
     let submitHandler = useCallback(() => {
         if(!workers) throw new Error('workers not initialized');
@@ -66,7 +65,7 @@ export default function Chat() {
                 console.error("Error ", err);
                 setWaiting(false);
             })
-    }, [workers, messages, chatInput, setChatInput, chatCallback, setWaiting, certificatsChiffrage, pushUserQuery]);
+    }, [workers, messages, chatInput, setChatInput, chatCallback, setWaiting, pushUserQuery]);
 
     let clearHandler = useCallback(()=>{
         clearConversation();

@@ -15,6 +15,7 @@ export default function DeviceEvents() {
     let setDevices = useSenseursPassifsStore(state=>state.setDevices);
     let updateDevice = useSenseursPassifsStore(state=>state.updateDevice);
     let updateConfiguration = useSenseursPassifsStore(state=>state.updateConfiguration);
+    let setNow = useSenseursPassifsStore(state=>state.setNow);
 
     let deviceEventCb = useMemo(()=>{
         return proxy((event: SubscriptionMessage)=>{
@@ -69,5 +70,20 @@ export default function DeviceEvents() {
         }
     }, [workers, ready, setDevices, deviceEventCb])
 
+    // Used as a trigger to update the status (color) of displayed reading times. 
+    // Allows showing stale/offline devices.
+    useEffect(()=>{
+        updateNow(setNow);
+        let interval = setInterval(()=>{
+            updateNow(setNow);
+        }, 15_000);
+        return () => clearInterval(interval);
+    }, [setNow])
+
     return <></>;
+}
+
+function updateNow(cb: (now: number)=>void) {
+    let now = Math.floor(new Date().getTime() / 1000);
+    cb(now);
 }

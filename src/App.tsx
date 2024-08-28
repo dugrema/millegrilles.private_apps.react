@@ -1,4 +1,4 @@
-import React, {useCallback, MouseEventHandler, MouseEvent} from 'react';
+import React from 'react';
 import { createBrowserRouter, RouterProvider, Link } from "react-router-dom";
 
 import { ErrorPage } from './ErrorBoundary';
@@ -46,9 +46,9 @@ const router = createBrowserRouter([
 
 function App() {
 
-    let logoutHandler: MouseEventHandler<MouseEvent> = useCallback(()=>{
-        window.location.href = '/auth/deconnecter_usager';
-    }, []);
+    // let logoutHandler: MouseEventHandler<MouseEvent> = useCallback(()=>{
+    //     window.location.href = '/auth/deconnecter_usager';
+    // }, []);
 
     return (
         <>

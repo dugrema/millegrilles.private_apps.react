@@ -273,7 +273,6 @@ export function decoderLectures(value: DataView) {
     const etatNtp = value.getUint8(0) === 1
     const timeSliceVal = new Uint32Array(value.buffer.slice(1, 5))
     const timeVal = timeSliceVal[0]
-    const dateTime = new Date(timeVal * 1000)
 
     const lecturesNumeriques = new Int16Array(value.buffer.slice(5, 11))
     const temp1 = decoderValeurSmallint(lecturesNumeriques[0]),
@@ -295,7 +294,7 @@ function decoderValeurSmallint(val: number, opts?: {facteur?: number}) {
 function decoderSwitches(val: number) {
     const valeursListe = []
     for(let i = 0; i < 8; i++) {
-        const boolVal = (val & 1 << i)?1:0
+        const boolVal = ((val & 1) << i)?1:0
         valeursListe.push(boolVal)
     }
     const switches = []

@@ -1,9 +1,9 @@
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from "react-router-dom";
-import useSenseursPassifsStore, { DeviceReadings } from "./senseursPassifsStore";
+import useSenseursPassifsStore, { DeviceConfiguration, DeviceReadings } from "./senseursPassifsStore";
 import useWorkers from '../workers/workers';
 import useConnectionStore from '../connectionStore';
-import { DisplayDeviceName, DisplayDevices } from './Devices';
+import { DeviceConnectedIcon, DisplayDeviceName, DisplayDevices, DisplayReadingsDate } from './Devices';
 import { random } from 'millegrilles.cryptography';
 
 export default function Device() {
@@ -23,8 +23,16 @@ export default function Device() {
         let device = devices[uuid_appareil];
         let configuration = deviceConfiguration[uuid_appareil];
 
+        console.debug("Device: %O, configuration: %O", device, configuration);
+
         return [device, configuration];
     }, [params, devices, deviceConfiguration])
+
+    let timezone = useMemo(()=>{
+        if(configuration?.timezone) return configuration.timezone;
+        // TODO : Charger configuration usager et recuperer timezone
+        return 'Default';
+    }, [configuration])
 
     useEffect(()=>{
         if(!workers || !ready || !params.uuid_appareil) return;  // Nothing to do
@@ -41,22 +49,56 @@ export default function Device() {
 
     return (
         <>
-            <h1>Device <DisplayDeviceName value={device} /></h1>
-
-            <button className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500'>Edit</button>
-
-            <Register value={device} />
-
-            <div className='grid grid-cols-12 pt-8'>
-                <DisplayDevices value={device} skipHeader={true} />
-            </div>
-
-            <div className='pt-10'>
+            <nav>
                 <Link to='/apps/senseurspassifs/devices' 
                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        Back
+                        <i className='fa fa-arrow-left'/> Back
                 </Link>
-            </div>
+                <Register value={device} />
+                <button className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500'>
+                    <i className='fa fa-edit'/> Edit
+                </button>
+                <button className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                    <i className='fa fa-trash-o' /> Delete
+                </button>
+            </nav>
+
+            <h1 className='font-bold text-lg pt-2 pb-4'>Device <DisplayDeviceName value={device} /></h1>
+
+            <section>
+                <h2 className='font-semibold pt-1 pb-1'>Parameters</h2>
+                <div className='grid grid-cols-12'>
+                    <div className='col-span-3 pl-1 pr-1'>Version</div>
+                    <div className='col-span-9 pl-1 pr-1'>{device.version}</div>
+                    <div className='col-span-3 pl-1 pr-1'>Time zone</div>
+                    <div className='col-span-9 pl-1 pr-1'>{timezone}</div>
+                    
+                    <div className='col-span-3 pl-1 pr-1'>Location</div>
+                    <div className='col-span-4 pl-1 pr-1'>
+                        <div className='grid grid-cols-2'>
+                            <Geoposition value={configuration}/>
+                        </div>
+                    </div>
+                    <div className='col-span-5'></div>
+
+                </div>
+            </section>
+
+            <section>
+                <h2 className='font-semibold pt-4 pb-1'>Status</h2>
+                <div className='grid grid-cols-12'>
+                    <div className='col-span-6 mt-3 pl-3 pr-1 pb-2'>
+                        Most recent reading
+                    </div>
+                    <div className='col-span-6 mt-3 pr-1 pb-2'>
+                        <DeviceConnectedIcon value={device} />
+                        <DisplayReadingsDate value={device.derniere_lecture} />
+                    </div>
+
+                    <DisplayDevices value={device} skipHeader={true} />
+                </div>
+            </section>
+
         </>
     )
 }
@@ -125,7 +167,7 @@ function Register(props: RegisterProps) {
                 setConfirmed(false);
                 setMessage('There was an error, try again');
             })
-    }, [workers, challenge, setChallenge, confirmationReady, setMessage, setConfirmed])
+    }, [workers, device, challenge, setChallenge, setMessage, setConfirmed])
 
     if(!device.csr_present) return <></>;  // Nothing to do
 
@@ -166,4 +208,29 @@ function generateChallenge(): Array<number> {
         sequence.push(Math.floor(v / 64 + 1));
     });
     return sequence;
+}
+
+
+type GeopositionProps = { value: DeviceConfiguration };
+
+function Geoposition(props: GeopositionProps) {
+
+    let configuration = props.value;
+
+    if(configuration.geoposition) {
+        let { latitude, longitude }  = configuration.geoposition;
+
+        if(!latitude || !longitude) return <>N/A</>;
+
+        return (
+            <>
+                <div>Latitude</div>
+                <div>{latitude}</div>
+                <div>Longitude</div>
+                <div>{longitude}</div>
+            </>
+        );
+    }
+
+    return <></>;
 }
