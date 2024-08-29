@@ -83,7 +83,10 @@ function InitializeWorkers() {
                 if(username) {
                     await authenticateConnectionWorker(result.workers, username, true)
                 } else {
-                    throw new Error("Session not active");
+                    // throw new Error("Session not active");
+                    console.warn("Session not active, redirect to login page");
+                    let currentUrl = window.location.pathname;
+                    window.location.assign(`/millegrilles?returnTo=${currentUrl}`);
                 }
             })
             .catch((err: any) => {

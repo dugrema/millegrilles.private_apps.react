@@ -22,7 +22,6 @@ export default function ComponentDetail() {
     let devices = useSenseursPassifsStore(state=>state.devices);
     
     let [deviceId, componentId] = useMemo(()=>{
-        console.debug("Params ", params);
         if(!params.deviceId || !params.componentId) return [null, null];
         let componentId = decodeURIComponent(params.componentId);
         let deviceId = params.deviceId;
@@ -71,8 +70,8 @@ function StatistiquesSenseur(props: {device: DeviceReadings, componentId: string
 
     let workers = useWorkers();
     
-    let [timezone, setTimezone] = useState('America/Montreal')
-    let setTimezoneHandler = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setTimezone(e.currentTarget.value), [setTimezone])
+    let [timezone, setTimezone] = useState('America/Montreal');
+    let setTimezoneHandler = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setTimezone(e.currentTarget.value), [setTimezone]);
 
     let [grouping, setGrouping] = useState('');
     let [minDate, setMinDate] = useState(null as Date | null);
@@ -85,12 +84,11 @@ function StatistiquesSenseur(props: {device: DeviceReadings, componentId: string
     const afficherStatistiques = useMemo(()=>{
         const decimals = getUnite(typeValeur)[0]
         return decimals !== null
-    }, [typeValeur])
+    }, [typeValeur]);
 
     useEffect(()=>{
         if(!workers || !uuid_appareil || !componentId) return;
 
-        console.debug("Charger statistiques senseur %s appareil %s", componentId, uuid_appareil)
         let requete = { senseur_id: componentId, uuid_appareil, timezone } as StatisticsRequestType;
         if(grouping && minDate) {
             requete = {
@@ -105,11 +103,10 @@ function StatistiquesSenseur(props: {device: DeviceReadings, componentId: string
 
         workers.connection.getComponentStatistics(requete)
             .then(reponse=>{
-                // console.debug("Reponse statistiques ", reponse)
-                setData(reponse)
+                setData(reponse);
             })
-            .catch(err=>console.error("Erreur chargement statistiques ", err))
-    }, [workers, uuid_appareil, componentId, setData, timezone, grouping, minDate, maxDate])
+            .catch(err=>console.error("Error loading statistics ", err))
+    }, [workers, uuid_appareil, componentId, setData, timezone, grouping, minDate, maxDate]);
 
     if(!device || !componentId || !afficherStatistiques) return <></>;
 
@@ -154,7 +151,7 @@ function StatistiquesSenseur(props: {device: DeviceReadings, componentId: string
             <StatistiquesTable31j data={data?.periode31j} valueType={typeValeur} />
             
         </div>
-    )
+    );
 }
 
 function typeChart(typeValeur: string) {
@@ -400,7 +397,6 @@ function StatistiquesTableCustom(props: StatistiquesTableCustomProps) {
     const dateDebutChangeHandler = useCallback((e: any)=>setDateDebut(e), [setDateDebut]);
     const dateFinChangeHandler = useCallback((e: any)=>setDateFin(e), [setDateFin]);
     const dateMinChangeHandler = useCallback((e: any)=>{
-        console.debug("Date debut ", e);
         setMinDate(e.toDate());
     }, [setMinDate]);
     const dateMaxChangeHandler = useCallback((e: any)=>setMaxDate(e.toDate()), [setMaxDate]);
