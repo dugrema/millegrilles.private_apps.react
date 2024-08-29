@@ -9,6 +9,8 @@ import { Formatters } from "millegrilles.reactdeps.typescript";
 import { SelectTimezone } from "./EditDevice";
 
 const ChartTemperatures = lazy(()=>import('./charts/ChartTemperatures'));
+const ChartHumidite = lazy(()=>import('./charts/ChartHumidite'));
+const ChartPression = lazy(()=>import('./charts/ChartPression'));
 
 const DATETIME_DATE_FORMAT = 'YYYY-MM-DD';
 const DATETIME_TIME_FORMAT = 'HH:mm:ss';
@@ -159,9 +161,9 @@ function typeChart(typeValeur: string) {
     let TypeChart = null
     switch(typeValeur) {
         case 'temperature': TypeChart = ChartTemperatures; break
-        // case 'humidite': TypeChart = ChartHumidite; break
-        // case 'pression': TypeChart = ChartPression; break
-        // case 'pression_tendance': TypeChart = ChartPression; break
+        case 'humidite': TypeChart = ChartHumidite; break
+        case 'pression': TypeChart = ChartPression; break
+        case 'pression_tendance': TypeChart = ChartPression; break
         default: 
             TypeChart = NoChart
     }
