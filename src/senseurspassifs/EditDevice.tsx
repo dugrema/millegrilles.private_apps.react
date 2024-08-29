@@ -204,7 +204,6 @@ function EditDeviceComponent(props: {name: string, component: DeviceReadingValue
 
     let onNameChangehandler = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
         let value = e.currentTarget.value;
-        console.debug("name ", value);
         let descriptif_senseurs = configuration.descriptif_senseurs || {};
         descriptif_senseurs[name] = value;
         onChange({descriptif_senseurs});
@@ -212,7 +211,6 @@ function EditDeviceComponent(props: {name: string, component: DeviceReadingValue
 
     let onHideChangehandler = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
         let value = e.currentTarget.checked;
-        console.debug("Checked ", value);
         let cacher_senseurs = configuration.cacher_senseurs || [];
         // Remove, also avoids duplicates
         cacher_senseurs = cacher_senseurs.filter(item=>item!==name);

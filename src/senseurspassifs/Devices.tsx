@@ -9,7 +9,7 @@ import { BluetoothAvailableCheck } from './bluetooth/Bluetooth';
 import useBluetoothStore from './bluetooth/bluetoothStore';
 
 // Age (seconds) when readings become stale and when the device is de-facto offline.
-const CONST_READINGS_STALE = 60;
+const CONST_READINGS_STALE = 150;
 const CONST_READINGS_OFFLINE = 1800;
 
 
@@ -121,6 +121,7 @@ export function DisplayDeviceComponents(props: DisplayDeviceReadingsProps) {
     let showHidden = props.showHidden;
 
     let { uuid_appareil, senseurs: components } = device;
+    let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);
 
     let componentElems = useMemo(()=>{
         if(!components) return null;  // nothing to display.
@@ -130,8 +131,14 @@ export function DisplayDeviceComponents(props: DisplayDeviceReadingsProps) {
             if(!components) return {name: '', component: <></>};
             let component = components[item];
             let componentType = device.types_donnees?device.types_donnees[item]:null;
+
+            let newName = item;
+            let deviceConf = deviceConfiguration[uuid_appareil];
+            let componentNameConf = deviceConf?.descriptif_senseurs;
+            if(componentNameConf) newName = componentNameConf[item] || item;
+
             return {
-                name: item, 
+                name: newName, 
                 component: <DisplayDeviceReading key={item} name={item} value={component} type={componentType} device={device} showHidden={showHidden} />
             };
         });
@@ -140,7 +147,7 @@ export function DisplayDeviceComponents(props: DisplayDeviceReadingsProps) {
         componentsMap.sort((a, b)=>a.name.localeCompare(b.name));
 
         return componentsMap.map(item=>item.component);
-    }, [components, device, showHidden])
+    }, [components, device, showHidden, deviceConfiguration])
 
     return (
         <>
@@ -207,7 +214,7 @@ function DisplayDeviceReading(props: DisplayDeviceReadingProps) {
         setTimeout(()=>setToggling(false), 3_000);
     }, [toggling, setToggling])
 
-    let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);        
+    let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);
 
     let [componentName, hideComponent] = useMemo(()=>{
         let newName = name;
