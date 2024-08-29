@@ -21,6 +21,13 @@ export type DeviceReadingValue = {
     valeur: number | string
 };
 
+export type DisplayInformation = {
+    name: string,
+    format: string,
+    width: number,
+    height: number,
+};
+
 export type DeviceReadings = {
     uuid_appareil: string,
     instance_id: string,
@@ -32,6 +39,7 @@ export type DeviceReadings = {
     connecte?: boolean,
     version?: string,
     supprime?: boolean,
+    displays?: Array<DisplayInformation>,
 }
 
 interface SenseursPassifsStoreState {

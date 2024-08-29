@@ -105,7 +105,7 @@ function StatistiquesSenseur(props: {device: DeviceReadings, componentId: string
 
         workers.connection.getComponentStatistics(requete)
             .then(reponse=>{
-                console.debug("Reponse statistiques ", reponse)
+                // console.debug("Reponse statistiques ", reponse)
                 setData(reponse)
             })
             .catch(err=>console.error("Erreur chargement statistiques ", err))

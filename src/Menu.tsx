@@ -18,18 +18,17 @@ export default function HeaderMenu(props: MenuProps) {
     }, [connectionReady]);
 
     return (
-        <header className={'fixed top-0 transition grid grid-cols-4 md:grid-cols-12 w-full' + cssDisconnected}>
-            <div className='col-span-4'>
+        <header className={'fixed top-0 transition grid grid-cols-2 md:grid-cols-6 w-full' + cssDisconnected}>
+            <div>
                 {props.backLink?
                     <Link to='/apps'>{props.title}</Link>
                     :
                     <span>{props.title}</span>
                 }
             </div>
-            <div className='hidden md:block col-span-4'>
-                <a href="/">Portal</a>
+            <div>
+                <a href="/millegrilles">Portal</a>
             </div>
-            <div className='hidden md:block col-span-4'></div>
         </header>
     )
 }

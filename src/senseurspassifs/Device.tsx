@@ -44,11 +44,12 @@ export default function Device() {
 
         let device = devices[uuid_appareil];
         let configuration = deviceConfiguration[uuid_appareil];
-
+        // console.debug("Device %O, Configuration: %O", device, configuration);
         return [device, configuration];
     }, [uuid_appareil, devices, deviceConfiguration])
 
     let supprime = !!device?.supprime;
+    let displaysAvailable = !!device?.displays;
 
     let timezone = useMemo(()=>{
         if(configuration?.timezone) return configuration.timezone;
@@ -70,6 +71,16 @@ export default function Device() {
                 <button onClick={editStartHandler} className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500'>
                     <i className='fa fa-edit'/> Edit
                 </button>
+                {displaysAvailable?
+                    <Link to={`/apps/senseurspassifs/device/${uuid_appareil}/displays`} 
+                        className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <i className='fa fa-tv'/> Displays
+                    </Link>
+                :<></>}
+                <Link to={`/apps/senseurspassifs/device/${uuid_appareil}/programs`}
+                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                    <i className='fa fa-microchip'/> Programs
+                </Link>
                 {supprime?
                     <button disabled={!ready} onClick={restoreHandler}
                         className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
