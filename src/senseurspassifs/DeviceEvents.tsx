@@ -24,8 +24,10 @@ export default function DeviceEvents() {
                 let action = event.routingKey.split('.').pop() || 'NA';
                 if(['presenceAppareil', 'lectureConfirmee'].includes(action)) {
                     updateDevice(message);
+                } else if(action == 'majAppareil') {
+                    updateDevice(message);
                 } else {
-                    console.warn("Unknown message type: %s", action);
+                    console.warn("Unknown message type: %s, content: %O", action, message);
                 }
                 // Update configuration separately. Not all messages contain it.
                 if(message.configuration) updateConfiguration(message.uuid_appareil, message.configuration);
@@ -39,6 +41,7 @@ export default function DeviceEvents() {
         // Load user devices
         workers.connection.getUserDevices()
             .then(deviceResponse=>{
+                console.debug("Device response ", deviceResponse);
                 if(deviceResponse.ok) {
                     // Build list into a map of uuid_appareils:device
                     let mappedReadings = deviceResponse.appareils.reduce((acc: {[key: string]: DeviceReadings}, device)=>{
@@ -53,7 +56,6 @@ export default function DeviceEvents() {
             .catch(err=>console.error("Error loading device list", err));
 
         // Subscribe to device events
-        console.debug("Subscribe")
         workers.connection.subscribeUserDevices(deviceEventCb)
             .catch(err=>{
                 console.debug("Error subscribing to user events", err);

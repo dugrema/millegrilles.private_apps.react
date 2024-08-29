@@ -31,6 +31,7 @@ export type DeviceReadings = {
     csr_present: boolean,
     connecte?: boolean,
     version?: string,
+    supprime?: boolean,
 }
 
 interface SenseursPassifsStoreState {

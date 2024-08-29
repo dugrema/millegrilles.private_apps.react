@@ -17,6 +17,10 @@ export default function Devices() {
 
     let bluetoothAvailable = useBluetoothStore(state=>state.bluetoothAvailable);
 
+    let [showOnlyDeleted, setShowOnlyDeleted] = useState(false);
+    let showDeletedHandler = useCallback(()=>setShowOnlyDeleted(true), [setShowOnlyDeleted]);
+    let hideDeletedHandler = useCallback(()=>setShowOnlyDeleted(false), [setShowOnlyDeleted]);
+
     return (
         <>
             <div>
@@ -25,6 +29,17 @@ export default function Devices() {
                         className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                             Back
                     </Link>
+                    {showOnlyDeleted?
+                        <button onClick={hideDeletedHandler}
+                            className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                                View devices
+                        </button>
+                    :
+                        <button onClick={showDeletedHandler}
+                            className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                                Deleted devices
+                        </button>
+                    }
                 </nav>
                 {bluetoothAvailable?
                     <nav>
@@ -35,15 +50,16 @@ export default function Devices() {
                     </nav>                
                     :<></>}
                 </div>
-            <ListDeviceReadings />
+            <ListDeviceReadings showOnlyDeleted={showOnlyDeleted} />
             <BluetoothAvailableCheck hide={true} />
         </>
     )
 }
 
-function ListDeviceReadings() {
-    let devices = useSenseursPassifsStore(state=>state.devices);
+function ListDeviceReadings(props: {showOnlyDeleted?: boolean}) {
+    let { showOnlyDeleted } = props;
 
+    let devices = useSenseursPassifsStore(state=>state.devices);
     let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);    
 
     let deviceList = useMemo(()=>{
@@ -60,11 +76,17 @@ function ListDeviceReadings() {
                 //     return deviceConf?.descriptif || device.uuid_appareil;
                 // }, [device, deviceConfiguration])
                 devicesSort.sort((a,b)=>a.name.localeCompare(b.name));
-                return devicesSort.map(item=>devices[item.uuid_appareil]);
+
+                let mappedDevices = devicesSort.map(item=>devices[item.uuid_appareil]);
+
+                if(showOnlyDeleted) mappedDevices = mappedDevices.filter(item=>item.supprime);
+                else mappedDevices = mappedDevices.filter(item=>!item.supprime);
+
+                return mappedDevices;
             }
         }
         return null;
-    }, [devices, deviceConfiguration])
+    }, [devices, deviceConfiguration, showOnlyDeleted])
 
     if(deviceList) {
         return (

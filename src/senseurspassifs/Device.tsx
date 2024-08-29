@@ -12,6 +12,8 @@ export default function Device() {
     const workers = useWorkers();
     const params = useParams();
 
+    let uuid_appareil = params.deviceId as string;
+
     let devices = useSenseursPassifsStore(state=>state.devices);
     let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);    
 
@@ -21,15 +23,32 @@ export default function Device() {
     let editStartHandler = useCallback(()=>setEdit(true), [setEdit]);
     let editCloseHandler = useCallback(()=>setEdit(false), [setEdit]);
 
+    let deleteHandler = useCallback(()=>{
+        workers?.connection.deleteDevice(uuid_appareil)
+            .then(()=>{
+                console.debug("Device deleted");
+            })
+            .catch(err=>console.error("Error deleting device ", err));
+    }, [workers, uuid_appareil]);
+
+    let restoreHandler = useCallback(()=>{
+        workers?.connection.restoreDevice(uuid_appareil)
+            .then(()=>{
+                console.debug("Device restored");
+            })
+            .catch(err=>console.error("Error deleting device ", err));
+    }, [workers, uuid_appareil]);
+
     const [device, configuration] = useMemo(()=>{
         if(!devices || !deviceConfiguration) return [null, null];
-        let uuid_appareil = params.deviceId as string;
 
         let device = devices[uuid_appareil];
         let configuration = deviceConfiguration[uuid_appareil];
 
         return [device, configuration];
-    }, [params, devices, deviceConfiguration])
+    }, [uuid_appareil, devices, deviceConfiguration])
+
+    let supprime = !!device?.supprime;
 
     let timezone = useMemo(()=>{
         if(configuration?.timezone) return configuration.timezone;
@@ -51,9 +70,17 @@ export default function Device() {
                 <button onClick={editStartHandler} className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500'>
                     <i className='fa fa-edit'/> Edit
                 </button>
-                <button className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                    <i className='fa fa-trash-o' /> Delete
-                </button>
+                {supprime?
+                    <button disabled={!ready} onClick={restoreHandler}
+                        className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                            <i className='fa fa-trash-o' /> Restore
+                    </button>
+                :
+                    <button disabled={!ready} onClick={deleteHandler}
+                        className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                            <i className='fa fa-trash-o' /> Delete
+                    </button>
+                }
             </nav>
 
             <h1 className='font-bold text-lg pt-2 pb-4'>Device <DisplayDeviceName value={device} /></h1>
@@ -104,6 +131,8 @@ function Register(props: RegisterProps) {
 
     let workers = useWorkers();
     let device = props.value;
+
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
     let [challenge, setChallenge] = useState(null as Array<number> | null);
     let [confirmationReady, setConfirmationReady] = useState(false);
@@ -169,8 +198,9 @@ function Register(props: RegisterProps) {
     return (
         <>
             <p>Register this device</p>
-            <button className='btn bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900' onClick={registerHandler} disabled={!!challenge}>
-                Register
+            <button onClick={registerHandler} disabled={!ready || !!challenge}
+                className='btn bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'>
+                    Register
             </button>
             <div className='grid grid-cols-12'>
                 <div className='col-span-4'>Device verification code</div>
@@ -185,7 +215,7 @@ function Register(props: RegisterProps) {
                 <div className='col-span-8'>{message}</div>
                 <div className='col-span-4'>Confirmation</div>
                 <div className='col-span-8'>
-                    <button disabled={!confirmationReady || confirmed} onClick={confirmationHandler}
+                    <button disabled={!ready || !confirmationReady || confirmed} onClick={confirmationHandler}
                         className='btn bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'>
                             Confirm
                     </button>

@@ -89,6 +89,15 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendCommand(params, DOMAINE_SENSEURSPASSIFS, 'majAppareil');
     }
 
+    async deleteDevice(uuid_appareil: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({uuid_appareil}, DOMAINE_SENSEURSPASSIFS, 'supprimerAppareil');
+    }
+
+    async restoreDevice(uuid_appareil: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({uuid_appareil}, DOMAINE_SENSEURSPASSIFS, 'restaurerAppareil');
+    }
 }
 
 var worker = new AppsConnectionWorker();

@@ -13,6 +13,8 @@
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},
         {"domain": "SenseursPassifs", "action": "signerAppareil"},
         {"domain": "SenseursPassifs", "action": "majAppareil"},
+        {"domain": "SenseursPassifs", "action": "supprimerAppareil"},
+        {"domain": "SenseursPassifs", "action": "restaurerAppareil"},
         {"domain": "senseurspassifs_relai", "action": "commandeAppareil"}
     ],
     "subscriptions": {
