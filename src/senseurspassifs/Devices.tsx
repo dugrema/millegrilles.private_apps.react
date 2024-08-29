@@ -233,7 +233,7 @@ function DisplayDeviceReading(props: DisplayDeviceReadingProps) {
     return (
         <>
             <div className={'col-span-6 pl-3'+classNameHidden}>
-                {componentName}
+                <Link to={`/apps/senseurspassifs/device/${uuid_appareil}/component/${encodeURIComponent(name)}`}>{componentName}</Link>
             </div>
             <div className={'col-span-3'+classNameHidden}>
                 {type==='switch'?

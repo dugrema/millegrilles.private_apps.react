@@ -4,7 +4,8 @@
         "exchange": "2.prive"
     },
     "requests": [
-        {"domain": "SenseursPassifs", "action": "getAppareilsUsager"}
+        {"domain": "SenseursPassifs", "action": "getAppareilsUsager"},
+        {"domain": "SenseursPassifs", "action": "getStatistiquesSenseur"}
     ],
     "commands": [
         {"domain": "ollama_relai", "action": "generate", "stream": true},

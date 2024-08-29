@@ -23,6 +23,28 @@ export type GetUserDevicesResponse = MessageResponse & {
 
 export type ChallengeResponse = MessageResponse;
 
+export type StatisticsRequestType = {
+    senseur_id: string,
+    uuid_appareil: string,
+    timezone: string,
+    custom_grouping?: string,
+    custom_intervalle_min?: number,
+    custom_intervalle_max?: number,
+}
+
+export type SenseursPassifsStatistiquesItem = {
+    heure: number,
+    avg?: number,
+    max?: number,
+    min?: number,
+};
+
+export type SenseursPassifsStatistiquesResponse = MessageResponse & {
+    periode31j?: Array<SenseursPassifsStatistiquesItem>,
+    periode72h?: Array<SenseursPassifsStatistiquesItem>,
+    custom?: Array<SenseursPassifsStatistiquesItem>,
+}
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -68,16 +90,6 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendCommand(params, DOMAINE_SENSEURSPASSIFS, 'signerAppareil');
     }
 
-    // function commandeAppareil(instance_id, commande) {
-    // commande = commande || {}
-    // return connexionClient.emit('commandeAppareil', commande, {
-    //     kind: MESSAGE_KINDS.KIND_COMMANDE, 
-    //     domaine: CONST_SENSEURSPASSIFS_RELAI, 
-    //     partition: instance_id,
-    //     action: 'commandeAppareil', 
-    //     ajouterCertificat: true,
-    // })
-    // }
     async deviceCommand(params: {instance_id: string, uuid_appareil: string, senseur_id: string, valeur: string | number, commande_action: string}) {
         if(!this.connection) throw new Error("Connection is not initialized");
         let partition = params.instance_id;
@@ -97,6 +109,11 @@ export class AppsConnectionWorker extends ConnectionWorker {
     async restoreDevice(uuid_appareil: string) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendCommand({uuid_appareil}, DOMAINE_SENSEURSPASSIFS, 'restaurerAppareil');
+    }
+
+    async getComponentStatistics(request: StatisticsRequestType) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(request, DOMAINE_SENSEURSPASSIFS, 'getStatistiquesSenseur') as SenseursPassifsStatistiquesResponse;
     }
 }
 

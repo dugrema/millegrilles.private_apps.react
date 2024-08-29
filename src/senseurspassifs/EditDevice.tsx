@@ -148,7 +148,7 @@ export default function EditDevice(props: EditDeviceProps) {
     );
 }
 
-function SelectTimezone(props: {value?: string, onChange: (e: ChangeEvent<HTMLSelectElement>)=>void}) {
+export function SelectTimezone(props: {value?: string, onChange: (e: ChangeEvent<HTMLSelectElement>)=>void}) {
     let options = useMemo(()=>{
         return CONST_PYTZ_TIMEZONES.map(item=>{
             return <option key={item} value={item}>{item}</option>;

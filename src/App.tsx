@@ -21,6 +21,7 @@ const SenseursPassifsMain = React.lazy(()=>import('./senseurspassifs/Main'));
 const SenseursPassifsAllDevices = React.lazy(()=>import('./senseurspassifs/Devices'));
 const SenseursPassifsDevice = React.lazy(()=>import('./senseurspassifs/Device'));
 const SenseursPassifsBluetoothConfiguration = React.lazy(()=>import('./senseurspassifs/bluetooth/Bluetooth'));
+const SenseursPassifsComponentDetail = React.lazy(()=>import('./senseurspassifs/ComponentDetail'));
 
 const router = createBrowserRouter([
 	{
@@ -39,6 +40,7 @@ const router = createBrowserRouter([
             { path: "/apps/senseurspassifs", element: <SenseursPassifsMain /> },
             { path: "/apps/senseurspassifs/devices", element: <SenseursPassifsAllDevices /> },
             { path: "/apps/senseurspassifs/device/:deviceId", element: <SenseursPassifsDevice /> },
+            { path: "/apps/senseurspassifs/device/:deviceId/component/:componentId", element: <SenseursPassifsComponentDetail /> },
             { path: "/apps/senseurspassifs/bluetooth", element: <SenseursPassifsBluetoothConfiguration /> },
         ]
   	},
