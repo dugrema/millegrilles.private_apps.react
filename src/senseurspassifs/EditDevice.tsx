@@ -1,9 +1,9 @@
-import { useMemo, useEffect, useState, useCallback, ChangeEvent, Dispatch } from 'react';
+import { useMemo, useEffect, useState, useCallback, ChangeEvent } from 'react';
 import { Link, useParams } from "react-router-dom";
-import useSenseursPassifsStore, { DeviceConfiguration, DeviceReadings, DeviceReadingValue } from "./senseursPassifsStore";
+import useSenseursPassifsStore, { DeviceConfiguration, DeviceReadings, DeviceReadingValue, GeopositionConfiguration } from "./senseursPassifsStore";
 import useWorkers from '../workers/workers';
 import useConnectionStore from '../connectionStore';
-import { DeviceConnectedIcon, DisplayDeviceComponents, DisplayReadingsDate } from './Devices';
+import { geolocate } from '../geolocation';
 
 import CONST_PYTZ_TIMEZONES from '../resources/pytz_timezones.json';
 
@@ -40,7 +40,7 @@ export default function EditDevice(props: EditDeviceProps) {
         setConfiguration({...configuration, timezone: value});
     }, [configuration, setConfiguration]);
 
-    let deviceComponentConfigurationOnChange = useCallback((e: DeviceConfiguration)=>{
+    let configurationOnChange = useCallback((e: DeviceConfiguration)=>{
         setConfiguration({...configuration, ...e});
     }, [configuration, setConfiguration]);
 
@@ -113,7 +113,7 @@ export default function EditDevice(props: EditDeviceProps) {
                     <div className='col-span-3 pl-1 pr-1'>Location</div>
                     <div className='col-span-4 pl-1 pr-1'>
                         <div className='grid grid-cols-2'>
-                            <p>TODO GEOPOSITION</p>
+                            <Geoposition value={configuration} onChange={configurationOnChange} />
                         </div>
                     </div>
                     <div className='col-span-5'></div>
@@ -130,7 +130,7 @@ export default function EditDevice(props: EditDeviceProps) {
                     <div className='col-span-6 mt-3 pr-1 pb-2'>
                     </div>
 
-                    <EditDeviceComponents device={device} configuration={configuration} onChange={deviceComponentConfigurationOnChange} />
+                    <EditDeviceComponents device={device} configuration={configuration} onChange={configurationOnChange} />
                 </div>
             </section>
 
@@ -236,4 +236,101 @@ function EditDeviceComponent(props: {name: string, component: DeviceReadingValue
             </div>
         </>
     );
+}
+
+type GeopositionProps = { 
+    value: DeviceConfiguration,
+    onChange: (e: DeviceConfiguration)=>void,
+};
+
+function Geoposition(props: GeopositionProps) {
+
+    let configuration = props.value;
+    let onChange = props.onChange;
+
+    let [geolocateWorking, setGeolocateWorking] = useState(false);
+    let [geolocateError, setGeolocateError] = useState('');
+
+    let geoposition = configuration.geoposition;
+    let latitude = parseFloat(geoposition?.latitude);
+    let longitude = parseFloat(geoposition?.longitude);
+
+    let buttonClassName = useMemo(()=>{
+        if(geolocateError) return ' bg-red-700 hover:bg-slate-600 active:bg-slate-500';
+        else return ' bg-slate-700 hover:bg-slate-600 active:bg-slate-500';
+    }, [geolocateError]);
+
+    let changeHandler = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
+        let { name, value } = e.currentTarget;
+        
+        // Build new value object
+        let changeValues = {} as GeopositionConfiguration;
+        if(typeof(latitude) === 'number') changeValues['latitude'] = latitude;
+        if(typeof(longitude) === 'number') changeValues['longitude'] = longitude;
+
+        console.debug("Value for %s = %O", name, value);
+
+        // Update
+        if(value !== '') {
+            let numberValue = Number.parseFloat(value);
+            // @ts-ignore
+            if(!isNaN(numberValue)) changeValues[name] = numberValue;
+            // @ts-ignore
+            else changeValues[name] = undefined;
+        } else {
+            // @ts-ignore
+            changeValues[name] = undefined;
+        }
+        
+        onChange({geoposition: changeValues})
+    }, [latitude, longitude])
+    
+    const locationCb = useCallback(()=>{
+        console.debug("Detecter position")
+        setGeolocateWorking(true)
+        geolocate()
+            .then(result=>{
+                console.debug("Geolocation result : ", result);
+                let coords = result.coords;
+                onChange({geoposition: {latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy}});
+                setGeolocateError('');
+            })
+            .catch(err=>{
+                console.error("Geolocation error : ", err);
+                setGeolocateError(''+err);
+            })
+            .finally(()=>{
+                setGeolocateWorking(false);
+            })
+    }, [onChange, setGeolocateError, setGeolocateWorking]);
+
+    return (
+        <>
+            <div>Use current location</div>
+            <div>
+                <button onClick={locationCb} disabled={geolocateWorking}
+                    className={'btn inline-block text-center ' + buttonClassName}>
+                        Detect
+                </button>
+            </div>
+            <div>Latitude</div>
+            <div>
+                <input type='number' name='latitude' value={latitude} onChange={changeHandler} size={9} min="-90" max="90"
+                    className='text-black' />
+            </div>
+            <div>Longitude</div>
+            <div>
+                <input type='number' name='longitude' value={longitude} onChange={changeHandler} size={9} min="-180" max="180"
+                    className='text-black' />
+            </div>
+        </>
+    );
+}
+
+function parseFloat(val: undefined | null | string | number): string | number {
+    if(val === null || val === undefined) return '';
+    if(typeof(val) === 'number') return val;
+    let numberVal = Number.parseFloat(val);
+    if(isNaN(numberVal)) return '';
+    return numberVal;
 }

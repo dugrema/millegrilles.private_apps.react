@@ -90,7 +90,7 @@ export default function Device() {
                         <DisplayReadingsDate value={device.derniere_lecture} />
                     </div>
 
-                    <DisplayDeviceComponents value={device} skipHeader={true} />
+                    <DisplayDeviceComponents value={device} skipHeader={true} showHidden={true} />
                 </div>
             </section>
 

@@ -91,10 +91,12 @@ function ListDeviceReadings() {
 type DisplayDeviceReadingsProps = {
     value: DeviceReadings,
     skipHeader?: boolean,
+    showHidden?: boolean,
 }
 
 export function DisplayDeviceComponents(props: DisplayDeviceReadingsProps) {
     let device = props.value;
+    let showHidden = props.showHidden;
 
     let { uuid_appareil, senseurs: components } = device;
 
@@ -106,14 +108,17 @@ export function DisplayDeviceComponents(props: DisplayDeviceReadingsProps) {
             if(!components) return {name: '', component: <></>};
             let component = components[item];
             let componentType = device.types_donnees?device.types_donnees[item]:null;
-            return {name: item, component: <DisplayDeviceReading key={item} name={item} value={component} type={componentType} device={device} />};
+            return {
+                name: item, 
+                component: <DisplayDeviceReading key={item} name={item} value={component} type={componentType} device={device} showHidden={showHidden} />
+            };
         });
 
         // Sort by name
         componentsMap.sort((a, b)=>a.name.localeCompare(b.name));
 
         return componentsMap.map(item=>item.component);
-    }, [components, device])
+    }, [components, device, showHidden])
 
     return (
         <>
@@ -164,11 +169,12 @@ type DisplayDeviceReadingProps = {
     value: DeviceReadingValue
     type?: string | null,
     device: DeviceReadings,
+    showHidden?: boolean,
 }
 
 function DisplayDeviceReading(props: DisplayDeviceReadingProps) {
 
-    let {name, value, type, device} = props;
+    let {name, value, type, device, showHidden} = props;
     type = value?.type || type;
     let uuid_appareil = device.uuid_appareil;
 
@@ -181,20 +187,33 @@ function DisplayDeviceReading(props: DisplayDeviceReadingProps) {
 
     let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);        
 
-    let sensorName = useMemo(()=>{
+    let [componentName, hideComponent] = useMemo(()=>{
         let newName = name;
         let deviceConf = deviceConfiguration[uuid_appareil];
-        let sensorConf = deviceConf?.descriptif_senseurs;
-        if(sensorConf) newName = sensorConf[name] || name;
-        return newName;
+        let componentNameConf = deviceConf?.descriptif_senseurs;
+        if(componentNameConf) newName = componentNameConf[name] || name;
+
+        let hideComponents = deviceConf?.cacher_senseurs;
+        let hide = hideComponents && hideComponents.includes(name);
+
+        return [newName, hide];
     }, [name, deviceConfiguration, uuid_appareil])
+
+    let classNameHidden = useMemo(()=>{
+        if(hideComponent && showHidden) {
+            return ' text-gray-500';
+        }
+        return '';
+    }, [hideComponent, showHidden]);
+
+    if(hideComponent && !props.showHidden) return <></>;
 
     return (
         <>
-            <div className='col-span-6 pl-3'>
-                {sensorName}
+            <div className={'col-span-6 pl-3'+classNameHidden}>
+                {componentName}
             </div>
-            <div className='col-span-3'>
+            <div className={'col-span-3'+classNameHidden}>
                 {type==='switch'?
                     <SwitchButton device={device} senseurId={name} value={value.valeur} toggling={toggling} 
                         startTogglingCb={startTogglingHandler} />

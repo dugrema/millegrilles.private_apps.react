@@ -3,12 +3,14 @@ import { devtools } from 'zustand/middleware';
 
 export type Devices = {};
 
+export type GeopositionConfiguration = { latitude: number, longitude: number, accuracy?: number };
+
 export type DeviceConfiguration = {
     cacher_senseurs?: Array<string>,
     descriptif?: string,
     descriptif_senseurs?: {[key: string]: string},
     displays?: Object,
-    geoposition?: {latitude: number, longitude: number, accuracy?: number},
+    geoposition?: GeopositionConfiguration,
     timezone?: string,
     programmes?: Object
 };
