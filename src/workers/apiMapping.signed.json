@@ -1,14 +1,14 @@
 {
   "pubkey": "b0f1885cf526c750dc6db18eae85d8214a5ef6d94d4103785b0b811c618437f9",
-  "estampille": 1724849758,
+  "estampille": 1724954920,
   "kind": 2,
-  "contenu": "{\"commands\":[{\"action\":\"generate\",\"domain\":\"ollama_relai\",\"stream\":true},{\"action\":\"chat\",\"domain\":\"ollama_relai\",\"stream\":true},{\"action\":\"model\",\"domain\":\"ollama_relai\"},{\"action\":\"challengeAppareil\",\"domain\":\"SenseursPassifs\"},{\"action\":\"signerAppareil\",\"domain\":\"SenseursPassifs\"},{\"action\":\"commandeAppareil\",\"domain\":\"senseurspassifs_relai\"}],\"defaults\":{\"domain\":\"\",\"exchange\":\"2.prive\"},\"requests\":[{\"action\":\"getAppareilsUsager\",\"domain\":\"SenseursPassifs\"}],\"subscriptions\":{\"userDeviceEvents\":{\"exchanges\":[\"2.prive\"],\"routingKeys\":[\"evenement.SenseursPassifs.{USER_ID}.lectureConfirmee\",\"evenement.SenseursPassifs.{USER_ID}.majAppareil\",\"evenement.SenseursPassifs.{USER_ID}.presenceAppareil\"]}}}",
+  "contenu": "{\"commands\":[{\"action\":\"generate\",\"domain\":\"ollama_relai\",\"stream\":true},{\"action\":\"chat\",\"domain\":\"ollama_relai\",\"stream\":true},{\"action\":\"model\",\"domain\":\"ollama_relai\"},{\"action\":\"challengeAppareil\",\"domain\":\"SenseursPassifs\"},{\"action\":\"signerAppareil\",\"domain\":\"SenseursPassifs\"},{\"action\":\"majAppareil\",\"domain\":\"SenseursPassifs\"},{\"action\":\"supprimerAppareil\",\"domain\":\"SenseursPassifs\"},{\"action\":\"restaurerAppareil\",\"domain\":\"SenseursPassifs\"},{\"action\":\"commandeAppareil\",\"domain\":\"senseurspassifs_relai\"}],\"defaults\":{\"domain\":\"\",\"exchange\":\"2.prive\"},\"requests\":[{\"action\":\"getAppareilsUsager\",\"domain\":\"SenseursPassifs\"},{\"action\":\"getStatistiquesSenseur\",\"domain\":\"SenseursPassifs\"}],\"subscriptions\":{\"userDeviceEvents\":{\"exchanges\":[\"2.prive\"],\"routingKeys\":[\"evenement.SenseursPassifs.{USER_ID}.lectureConfirmee\",\"evenement.SenseursPassifs.{USER_ID}.majAppareil\",\"evenement.SenseursPassifs.{USER_ID}.presenceAppareil\"]}}}",
   "routage": {
     "action": "configuration",
     "domaine": "webapi"
   },
-  "id": "4cb3c5bb54fafa44d302f8de680acd2703a539b73bf4c74407e7d5a4a534c3b5",
-  "sig": "fbeaf5f5826cdd57ea861afb9b78ccfba01e1aaf4b0dd2e089151823be1b3a95c09847f336e4fbf85372d644a12c164f4c8e684983b100fbd2270c53bb277706",
+  "id": "bffce262b84c08ef79d4d50343f8a600a1046a780641f339a71b76e9316f42db",
+  "sig": "8675ad4329952573d53127bcbd883730d644a49ad0590aea266bbf559f3cd9c7e8dc6ba5d2ba375fa1deeae43a37cba02fef76ca8de7100a719a96d8e6c86108",
   "certificat": [
     "-----BEGIN CERTIFICATE-----\nMIIBqjCCAVygAwIBAgIUerM/X77+89WoWIQ+wkw5mkB5xTowBQYDK2VwMBYxFDAS\nBgNVBAMTC01pbGxlR3JpbGxlMB4XDTI0MDgwMjE3NDEyOFoXDTI0MDkwMjE3NDE0\nOFowazESMBAGA1UEAwwJU2lnbmF0dXJlMRIwEAYDVQQLDAlzaWduYXR1cmUxQTA/\nBgNVBAoMOHplWW5jUnFFcVo2ZVRFbVVaOHdoSkZ1SEc3OTZlU3ZDVFdFNE00MzJp\nelhycDIyYkF0d0dtN0pmMCowBQYDK2VwAyEAsPGIXPUmx1DcbbGOroXYIUpe9tlN\nQQN4WwuBHGGEN/mjZzBlMCMGBCoDBAEEG3NpZ25hdHVyZSxjYXRhbG9ndWVzLHdl\nYmFwaTAfBgNVHSMEGDAWgBTTiP/MFw4DDwXqQ/J2LLYPRUkkETAdBgNVHQ4EFgQU\nUOipJfCK+blx0kFPnpoo7RGtHGgwBQYDK2VwA0EAH9awzWbbhOAzgSg10E97IfVm\nYUXhNI6rEs5lViUQk1Yb3cybTUpqPn1GRtYfbEp02279zVdXm1rzHEgzJehoBA==\n-----END CERTIFICATE-----"
   ],
