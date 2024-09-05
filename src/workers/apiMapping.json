@@ -5,7 +5,8 @@
     },
     "requests": [
         {"domain": "SenseursPassifs", "action": "getAppareilsUsager"},
-        {"domain": "SenseursPassifs", "action": "getStatistiquesSenseur"}
+        {"domain": "SenseursPassifs", "action": "getStatistiquesSenseur"},
+        {"domain": "SenseursPassifs", "action": "getConfigurationUsager"}
     ],
     "commands": [
         {"domain": "ollama_relai", "action": "generate", "stream": true},
@@ -16,6 +17,7 @@
         {"domain": "SenseursPassifs", "action": "majAppareil"},
         {"domain": "SenseursPassifs", "action": "supprimerAppareil"},
         {"domain": "SenseursPassifs", "action": "restaurerAppareil"},
+        {"domain": "SenseursPassifs", "action": "majConfigurationUsager"},
         {"domain": "senseurspassifs_relai", "action": "commandeAppareil"}
     ],
     "subscriptions": {

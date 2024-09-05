@@ -45,6 +45,16 @@ export type SenseursPassifsStatistiquesResponse = MessageResponse & {
     custom?: Array<SenseursPassifsStatistiquesItem>,
 }
 
+export type SenseursPassifsConfigurationResponse = MessageResponse & {
+    geoposition?: Object,
+    timezone?: string,
+    user_id: string,
+};
+
+export type SenseursPassifsConfigurationUpdate = {
+    timezone?: string | null,
+}
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -114,6 +124,16 @@ export class AppsConnectionWorker extends ConnectionWorker {
     async getComponentStatistics(request: StatisticsRequestType) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest(request, DOMAINE_SENSEURSPASSIFS, 'getStatistiquesSenseur') as SenseursPassifsStatistiquesResponse;
+    }
+
+    async getUserConfiguration() {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest({}, DOMAINE_SENSEURSPASSIFS, 'getConfigurationUsager') as SenseursPassifsConfigurationResponse;
+    }
+
+    async updateUserConfiguration(configuration: SenseursPassifsConfigurationUpdate) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(configuration, DOMAINE_SENSEURSPASSIFS, 'majConfigurationUsager');
     }
 }
 

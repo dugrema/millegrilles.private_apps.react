@@ -11,6 +11,12 @@ export default function Main() {
                 </Link>
             </nav>
             <nav>
+                <Link to='/apps/senseurspassifs/configuration'
+                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        Configuration
+                </Link>
+            </nav>
+            <nav>
                 <Link to='/apps'
                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         Back
