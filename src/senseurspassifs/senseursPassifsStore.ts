@@ -10,7 +10,17 @@ export type DisplayConfigurationLine = { variable: string, masque: string, duree
 export type DisplayConfiguration = {
     afficher_date_duree?: number,
     lignes?: Array<DisplayConfigurationLine>
-}
+};
+
+export type ProgramConfiguration = {
+    programme_id: string,
+    actif: boolean,
+    class: string,
+    descriptif?: string,
+    args?: {[key: string]: string | number | Array<string | number | Object> | Object}
+};
+
+export type ProgramsConfiguration = { [key: string]: ProgramConfiguration };
 
 export type DeviceConfiguration = {
     cacher_senseurs?: Array<string>,
@@ -19,7 +29,7 @@ export type DeviceConfiguration = {
     displays?: {[key: string]: DisplayConfiguration},
     geoposition?: GeopositionConfiguration,
     timezone?: string,
-    programmes?: Object
+    programmes?: ProgramsConfiguration,
 };
 
 export type DeviceReadingValue = {

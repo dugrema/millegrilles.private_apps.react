@@ -3,6 +3,7 @@ import useWorkers from "../workers/workers";
 import { Link, useParams } from "react-router-dom";
 import useSenseursPassifsStore, { DeviceConfiguration, DisplayConfiguration, DisplayConfigurationLine, DisplayInformation } from "./senseursPassifsStore";
 import useConnectionStore from "../connectionStore";
+import { ComponentListLoader, DeviceComponentPicklist, DeviceComponentType, sortComponents } from "./DevicePicklists";
 
 type EditValue = { display: DisplayInformation, configuration?: DisplayConfiguration };
 
@@ -33,7 +34,7 @@ export default function EditDeviceDisplays() {
 
     let [displays, displaysConfiguration] = useMemo(()=>{
         return [device?.displays, configuration?.displays];
-    }, [device]);
+    }, [device, configuration]);
 
     let updateDisplayConfiguration = useCallback((configuration: DisplayConfiguration)=>{
         if(!editValue) throw new Error("Value not ready to edit");
@@ -215,8 +216,6 @@ function UnsupportedDisplay() {
     return <p>The display uses an unsupported format. Editing is disabled.</p>
 }
 
-type DeviceComponentType = { name: string, value: string, type: string };
-
 function DisplayLines(props: DisplayLinesProps) {
 
     let { uuid_appareil, configuration, onChange } = props;
@@ -224,28 +223,30 @@ function DisplayLines(props: DisplayLinesProps) {
 
     let devices = useSenseursPassifsStore(state=>state.devices);
 
-    let componentList = useMemo(()=>{
-        const componentList = [] as Array<DeviceComponentType>;
-        for(const device of Object.values(devices)) {
-            const configuration = device.configuration || {};
-            const deviceName = configuration.descriptif || device.uuid_appareil;
-            const componentDescription = configuration.descriptif_senseurs || {};
-            const components = device.senseurs;
-            if(components) {
-                for(const componentName of Object.keys(components)) {
-                    const componentLabel = componentDescription[componentName] || componentName;
-                    const name = deviceName + ' ' + componentLabel;
-                    const value = device.uuid_appareil + ":" + componentName;
-                    const componentType = components[componentName].type;
-                    componentList.push({name, value, type: componentType});
-                }
-            }
-        }
+    let [componentList, setComponentList] = useState([] as Array<DeviceComponentType>);
 
-        componentList.sort(sortComponents);
+    // let componentList = useMemo(()=>{
+    //     const componentList = [] as Array<DeviceComponentType>;
+    //     for(const device of Object.values(devices)) {
+    //         const configuration = device.configuration || {};
+    //         const deviceName = configuration.descriptif || device.uuid_appareil;
+    //         const componentDescription = configuration.descriptif_senseurs || {};
+    //         const components = device.senseurs;
+    //         if(components) {
+    //             for(const componentName of Object.keys(components)) {
+    //                 const componentLabel = componentDescription[componentName] || componentName;
+    //                 const name = deviceName + ' ' + componentLabel;
+    //                 const value = device.uuid_appareil + ":" + componentName;
+    //                 const componentType = components[componentName].type;
+    //                 componentList.push({name, value, type: componentType});
+    //             }
+    //         }
+    //     }
 
-        return componentList;
-    }, [devices]);
+    //     componentList.sort(sortComponents);
+
+    //     return componentList;
+    // }, [devices]);
 
     let addLineHandler = useCallback(()=>{
         let lines = configuration?.lignes || [];
@@ -361,6 +362,7 @@ function DisplayLines(props: DisplayLinesProps) {
                         + Add line
                 </button>
             </div>
+            <ComponentListLoader setComponentList={setComponentList} />
         </>
     )
 }
@@ -414,40 +416,6 @@ function DisplayLine(props: DisplayLineProps) {
             </div>
         </>
     )
-}
-
-type DeviceComponentPicklist = { 
-    uuid_appareil: string,
-    components: Array<DeviceComponentType>, 
-    value: string,
-    idx: number,
-    onChange: (e: ChangeEvent<HTMLSelectElement>)=>void,
-};
-
-function DeviceComponentPicklist(props: DeviceComponentPicklist) {
-    let { uuid_appareil, components, value, onChange, idx } = props;
-
-    let options = useMemo(()=>{
-        return components.map(item=>{
-            let itemValue = item.value;
-            if(itemValue.startsWith(uuid_appareil)) {
-                itemValue = itemValue.split(':').pop() as string;  // Retirer nom appareil (courant)
-            }
-            return <option key={item.value} value={itemValue}>{item.name}</option>
-        });
-    }, [uuid_appareil, components]);
-
-    return (
-        <select value={value} onChange={onChange} data-idx={idx}
-            className='text-black disabled:bg-slate-600 w-full'>
-                <option>Select a component</option>
-                {options}
-        </select>
-    )
-}
-
-function sortComponents(a: DeviceComponentType, b: DeviceComponentType) {
-    return a.name.localeCompare(b.name);
 }
 
 function MaskReference() {
