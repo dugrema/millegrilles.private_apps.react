@@ -63,6 +63,7 @@ function ListDeviceReadings(props: {showOnlyDeleted?: boolean}) {
     let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);    
 
     let deviceList = useMemo(()=>{
+        console.debug("Devices : ", devices);
         if(devices) {
             let deviceIds = Object.keys(devices);
             if(deviceIds.length > 0) {
@@ -235,6 +236,25 @@ function DisplayDeviceReading(props: DisplayDeviceReadingProps) {
         return '';
     }, [hideComponent, showHidden]);
 
+    let valueElement = useMemo(()=>{
+        let v = value.valeur;
+        let v_str = value.valeur_str;
+        if(type === 'switch') {
+            if(!v) v = 0;
+            return (
+                <SwitchButton device={device} senseurId={name} value={v} toggling={toggling} 
+                    startTogglingCb={startTogglingHandler} />
+            );
+        } else if(!v && v_str) {
+            // String display
+            return <span>{v_str}</span>
+        } else if(v) {
+            return <ReadingFormatter value={v} type={type} />
+        } else {
+            <span>Unknown type</span>
+        }
+    }, [type, value]);
+
     if(hideComponent && !props.showHidden) return <></>;
 
     return (
@@ -242,14 +262,7 @@ function DisplayDeviceReading(props: DisplayDeviceReadingProps) {
             <div className={'col-span-6 pl-3'+classNameHidden}>
                 <Link to={`/apps/senseurspassifs/device/${uuid_appareil}/component/${encodeURIComponent(name)}`}>{componentName}</Link>
             </div>
-            <div className={'col-span-3'+classNameHidden}>
-                {type==='switch'?
-                    <SwitchButton device={device} senseurId={name} value={value.valeur} toggling={toggling} 
-                        startTogglingCb={startTogglingHandler} />
-                :
-                    <ReadingFormatter value={value.valeur} type={type} />
-                }
-            </div>
+            <div className={'col-span-3'+classNameHidden}>{valueElement}</div>
             <div>
             </div>
         </>

@@ -52,7 +52,6 @@ export default function EditDevice(props: EditDeviceProps) {
         let configurationValue = deviceConfiguration[uuid_appareil] || {};
         if(configurationValue) {
             setConfiguration(configurationValue);
-            console.debug("Initial Configuration: ", configurationValue);
         }
     }, [params, deviceConfiguration, setConfiguration, configuration]);
 
@@ -63,11 +62,9 @@ export default function EditDevice(props: EditDeviceProps) {
     let saveHandler = useCallback(()=>{
         if(!uuid_appareil) throw new Error("No uuid_appareil provided for the device");
         if(!configuration) throw new Error("No configuration provided for the device");
-        console.debug("Save device configuration ", configuration);
         let command = {uuid_appareil, configuration};
         workers?.connection.updateDeviceConfiguration(command)
             .then(response=>{
-                console.debug("Response update ", response);
                 close();
             })
             .catch(err=>console.error("Error configuration update", err));
@@ -266,8 +263,6 @@ function Geoposition(props: GeopositionProps) {
         if(typeof(latitude) === 'number') changeValues['latitude'] = latitude;
         if(typeof(longitude) === 'number') changeValues['longitude'] = longitude;
 
-        console.debug("Value for %s = %O", name, value);
-
         // Update
         if(value !== '') {
             let numberValue = Number.parseFloat(value);
@@ -284,11 +279,9 @@ function Geoposition(props: GeopositionProps) {
     }, [latitude, longitude])
     
     const locationCb = useCallback(()=>{
-        console.debug("Detecter position")
         setGeolocateWorking(true)
         geolocate()
             .then(result=>{
-                console.debug("Geolocation result : ", result);
                 let coords = result.coords;
                 onChange({geoposition: {latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy}});
                 setGeolocateError('');

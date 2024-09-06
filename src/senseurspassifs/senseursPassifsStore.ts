@@ -25,7 +25,8 @@ export type DeviceConfiguration = {
 export type DeviceReadingValue = {
     timestamp: number, 
     type: string, 
-    valeur: number | string
+    valeur?: number,
+    valeur_str?: string,
 };
 
 export type DisplayInformation = {
