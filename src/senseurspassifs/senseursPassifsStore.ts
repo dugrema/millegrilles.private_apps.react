@@ -5,11 +5,18 @@ export type Devices = {};
 
 export type GeopositionConfiguration = { latitude: number, longitude: number, accuracy?: number };
 
+export type DisplayConfigurationLine = { variable: string, masque: string, duree: number };
+
+export type DisplayConfiguration = {
+    afficher_date_duree?: number,
+    lignes?: Array<DisplayConfigurationLine>
+}
+
 export type DeviceConfiguration = {
     cacher_senseurs?: Array<string>,
     descriptif?: string,
     descriptif_senseurs?: {[key: string]: string},
-    displays?: Object,
+    displays?: {[key: string]: DisplayConfiguration},
     geoposition?: GeopositionConfiguration,
     timezone?: string,
     programmes?: Object
@@ -24,8 +31,8 @@ export type DeviceReadingValue = {
 export type DisplayInformation = {
     name: string,
     format: string,
-    width: number,
-    height: number,
+    width?: number,
+    height?: number,
 };
 
 export type DeviceReadings = {
