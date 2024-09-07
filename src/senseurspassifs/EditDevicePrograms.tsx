@@ -5,7 +5,7 @@ import { ChangeEvent, Dispatch, MouseEvent, useCallback, useMemo, useState } fro
 import useConnectionStore from "../connectionStore";
 import { v1 as uuidv1 } from 'uuid';
 
-import { HumidificatorProgramEditor } from './ProgramEditor';
+import { HumidificatorProgramEditor, WeeklyScheduleProgramEditor, TemperatureProgramEditor } from './ProgramEditor';
 
 type EditValue = { configuration?: ProgramConfiguration };
 
@@ -42,20 +42,22 @@ export default function EditDevicePrograms() {
         if(!deviceConfiguration) throw new Error("Device configuration not available");
 
         let configuration = editValue.configuration;
-        console.debug("Save configuration ", configuration);
 
-        let programs = deviceConfiguration.programmes || {};
+        let deviceConfig = deviceConfiguration[uuid_appareil];
+        if(!deviceConfig) throw new Error("No configuration for device");
+
+        let programs = deviceConfig.programmes || {};
         programs = {...programs, [configuration.programme_id]: configuration};
-        let configurationUpdated = {...deviceConfiguration};
+        let configurationUpdated = {...deviceConfig};
         configurationUpdated.programmes = programs;
 
         let command = {uuid_appareil, configuration: configurationUpdated};
-        console.debug("Save command ", command);
 
         workers.connection.updateDeviceConfiguration(command)
             .then(result=>{
-                console.debug("Result ", result);
-                programEditClose();
+                if(result) {
+                    programEditClose();
+                }
             })
             .catch(err=>console.error("Error saving program updates: ", err));
     }, [workers, editValue, configuration, programEditClose]);
@@ -69,8 +71,6 @@ export default function EditDevicePrograms() {
         let configuration = deviceConfiguration[uuid_appareil];
         if(!configuration) throw new Error("Unknown deviceId");
 
-        console.debug("remove programe %s from configuration %O ", programId, configuration);
-
         let programs = configuration.programmes || {};
         programs = {...programs};
         delete programs[programId];
@@ -79,13 +79,10 @@ export default function EditDevicePrograms() {
         configurationUpdated.programmes = programs;
 
         let command = {uuid_appareil, configuration: configurationUpdated};
-        console.debug("Save command ", command);
 
         workers.connection.updateDeviceConfiguration(command)
-            .then(result=>{
-                console.debug("Result ", result);
-            })
             .catch(err=>console.error("Error saving program updates: ", err));
+
     }, [workers, uuid_appareil, deviceConfiguration]);
 
     let programs = configuration?.programmes;
@@ -152,7 +149,6 @@ function ProgramList(props: ProgramListType) {
     let selectProgram = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
         let value = e.currentTarget.value;
         let program = programs?programs[value]:undefined;
-        console.debug("Value %O, program: %O", value, program);
         if(program) {
             setEditValue({configuration: program});
         } else {
@@ -301,11 +297,11 @@ function ProgramEdit(props: ProgramEditType) {
 
                 <div className='col-span-2'>Active</div>
                 <div className='col-span-6'>
-                    <SwitchButton value={configuration.actif} onChange={programActiveOnChange} />
+                    <SwitchButtonBoolean value={configuration.actif} onChange={programActiveOnChange} />
                 </div>
                 <div className='col-span-4'></div>
 
-                <ConfigureProgramClass uuid_appareil={uuid_appareil} configuration={configuration} onChange={onChange} />
+                <ConfigureProgramClass uuid_appareil={uuid_appareil} configuration={configuration} onChange={onChange} setHasChanged={setHasChanged} />
 
             </div>
 
@@ -372,11 +368,11 @@ function getAvailablePrograms() {
     ]
 }
 
-type SwitchButtonProps = { value: boolean, onChange: (value: boolean)=>void};
+type SwitchButtonProps = { value: boolean, onChange: (value: boolean)=>void, name?: string, idx?: number};
 
-function SwitchButton(props: SwitchButtonProps) {
+export function SwitchButtonBoolean(props: SwitchButtonProps) {
 
-    let {value, onChange} = props;
+    let {value, onChange, name, idx} = props;
 
     let toggleSwitchHandler = useCallback(()=>{
         onChange(!value);
@@ -384,7 +380,35 @@ function SwitchButton(props: SwitchButtonProps) {
 
     return (
         <label className="inline-flex items-center cursor-pointer">
-            <input type="checkbox" className="sr-only peer" checked={value} onChange={toggleSwitchHandler} />
+            <input type="checkbox" className="sr-only peer" checked={value} onChange={toggleSwitchHandler} name={name} data-idx={''+idx} />
+            <div 
+                className="
+                    relative w-11 h-6 bg-gray-300 
+                    peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 
+                    dark:peer-focus:ring-blue-800 
+                    rounded-full 
+                    peer dark:bg-gray-700 peer-checked:after:translate-x-full 
+                    rtl:peer-checked:after:-translate-x-full 
+                    peer-checked:after:border-white after:content-[''] 
+                    after:absolute after:top-[2px] after:start-[2px] 
+                    after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all 
+                    dark:border-gray-600 peer-checked:bg-blue-600 
+                    disabled:bg-gray-600 peer-disabled:bg-slate-600">
+            </div>
+        </label>
+    )
+    // <input type='checkbox' id={'check'+senseurId} checked={value===1} onChange={toggleSwitchHandler} disabled={toggling} /> 
+}
+
+type SwitchButton2Props = { name?: string, idx?: number, value: boolean, onChange: (value: ChangeEvent<HTMLInputElement>)=>void };
+
+export function SwitchButton2(props: SwitchButton2Props) {
+
+    let {name, idx, value, onChange} = props;
+
+    return (
+        <label className="inline-flex items-center cursor-pointer">
+            <input type="checkbox" className="sr-only peer" checked={value} onChange={onChange} name={name} data-idx={''+idx} />
             <div 
                 className="
                     relative w-11 h-6 bg-gray-300 
@@ -408,34 +432,30 @@ type ConfigureProgramClassType = {
     uuid_appareil: string,
     configuration: ProgramConfiguration,
     onChange: (value: ProgramConfiguration)=>void,
+    setHasChanged: Dispatch<boolean>,
 }
 
 function ConfigureProgramClass(props: ConfigureProgramClassType) {
 
-    const { uuid_appareil, configuration, onChange } = props;
+    const { uuid_appareil, configuration, onChange, setHasChanged } = props;
 
     let programClass = configuration.class;
     let ProgramEditorClass = null as null | ((props: ProgramEditorParametersType) => JSX.Element) ;
 
     switch(programClass) {
         case 'programmes.environnement.Humidificateur': ProgramEditorClass = HumidificatorProgramEditor; break
-        // case 'programmes.horaire.HoraireHebdomadaire': ProgramEditorClass = EditerProgrammeHoraireHebdomadaire; break
-        // case 'programmes.timers.TimerHebdomadaire': ProgramEditorClass = EditerProgrammeHorairePre2024; break
-        // case 'programmes.horaire.Timer': ProgramEditorClass = EditerProgrammeTimer; break
-        // case 'programmes.environnement.Chauffage':
-        // case 'programmes.environnement.Climatisation':
-        //     ProgramEditorClass = EditerProgrammeTemperature; break
+        case 'programmes.environnement.Chauffage':
+        case 'programmes.environnement.Climatisation':
+            ProgramEditorClass = TemperatureProgramEditor; 
+            break;
+        case 'programmes.horaire.HoraireHebdomadaire': ProgramEditorClass = WeeklyScheduleProgramEditor; break
         default: ProgramEditorClass = EditUnsupportedProgram;
     }
 
-    return <ProgramEditorClass uuid_appareil={uuid_appareil} configuration={configuration} onChange={onChange} />;
+    return <ProgramEditorClass uuid_appareil={uuid_appareil} configuration={configuration} onChange={onChange} setHasChanged={setHasChanged} />;
 }
 
-export type ProgramEditorParametersType = {
-    uuid_appareil: string,
-    configuration: ProgramConfiguration,
-    onChange: (value: ProgramConfiguration)=>void,
-}
+export type ProgramEditorParametersType = ConfigureProgramClassType;
 
 function EditUnsupportedProgram() {
     return <div className='col-span-12 pt-6'>Unsupported program type.</div>

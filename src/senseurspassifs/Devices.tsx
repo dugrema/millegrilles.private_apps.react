@@ -63,7 +63,6 @@ function ListDeviceReadings(props: {showOnlyDeleted?: boolean}) {
     let deviceConfiguration = useSenseursPassifsStore(state=>state.deviceConfiguration);    
 
     let deviceList = useMemo(()=>{
-        console.debug("Devices : ", devices);
         if(devices) {
             let deviceIds = Object.keys(devices);
             if(deviceIds.length > 0) {
@@ -72,10 +71,6 @@ function ListDeviceReadings(props: {showOnlyDeleted?: boolean}) {
                     let name = configuration?.descriptif || item;
                     return {uuid_appareil: item, name};
                 });
-                //     let uuid_appareil = device.uuid_appareil;
-                //     let deviceConf = deviceConfiguration[uuid_appareil];
-                //     return deviceConf?.descriptif || device.uuid_appareil;
-                // }, [device, deviceConfiguration])
                 devicesSort.sort((a,b)=>a.name.localeCompare(b.name));
 
                 let mappedDevices = devicesSort.map(item=>devices[item.uuid_appareil]);

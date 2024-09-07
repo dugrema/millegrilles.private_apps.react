@@ -78,10 +78,13 @@ function ApplicationList() {
 
             <main className='fixed top-6 bottom-8 overflow-y-auto pt-4 pb-2 w-full'>
                 <section>
-                    <h1>Application list</h1>
-                    <nav>
-                        <p><Link to='/apps/aichat'>Ai Chat</Link></p>
-                        <p><Link to='/apps/senseurspassifs'>SenseursPassifs</Link></p>
+                    <h1 className='text-xl font-bold'>Application list</h1>
+                    <nav className='pt-6'>
+                        <ul>
+                            <li className='pt-2'><Link className='underline' to='/apps/aichat'>Ai Chat</Link></li>
+                            <li className='pt-2'><Link className='underline'to='/apps/senseurspassifs'>SenseursPassifs</Link></li>
+                            <li className='pt-2'><a href='/millegrilles' className='underline'>Back to portal</a></li>
+                        </ul>
                     </nav>
                 </section>
             </main>

@@ -84,14 +84,14 @@ export default function Chat() {
                     placeholder='Entrez votre question ou commentaire ici. Exemple : Donne-moi une liste de films sortis en 1980.'
                     className='text-black w-full rounded-md' />
                 <button disabled={waiting} 
-                    className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500' onClick={submitHandler}>
+                    className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500' onClick={submitHandler}>
                         Submit
                 </button>
                 <button disabled={waiting} 
-                    className='btn bg-slate-700 hover:bg-slate-600 active:bg-slate-500' onClick={clearHandler}>
+                    className='varbtn w-24 bg-slate-700 hover:bg-slate-600 active:bg-slate-500' onClick={clearHandler}>
                         Clear
                 </button>
-                <Link to='/apps' className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>Done</Link>
+                <Link to='/apps' className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>Back</Link>
             </div>
 
             <Footer />
