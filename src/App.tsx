@@ -15,6 +15,8 @@ import Footer from './Footer';
 // AI Chat
 const AppAiChat = React.lazy(()=>import('./aichat/AppAiChat'));
 
+const NotepadApp = React.lazy(()=>import('./notepad/AppNotepad'));
+
 // SenseursPassifs
 const AppSenseursPassifs = React.lazy(()=>import('./senseurspassifs/App'));
 const SenseursPassifsMain = React.lazy(()=>import('./senseurspassifs/Main'));
@@ -35,6 +37,10 @@ const router = createBrowserRouter([
 	{
 		path: "/apps/aichat",
 		element: <AppAiChat />
+  	},
+    {
+		path: "/apps/notepad",
+		element: <NotepadApp />
   	},
     {
 		path: "/apps/senseurspassifs",
@@ -73,15 +79,16 @@ export default App;
 
 function ApplicationList() {
     return (
-        <div className='pl-2 pr-2'>
+        <div>
             <HeaderMenu title='MilleGrilles' />
 
-            <main className='fixed top-6 bottom-8 overflow-y-auto pt-4 pb-2 w-full'>
+            <main className='fixed top-6 bottom-8 overflow-y-auto pt-4 pb-2 pl-2 pr-2 w-full'>
                 <section>
                     <h1 className='text-xl font-bold'>Application list</h1>
                     <nav className='pt-6'>
                         <ul>
                             <li className='pt-2'><Link className='underline' to='/apps/aichat'>Ai Chat</Link></li>
+                            <li className='pt-2'><Link className='underline'to='/apps/notepad'>Notepad</Link></li>
                             <li className='pt-2'><Link className='underline'to='/apps/senseurspassifs'>SenseursPassifs</Link></li>
                             <li className='pt-2'><a href='/millegrilles' className='underline'>Back to portal</a></li>
                         </ul>

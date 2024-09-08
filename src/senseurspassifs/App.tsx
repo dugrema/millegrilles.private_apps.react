@@ -13,9 +13,9 @@ export default function SenseursPassifs() {
     return (
         <div>
             <HeaderMenu title='Senseurs Passifs' backLink={true} />
-            <div id="main" className='fixed top-8 bottom-10 overflow-y-auto pt-4 pb-2 pl-2 pr-2 w-full'>
+            <main id="main" className='fixed top-8 bottom-10 overflow-y-auto pt-4 pb-2 pl-2 pr-2 w-full'>
                 <Outlet />
-            </div>
+            </main>
             <Footer />
             <DeviceEvents />
         </div>

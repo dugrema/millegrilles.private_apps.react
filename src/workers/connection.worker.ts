@@ -4,10 +4,14 @@ import { ConnectionWorker, MessageResponse, SubscriptionCallback } from 'millegr
 import apiMapping from './apiMapping.json';
 
 import { DeviceConfiguration, DeviceReadings } from '../senseurspassifs/senseursPassifsStore';
+import { NotepadCategoryType, NotepadGroupType } from '../notepad/idb/notepadStoreIdb';
+import { DecryptionKey } from '../MillegrillesIdb';
 
 const DOMAINE_CORETOPOLOGIE = 'CoreTopologie';
+const DOMAINE_DOCUMENTS = 'Documents';
 const DOMAINE_SENSEURSPASSIFS = 'SenseursPassifs';
 const DOMAINE_SENSEURSPASSIFS_RELAI = 'senseurspassifs_relai';
+const DOMAINE_MAITREDESCLES = 'MaitreDesCles';
 
 export type ActivationCodeResponse = MessageResponse & {
     code?: number | string,
@@ -54,6 +58,11 @@ export type SenseursPassifsConfigurationResponse = MessageResponse & {
 export type SenseursPassifsConfigurationUpdate = {
     timezone?: string | null,
 }
+
+type NotepadCategoriesResponse = MessageResponse & { categories: Array<NotepadCategoryType> };
+type NotepadGroupsResponse = MessageResponse & { groupes: Array<NotepadGroupType> };
+
+type DecryptionKeyResponse = MessageResponse & { cles: Array<DecryptionKey> };
 
 export class AppsConnectionWorker extends ConnectionWorker {
 
@@ -135,6 +144,26 @@ export class AppsConnectionWorker extends ConnectionWorker {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendCommand(configuration, DOMAINE_SENSEURSPASSIFS, 'majConfigurationUsager');
     }
+
+    // Notepad
+    async getNotepadUserCategories() {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest({}, DOMAINE_DOCUMENTS, 'getCategoriesUsager') as NotepadCategoriesResponse;
+    }
+
+    async getNotepadUserGroups() {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest({}, DOMAINE_DOCUMENTS, 'getGroupesUsager') as NotepadGroupsResponse;
+    }
+
+    async getGroupKeys(keyIds: Array<string>) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {cle_ids: keyIds}, DOMAINE_DOCUMENTS, 'getClesGroupes',
+            {domain: DOMAINE_MAITREDESCLES}
+        ) as DecryptionKeyResponse;
+    }
+
 }
 
 var worker = new AppsConnectionWorker();

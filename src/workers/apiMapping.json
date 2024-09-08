@@ -6,7 +6,10 @@
     "requests": [
         {"domain": "SenseursPassifs", "action": "getAppareilsUsager"},
         {"domain": "SenseursPassifs", "action": "getStatistiquesSenseur"},
-        {"domain": "SenseursPassifs", "action": "getConfigurationUsager"}
+        {"domain": "SenseursPassifs", "action": "getConfigurationUsager"},
+        {"domain": "Documents", "action": "getCategoriesUsager"},
+        {"domain": "Documents", "action": "getGroupesUsager"},
+        {"domain": "Documents", "action": "getClesGroupes"}
     ],
     "commands": [
         {"domain": "ollama_relai", "action": "generate", "stream": true},

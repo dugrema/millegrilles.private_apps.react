@@ -4,9 +4,11 @@ import { Remote, wrap } from 'comlink';
 import { ConnectionCallbackParameters } from 'millegrilles.reactdeps.typescript';
 
 import { AppsConnectionWorker } from "./connection.worker";
+import { AppsEncryptionWorker } from './encryption.worker';
 
 export type AppWorkers = {
     connection: Remote<AppsConnectionWorker>,
+    encryption: Remote<AppsEncryptionWorker>,
 };
 
 const SOCKETIO_PATH = '/millegrilles/socket.io';
@@ -30,15 +32,18 @@ export async function initWorkers(callback: (params: ConnectionCallbackParameter
 
     let {idmg, ca, chiffrage} = await loadFiche();
 
-    let worker = new Worker(new URL('./connection.worker.ts', import.meta.url));
-    let connection = wrap(worker) as Remote<AppsConnectionWorker>;
+    let connectionWorker = new Worker(new URL('./connection.worker.ts', import.meta.url));
+    let connection = wrap(connectionWorker) as Remote<AppsConnectionWorker>;
+
+    let encryptionWorker = new Worker(new URL('./encryption.worker.ts', import.meta.url));
+    let encryption = wrap(encryptionWorker) as Remote<AppsEncryptionWorker>;
 
     // Set-up the workers
     let serverUrl = new URL(window.location.href);
     serverUrl.pathname = SOCKETIO_PATH;
     await connection.initialize(serverUrl.href, ca, callback, {reconnectionDelay: 7500});
 
-    workers = {connection};
+    workers = {connection, encryption};
 
     return {idmg, ca, chiffrage, workers};
 }
