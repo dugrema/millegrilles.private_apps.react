@@ -1,12 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { proxy } from 'comlink';
+
 import useWorkers, { AppWorkers } from "../workers/workers";
-import { decryptGroupDocuments, getUserGroupDocuments, NotepadDocumentType, syncDocuments } from "./idb/notepadStoreIdb";
+import { decryptGroupDocuments, getUserGroupDocuments, NotepadCategoryType, NotepadDocumentType, NotepadGroupType, syncDocuments } from "./idb/notepadStoreIdb";
 import useNotepadStore from "./notepadStore";
 import { useParams } from "react-router-dom";
+import useConnectionStore from "../connectionStore";
+import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
 
 type SyncGroupDocumentsProps = {
     groupId: string,
 }
+
 
 function SyncGroupDocuments(props: SyncGroupDocumentsProps) {
 
@@ -14,6 +19,7 @@ function SyncGroupDocuments(props: SyncGroupDocumentsProps) {
     let params = useParams();
     let groupId = params.groupId;
 
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let setGroupDocuments = useNotepadStore(state=>state.setGroupDocuments);
     let [userId, setUserId] = useState('');
 
@@ -26,20 +32,32 @@ function SyncGroupDocuments(props: SyncGroupDocumentsProps) {
             .catch(err=>console.error("Error loading userId", err));
     }, [workers, setUserId]);
 
+    let documentGroupEventCb = useMemo(()=>{
+        return proxy((event: SubscriptionMessage)=>{
+            console.debug("Event on group document", event);
+            // let message = event.message as MessageUpdateCategoryGroup;
+        })
+    }, []);
+
     useEffect(()=>{
         if(!workers || !userId || !groupId) return;
 
         // Register document listener for group
+        workers.connection.subscribeUserGroupDocument(documentGroupEventCb)
+            .catch(err=>console.error("Error subscribing to category/group events", err));
 
         // Sync documents of this group
         syncGroupDocuments(workers, userId, groupId, setGroupDocuments);
 
         return () => {
             // Remove listener for document changes on group
-
+            if(workers) {
+                workers.connection.unsubscribeUserGroupDocument(documentGroupEventCb)
+                    .catch(err=>console.error("Error unsubscribing from document events", err));
+            }
         }
 
-    }, [workers, userId, groupId, setGroupDocuments]);
+    }, [workers, ready, userId, groupId, setGroupDocuments, documentGroupEventCb]);
 
     return <></>;
 }

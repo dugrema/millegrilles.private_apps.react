@@ -1,12 +1,20 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { proxy } from 'comlink';
+
 import { decryptGroups, getMissingKeys, getUserCategories, getUserGroups, NotepadCategoryType, NotepadGroupType, openDB, syncCategories, syncGroups } from './idb/notepadStoreIdb';
 
 import useWorkers, { AppWorkers } from '../workers/workers';
 import useConnectionStore from '../connectionStore';
 import { saveDecryptedKey } from '../MillegrillesIdb';
 import useNotepadStore from './notepadStore';
+import { SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
 
 let promiseIdb: Promise<void> | null = null;
+
+type MessageUpdateCategoryGroup = {
+    category?: NotepadCategoryType | null,
+    group?: NotepadGroupType | null,
+}
 
 export default function SyncUserProfile() {
 
@@ -100,10 +108,30 @@ function ListenCategoryGroupChanges() {
     let setGroups = useNotepadStore(state=>state.setGroups);
     let setSyncDone = useNotepadStore(state=>state.setSyncDone);
 
+    let categoryGroupEventCb = useMemo(()=>{
+        return proxy((event: SubscriptionMessage)=>{
+            console.debug("Event on category/group", event);
+            let message = event.message as MessageUpdateCategoryGroup;
+            if(message) {
+                let {group, category} = message;
+                if(group) {
+                    // Save/update group, fetch key and decrypt.
+
+                }
+                if(category) {
+                    // Save/update category
+
+                }
+            }
+        })
+    }, []);
+
     useEffect(()=>{
         if(!workers || !ready) return;  // Note ready to sync
 
         // Subscribe to changes on categories and groups
+        workers.connection.subscribeUserCategoryGroup(categoryGroupEventCb)
+            .catch(err=>console.error("Error subscribing to category/group events", err));
 
 
         // Sync categories and groups for the user. Save in IDB.
@@ -115,7 +143,11 @@ function ListenCategoryGroupChanges() {
             .catch(err=>console.error("Error during notepad sync", err));
 
         return () => {
-            // Remove listener on categories and groups
+            // Remove listener for document changes on group
+            if(workers) {
+                workers.connection.unsubscribeUserCategoryGroup(categoryGroupEventCb)
+                    .catch(err=>console.error("Error unsubscribing from category/group events", err));
+            }
         };
 
     }, [workers, ready, setCategories, setGroups, setSyncDone])

@@ -93,12 +93,12 @@ export class AppsConnectionWorker extends ConnectionWorker {
 
     async subscribeUserDevices(cb: SubscriptionCallback): Promise<void> {
         if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.subscribe('userDeviceEvents', cb)
+        return await this.connection.subscribe('userDeviceEvents', cb);
     }
 
     async unsubscribeUserDevices(cb: SubscriptionCallback): Promise<void> {
         if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.unsubscribe('userDeviceEvents', cb)
+        return await this.connection.unsubscribe('userDeviceEvents', cb);
     }
 
     async challengeDevice(params: {uuid_appareil: string, challenge: Array<number>}): Promise<MessageResponse> {
@@ -169,6 +169,26 @@ export class AppsConnectionWorker extends ConnectionWorker {
     async getNotepadDocumentsForGroup(groupId: string) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest({groupe_id: groupId}, DOMAINE_DOCUMENTS, 'getDocumentsGroupe') as NotepadDocumentsResponse;
+    }
+
+    async subscribeUserCategoryGroup(cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.subscribe('notepadCatGroupEvents', cb);
+    }
+
+    async unsubscribeUserCategoryGroup(cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.unsubscribe('notepadCatGroupEvents', cb);
+    }
+
+    async subscribeUserGroupDocument(cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.subscribe('notepadGroupDocumentEvents', cb);
+    }
+
+    async unsubscribeUserGroupDocument(cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.unsubscribe('notepadGroupDocumentEvents', cb);
     }
 
 }

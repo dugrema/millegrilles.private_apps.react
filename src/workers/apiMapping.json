@@ -32,6 +32,18 @@
                 "evenement.SenseursPassifs.{USER_ID}.majAppareil",
                 "evenement.SenseursPassifs.{USER_ID}.presenceAppareil"
             ]
+        },
+        "notepadCatGroupEvents": {
+            "exchanges": ["2.prive"],
+            "routingKeys": [
+                "evenement.Documents.{USER_ID}.updateCatGroup"
+            ]
+        },
+        "notepadGroupDocumentEvents": {
+            "exchanges": ["2.prive"],
+            "routingKeys": [
+                "evenement.Documents.{USER_ID}.updateGroupDocument"
+            ]
         }
     }
 }

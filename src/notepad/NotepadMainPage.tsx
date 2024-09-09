@@ -8,7 +8,6 @@ function NotepadMainPage() {
         <>
             <h1 className='font-bold text-lg pb-4'>Notepad</h1>
 
-
             <section>
                 <h2 className='font-bold pt-4 pb-2'>Edit</h2>
                 <div className='grid grid-cols-6'>
