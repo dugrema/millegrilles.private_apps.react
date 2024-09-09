@@ -16,6 +16,9 @@ import Footer from './Footer';
 const AppAiChat = React.lazy(()=>import('./aichat/AppAiChat'));
 
 const NotepadApp = React.lazy(()=>import('./notepad/AppNotepad'));
+const NotepadMainPage = React.lazy(()=>import('./notepad/NotepadMainPage'));
+const ViewGroupDocuments = React.lazy(()=>import('./notepad/ViewGroupDocuments'));
+const ViewDocument = React.lazy(()=>import('./notepad/ViewDocument'));
 
 // SenseursPassifs
 const AppSenseursPassifs = React.lazy(()=>import('./senseurspassifs/App'));
@@ -40,7 +43,12 @@ const router = createBrowserRouter([
   	},
     {
 		path: "/apps/notepad",
-		element: <NotepadApp />
+		element: <NotepadApp />,
+        children: [
+            { path: "/apps/notepad", element: <NotepadMainPage /> },
+            { path: "/apps/notepad/group/:groupId", element: <ViewGroupDocuments /> },
+            { path: "/apps/notepad/document/:docId", element: <ViewDocument /> },
+        ]
   	},
     {
 		path: "/apps/senseurspassifs",

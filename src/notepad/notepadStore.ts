@@ -1,24 +1,37 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType } from './idb/notepadStoreIdb';
 
 interface NotepadStoreState {
-    // messages: Array<ChatMessages>,
-    // currentResponse: string,
-    // appendCurrentResponse: (chunk: string) => void,
-    // pushAssistantResponse: () => void,
-    // pushUserQuery: (query: string) => void,
-    // clear: () => void,
+    categories: Array<NotepadCategoryType>,
+    groups: Array<NotepadGroupType>,
+    selectedGroup: string | null,
+    groupDocuments: Array<NotepadDocumentType> | null,
+    syncDone: boolean,
+    setCategories: (categories: Array<NotepadCategoryType>) => void,
+    setGroups: (groups: Array<NotepadGroupType>) => void,
+    setGroupDocuments: (groupDocuments: Array<NotepadDocumentType> | null) => void,
+    setSelectedGroup: (groupId: string | null) => void,
+    clearGroup: () => void,
+    setSyncDone: () => void,
 };
 
 const useNotepadStore = create<NotepadStoreState>()(
     devtools(
         (set) => ({
-            // messages: [],
-            // currentResponse: '',
-            // appendCurrentResponse: (chunk) => set((state) => ({ currentResponse: state.currentResponse + chunk })),
-            // pushAssistantResponse: () => set((state) => ({ currentResponse: '', messages: [...state.messages, {role: 'assistant', content: state.currentResponse, date: Math.floor(new Date().getTime()/1000)}] })),
-            // pushUserQuery: (query) => set((state) => ({ messages: [...state.messages, {role: 'user', content: query, date: Math.floor(new Date().getTime()/1000)}]})),
-            // clear: () => set(() => ({messages: [], currentResponse: ''})),
+            categories: [],
+            groups: [],
+            selectedGroup: null,
+            groupDocuments: null,
+            syncDone: false,
+
+            setCategories: (categories) => set(()=>({categories})),
+            setGroups: (groups) => set(()=>({groups})),
+            setGroupDocuments: (groupDocuments) => set(()=>({groupDocuments})),
+            setSelectedGroup: (groupId) => set(()=>({selectedGroup: groupId})),
+
+            clearGroup: () => set(()=>({selectedGroup: null, groupDocuments: null})),
+            setSyncDone: () => set(()=>({syncDone: true})),
         })
     ),
 );

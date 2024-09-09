@@ -4,7 +4,7 @@ import { ConnectionWorker, MessageResponse, SubscriptionCallback } from 'millegr
 import apiMapping from './apiMapping.json';
 
 import { DeviceConfiguration, DeviceReadings } from '../senseurspassifs/senseursPassifsStore';
-import { NotepadCategoryType, NotepadGroupType } from '../notepad/idb/notepadStoreIdb';
+import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType } from '../notepad/idb/notepadStoreIdb';
 import { DecryptionKey } from '../MillegrillesIdb';
 
 const DOMAINE_CORETOPOLOGIE = 'CoreTopologie';
@@ -63,6 +63,8 @@ type NotepadCategoriesResponse = MessageResponse & { categories: Array<NotepadCa
 type NotepadGroupsResponse = MessageResponse & { groupes: Array<NotepadGroupType> };
 
 type DecryptionKeyResponse = MessageResponse & { cles: Array<DecryptionKey> };
+
+type NotepadDocumentsResponse = MessageResponse & { documents?: Array<NotepadDocumentType> };
 
 export class AppsConnectionWorker extends ConnectionWorker {
 
@@ -162,6 +164,11 @@ export class AppsConnectionWorker extends ConnectionWorker {
             {cle_ids: keyIds}, DOMAINE_DOCUMENTS, 'getClesGroupes',
             {domain: DOMAINE_MAITREDESCLES}
         ) as DecryptionKeyResponse;
+    }
+
+    async getNotepadDocumentsForGroup(groupId: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest({groupe_id: groupId}, DOMAINE_DOCUMENTS, 'getDocumentsGroupe') as NotepadDocumentsResponse;
     }
 
 }

@@ -9,7 +9,8 @@
         {"domain": "SenseursPassifs", "action": "getConfigurationUsager"},
         {"domain": "Documents", "action": "getCategoriesUsager"},
         {"domain": "Documents", "action": "getGroupesUsager"},
-        {"domain": "Documents", "action": "getClesGroupes"}
+        {"domain": "Documents", "action": "getClesGroupes"},
+        {"domain": "Documents", "action": "getDocumentsGroupe"}
     ],
     "commands": [
         {"domain": "ollama_relai", "action": "generate", "stream": true},

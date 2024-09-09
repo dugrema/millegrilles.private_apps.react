@@ -1,5 +1,5 @@
 import { IDBPDatabase, openDB as openDbIdb } from 'idb';
-import { DecryptionKeyIdb, getDecryptedKeys } from '../../MillegrillesIdb';
+import { getDecryptedKeys } from '../../MillegrillesIdb';
 import { AppWorkers } from '../../workers/workers';
 
 const DB_NAME = 'notepad';
@@ -39,6 +39,8 @@ export type NotepadGroupType = {
     decrypted?: boolean,
 }
 
+type NotepadDocumentData = {[nom: string]: string | number | null};
+
 export type NotepadDocumentType = {
     user_id: string,
     groupe_id: string,
@@ -47,7 +49,9 @@ export type NotepadDocumentType = {
     cle_id: string,
     format: string,
     nonce: string,
-    nom: string,
+    data_chiffre: string,
+    label?: string,
+    data?: NotepadDocumentData,
     decrypted?: boolean,
 };
 
@@ -82,33 +86,85 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
             documentStore = db.createObjectStore(STORE_DOCUMENTS, {keyPath: 'doc_id'});
 
             // Create indices
-            categoryStore.createIndex('userid', 'user_id', {unique: false, multiEntry: false})
-            groupStore.createIndex('userid', 'user_id', {unique: false, multiEntry: false})
-            documentStore.createIndex('userid', 'user_id', {unique: false, multiEntry: false})
-            documentStore.createIndex('useridGroup', ['user_id', 'groupe_id'], {unique: false, multiEntry: false})
+            categoryStore.createIndex('userid', 'user_id', {unique: false, multiEntry: false});
+            groupStore.createIndex('userid', 'user_id', {unique: false, multiEntry: false});
+            documentStore.createIndex('userid', 'user_id', {unique: false, multiEntry: false});
+            documentStore.createIndex('useridGroup', ['user_id', 'groupe_id'], {unique: false, multiEntry: false});
 
+        // @ts-ignore Fallthrough
         case 2: // Most recent
-            break
+            break;
         default:
             console.warn("createObjectStores Default..., version %O", oldVersion)
     }
 }
 
-async function getUserCategories(user_id: string) {
+export async function getUserCategories(userId: string): Promise<Array<NotepadCategoryType>> {
+    let db = await openDB();
+    let store = db.transaction(STORE_CATEGORIES, 'readonly').store;
+    let index = store.index('userid');
+    let cursor = await index.openCursor(userId);
 
+    let categories = [];
+    while(cursor) {
+        const value = cursor.value as NotepadCategoryType;
+        categories.push(value);
+        cursor = await cursor.continue();
+    }
+    return categories;
 }
 
-async function getUserGroups(user_id: string) {
+export async function getUserGroups(userId: string, decryptedOnly?: boolean): Promise<Array<NotepadGroupType>> {
+    let db = await openDB();
+    let store = db.transaction(STORE_GROUPS, 'readonly').store;
+    let index = store.index('userid');
+    let cursor = await index.openCursor(userId);
 
+    let groups = [];
+    while(cursor) {
+        const value = cursor.value as NotepadGroupType;
+        if(decryptedOnly) {
+            if(value.decrypted) groups.push(value);
+        } else {
+            groups.push(value);
+        }
+        cursor = await cursor.continue();
+    }
+
+    return groups;
 }
 
-async function getCategory(category_id: string) {
+export async function getUserGroupDocuments(userId: string, groupId: string, decryptedOnly?: boolean): Promise<Array<NotepadDocumentType>> {
+    let db = await openDB();
+    let store = db.transaction(STORE_DOCUMENTS, 'readonly').store;
+    let index = store.index('useridGroup');
+    let cursor = await index.openCursor([userId, groupId]);
 
+    let groupDocuments = [];
+    while(cursor) {
+        const value = cursor.value as NotepadDocumentType;
+        if(decryptedOnly) {
+            if(value.decrypted) groupDocuments.push(value);
+        } else {
+            groupDocuments.push(value);
+        }
+        cursor = await cursor.continue();
+    }
+
+    return groupDocuments;
 }
 
-async function getGroup(group_id: string) {
+// export async function getCategory(categoryId: string): Promise<NotepadCategoryType | null>{
+//     let db = await openDB();
+//     let store = db.transaction(STORE_CATEGORIES, 'readonly').store;
+//     return store.get(categoryId);
+// }
 
-}
+// export async function getGroup(groupId: string): Promise<NotepadGroupType | null> {
+//     let db = await openDB();
+//     let store = db.transaction(STORE_GROUPS, 'readonly').store;
+//     return store.get(groupId);
+// }
 
 export async function syncCategories(categories: Array<NotepadCategoryType>) {
     if(!categories) return []
@@ -154,13 +210,13 @@ export async function getMissingKeys(userId: string): Promise<Array<string>> {
     let db = await openDB();
     let store = db.transaction(STORE_GROUPS, 'readonly').store;
     let index = store.index('userid');
-    let curseur = await index.openCursor(userId);
+    let cursor = await index.openCursor(userId);
     
     let keyIds = [];
-    while(curseur) {
-        const value = curseur.value;
+    while(cursor) {
+        const value = cursor.value;
         if(value.decrypted !== true) keyIds.push(value.cle_id);
-        curseur = await curseur.continue();
+        cursor = await cursor.continue();
     }
 
     // Check each key against the main key repository.
@@ -201,14 +257,14 @@ export async function decryptGroups(workers: AppWorkers, userId: string) {
     let db = await openDB();
     let store = db.transaction(STORE_GROUPS, 'readonly').store;
     let index = store.index('userid');
-    let curseur = await index.openCursor(userId);
+    let cursor = await index.openCursor(userId);
     let encryptedGroups = [];
-    while(curseur) {
-        const value = curseur.value as NotepadGroupType;
+    while(cursor) {
+        const value = cursor.value as NotepadGroupType;
         if(value.decrypted !== true) {
             encryptedGroups.push(value.groupe_id);
         }
-        curseur = await curseur.continue();
+        cursor = await cursor.continue();
     }
 
     for await(let groupId of encryptedGroups) {
@@ -218,7 +274,6 @@ export async function decryptGroups(workers: AppWorkers, userId: string) {
         if(key) {
             let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, data_chiffre);
             let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadGroupData;
-            console.debug("Cleartext ", jsonInfo);
             let storeRw = db.transaction(STORE_GROUPS, 'readwrite').store;
             await storeRw.put({...group, data: jsonInfo, decrypted: true});
         } else {
@@ -226,4 +281,53 @@ export async function decryptGroups(workers: AppWorkers, userId: string) {
         }
     }
 
+}
+
+export async function decryptGroupDocuments(workers: AppWorkers, userId: string, groupId: string) {
+    // Get the decryption key from IDB (must already be present)
+    let db = await openDB();
+    let groupStore = db.transaction(STORE_GROUPS, 'readonly').store;
+    let group = await groupStore.get(groupId) as NotepadGroupType;
+    if(!group) throw new Error("Unknown group");
+    let keyId = group.cle_id;
+
+    let categoryStore = db.transaction(STORE_CATEGORIES, 'readonly').store;
+    let categoryId = group.categorie_id;
+    let category = await categoryStore.get(categoryId) as NotepadCategoryType;
+    if(!category) throw new Error("Unknown category");
+    let labelFieldName = category?.champs[0]?.code_interne;
+
+    // Load group decryption key
+    let key = (await getDecryptedKeys([keyId])).pop();
+    if(!key) throw new Error('Decryption key missing for group');
+
+    // Get list of encrypted documents
+    let store = db.transaction(STORE_DOCUMENTS, 'readonly').store;
+    let index = store.index('useridGroup');
+    let cursor = await index.openCursor([userId, groupId]);
+    let encryptedDocuments = [];
+    while(cursor) {
+        const value = cursor.value as NotepadDocumentType;
+        if(value.decrypted !== true) {
+            encryptedDocuments.push(value.doc_id);
+        }
+        cursor = await cursor.continue();
+    }
+
+    for await(let docId of encryptedDocuments) {
+        let groupDocument = await store.get(docId) as NotepadDocumentType;
+        let { cle_id, nonce, data_chiffre, format } = groupDocument;
+        if(key) {
+            let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, data_chiffre);
+            let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadDocumentData;
+            
+            // Extract label
+            let label = jsonInfo[labelFieldName] || docId;
+            
+            let storeRw = db.transaction(STORE_DOCUMENTS, 'readwrite').store;
+            await storeRw.put({...groupDocument, label, data: jsonInfo, decrypted: true});
+        } else {
+            console.warn("Missing decryption key: ", cle_id);
+        }
+    }
 }
