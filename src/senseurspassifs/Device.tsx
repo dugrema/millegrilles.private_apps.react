@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState, useCallback, ChangeEvent } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { Link, useParams } from "react-router-dom";
 import useSenseursPassifsStore, { DeviceConfiguration, DeviceReadings } from "./senseursPassifsStore";
 import useWorkers from '../workers/workers';

@@ -36,7 +36,7 @@ function AccountConfiguration() {
                 }
             })
             .catch(err=>console.error("Error updating user configuration: ", err));
-    }, [workers, timezone])
+    }, [workers, timezone, navigate])
 
     useEffect(()=>{
         if(!workers) return;

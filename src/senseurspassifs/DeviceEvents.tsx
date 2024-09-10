@@ -24,7 +24,7 @@ export default function DeviceEvents() {
                 let action = event.routingKey.split('.').pop() || 'NA';
                 if(['presenceAppareil', 'lectureConfirmee'].includes(action)) {
                     updateDevice(message);
-                } else if(action == 'majAppareil') {
+                } else if(action === 'majAppareil') {
                     updateDevice(message);
                 } else {
                     console.warn("Unknown message type: %s, content: %O", action, message);

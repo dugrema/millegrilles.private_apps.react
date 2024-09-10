@@ -143,7 +143,7 @@ export function DisplayDeviceComponents(props: DisplayDeviceReadingsProps) {
         componentsMap.sort((a, b)=>a.name.localeCompare(b.name));
 
         return componentsMap.map(item=>item.component);
-    }, [components, device, showHidden, deviceConfiguration])
+    }, [components, device, showHidden, deviceConfiguration, uuid_appareil])
 
     return (
         <>
@@ -248,7 +248,7 @@ function DisplayDeviceReading(props: DisplayDeviceReadingProps) {
         } else {
             <span>Unknown type</span>
         }
-    }, [type, value]);
+    }, [type, value, device, name, startTogglingHandler, toggling]);
 
     if(hideComponent && !props.showHidden) return <></>;
 

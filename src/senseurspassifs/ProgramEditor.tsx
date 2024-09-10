@@ -1,7 +1,6 @@
 import { ChangeEvent, Fragment, MouseEvent, useCallback, useMemo } from "react";
 import { DeviceComponentPicklistFilter } from "./DevicePicklists";
 import { ProgramEditorParametersType, SwitchButton2, SwitchButtonBoolean } from "./EditDevicePrograms";
-import { SwitchButton } from "./ReadingFormatter";
 
 type HumidificatorProgramArgsType = {
     senseurs_humidite: Array<string>,
@@ -252,7 +251,7 @@ export function WeeklyScheduleProgramEditor(props: ProgramEditorParametersType) 
         argsUpdated.activationInitiale = value;
         onChange({...configuration, args: argsUpdated});
         setHasChanged(true);
-    }, [onChange, setHasChanged, args]);
+    }, [onChange, setHasChanged, args, configuration]);
 
     let addLineHandler = useCallback(()=>{
         let argsUpdated = {...args};
@@ -261,7 +260,7 @@ export function WeeklyScheduleProgramEditor(props: ProgramEditorParametersType) 
         argsUpdated.horaire = lines;
         onChange({...configuration, args: argsUpdated});
         setHasChanged(true);
-    }, [configuration, onChange]);
+    }, [configuration, onChange, args, setHasChanged]);
 
     let removeLineHandler = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
         let idx = Number.parseInt(e.currentTarget.value);
@@ -275,7 +274,7 @@ export function WeeklyScheduleProgramEditor(props: ProgramEditorParametersType) 
 
         onChange({...configuration, args: argsUpdated});
         setHasChanged(true);        
-    }, [configuration, onChange]);
+    }, [configuration, onChange, args, setHasChanged]);
 
     let scheduleOnChange = useCallback((e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         let { name, value } = e.currentTarget;
@@ -414,7 +413,7 @@ function WeeklyScheduleLines(props: WeeklyScheduleLinesProps) {
             </Fragment>
         );
 
-    }), [value, onChange]);
+    }), [value, onChange, onRemove]);
 
     return (
         <>{lines}</>

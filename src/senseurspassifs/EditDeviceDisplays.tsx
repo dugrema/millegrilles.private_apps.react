@@ -1,9 +1,9 @@
-import { ChangeEvent, ChangeEventHandler, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import useWorkers from "../workers/workers";
 import { Link, useParams } from "react-router-dom";
 import useSenseursPassifsStore, { DeviceConfiguration, DisplayConfiguration, DisplayConfigurationLine, DisplayInformation } from "./senseursPassifsStore";
 import useConnectionStore from "../connectionStore";
-import { ComponentListLoader, DeviceComponentPicklist, DeviceComponentType, sortComponents } from "./DevicePicklists";
+import { ComponentListLoader, DeviceComponentPicklist, DeviceComponentType } from "./DevicePicklists";
 
 type EditValue = { display: DisplayInformation, configuration?: DisplayConfiguration };
 
@@ -149,7 +149,7 @@ function EditDisplay(props: EditDisplayProps) {
         } else {
             close();
         }
-    }, [display, configuration, close]);
+    }, [configuration, close, save]);
 
     let DisplayEditElement = useMemo(()=>{
         if(display?.format === 'text') return DisplayLines;
@@ -221,32 +221,7 @@ function DisplayLines(props: DisplayLinesProps) {
     let { uuid_appareil, configuration, onChange } = props;
     let lines = useMemo(()=>configuration?.lignes || [], [configuration]);
 
-    let devices = useSenseursPassifsStore(state=>state.devices);
-
     let [componentList, setComponentList] = useState([] as Array<DeviceComponentType>);
-
-    // let componentList = useMemo(()=>{
-    //     const componentList = [] as Array<DeviceComponentType>;
-    //     for(const device of Object.values(devices)) {
-    //         const configuration = device.configuration || {};
-    //         const deviceName = configuration.descriptif || device.uuid_appareil;
-    //         const componentDescription = configuration.descriptif_senseurs || {};
-    //         const components = device.senseurs;
-    //         if(components) {
-    //             for(const componentName of Object.keys(components)) {
-    //                 const componentLabel = componentDescription[componentName] || componentName;
-    //                 const name = deviceName + ' ' + componentLabel;
-    //                 const value = device.uuid_appareil + ":" + componentName;
-    //                 const componentType = components[componentName].type;
-    //                 componentList.push({name, value, type: componentType});
-    //             }
-    //         }
-    //     }
-
-    //     componentList.sort(sortComponents);
-
-    //     return componentList;
-    // }, [devices]);
 
     let addLineHandler = useCallback(()=>{
         let lines = configuration?.lignes || [];
@@ -331,7 +306,7 @@ function DisplayLines(props: DisplayLinesProps) {
             <h2 className='font-bold pt-2 pb-4'>Edit display lines</h2>
             <p>
                 Mask formatting reference: 
-                <a href='https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting' target='_blank'
+                <a href='https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting' target='_blank' rel='noreferrer'
                     className='pl-1 underline font-bold'>
                     Python mask formatting<i className='fa fa-external-link pl-1' />
                 </a>.</p>

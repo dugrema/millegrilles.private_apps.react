@@ -1,17 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 function HtmlViewer(props: {value: string | null}) {
 
     let { value } = props;
 
     let htmlValue = useMemo(()=>{
-        if(!value) return '';
-        return value;
-    }, [value])
+        if(!value) return {'__html': ''};
+        return {"__html": value};
+    }, [value]);
 
     return (
         <>
-            <div dangerouslySetInnerHTML={{"__html": htmlValue}} />
+            <div dangerouslySetInnerHTML={htmlValue} />
         </>
     )
 }

@@ -252,7 +252,7 @@ function HoursList(props: {data: Array<SenseursPassifsStatistiquesItem>, valueTy
     let { data, valueType } = props;
 
     let unite = useMemo(()=>{
-        const [_, unite] = getUnite(valueType);
+        const unite = getUnite(valueType)[1];
         return unite;
     }, [valueType]);
 
@@ -316,7 +316,7 @@ function DaysList(props: {data: Array<SenseursPassifsStatistiquesItem>, valueTyp
     const { data, valueType } = props;
 
     const unite = useMemo(()=>{
-        const [_, unite] = getUnite(valueType)
+        const unite = getUnite(valueType)[1]
         return unite
     }, [valueType]);
 
@@ -382,7 +382,7 @@ function StatistiquesTableCustom(props: StatistiquesTableCustomProps) {
         setMinDate(dateMin);
         setDateFin(now);
         setMaxDate(now);
-    }, [setDateDebut, setDateFin]);
+    }, [setDateDebut, setDateFin, setMaxDate, setMinDate]);
 
     const FormatteurListe = useMemo(()=>{
         let Formatteur = null as any;

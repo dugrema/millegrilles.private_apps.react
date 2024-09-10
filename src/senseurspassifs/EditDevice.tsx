@@ -68,7 +68,7 @@ export default function EditDevice(props: EditDeviceProps) {
                 close();
             })
             .catch(err=>console.error("Error configuration update", err));
-    }, [workers, configuration, close]);
+    }, [workers, configuration, close, uuid_appareil]);
 
     if(!device || !configuration) return <p>Loading ...</p>;
 
@@ -83,7 +83,8 @@ export default function EditDevice(props: EditDeviceProps) {
                     className='btn inline-block text-center btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500'>
                         <i className='fa fa-edit'/> Edit
                 </button>
-                <button className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                <button disabled={!ready}
+                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                     <i className='fa fa-trash-o' /> Delete
                 </button>
             </nav>
@@ -162,7 +163,7 @@ export function SelectTimezone(props: {value?: string, onChange: (e: ChangeEvent
 
 function EditDeviceComponents(props: {device: DeviceReadings, configuration: DeviceConfiguration, onChange: (e: DeviceConfiguration)=>void}) {
 
-    let {device, configuration} = props;
+    let {device, configuration, onChange} = props;
 
     let components = useMemo(()=>{
         let components = device.senseurs;
@@ -172,21 +173,24 @@ function EditDeviceComponents(props: {device: DeviceReadings, configuration: Dev
         let componentsMap = names.map(item=>{
             if(!components) return {name: '', component: <></>};
             let component = components[item];
-            return {name: item, component: <EditDeviceComponent key={item} name={item} component={component} configuration={configuration} onChange={props.onChange} />};
+            return {
+                name: item, 
+                component: <EditDeviceComponent key={item} name={item} component={component} configuration={configuration} onChange={onChange} />
+            };
         });
 
         // Sort by name
         componentsMap.sort((a, b)=>a.name.localeCompare(b.name));
 
         return componentsMap.map(item=>item.component);
-    }, [device, configuration]);
+    }, [device, configuration, onChange]);
 
     return <>{components}</>;
 }
 
 function EditDeviceComponent(props: {name: string, component: DeviceReadingValue, configuration: DeviceConfiguration, onChange: (e: DeviceConfiguration)=>void}) {
 
-    let { name, component, configuration, onChange } = props;
+    let { name, configuration, onChange } = props;
 
     let [hide, customName] = useMemo(()=>{
         let hide = false;
@@ -204,7 +208,7 @@ function EditDeviceComponent(props: {name: string, component: DeviceReadingValue
         let descriptif_senseurs = configuration.descriptif_senseurs || {};
         descriptif_senseurs[name] = value;
         onChange({descriptif_senseurs});
-    }, [name, onChange])
+    }, [name, onChange, configuration])
 
     let onHideChangehandler = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
         let value = e.currentTarget.checked;
@@ -215,7 +219,7 @@ function EditDeviceComponent(props: {name: string, component: DeviceReadingValue
             cacher_senseurs.push(name);  // Name
         }
         onChange({cacher_senseurs});
-    }, [name, onChange])
+    }, [name, onChange, configuration])
 
     return (
         <>
@@ -276,7 +280,7 @@ function Geoposition(props: GeopositionProps) {
         }
         
         onChange({geoposition: changeValues})
-    }, [latitude, longitude])
+    }, [latitude, longitude, onChange])
     
     const locationCb = useCallback(()=>{
         setGeolocateWorking(true)

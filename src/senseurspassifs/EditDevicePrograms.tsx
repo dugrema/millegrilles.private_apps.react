@@ -29,11 +29,10 @@ export default function EditDevicePrograms() {
         setClassLocked(true);
     }, [setEditValue, setClassLocked]);
 
-    let [device, configuration] = useMemo(()=>{
-        if(!uuid_appareil || !devices) return [null, null];
-        let device = devices[uuid_appareil];
+    let configuration = useMemo(()=>{
+        if(!uuid_appareil || !devices) return null;
         let configuration = deviceConfiguration?deviceConfiguration[uuid_appareil]:null;
-        return [device, configuration];
+        return configuration;
     }, [uuid_appareil, devices, deviceConfiguration])
 
     let saveOnClick = useCallback(()=>{
@@ -60,7 +59,7 @@ export default function EditDevicePrograms() {
                 }
             })
             .catch(err=>console.error("Error saving program updates: ", err));
-    }, [workers, editValue, configuration, programEditClose]);
+    }, [workers, editValue, programEditClose, deviceConfiguration, uuid_appareil]);
 
     let removeProgram = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
         if(!workers) throw new Error("Workers not initialized");
@@ -99,7 +98,7 @@ export default function EditDevicePrograms() {
                 onChange={configurationOnChange} />
         );
         return <ProgramList programs={programs} setEditValue={setEditValue} setClassLocked={setClassLocked} removeProgram={removeProgram} />;
-    }, [editValue]);
+    }, [editValue, classLocked, configuration, configurationOnChange, programEditClose, programs, removeProgram, saveOnClick, uuid_appareil]);
 
     return (
         <>
@@ -241,10 +240,8 @@ type ProgramEditType = {
 }
 
 function ProgramEdit(props: ProgramEditType) {
-    let { uuid_appareil, value, saveOnClick, deviceConfiguration, classLocked, onChange, close } = props;
+    let { uuid_appareil, value, saveOnClick, classLocked, onChange, close } = props;
     let configuration = value.configuration;
-
-    let workers = useWorkers();
 
     let [hasChanged, setHasChanged] = useState(false);
 

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import useNotepadStore from "./notepadStore";
 import { Link, useParams } from "react-router-dom";
 import { NotepadCategoryFieldType, NotepadCategoryType, NotepadDocumentType } from "./idb/notepadStoreIdb";
@@ -7,6 +7,8 @@ import HtmlViewer from "./HtmlViewer";
 function ViewDocument() {
 
     const params = useParams();
+    let [editDocument, setEditDocument] = useState(false);
+
     let docId = params.docId as string;
 
     let categories = useNotepadStore(state=>state.categories);
@@ -54,7 +56,11 @@ function ViewDocument() {
 
             <h2 className='font-bold'>{groupDocument.label}</h2>
 
-            <ViewFields category={category} groupDocument={groupDocument}/>
+            {editDocument?
+                <EditFields category={category} groupDocument={groupDocument}/>
+            :
+                <ViewFields category={category} groupDocument={groupDocument}/>
+            }
         </>
     )
 }
@@ -106,7 +112,7 @@ type ViewFieldProps = {
 };
 
 function ViewUnsupportedField(props: ViewFieldProps) {
-    let {field, value} = props;
+    let {field} = props;
     return (
         <>
             <label className='col-span-2'>{field.nom_champ}</label>
@@ -167,4 +173,28 @@ function ViewHtmlField(props: ViewFieldProps) {
             </div>
         </div>
     )
+}
+
+// Edit section
+
+type EditFieldsProps = ViewFieldsProps & {
+
+};
+
+function EditFields(props: EditFieldsProps) {
+    return (
+        <section className='grid grid-cols-12'>
+            
+            <div className='col-span-12 text-center'>
+                <button
+                    className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
+                        Save
+                </button>
+                <button
+                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        Cancel
+                </button>
+            </div>
+        </section>
+    );
 }

@@ -3,7 +3,7 @@ import useSenseursPassifsStore from "./senseursPassifsStore";
 
 export type DeviceComponentType = { name: string, value: string, type: string };
 
-type DeviceComponentPicklistFilter = { 
+type DeviceComponentPicklistFilterType = { 
     uuid_appareil: string,
     value: string,
     idx?: number,
@@ -12,7 +12,7 @@ type DeviceComponentPicklistFilter = {
     localOnly?: boolean,
 };
 
-type DeviceComponentPicklistType = DeviceComponentPicklistFilter & { 
+type DeviceComponentPicklistType = DeviceComponentPicklistFilterType & { 
     components: Array<DeviceComponentType>, 
 };
 
@@ -29,7 +29,7 @@ export function DeviceComponentPicklist(props: DeviceComponentPicklistType) {
             }
             return <option key={item.value} value={itemValue}>{item.name}</option>
         });
-    }, [uuid_appareil, components]);
+    }, [uuid_appareil, components, localOnly]);
 
     return (
         <select value={value} onChange={onChange} data-idx={idx}
@@ -40,7 +40,7 @@ export function DeviceComponentPicklist(props: DeviceComponentPicklistType) {
     )
 }
 
-export function DeviceComponentPicklistFilter(props: DeviceComponentPicklistFilter) {
+export function DeviceComponentPicklistFilter(props: DeviceComponentPicklistFilterType) {
     let [components, setComponents] = useState([] as Array<DeviceComponentType>);
 
     return (
@@ -68,7 +68,6 @@ export function ComponentListLoader(props: {typeFilter?: string, setComponentLis
         const componentList = [] as Array<DeviceComponentType>;
         for(const device of Object.values(devices)) {
             const configuration = device.configuration || {};
-            let uuid_appareil = device.uuid_appareil;
             const deviceName = configuration.descriptif || device.uuid_appareil;
             const componentDescription = configuration.descriptif_senseurs || {};
             const components = device.senseurs;
@@ -89,7 +88,7 @@ export function ComponentListLoader(props: {typeFilter?: string, setComponentLis
         componentList.sort(sortComponents);
 
         setComponentList(componentList);
-    }, [devices, setComponentList]);
+    }, [devices, setComponentList, typeFilter]);
     
     return <></>;
 }
