@@ -39,7 +39,7 @@ export type NotepadGroupType = {
     decrypted?: boolean,
 }
 
-type NotepadDocumentData = {[nom: string]: string | number | null};
+export type NotepadDocumentData = {[nom: string]: string | number | null};
 
 export type NotepadDocumentType = {
     user_id: string,

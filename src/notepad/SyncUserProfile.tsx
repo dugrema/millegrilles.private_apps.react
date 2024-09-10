@@ -150,7 +150,7 @@ function ListenCategoryGroupChanges() {
             }
         };
 
-    }, [workers, ready, setCategories, setGroups, setSyncDone])
+    }, [workers, ready, setCategories, setGroups, setSyncDone, categoryGroupEventCb])
 
     return <></>;
 }

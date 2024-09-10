@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { proxy } from 'comlink';
 
 import useWorkers, { AppWorkers } from "../workers/workers";
-import { decryptGroupDocuments, getUserGroupDocuments, NotepadCategoryType, NotepadDocumentType, NotepadGroupType, syncDocuments } from "./idb/notepadStoreIdb";
+import { decryptGroupDocuments, getUserGroupDocuments, NotepadDocumentType, syncDocuments } from "./idb/notepadStoreIdb";
 import useNotepadStore from "./notepadStore";
 import useConnectionStore from "../connectionStore";
 import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
