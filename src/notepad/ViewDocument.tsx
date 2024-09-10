@@ -1,16 +1,21 @@
 import { ChangeEvent, Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import useNotepadStore from "./notepadStore";
-import { Link, useParams } from "react-router-dom";
-import { NotepadCategoryFieldType, NotepadCategoryType, NotepadDocumentData, NotepadDocumentType } from "./idb/notepadStoreIdb";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { NotepadCategoryFieldType, NotepadCategoryType, NotepadDocumentData, NotepadDocumentType, NotepadGroupType, NotepadNewDocumentType } from "./idb/notepadStoreIdb";
 import HtmlViewer from "./HtmlViewer";
 import HtmlEditor from "./HtmlEditor";
+import useWorkers from "../workers/workers";
+import { getDecryptedKeys } from "../MillegrillesIdb";
+import { multiencoding } from "millegrilles.cryptography";
 
 function ViewDocument() {
 
     const params = useParams();
-    let [editDocument, setEditDocument] = useState(false);
 
+    let groupId = params.groupId as string;
     let docId = params.docId as string;
+
+    let [editDocument, setEditDocument] = useState(docId==='new');
 
     let categories = useNotepadStore(state=>state.categories);
     let selectedGroup = useNotepadStore(state=>state.selectedGroup);
@@ -20,16 +25,9 @@ function ViewDocument() {
     let editDocumentOpen = useCallback(()=>setEditDocument(true), [setEditDocument]);
     let editDocumentClose = useCallback(()=>setEditDocument(false), [setEditDocument]);
 
-    let groupDocument = useMemo(()=>{
-        if(!docId || !groupDocuments) return;
-        let groupDocument = groupDocuments.filter(item=>item.doc_id===docId).pop();
-        console.debug("GroupDocuments %O, Group document for docId: %O = %O", groupDocuments, docId, groupDocument);
-        return groupDocument;
-    }, [groupDocuments, docId]);
-
     let [category, group] = useMemo(()=>{
-        if(!groupDocument || !groups || !categories) return [null, null];
-        let groupId = groupDocument.groupe_id;
+        if(!groups || !categories) return [null, null];
+        console.debug("Load groupId", groupId);
         let group = groups.filter(item=>item.groupe_id===groupId).pop();
         let categoryId = group?.categorie_id;
         let category = categories.filter(item=>item.categorie_id===categoryId).pop();
@@ -37,9 +35,29 @@ function ViewDocument() {
         console.debug("Category: %O, group: %O ", category, group);
 
         return [category, group];
-    }, [groupDocument, groups, categories]);
+    }, [groupId, groups, categories]);
 
-    if(!category || !groupDocument || !selectedGroup) {
+    let groupDocument = useMemo(()=>{
+        if(!docId || !category || !group || !groupDocuments) return;
+        let groupDocument = groupDocuments.filter(item=>item.doc_id===docId).pop();
+        console.debug("GroupDocuments %O, Group document for docId: %O = %O", groupDocuments, docId, groupDocument);
+        if(docId === 'new') {
+            return {
+                label: '', 
+                user_id: '',
+                groupe_id: groupId, 
+                categorie_version: category.version,
+                doc_id: 'new',
+                cle_id: group.cle_id,
+                format: '',
+                nonce: '',
+                data_chiffre: '',
+            } as NotepadDocumentType;
+        }
+        return groupDocument;
+    }, [category, groupDocuments, docId, groupId]);
+
+    if(!category || !group || (!groupDocument) || !selectedGroup) {
         return (
             <>
                 <p>Loading ...</p>
@@ -65,7 +83,7 @@ function ViewDocument() {
             <h2 className='font-bold'>{groupDocument.label}</h2>
 
             {editDocument?
-                <EditFields category={category} groupDocument={groupDocument} close={editDocumentClose}/>
+                <EditFields category={category} group={group} groupDocument={groupDocument} close={editDocumentClose}/>
             :
                 <ViewFields category={category} groupDocument={groupDocument}/>
             }
@@ -184,14 +202,27 @@ function ViewHtmlField(props: ViewFieldProps) {
 // Edit section
 
 type EditFieldsProps = ViewFieldsProps & {
+    group: NotepadGroupType,
     close: ()=>void,
 };
 
 function EditFields(props: EditFieldsProps) {
 
-    let { close, category, groupDocument} = props;
+    let { close, category, group, groupDocument} = props;
+
+    let workers = useWorkers();
+    let navigate = useNavigate();
 
     let [data, setData] = useState(groupDocument.data || {});
+
+    let cancelHandler = useCallback(()=>{
+        if(groupDocument.doc_id === 'new') {
+            // Cancel brings back to the group
+            navigate(`/apps/notepad/group/${groupDocument.groupe_id}`);
+            return;
+        }
+        close();
+    }, [groupDocument, close, navigate]);
 
     let onChangeHtml = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
         let {name, value} = e.currentTarget;
@@ -205,6 +236,53 @@ function EditFields(props: EditFieldsProps) {
         setData(updatedData);
     }, [data, setData]);
 
+    let saveHandler = useCallback(()=>{
+        // @ts-ignore
+        const keyId = group.cle_id || group.ref_hachage_bytes
+        const commande = {
+            groupe_id: group.groupe_id,
+            categorie_version: category.version,
+        }
+
+        // If docId is 'new', set to null. A new docId will be assigned on save.
+        let docId = groupDocument.doc_id!=='new'?groupDocument.doc_id:null;
+
+        // @ts-ignore
+        if(docId) commande.doc_id = docId
+        
+        getDecryptedKeys([keyId])
+            .then(async keys => {
+                if(!workers) throw new Error("Workers not initialized");
+                let key = keys.pop();
+                if(!key) throw new Error("Unknown key");
+                let encryptedData = await workers.encryption.encryptMessageMgs4(key.cleSecrete, data);
+
+                let ciphertextBase64 = multiencoding.encodeBase64Nopad(encryptedData.ciphertext);
+
+                let command = {
+                    groupe_id: group.groupe_id,
+                    categorie_version: category.version,
+                    cle_id: keyId,
+                    format: encryptedData.format,
+                    nonce: multiencoding.encodeBase64Nopad(encryptedData.nonce),
+                    data_chiffre: ciphertextBase64,
+                } as NotepadNewDocumentType;
+
+                if(docId !== 'new') command.doc_id = docId;
+
+                let result = await workers.connection.notepadSaveDocument(command);
+                if(result.ok) {
+                    close()
+                } else {
+                    console.error("Error saving document: ", result.err);
+                }
+            })
+            .catch(err=>{
+                console.error("Error encrypting/saving notpad document", err);
+            })
+
+    }, [workers, groupDocument, category, group, data]);
+    
     let fieldElements = useMemo(()=>{
         if(!category || !groupDocument) return <></>;
 
@@ -236,11 +314,11 @@ function EditFields(props: EditFieldsProps) {
             {fieldElements}
             
             <div className='col-span-12 text-center pt-4'>
-                <button
+                <button onClick={saveHandler}
                     className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
                         Save
                 </button>
-                <button onClick={close}
+                <button onClick={cancelHandler}
                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         Cancel
                 </button>

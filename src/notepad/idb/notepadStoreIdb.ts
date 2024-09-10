@@ -41,6 +41,16 @@ export type NotepadGroupType = {
 
 export type NotepadDocumentData = {[nom: string]: string | number | null};
 
+export type NotepadNewDocumentType = {
+    groupe_id: string,
+    categorie_version?: number,
+    cle_id?: string,
+    format?: string,
+    nonce?: string,
+    data_chiffre?: string,
+    doc_id?: string | null,
+}
+
 export type NotepadDocumentType = {
     user_id: string,
     groupe_id: string,
@@ -316,17 +326,27 @@ export async function decryptGroupDocuments(workers: AppWorkers, userId: string,
     }
 
     for await(let docId of encryptedDocuments) {
+        let store = db.transaction(STORE_DOCUMENTS, 'readonly').store;
         let groupDocument = await store.get(docId) as NotepadDocumentType;
         let { cle_id, nonce, data_chiffre, format } = groupDocument;
         if(key) {
             let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, data_chiffre);
             let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadDocumentData;
             
+            // Filter jsonInfo to ensure only data fields get retained
+            let data = {} as NotepadDocumentData;
+            let fields = new Set(category.champs.map(item=>item.code_interne));
+            for(let key of Object.keys(jsonInfo)) {
+                if(fields.has(key)) {
+                    data[key] = jsonInfo[key];
+                }
+            }
+
             // Extract label
-            let label = jsonInfo[labelFieldName] || docId;
+            let label = data[labelFieldName] || docId;
             
             let storeRw = db.transaction(STORE_DOCUMENTS, 'readwrite').store;
-            await storeRw.put({...groupDocument, label, data: jsonInfo, decrypted: true});
+            await storeRw.put({...groupDocument, label, data, decrypted: true});
         } else {
             console.warn("Missing decryption key: ", cle_id);
         }

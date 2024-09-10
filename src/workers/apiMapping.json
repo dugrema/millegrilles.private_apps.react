@@ -22,7 +22,8 @@
         {"domain": "SenseursPassifs", "action": "supprimerAppareil"},
         {"domain": "SenseursPassifs", "action": "restaurerAppareil"},
         {"domain": "SenseursPassifs", "action": "majConfigurationUsager"},
-        {"domain": "senseurspassifs_relai", "action": "commandeAppareil"}
+        {"domain": "senseurspassifs_relai", "action": "commandeAppareil"},
+        {"domain": "Documents", "action": "sauvegarderDocument"}
     ],
     "subscriptions": {
         "userDeviceEvents": {

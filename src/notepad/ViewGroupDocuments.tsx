@@ -17,14 +17,18 @@ function ViewGroupDocuments() {
 
     return (
         <>
-            <nav>
+            <nav className='grid grid-cols-6'>
                 <Link to='/apps/notepad'
                      className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         Back
                 </Link>
+                <Link to={`/apps/notepad/group/${groupId}/new`}
+                     className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
+                        New
+                </Link>
             </nav>
 
-            <h1 className='text-lg font-bold'>{group?.data?.nom_groupe}</h1>
+            <h1 className='text-lg font-bold pt-2 pb-4'>{group?.data?.nom_groupe}</h1>
 
             <section>
                 <DocumentList />

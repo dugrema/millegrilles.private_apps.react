@@ -4,7 +4,7 @@ import { ConnectionWorker, MessageResponse, SubscriptionCallback } from 'millegr
 import apiMapping from './apiMapping.json';
 
 import { DeviceConfiguration, DeviceReadings } from '../senseurspassifs/senseursPassifsStore';
-import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType } from '../notepad/idb/notepadStoreIdb';
+import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType, NotepadNewDocumentType } from '../notepad/idb/notepadStoreIdb';
 import { DecryptionKey } from '../MillegrillesIdb';
 
 const DOMAINE_CORETOPOLOGIE = 'CoreTopologie';
@@ -164,6 +164,11 @@ export class AppsConnectionWorker extends ConnectionWorker {
             {cle_ids: keyIds}, DOMAINE_DOCUMENTS, 'getClesGroupes',
             {domain: DOMAINE_MAITREDESCLES}
         ) as DecryptionKeyResponse;
+    }
+
+    async notepadSaveDocument(command: NotepadNewDocumentType) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(command, DOMAINE_DOCUMENTS, 'sauvegarderDocument');
     }
 
     async getNotepadDocumentsForGroup(groupId: string) {
