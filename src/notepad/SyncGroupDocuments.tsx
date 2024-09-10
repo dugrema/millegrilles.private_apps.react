@@ -4,22 +4,15 @@ import { proxy } from 'comlink';
 import useWorkers, { AppWorkers } from "../workers/workers";
 import { decryptGroupDocuments, getUserGroupDocuments, NotepadCategoryType, NotepadDocumentType, NotepadGroupType, syncDocuments } from "./idb/notepadStoreIdb";
 import useNotepadStore from "./notepadStore";
-import { useParams } from "react-router-dom";
 import useConnectionStore from "../connectionStore";
 import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
 
-type SyncGroupDocumentsProps = {
-    groupId: string,
-}
-
-
-function SyncGroupDocuments(props: SyncGroupDocumentsProps) {
+function SyncGroupDocuments() {
 
     let workers = useWorkers();
-    let params = useParams();
-    let groupId = params.groupId;
 
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let groupId = useNotepadStore(state=>state.selectedGroup);
     let setGroupDocuments = useNotepadStore(state=>state.setGroupDocuments);
     let [userId, setUserId] = useState('');
 
@@ -57,7 +50,7 @@ function SyncGroupDocuments(props: SyncGroupDocumentsProps) {
             }
         }
 
-    }, [workers, ready, userId, groupId, setGroupDocuments, documentGroupEventCb]);
+    }, [workers, ready, userId, groupId, documentGroupEventCb, setGroupDocuments]);
 
     return <></>;
 }

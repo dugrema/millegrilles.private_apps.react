@@ -10,6 +10,8 @@ import HeaderMenu from './Menu';
 
 import './i18n';
 import './App.css';
+import 'quill/dist/quill.snow.css'; // Add css for snow theme
+
 import Footer from './Footer';
 
 // AI Chat
@@ -17,6 +19,7 @@ const AppAiChat = React.lazy(()=>import('./aichat/AppAiChat'));
 
 const NotepadApp = React.lazy(()=>import('./notepad/AppNotepad'));
 const NotepadMainPage = React.lazy(()=>import('./notepad/NotepadMainPage'));
+const ViewGroup = React.lazy(()=>import('./notepad/ViewGroup'));
 const ViewGroupDocuments = React.lazy(()=>import('./notepad/ViewGroupDocuments'));
 const ViewDocument = React.lazy(()=>import('./notepad/ViewDocument'));
 
@@ -46,8 +49,15 @@ const router = createBrowserRouter([
 		element: <NotepadApp />,
         children: [
             { path: "/apps/notepad", element: <NotepadMainPage /> },
-            { path: "/apps/notepad/group/:groupId", element: <ViewGroupDocuments /> },
-            { path: "/apps/notepad/document/:docId", element: <ViewDocument /> },
+            { 
+                path: "/apps/notepad/group/:groupId", 
+                element: <ViewGroup />,
+                children: [
+                    {path: "/apps/notepad/group/:groupId", element: <ViewGroupDocuments/>},
+                    {path: "/apps/notepad/group/:groupId/:docId", element: <ViewDocument/>}
+                ]
+
+            },
         ]
   	},
     {

@@ -8,7 +8,7 @@ const STORE_GROUPS = 'groups';
 const STORE_DOCUMENTS = 'documents';
 const DB_VERSION_CURRENT = 2;
 
-type NotepadCategoryFieldType = {
+export type NotepadCategoryFieldType = {
     nom_champ: string,
     code_interne: string,
     type_champ: string,
@@ -268,6 +268,7 @@ export async function decryptGroups(workers: AppWorkers, userId: string) {
     }
 
     for await(let groupId of encryptedGroups) {
+        store = db.transaction(STORE_GROUPS, 'readonly').store;
         let group = await store.get(groupId) as NotepadGroupType;
         let { cle_id, nonce, data_chiffre, format } = group;
         let key = (await getDecryptedKeys([cle_id])).pop();

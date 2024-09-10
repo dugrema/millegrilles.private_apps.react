@@ -2,8 +2,6 @@ import { Link, useParams } from "react-router-dom";
 import useNotepadStore from "./notepadStore";
 import { useMemo } from "react";
 
-import SyncGroupDocuments from "./SyncGroupDocuments";
-
 function ViewGroupDocuments() {
 
     const params = useParams();
@@ -31,8 +29,6 @@ function ViewGroupDocuments() {
             <section>
                 <DocumentList />
             </section>
-
-            <SyncGroupDocuments groupId={groupId} />
         </>
     )
 }
@@ -47,7 +43,7 @@ function DocumentList() {
         return groupDocuments.map(groupDoc=>{
             return (
                 <div key={groupDoc.doc_id}>
-                    <Link to={`/apps/notepad/document/${groupDoc.doc_id}`}
+                    <Link to={`/apps/notepad/group/${groupDoc.groupe_id}/${groupDoc.doc_id}`}
                         className='font-bold underline'>
                             {groupDoc.label}
                     </Link>
