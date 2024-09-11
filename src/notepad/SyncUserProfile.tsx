@@ -110,7 +110,6 @@ function ListenCategoryGroupChanges() {
 
     let categoryGroupEventCb = useMemo(()=>{
         return proxy((event: SubscriptionMessage)=>{
-            console.debug("Event on category/group", event);
             let message = event.message as MessageUpdateCategoryGroup;
             if(message) {
                 let {group, category} = message;
@@ -137,7 +136,6 @@ function ListenCategoryGroupChanges() {
         // Sync categories and groups for the user. Save in IDB.
         syncCategoriesGroups(workers, setCategories, setGroups)
             .then(()=>{
-                console.debug("Notepad sync of categories/groups complete");
                 setSyncDone();
             })
             .catch(err=>console.error("Error during notepad sync", err));

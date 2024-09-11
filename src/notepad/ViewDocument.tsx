@@ -7,6 +7,7 @@ import HtmlEditor from "./HtmlEditor";
 import useWorkers from "../workers/workers";
 import { getDecryptedKeys } from "../MillegrillesIdb";
 import { multiencoding } from "millegrilles.cryptography";
+import useConnectionStore from "../connectionStore";
 
 function ViewDocument() {
 
@@ -17,6 +18,7 @@ function ViewDocument() {
 
     let [editDocument, setEditDocument] = useState(docId==='new');
 
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let categories = useNotepadStore(state=>state.categories);
     let selectedGroup = useNotepadStore(state=>state.selectedGroup);
     let groups = useNotepadStore(state=>state.groups);
@@ -25,14 +27,15 @@ function ViewDocument() {
     let editDocumentOpen = useCallback(()=>setEditDocument(true), [setEditDocument]);
     let editDocumentClose = useCallback(()=>setEditDocument(false), [setEditDocument]);
 
+    let deleteDocument = useCallback(()=>{
+        console.warn("Delete - TODO");
+    }, [])
+
     let [category, group] = useMemo(()=>{
         if(!groups || !categories) return [null, null];
-        console.debug("Load groupId", groupId);
         let group = groups.filter(item=>item.groupe_id===groupId).pop();
         let categoryId = group?.categorie_id;
         let category = categories.filter(item=>item.categorie_id===categoryId).pop();
-
-        console.debug("Category: %O, group: %O ", category, group);
 
         return [category, group];
     }, [groupId, groups, categories]);
@@ -40,7 +43,6 @@ function ViewDocument() {
     let groupDocument = useMemo(()=>{
         if(!docId || !category || !group || !groupDocuments) return;
         let groupDocument = groupDocuments.filter(item=>item.doc_id===docId).pop();
-        console.debug("GroupDocuments %O, Group document for docId: %O = %O", groupDocuments, docId, groupDocument);
         if(docId === 'new') {
             return {
                 label: '', 
@@ -55,7 +57,7 @@ function ViewDocument() {
             } as NotepadDocumentType;
         }
         return groupDocument;
-    }, [category, groupDocuments, docId, groupId]);
+    }, [category, groupDocuments, docId, groupId, group]);
 
     if(!category || !group || (!groupDocument) || !selectedGroup) {
         return (
@@ -72,9 +74,13 @@ function ViewDocument() {
                      className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         Back
                 </Link>
-                <button onClick={editDocumentOpen} disabled={editDocument}
-                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                <button onClick={editDocumentOpen} disabled={editDocument || !ready}
+                    className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
                         <i className='fa fa-edit'/>Edit
+                </button>
+                <button onClick={deleteDocument} disabled={editDocument || !ready}
+                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <i className='fa fa-cross'/>Delete
                 </button>
             </nav>
 
@@ -213,7 +219,10 @@ function EditFields(props: EditFieldsProps) {
     let workers = useWorkers();
     let navigate = useNavigate();
 
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
     let [data, setData] = useState(groupDocument.data || {});
+    let [hasChanged, setHasChanged] = useState(false);
 
     let cancelHandler = useCallback(()=>{
         if(groupDocument.doc_id === 'new') {
@@ -228,13 +237,23 @@ function EditFields(props: EditFieldsProps) {
         let {name, value} = e.currentTarget;
         let updatedData = {...data, [name]: value};
         setData(updatedData);
-    }, [data, setData]);
+
+        // Check if new field or if field value has changed
+        if(!data[name] || data[name] !== value) {
+            setHasChanged(true);
+        }
+    }, [data, setData, setHasChanged]);
 
     let onChangeValue = useCallback((e: {name: string, value: string})=>{
         let {name, value} = e;
         let updatedData = {...data, [name]: value};
         setData(updatedData);
-    }, [data, setData]);
+
+        // Check if new field or if field value has changed
+        if(!data[name] || data[name] !== value) {
+            setHasChanged(true);
+        }
+    }, [data, setData, setHasChanged]);
 
     let saveHandler = useCallback(()=>{
         // @ts-ignore
@@ -272,7 +291,15 @@ function EditFields(props: EditFieldsProps) {
 
                 let result = await workers.connection.notepadSaveDocument(command);
                 if(result.ok) {
-                    close()
+                    if(!docId) {
+                        // @ts-ignore
+                        let responseDocId = result.doc_id as string;
+                        // New document, redirect to new docId from response
+                        navigate(`/apps/notepad/group/${group.groupe_id}/${responseDocId}`);
+                    }
+
+                    // Close the edit screen, back to view.
+                    close();
                 } else {
                     console.error("Error saving document: ", result.err);
                 }
@@ -281,7 +308,7 @@ function EditFields(props: EditFieldsProps) {
                 console.error("Error encrypting/saving notpad document", err);
             })
 
-    }, [workers, groupDocument, category, group, data]);
+    }, [workers, groupDocument, category, group, data, navigate, close]);
     
     let fieldElements = useMemo(()=>{
         if(!category || !groupDocument) return <></>;
@@ -306,7 +333,7 @@ function EditFields(props: EditFieldsProps) {
                         onChange={onChangeHtml} onChangeValue={onChangeValue} 
                         />;
         });
-    }, [category, groupDocument, data, onChangeHtml]);
+    }, [category, groupDocument, data, onChangeHtml, onChangeValue]);
     
     return (
         <section className='grid grid-cols-12'>
@@ -314,7 +341,7 @@ function EditFields(props: EditFieldsProps) {
             {fieldElements}
             
             <div className='col-span-12 text-center pt-4'>
-                <button onClick={saveHandler}
+                <button onClick={saveHandler} disabled={!ready || !hasChanged}
                     className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
                         Save
                 </button>

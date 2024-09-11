@@ -186,14 +186,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.unsubscribe('notepadCatGroupEvents', cb);
     }
 
-    async subscribeUserGroupDocument(cb: SubscriptionCallback): Promise<void> {
+    async subscribeUserGroupDocument(groupId: string, cb: SubscriptionCallback): Promise<void> {
         if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.subscribe('notepadGroupDocumentEvents', cb);
+        return await this.connection.subscribe('notepadGroupDocumentEvents', cb, {groupe_id: groupId});
     }
 
-    async unsubscribeUserGroupDocument(cb: SubscriptionCallback): Promise<void> {
+    async unsubscribeUserGroupDocument(groupId: string, cb: SubscriptionCallback): Promise<void> {
         if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.unsubscribe('notepadGroupDocumentEvents', cb);
+        return await this.connection.unsubscribe('notepadGroupDocumentEvents', cb, {groupe_id: groupId});
     }
 
 }

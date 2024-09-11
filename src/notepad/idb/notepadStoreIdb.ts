@@ -164,6 +164,12 @@ export async function getUserGroupDocuments(userId: string, groupId: string, dec
     return groupDocuments;
 }
 
+export async function getGroupDocument(docId: string): Promise<NotepadDocumentType | null> {
+    let db = await openDB();
+    let store = db.transaction(STORE_DOCUMENTS, 'readonly').store;
+    return await store.get(docId);
+}
+
 // export async function getCategory(categoryId: string): Promise<NotepadCategoryType | null>{
 //     let db = await openDB();
 //     let store = db.transaction(STORE_CATEGORIES, 'readonly').store;

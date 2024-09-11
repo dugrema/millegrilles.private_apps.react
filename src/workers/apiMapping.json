@@ -43,7 +43,7 @@
         "notepadGroupDocumentEvents": {
             "exchanges": ["2.prive"],
             "routingKeys": [
-                "evenement.Documents.{USER_ID}.updateGroupDocument"
+                "evenement.Documents.{USER_ID}_{groupe_id}.updateGroupDocument"
             ]
         }
     }

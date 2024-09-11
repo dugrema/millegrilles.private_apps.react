@@ -14,6 +14,7 @@ interface NotepadStoreState {
     setSelectedGroup: (groupId: string | null) => void,
     clearGroup: () => void,
     setSyncDone: () => void,
+    updateDocument: (doc: NotepadDocumentType) => void,  // Update/add document in current group
 };
 
 const useNotepadStore = create<NotepadStoreState>()(
@@ -32,6 +33,35 @@ const useNotepadStore = create<NotepadStoreState>()(
 
             clearGroup: () => set(()=>({selectedGroup: null, groupDocuments: null})),
             setSyncDone: () => set(()=>({syncDone: true})),
+
+            updateDocument: (doc: NotepadDocumentType) => set((state)=>{
+                let updatedDocs = state.groupDocuments || [];
+                
+                // Check if we're updating the current group
+                let selectedGroup = state.selectedGroup;
+                if(doc.groupe_id !== selectedGroup) return {};  // Not current group, no change to apply.
+
+                if(state.groupDocuments) {
+                    let found = null;
+                    updatedDocs = state.groupDocuments.map(d=>{
+                        if(d.doc_id === doc.doc_id) {
+                            // Replace the document with the udpate
+                            found = true;
+                            return doc;
+                        } else {
+                            return d;
+                        }
+                    });
+
+                    if(!found) {
+                        updatedDocs.push(doc);  // This is a new document
+                    }
+                } else {
+                    updatedDocs.push(doc);  // The group is null
+                }
+
+                return {groupDocuments: updatedDocs};
+            })
         })
     ),
 );
