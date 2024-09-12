@@ -1,4 +1,4 @@
-import { ChangeEvent, Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useMemo, useState } from "react";
 import useNotepadStore from "./notepadStore";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { NotepadCategoryFieldType, NotepadCategoryType, NotepadDocumentData, NotepadDocumentType, NotepadGroupType, NotepadNewDocumentType } from "./idb/notepadStoreIdb";

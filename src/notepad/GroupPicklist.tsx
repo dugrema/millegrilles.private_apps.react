@@ -1,5 +1,6 @@
 import { ChangeEvent, useCallback, useMemo, useState } from "react";
 import useNotepadStore from "./notepadStore";
+import { NotepadGroupType } from "./idb/notepadStoreIdb";
 
 type GroupPicklistType = {
     onChange: (groupId: string) => void,
@@ -42,3 +43,10 @@ function GroupPicklist(props: GroupPicklistType) {
 }
 
 export default GroupPicklist;
+
+export function sortGroups(a: NotepadGroupType, b: NotepadGroupType, language?: string) {
+    language = language || navigator.languages[0] || navigator.language;
+    let labelA = (a.data?.nom_groupe || a.groupe_id).toLocaleLowerCase();
+    let labelB = (b.data?.nom_groupe || b.groupe_id).toLocaleLowerCase();
+    return labelA.localeCompare(labelB, language, {numeric: true, ignorePunctuation: true});
+}
