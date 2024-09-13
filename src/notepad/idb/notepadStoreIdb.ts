@@ -16,12 +16,18 @@ export type NotepadCategoryFieldType = {
     requis?: boolean,
 }
 
+export type NotepadNewCategoryType = {
+    categorie_id?: string,
+    version: number,
+    nom_categorie: string,
+    champs: Array<NotepadCategoryFieldType>,
+};
+
 export type NotepadCategoryType = {
     categorie_id: string,
     version: number,
     user_id: string,
     nom_categorie: string,
-    certificate: Array<string>,
     champs: Array<NotepadCategoryFieldType>,
 };
 
