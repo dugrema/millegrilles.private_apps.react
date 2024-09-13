@@ -15,7 +15,6 @@ function ViewGroup() {
 
     // Set the selected group
     useEffect(()=>{
-        let setGroup = false;
         if(!categories || !groups) {}       // Wait for sync
         else if(categories.length === 0) {} // New account or loading in progress
         else if(groups.length === 0) {}     // No configured groups or loading in progress
