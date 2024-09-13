@@ -198,7 +198,7 @@ export async function getGroupDocument(docId: string): Promise<NotepadDocumentTy
 //     return store.get(groupId);
 // }
 
-export async function syncCategories(categories: Array<NotepadCategoryType>) {
+export async function syncCategories(categories: Array<NotepadCategoryType>, opts?: {userId?: string}) {
     if(!categories) return []
 
     const db = await openDB();
@@ -212,6 +212,8 @@ export async function syncCategories(categories: Array<NotepadCategoryType>) {
                 await store.put(infoCategorie);
             }
         } else {
+            const user_id = infoCategorie.user_id || opts?.userId;
+            if(!user_id) throw new Error("UserId manquant");
             await store.put(infoCategorie);
         }
     }

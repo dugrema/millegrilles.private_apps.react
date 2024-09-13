@@ -15,6 +15,7 @@ interface NotepadStoreState {
     clearGroup: () => void,
     setSyncDone: () => void,
     updateDocument: (doc: NotepadDocumentType) => void,  // Update/add document in current group
+    updateCategory: (cat: NotepadCategoryType) => void,
 };
 
 const useNotepadStore = create<NotepadStoreState>()(
@@ -34,7 +35,7 @@ const useNotepadStore = create<NotepadStoreState>()(
             clearGroup: () => set(()=>({selectedGroup: null, groupDocuments: null})),
             setSyncDone: () => set(()=>({syncDone: true})),
 
-            updateDocument: (doc: NotepadDocumentType) => set((state)=>{
+            updateDocument: doc => set((state)=>{
                 let updatedDocs = state.groupDocuments || [];
                 
                 // Check if we're updating the current group
@@ -42,7 +43,7 @@ const useNotepadStore = create<NotepadStoreState>()(
                 if(doc.groupe_id !== selectedGroup) return {};  // Not current group, no change to apply.
 
                 if(state.groupDocuments) {
-                    let found = null;
+                    let found = false;
                     updatedDocs = state.groupDocuments.map(d=>{
                         if(d.doc_id === doc.doc_id) {
                             // Replace the document with the udpate
@@ -61,6 +62,27 @@ const useNotepadStore = create<NotepadStoreState>()(
                 }
 
                 return {groupDocuments: updatedDocs};
+            }),
+
+            updateCategory: cat => set((state)=>{
+                let updatedCategories = state.categories || [];
+
+                if(state.categories) {
+                    let found = false;
+                    updatedCategories = updatedCategories.map(item=>{
+                        if(item.categorie_id === cat.categorie_id) {
+                            found = true;
+                            return cat;
+                        } else {
+                            return item;
+                        }
+                    })
+                    if(!found) updatedCategories.push(cat);
+                } else {
+                    updatedCategories.push(cat);
+                }
+
+                return {categories: updatedCategories};
             })
         })
     ),

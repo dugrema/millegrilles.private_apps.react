@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { proxy } from 'comlink';
 
 import { decryptGroups, getMissingKeys, getUserCategories, getUserGroups, NotepadCategoryType, NotepadGroupType, openDB, syncCategories, syncGroups } from './idb/notepadStoreIdb';
@@ -51,8 +51,8 @@ async function init() {
 async function syncCategoriesGroups(workers: AppWorkers, setCategories: (categories: Array<NotepadCategoryType>) => void, setGroups: (groups: Array<NotepadGroupType>) => void) {
 
     // Get userId from user certificate.
-    let certificate = workers.connection.getMessageFactoryCertificate();
-    let userId = (await certificate).extensions?.userId;
+    let certificate = await workers.connection.getMessageFactoryCertificate();
+    let userId = certificate.extensions?.userId;
     if(!userId) throw new Error("UserId missing from connection certificate");
 
     try {
@@ -108,6 +108,26 @@ function ListenCategoryGroupChanges() {
     let setGroups = useNotepadStore(state=>state.setGroups);
     let setSyncDone = useNotepadStore(state=>state.setSyncDone);
 
+    let updateCategory = useNotepadStore(state=>state.updateCategory);
+
+    let [userId, setUserId] = useState('');
+
+    useEffect(()=>{
+        if(!workers || !ready) return;
+
+        // Get userId from user certificate.
+        workers.connection.getMessageFactoryCertificate()
+            .then(async certificate => {
+                let userId = certificate.extensions?.userId;
+                if(!userId) throw new Error("UserId missing from connection certificate");
+                setUserId(userId);
+            })
+            .catch(err=>console.error("Error loading userId", err));
+
+        // Cleanup
+        return () => setUserId('');
+    }, [workers, ready, setUserId]);
+
     let categoryGroupEventCb = useMemo(()=>{
         return proxy((event: SubscriptionMessage)=>{
             let message = event.message as MessageUpdateCategoryGroup;
@@ -115,15 +135,44 @@ function ListenCategoryGroupChanges() {
                 let {group, category} = message;
                 if(group) {
                     // Save/update group, fetch key and decrypt.
+                    console.debug("Update group on event: ", group);
+                    syncGroups([group], {userId})
+                        .then(async ()=>{
+                            if(!workers) throw new Error("Workers not initialized");
+                            if(!group) throw new Error("Illegal state, group null");
 
+                            // Fetch group keys
+                            let keyId = group.cle_id;
+                            let keyResponse = await workers.connection.getGroupKeys([keyId]);
+                            if(keyResponse.ok !== false) {
+                                for await (let key of keyResponse.cles) {
+                                    await saveDecryptedKey(key.cle_id, key.cle_secrete_base64);
+                                }
+                            } else {
+                                throw new Error('Error recovering group decryption keys: ' + keyResponse.err);
+                            }
+
+                            await decryptGroups(workers, userId);
+
+                            // Recover all groups (decrypted) from IDB, and set new list.
+                            let updatedGroups = await getUserGroups(userId, true);
+                            setGroups(updatedGroups);
+                        })
+                        .catch(err=>console.error("Error saving group event", err));
                 }
                 if(category) {
                     // Save/update category
-
+                    console.debug("Update category on event: ", category);
+                    syncCategories([category], {userId})
+                        .then(()=>{
+                            if(!category) throw new Error("Illegal state, category is null");
+                            updateCategory(category)
+                        })
+                        .catch(err=>console.error("Error saving category event", err));
                 }
             }
         })
-    }, []);
+    }, [workers, userId, updateCategory]);
 
     useEffect(()=>{
         if(!workers || !ready) return;  // Note ready to sync
