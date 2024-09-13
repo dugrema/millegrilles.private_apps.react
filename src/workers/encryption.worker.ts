@@ -37,18 +37,15 @@ export class AppsEncryptionWorker {
      * @param pems Arrays of pems, each pem being a certificat chain for a MaitreDesCles certificate.
      */
     async setEncryptionKeys(pems: Array<string[]>) {
-        console.debug("Pems: ", pems);
         let validWrappers = [];
         for await(let wrapper of pems.map(item=>new certificates.CertificateWrapper(item))) {
             try{ 
-                console.debug("Check wrapper ", wrapper);
                 await wrapper.verify(this.caCertificate?.certificate); 
                 validWrappers.push(wrapper);
             } catch(err) { 
                 console.warn("invalid MaitreDesCles certificate, rejected"); 
             }
         }
-        console.debug("Valid encryption keys: ", validWrappers);
         this.encryptionKeys = validWrappers;
     }
 
@@ -64,7 +61,6 @@ export class AppsEncryptionWorker {
             // @ts-ignore
             cleartextArray = cleartext as Uint8Array;
         } else {
-            console.debug("ENCODING Object %O to unit8array", cleartext);
             cleartextArray = new TextEncoder().encode(JSON.stringify(cleartext));
         }
         let cipher = null;
@@ -102,8 +98,6 @@ export class AppsEncryptionWorker {
         
         let out1 = await cipher.update(cleartextArray);
         let out2 = await cipher.finalize();
-
-        console.debug("Cipher: ", cipher);
 
         let buffers = [];
         if(out1) buffers.push(out1);

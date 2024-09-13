@@ -214,7 +214,7 @@ export async function syncCategories(categories: Array<NotepadCategoryType>, opt
         } else {
             const user_id = infoCategorie.user_id || opts?.userId;
             if(!user_id) throw new Error("UserId manquant");
-            await store.put(infoCategorie);
+            await store.put({...infoCategorie, user_id});
         }
     }
 }

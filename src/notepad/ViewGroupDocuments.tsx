@@ -5,9 +5,10 @@ import useNotepadStore from "./notepadStore";
 import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewGroupType } from "./idb/notepadStoreIdb";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
-import { DecryptionKey, DecryptionKeyIdb, getDecryptedKeys } from "../MillegrillesIdb";
+import { DecryptionKeyIdb, getDecryptedKeys } from "../MillegrillesIdb";
 import { multiencoding, messageStruct } from "millegrilles.cryptography";
 import { EncryptionResult } from "../workers/encryption.worker";
+import { sortCategories } from "./Categories";
 
 function ViewGroupDocuments() {
 
@@ -175,7 +176,6 @@ function GroupEdit(props: GroupProps) {
             
             let newKey = null as any;
             let key = null as DecryptionKeyIdb | null | undefined;
-            console.debug("New group flag ", newGroupFlag);
             if(!newGroupFlag) {
                 let keys = await getDecryptedKeys([keyId]);
                 key = keys.pop();
@@ -183,7 +183,6 @@ function GroupEdit(props: GroupProps) {
             }
 
             let cleartextData = new TextEncoder().encode(JSON.stringify(editedGroupData));
-            console.debug("Cleartext data", cleartextData);
 
             let encryptedData = null as EncryptionResult | null;
             if(key) {
@@ -217,16 +216,16 @@ function GroupEdit(props: GroupProps) {
 
             let result = await workers.connection.notepadSaveGroup(command, newKey);
             if(result.ok) {
-                console.debug("Save group result ", result);
-                if(!groupId) {
-                    // @ts-ignore
-                    let responseGroupId = result.groupe_id as string;
-                    // New document, redirect to new docId from response
+                // @ts-ignore
+                let responseGroupId = result.group_id as string;
+                // New document, redirect to new docId from response
+                edit(false);
+                if(!newGroupFlag) {
                     navigate(`/apps/notepad/group/${responseGroupId}`);
+                } else {
+                    // Check if key is received before opening group ...
+                    navigate(`/apps/notepad`);
                 }
-
-                // Close the edit screen, back to view.
-                backHandler();
             } else {
                 console.error("Error saving document: ", result.err);
             }
@@ -234,7 +233,7 @@ function GroupEdit(props: GroupProps) {
         })
         .catch(err=>console.error("Error saving group", err));
         
-    }, [workers, newGroupFlag, group, categoryId, editedGroupData, navigate, backHandler]);
+    }, [workers, newGroupFlag, group, categoryId, editedGroupData, groupId, navigate, edit]);
 
     return (
         <>
@@ -278,7 +277,11 @@ function CategoryPicklist(props: {value: string, onChange: (e: ChangeEvent<HTMLS
 
     let categoriesOptions = useMemo(()=>{
         if(!categories) return [];
-        return categories.map(cat=>{
+
+        let sortedCategories = [...categories];
+        sortedCategories.sort(sortCategories);
+
+        return sortedCategories.map(cat=>{
             return (
                 <option key={cat.categorie_id} value={cat.categorie_id}>{cat.nom_categorie}</option>
             )

@@ -135,7 +135,6 @@ function ListenCategoryGroupChanges() {
                 let {group, category} = message;
                 if(group) {
                     // Save/update group, fetch key and decrypt.
-                    console.debug("Update group on event: ", group);
                     syncGroups([group], {userId})
                         .then(async ()=>{
                             if(!workers) throw new Error("Workers not initialized");
@@ -162,7 +161,6 @@ function ListenCategoryGroupChanges() {
                 }
                 if(category) {
                     // Save/update category
-                    console.debug("Update category on event: ", category);
                     syncCategories([category], {userId})
                         .then(()=>{
                             if(!category) throw new Error("Illegal state, category is null");
@@ -172,7 +170,7 @@ function ListenCategoryGroupChanges() {
                 }
             }
         })
-    }, [workers, userId, updateCategory]);
+    }, [workers, userId, updateCategory, setGroups]);
 
     useEffect(()=>{
         if(!workers || !ready) return;  // Note ready to sync

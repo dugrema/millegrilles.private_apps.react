@@ -44,7 +44,11 @@ function ViewCategoryList(props: {onSelect: Dispatch<string>}) {
     }, [onSelect]);
 
     let categoryElems = useMemo(()=>{
-        return categories.map((cat) => (
+
+        let sortedCategories = [...categories];
+        sortedCategories.sort(sortCategories);
+
+        return sortedCategories.map((cat) => (
             <div key={cat.categorie_id}>
                 <button value={cat.categorie_id} onClick={onSelectHandler}
                     className='underline font-bold pb-2'>
@@ -78,7 +82,7 @@ function EditCategory(props: {categoryId: string, close: ()=>void}) {
 
     let category = useMemo(()=>{
         return categories.filter(item=>item.categorie_id===categoryId).pop() || {} as NotepadCategoryType;
-    }, [categories]);
+    }, [categories, categoryId]);
 
     let [hasChanged, setHasChanged] = useState(false);
     
@@ -157,14 +161,16 @@ function EditCategory(props: {categoryId: string, close: ()=>void}) {
             command.categorie_id = category.categorie_id; 
         }
 
-        console.debug("save category ", command);
         workers.connection.notepadSaveCategory(command)
             .then(result=>{
-                console.debug("Save category result ", result);
-                close();
+                if(result.ok) {
+                    close();
+                } else {
+                    console.error("Error saving group: ", result.err);
+                }
             })
             .catch(err=>console.error("Error saving category", err));
-    }, [workers, categoryName, fields, categoryId, category, close]);
+    }, [workers, categoryName, fields, category, close]);
 
     return (
         <>
@@ -236,7 +242,7 @@ function EditFields(props: EditFieldsProps) {
                 </Fragment>
             );
         });
-    }, [fields]);
+    }, [fields, onChange, remove]);
 
     return (
         <>{fieldElems}</>
@@ -257,4 +263,11 @@ function FieldTypeSelect(props: {name: string, value: string, className?: string
             <option value='markdown'>Markdown Editor</option>
         </select>
     )
+}
+
+export function sortCategories(a: NotepadCategoryType, b: NotepadCategoryType, language?: string) {
+    language = language || navigator.languages[0] || navigator.language;
+    let labelA = (a.nom_categorie || a.categorie_id).toLocaleLowerCase();
+    let labelB = (b.nom_categorie || b.categorie_id).toLocaleLowerCase();
+    return labelA.localeCompare(labelB, language, {numeric: true, ignorePunctuation: true});
 }

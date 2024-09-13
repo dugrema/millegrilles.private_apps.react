@@ -145,8 +145,8 @@ function ViewUnsupportedField(props: ViewFieldProps) {
     let {field} = props;
     return (
         <>
-            <label className='col-span-2'>{field.nom_champ}</label>
-            <div className='col-span-10'>Unsupported field type</div>
+            <label className='col-span-4 sm:col-span-2 pt-2 sm:pt-0'>{field.nom_champ}</label>
+            <div className='col-span-8 sm:col-span-10'>Unsupported field type</div>
         </>        
     )
 }
@@ -158,8 +158,8 @@ function ViewTextField(props: ViewFieldProps) {
 
     return (
         <>
-            <label className='col-span-2'>{field.nom_champ}</label>
-            <div className='col-span-10'>{data}</div>
+            <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0'>{field.nom_champ}</label>
+            <div className='col-span-12 sm:col-span-10 break-words'>{data}</div>
         </>
     )
 }
@@ -171,8 +171,8 @@ function ViewPasswordField(props: ViewFieldProps) {
 
     return (
         <>
-            <label className='col-span-2'>{field.nom_champ}</label>
-            <div className='col-span-10'>{data}</div>
+            <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0'>{field.nom_champ}</label>
+            <div className='col-span-12 sm:col-span-10 break-all'>{data}</div>
         </>
     )
 }
@@ -184,8 +184,8 @@ function ViewUrlField(props: ViewFieldProps) {
 
     return (
         <>
-            <label className='col-span-2'>{field.nom_champ}</label>
-            <div className='col-span-10'>{data}</div>
+            <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0'>{field.nom_champ}</label>
+            <div className='col-span-12 sm:col-span-10 break-words'>{data}</div>
         </>
     )
 }
@@ -364,8 +364,8 @@ function EditUnsupportedField(props: EditFieldProps) {
     let {field} = props;
     return (
         <>
-            <label className='col-span-2'>{field.nom_champ}</label>
-            <div className='col-span-10'>Unsupported field type</div>
+            <label className='col-span-4 sm:col-span-2'>{field.nom_champ}</label>
+            <div className='col-span-8 sm:col-span-10'>Unsupported field type</div>
         </>        
     )
 }
@@ -377,8 +377,8 @@ function EditTextField(props: EditFieldProps) {
 
     return (
         <>
-            <label className='col-span-2'>{field.nom_champ}</label>
-            <div className='col-span-10'>
+            <label className='col-span-12 sm:col-span-2'>{field.nom_champ}</label>
+            <div className='col-span-12 sm:col-span-10'>
                 <input type='text' name={field.code_interne} value={data} onChange={onChange} 
                     className='w-full text-black' />
             </div>
@@ -393,8 +393,8 @@ function EditUrlField(props: EditFieldProps) {
 
     return (
         <>
-            <label className='col-span-2'>{field.nom_champ}</label>
-            <div className='col-span-10'>
+            <label className='col-span-12 sm:col-span-2'>{field.nom_champ}</label>
+            <div className='col-span-12 sm:col-span-10'>
                 <input type='text' name={field.code_interne} value={data} onChange={onChange} 
                     className='w-full text-black' />
             </div>
@@ -409,8 +409,8 @@ function EditPasswordField(props: EditFieldProps) {
 
     return (
         <>
-            <label className='col-span-2'>{field.nom_champ}</label>
-            <div className='col-span-10'>
+            <label className='col-span-12 sm:col-span-2'>{field.nom_champ}</label>
+            <div className='col-span-12 sm:col-span-10'>
                 <input type='text' name={field.code_interne} value={data} onChange={onChange} 
                     className='w-full text-black' />
             </div>
@@ -430,7 +430,7 @@ function EditHtmlField(props: EditFieldProps) {
     return (
         <div className='col-span-12 pt-4'>
             <label>{field.nom_champ}</label>
-            <div className='pt-2 w-full h-96 pb-10'>
+            <div className='pt-2 w-full h-96 pb-24 md:pb-12'>
                 <HtmlEditor value={data} onChange={onChangeHandler} />
             </div>
         </div>
