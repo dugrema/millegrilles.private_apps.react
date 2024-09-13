@@ -42,6 +42,8 @@ export async function initWorkers(callback: (params: ConnectionCallbackParameter
     let serverUrl = new URL(window.location.href);
     serverUrl.pathname = SOCKETIO_PATH;
     await connection.initialize(serverUrl.href, ca, callback, {reconnectionDelay: 7500});
+    await encryption.initialize(ca);
+    await encryption.setEncryptionKeys(chiffrage);
 
     workers = {connection, encryption};
 

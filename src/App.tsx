@@ -3,8 +3,6 @@ import { createBrowserRouter, RouterProvider, Link } from "react-router-dom";
 
 import { ErrorPage } from './ErrorBoundary';
 import InitializeWorkers from './workers/InitializeWorkers';
-// import useWorkers from './workers/workers';
-// import useConnectionStore from "./connectionStore";
 
 import HeaderMenu from './Menu';
 
@@ -17,11 +15,13 @@ import Footer from './Footer';
 // AI Chat
 const AppAiChat = React.lazy(()=>import('./aichat/AppAiChat'));
 
+// Notepad
 const NotepadApp = React.lazy(()=>import('./notepad/AppNotepad'));
 const NotepadMainPage = React.lazy(()=>import('./notepad/NotepadMainPage'));
 const ViewGroup = React.lazy(()=>import('./notepad/ViewGroup'));
 const ViewGroupDocuments = React.lazy(()=>import('./notepad/ViewGroupDocuments'));
 const ViewDocument = React.lazy(()=>import('./notepad/ViewDocument'));
+const Categories = React.lazy(()=>import('./notepad/Categories'));
 
 // SenseursPassifs
 const AppSenseursPassifs = React.lazy(()=>import('./senseurspassifs/App'));
@@ -42,13 +42,15 @@ const router = createBrowserRouter([
 	},
 	{
 		path: "/apps/aichat",
-		element: <AppAiChat />
+		element: <AppAiChat />,
+        errorElement: <ErrorPage />
   	},
     {
 		path: "/apps/notepad",
 		element: <NotepadApp />,
         children: [
             { path: "/apps/notepad", element: <NotepadMainPage /> },
+            { path: "/apps/notepad/categories", element: <Categories /> },
             { 
                 path: "/apps/notepad/group/:groupId", 
                 element: <ViewGroup />,
@@ -56,9 +58,9 @@ const router = createBrowserRouter([
                     {path: "/apps/notepad/group/:groupId", element: <ViewGroupDocuments/>},
                     {path: "/apps/notepad/group/:groupId/:docId", element: <ViewDocument/>}
                 ]
-
             },
-        ]
+        ],
+        errorElement: <ErrorPage />
   	},
     {
 		path: "/apps/senseurspassifs",
@@ -72,7 +74,8 @@ const router = createBrowserRouter([
             { path: "/apps/senseurspassifs/device/:deviceId/programs", element: <SenseursPassifsEditDevicePrograms /> },
             { path: "/apps/senseurspassifs/bluetooth", element: <SenseursPassifsBluetoothConfiguration /> },
             { path: "/apps/senseurspassifs/configuration", element: <SenseursPassifsAccountConfiguration /> },
-        ]
+        ],
+        errorElement: <ErrorPage />
   	},
 ]);
 

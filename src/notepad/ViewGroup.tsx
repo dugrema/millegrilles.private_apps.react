@@ -6,7 +6,7 @@ import SyncGroupDocuments from "./SyncGroupDocuments";
 
 function ViewGroup() {
 
-    const params = useParams();
+    let params = useParams();
     let groupId = params.groupId as string;
 
     let categories = useNotepadStore(state=>state.categories);
@@ -15,10 +15,17 @@ function ViewGroup() {
 
     // Set the selected group
     useEffect(()=>{
-        if(!categories || !groups) return;  // Wait for sync
-        if(categories.length === 0) return;  // New account or loading in progress
-        if(groups.length === 0) return;  // No configured groups or loading in progress
-        setSelectedGroup(groupId);
+        let setGroup = false;
+        if(!categories || !groups) {}       // Wait for sync
+        else if(categories.length === 0) {} // New account or loading in progress
+        else if(groups.length === 0) {}     // No configured groups or loading in progress
+        else if(groupId === 'new') {}       // Adding a new group
+        else {
+            setSelectedGroup(groupId);
+            return;
+        }
+        
+        setSelectedGroup(null);
     }, [categories, groups, groupId, setSelectedGroup]);
 
     return (

@@ -25,7 +25,17 @@ export type NotepadCategoryType = {
     champs: Array<NotepadCategoryFieldType>,
 };
 
-type NotepadGroupData = {nom_groupe: string, securite_groupe: string};
+export type NotepadGroupData = {nom_groupe: string, securite_groupe: string};
+
+export type NotepadNewGroupType = {
+    groupe_id?: string | null,
+    user_id: string,
+    categorie_id: string,
+    cle_id: string,
+    format: string,
+    nonce: string,
+    data_chiffre: string,
+};
 
 export type NotepadGroupType = {
     user_id: string,

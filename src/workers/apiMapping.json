@@ -23,7 +23,9 @@
         {"domain": "SenseursPassifs", "action": "restaurerAppareil"},
         {"domain": "SenseursPassifs", "action": "majConfigurationUsager"},
         {"domain": "senseurspassifs_relai", "action": "commandeAppareil"},
-        {"domain": "Documents", "action": "sauvegarderDocument"}
+        {"domain": "Documents", "action": "sauvegarderDocument"},
+        {"domain": "Documents", "action": "sauvegarderGroupeUsager"},
+        {"domain": "Documents", "action": "sauvegarderCategorieUsager"}
     ],
     "subscriptions": {
         "userDeviceEvents": {
@@ -36,15 +38,11 @@
         },
         "notepadCatGroupEvents": {
             "exchanges": ["2.prive"],
-            "routingKeys": [
-                "evenement.Documents.{USER_ID}.updateCatGroup"
-            ]
+            "routingKeys": ["evenement.Documents.{USER_ID}.updateCatGroup"]
         },
         "notepadGroupDocumentEvents": {
             "exchanges": ["2.prive"],
-            "routingKeys": [
-                "evenement.Documents.{USER_ID}_{groupe_id}.updateGroupDocument"
-            ]
+            "routingKeys": ["evenement.Documents.{USER_ID}_{groupe_id}.updateGroupDocument"]
         }
     }
 }
