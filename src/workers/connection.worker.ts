@@ -60,7 +60,7 @@ export type SenseursPassifsConfigurationUpdate = {
 }
 
 type NotepadCategoriesResponse = MessageResponse & { categories: Array<NotepadCategoryType> };
-type NotepadGroupsResponse = MessageResponse & { groupes: Array<NotepadGroupType> };
+type NotepadGroupsResponse = MessageResponse & { groupes: Array<NotepadGroupType>, supprimes?: Array<string>, date_sync: number };
 
 type DecryptionKeyResponse = MessageResponse & { cles: Array<DecryptionKey> };
 

@@ -32,7 +32,6 @@ function SyncGroupDocuments() {
         return proxy((event: SubscriptionMessage)=>{
             let message = event.message as MessageUpdateDocument;
 
-            console.debug("Document event ", message);
             if(message.document) {
                 let docId = message.document.doc_id;
                 syncDocuments([message.document], {userId})
@@ -56,11 +55,9 @@ function SyncGroupDocuments() {
                 // This is a delete/restore event
                 let docId = message.doc_id;
                 if(docId && message.supprime) {
-                    console.debug("Delete document ", docId)
                     deleteGroupDocument(docId)
                         .then(()=>{
                             if(docId) {
-                                console.debug("Remove %s from view", docId);
                                 removeDocument(docId);  // Remove from view
                             }
                         })
@@ -108,7 +105,6 @@ async function syncGroupDocuments(workers: AppWorkers, userId: string, groupId: 
         let previousDateSync = groupIdb?.dateSync;
 
         let documentsForGroup = await workers.connection.getNotepadDocumentsForGroup(groupId, undefined, previousDateSync);
-        console.debug("Documents for group: ", documentsForGroup);
         let groupDocuments = documentsForGroup.documents;
         let dateSync = documentsForGroup.date_sync;
 

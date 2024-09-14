@@ -25,7 +25,6 @@ function GroupPicklist(props: GroupPicklistType) {
 
     let groupOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>{
         let value = e.currentTarget.value;
-        console.debug("currentTarget", e.currentTarget);
         setSelectedGroup(value);
         onChange(value);
     }, [setSelectedGroup, onChange]);

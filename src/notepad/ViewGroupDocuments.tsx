@@ -43,7 +43,25 @@ function ViewGroup(props: GroupProps) {
 
     let { group, edit } = props;
 
+    let workers = useWorkers();
+    let navigate = useNavigate();
+
     let openEdit = useCallback(()=>edit(true), [edit]);
+
+    let deleteGroup = useCallback(()=>{
+        if(!workers) throw new Error("Workers not initialized");
+        if(!group) throw new Error('Group null');
+        let groupId = group.groupe_id;
+        workers.connection.notepadDeleteGroup(groupId)
+            .then(response=>{
+                if(response.ok) {
+                    navigate('/apps/notepad');
+                } else {
+                    console.error("Error deleteing group", response.err);
+                }
+            })
+            .catch(err=>console.error("Error deleting group", err));
+    }, [workers, group, navigate]);
 
     if(!group) return <></>;  // Loading group
 
@@ -66,6 +84,10 @@ function ViewGroup(props: GroupProps) {
                 <button onClick={openEdit}
                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         <i className='fa fa-edit'/> Edit group
+                </button>
+                <button onClick={deleteGroup}
+                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <i className='fa fa-remove'/> Delete group
                 </button>
             </section>
 

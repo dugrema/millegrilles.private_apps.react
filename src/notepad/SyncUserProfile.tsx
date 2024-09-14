@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { proxy } from 'comlink';
 
-import { decryptGroups, getMissingKeys, getUserCategories, getUserGroups, NotepadCategoryType, NotepadGroupType, openDB, syncCategories, syncGroups } from './idb/notepadStoreIdb';
+import { decryptGroups, deleteGroup, getMissingKeys, getUserCategories, getUserGroups, NotepadCategoryType, NotepadGroupType, openDB, syncCategories, syncGroups } from './idb/notepadStoreIdb';
 
 import useWorkers, { AppWorkers } from '../workers/workers';
 import useConnectionStore from '../connectionStore';
@@ -12,6 +12,8 @@ import { SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
 let promiseIdb: Promise<void> | null = null;
 
 type MessageUpdateCategoryGroup = {
+    groupe_id?: string,
+    supprime?: boolean,
     category?: NotepadCategoryType | null,
     group?: NotepadGroupType | null,
 }
@@ -67,7 +69,8 @@ async function syncCategoriesGroups(workers: AppWorkers, setCategories: (categor
         // Sync groups
         let groupResponse = await workers.connection.getNotepadUserGroups();
         if(groupResponse.groupes) {
-            await syncGroups(groupResponse.groupes, {userId});
+            let supprimes = groupResponse.supprimes;
+            await syncGroups(groupResponse.groupes, {userId, supprimes});
         } else {
             console.error("Error sync groups: ", groupResponse.err);
         }
@@ -132,7 +135,7 @@ function ListenCategoryGroupChanges() {
         return proxy((event: SubscriptionMessage)=>{
             let message = event.message as MessageUpdateCategoryGroup;
             if(message) {
-                let {group, category} = message;
+                let {group, category, groupe_id, supprime} = message;
                 if(group) {
                     // Save/update group, fetch key and decrypt.
                     syncGroups([group], {userId})
@@ -144,7 +147,6 @@ function ListenCategoryGroupChanges() {
                             let keyId = group.cle_id;
                             let requiredKeyIds = await getMissingKeys(userId);
                             if(requiredKeyIds.includes(keyId)) {
-                                console.debug("Fetch new group key");
                                 // Fetch missing group key
                                 let keyResponse = await workers.connection.getGroupKeys([keyId]);
                                 if(keyResponse.ok !== false) {
@@ -172,6 +174,19 @@ function ListenCategoryGroupChanges() {
                             updateCategory(category)
                         })
                         .catch(err=>console.error("Error saving category event", err));
+                }
+                if(supprime !== undefined) {
+                    if(groupe_id) {
+                        // Delete the group
+                        if(supprime) {
+                            deleteGroup(groupe_id)
+                                .then(async () => {
+                                    let updatedGroups = await getUserGroups(userId, true);
+                                    setGroups(updatedGroups);
+                                })
+                                .catch(err=>console.error("Error deleting group", err));
+                        }
+                    }
                 }
             }
         })

@@ -168,6 +168,12 @@ export async function getUserGroups(userId: string, decryptedOnly?: boolean): Pr
     return groups;
 }
 
+export async function deleteGroup(groupId: string) {
+    let db = await openDB();
+    let store = db.transaction(STORE_GROUPS, 'readwrite').store;
+    await store.delete(groupId);
+}
+
 export async function getUserGroupDocuments(userId: string, groupId: string, decryptedOnly?: boolean): Promise<Array<NotepadDocumentType>> {
     let db = await openDB();
     let store = db.transaction(STORE_DOCUMENTS, 'readonly').store;
@@ -233,7 +239,7 @@ export async function syncCategories(categories: Array<NotepadCategoryType>, opt
     }
 }
 
-export async function syncGroups(groupes: Array<NotepadGroupType>, opts?: {userId?: string}) {
+export async function syncGroups(groupes: Array<NotepadGroupType>, opts?: {userId?: string, supprimes?: Array<string>}) {
     if(!groupes) return [];
 
     const db = await openDB();
@@ -250,6 +256,11 @@ export async function syncGroups(groupes: Array<NotepadGroupType>, opts?: {userI
             const user_id = infoGroupe.user_id || opts?.userId;
             if(!user_id) throw new Error("UserId manquant");
             await store.put({...infoGroupe, user_id, decrypted: false});
+        }
+    }
+    if(opts?.supprimes) {
+        for await (let groupId of opts.supprimes) {
+            await store.delete(groupId);
         }
     }
 }
