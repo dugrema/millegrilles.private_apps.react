@@ -248,7 +248,9 @@ function GroupEdit(props: GroupProps) {
                 <h1 className='font-bold text-lg'>Edit group</h1>
                 <div className='grid grid-cols-2 pr-2'>
                     <label>Category</label>
-                    <div><CategoryPicklist value={categoryId} onChange={categoryOnChange} /></div>
+                    <div>
+                        <CategoryPicklist value={categoryId} onChange={categoryOnChange} readOnly={!newGroupFlag} />
+                    </div>
                     <label htmlFor='nameInput'>Name</label>
                     <input id='nameInput' type='text' name='nom_groupe' value={editedGroupData.nom_groupe || ''} onChange={onChangeHtml} 
                         className='text-black'/>
@@ -270,9 +272,9 @@ function GroupEdit(props: GroupProps) {
     
 }
 
-function CategoryPicklist(props: {value: string, onChange: (e: ChangeEvent<HTMLSelectElement>)=>void}) {
+function CategoryPicklist(props: {value: string, onChange: (e: ChangeEvent<HTMLSelectElement>)=>void, readOnly?: boolean} ) {
 
-    let { value, onChange } = props;
+    let { value, onChange, readOnly } = props;
 
     let categories = useNotepadStore(state=>state.categories);
 
@@ -288,6 +290,14 @@ function CategoryPicklist(props: {value: string, onChange: (e: ChangeEvent<HTMLS
             )
         })
     }, [categories]);
+
+    let categorySpan = useMemo(()=>{
+        if(!readOnly) return null;
+        let cat = categories.filter(item=>item.categorie_id===value).pop();
+        return <span>{cat?.nom_categorie}</span>
+    }, [readOnly, categories, value])
+
+    if(categorySpan) return categorySpan;
 
     return (
         <>
