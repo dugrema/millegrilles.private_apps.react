@@ -6,7 +6,7 @@ import HtmlViewer from "./HtmlViewer";
 import HtmlEditor from "./HtmlEditor";
 import useWorkers from "../workers/workers";
 import { getDecryptedKeys } from "../MillegrillesIdb";
-import { multiencoding } from "millegrilles.cryptography";
+import { multiencoding, random, digest } from "millegrilles.cryptography";
 import useConnectionStore from "../connectionStore";
 
 function ViewDocument() {
@@ -161,12 +161,29 @@ function ViewUnsupportedField(props: ViewFieldProps) {
 function ViewTextField(props: ViewFieldProps) {
     let {field, value} = props;
 
-    let data = value.data?value.data[field.code_interne]:'';
+    let data = (value.data?value.data[field.code_interne]:'') as string;
+
+    let [copied, setCopied] = useState(false);
+
+    let copyToClipboard = useCallback(()=>{
+        if(data) navigator.clipboard.writeText(data);
+        setCopied(true);
+        setTimeout(()=>setCopied(false), 3_000);
+    }, [data, setCopied]);
+
+    let className = useMemo(()=>{
+        if(copied) return ' text-green-600';
+        return '';
+    }, [copied]);
 
     return (
         <>
             <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0'>{field.nom_champ}</label>
-            <div className='col-span-12 sm:col-span-10 break-words'>{data}</div>
+            <div onClick={copyToClipboard}
+                className={'transition-all col-span-12 sm:col-span-10 break-word cursor-pointer ' + className}>
+                    {data}
+                    {copied?<i className='pl-2 fa fa-check'/>:<></>}
+            </div>
         </>
     )
 }
@@ -174,12 +191,29 @@ function ViewTextField(props: ViewFieldProps) {
 function ViewPasswordField(props: ViewFieldProps) {
     let {field, value} = props;
 
-    let data = value.data?value.data[field.code_interne]:'';
+    let data = (value.data?value.data[field.code_interne]:'') as string;
+
+    let [copied, setCopied] = useState(false);
+
+    let copyToClipboard = useCallback(()=>{
+        if(data) navigator.clipboard.writeText(data);
+        setCopied(true);
+        setTimeout(()=>setCopied(false), 3_000);
+    }, [data, setCopied]);
+
+    let className = useMemo(()=>{
+        if(copied) return ' text-green-600';
+        return '';
+    }, [copied]);
 
     return (
         <>
             <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0'>{field.nom_champ}</label>
-            <div className='col-span-12 sm:col-span-10 break-all'>{data}</div>
+            <div onClick={copyToClipboard}
+                className={'transition-all col-span-12 sm:col-span-10 break-word cursor-pointer ' + className}>
+                    {data}
+                    {copied?<i className='pl-2 fa fa-check'/>:<></>}
+            </div>
         </>
     )
 }
@@ -189,15 +223,43 @@ function ViewUrlField(props: ViewFieldProps) {
 
     let data = (value.data?value.data[field.code_interne]:'') as string;
 
+    let [copied, setCopied] = useState(false);
+
+    let copyToClipboard = useCallback(()=>{
+        if(data) navigator.clipboard.writeText(data);
+        setCopied(true);
+        setTimeout(()=>setCopied(false), 3_000);
+    }, [data, setCopied]);
+
+    let className = useMemo(()=>{
+        if(copied) return ' text-green-600';
+        return '';
+    }, [copied]);
+
+    let wellFormed = useMemo(()=>{
+        try {
+            new URL(data);
+            return true;
+        } catch(err) {
+            return false;
+        }
+    }, [data]);
+
     return (
         <>
             <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0'>{field.nom_champ}</label>
-            <div className='col-span-12 sm:col-span-10 break-words'>
-                {data}
-                <a href={data} target="_blank" rel="noreferrer"
-                    className='varbtn w-10 pt-1 pb-1 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
-                        <i className='fa fa-external-link'/>
-                </a>
+            <div onClick={copyToClipboard}
+                 className={'transition-all col-span-12 sm:col-span-10 break-word cursor-pointer ' + className}>
+                    {data}
+                    {wellFormed?
+                        <a href={data} target="_blank" rel="noreferrer"
+                            className='varbtn w-10 pt-1 pb-1 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
+                                <i className='fa fa-external-link'/>
+                        </a>
+                    :
+                        data?<span className='pl-2 font-bold text-red-600'>(Invalid URL)</span>:<></>
+                    }
+                    {copied?<i className='pl-2 fa fa-check'/>:<></>}
             </div>
         </>
     )
@@ -416,16 +478,26 @@ function EditUrlField(props: EditFieldProps) {
 }
 
 function EditPasswordField(props: EditFieldProps) {
-    let {field, editData, onChange} = props;
+    let {field, editData, onChange, onChangeValue} = props;
 
     let data = useMemo(() => editData[field.code_interne] || '', [editData, field]);
+
+    let generatePassword = useCallback((passwd: string)=>{
+        onChangeValue({name: field.code_interne, value: passwd});
+    }, [onChangeValue, field]);
 
     return (
         <>
             <label className='col-span-12 sm:col-span-2'>{field.nom_champ}</label>
-            <div className='col-span-12 sm:col-span-10'>
+            <div className='col-span-8 sm:col-span-8'>
                 <input type='text' name={field.code_interne} value={data} onChange={onChange} 
                     className='w-full text-black' />
+            </div>
+            <div className='col-span-4 sm:col-span-2'>
+                <PasswordGenerator onChange={generatePassword}
+                    className='varbtn w-24 pt-2 pb-2 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        Generate
+                </PasswordGenerator>
             </div>
         </>
     )
@@ -447,5 +519,26 @@ function EditHtmlField(props: EditFieldProps) {
                 <HtmlEditor value={data} onChange={onChangeHandler} />
             </div>
         </div>
+    )
+}
+
+function PasswordGenerator(props: {onChange: (e: string)=>void, className?: string, children?: any}) {
+
+    const { onChange, className } = props
+
+    const generer = useCallback(()=>{
+        // use 16 random bytes, hash with blake2s and retain 16 characters of the base64 encoding.
+        // Note: the first 7 characters are multibase and multihash values (not random) so they are skipped.
+        const randomBytes = random.getRandom(16);
+        digest.digest(randomBytes, {digestName: 'blake2s-256', encoding: 'base64'})
+            .then(hashedValue=>{
+                let value = hashedValue.slice(7,23) as string;
+                onChange(value);
+            })
+            .catch(err=>console.error("Error generating password", err));
+    }, [onChange])
+
+    return (
+        <button className={className} onClick={generer}>{props.children}</button>
     )
 }
