@@ -10,6 +10,7 @@ export type EncryptionResult = {
     digest?: Uint8Array,
     cle?: {signature: keymaster.DomainSignature}
     keyId?: string,
+    cleSecrete?: Uint8Array,
 };
 
 export class AppsEncryptionWorker {
@@ -90,10 +91,11 @@ export class AppsEncryptionWorker {
             }
 
             keyId = await keySignature.getKeyId();
+            key = secret.secret;
             newKey = {
                 signature: keySignature,
-                cles
-            }
+                cles,
+            };
         }
         
         let out1 = await cipher.update(cleartextArray);
@@ -108,6 +110,7 @@ export class AppsEncryptionWorker {
         if(newKey && keyId) {
             info.keyId = keyId;
             info.cle = newKey;
+            info.cleSecrete = key;
         }
 
         return info;

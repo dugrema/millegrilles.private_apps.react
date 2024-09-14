@@ -5,7 +5,7 @@ import useNotepadStore from "./notepadStore";
 import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewGroupType } from "./idb/notepadStoreIdb";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
-import { DecryptionKeyIdb, getDecryptedKeys } from "../MillegrillesIdb";
+import { DecryptionKeyIdb, getDecryptedKeys, saveDecryptedKey } from "../MillegrillesIdb";
 import { multiencoding, messageStruct } from "millegrilles.cryptography";
 import { EncryptionResult } from "../workers/encryption.worker";
 import { sortCategories } from "./Categories";
@@ -216,16 +216,17 @@ function GroupEdit(props: GroupProps) {
 
             let result = await workers.connection.notepadSaveGroup(command, newKey);
             if(result.ok) {
+                // Save the new decryption key locally
+                if(encryptedData.cleSecrete) {
+                    await saveDecryptedKey(command.cle_id, encryptedData.cleSecrete);
+                }
+
                 // @ts-ignore
                 let responseGroupId = result.group_id as string;
-                // New document, redirect to new docId from response
+
+                // Redirect to group page
                 edit(false);
-                if(!newGroupFlag) {
-                    navigate(`/apps/notepad/group/${responseGroupId}`);
-                } else {
-                    // Check if key is received before opening group ...
-                    navigate(`/apps/notepad`);
-                }
+                navigate(`/apps/notepad/group/${responseGroupId}`);
             } else {
                 console.error("Error saving document: ", result.err);
             }

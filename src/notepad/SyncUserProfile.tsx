@@ -140,15 +140,20 @@ function ListenCategoryGroupChanges() {
                             if(!workers) throw new Error("Workers not initialized");
                             if(!group) throw new Error("Illegal state, group null");
 
-                            // Fetch group keys
+                            // Check if the key exists locally
                             let keyId = group.cle_id;
-                            let keyResponse = await workers.connection.getGroupKeys([keyId]);
-                            if(keyResponse.ok !== false) {
-                                for await (let key of keyResponse.cles) {
-                                    await saveDecryptedKey(key.cle_id, key.cle_secrete_base64);
+                            let requiredKeyIds = await getMissingKeys(userId);
+                            if(requiredKeyIds.includes(keyId)) {
+                                console.debug("Fetch new group key");
+                                // Fetch missing group key
+                                let keyResponse = await workers.connection.getGroupKeys([keyId]);
+                                if(keyResponse.ok !== false) {
+                                    for await (let key of keyResponse.cles) {
+                                        await saveDecryptedKey(key.cle_id, key.cle_secrete_base64);
+                                    }
+                                } else {
+                                    throw new Error('Error recovering group decryption keys: ' + keyResponse.err);
                                 }
-                            } else {
-                                throw new Error('Error recovering group decryption keys: ' + keyResponse.err);
                             }
 
                             await decryptGroups(workers, userId);
