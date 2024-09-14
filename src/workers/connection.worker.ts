@@ -64,7 +64,7 @@ type NotepadGroupsResponse = MessageResponse & { groupes: Array<NotepadGroupType
 
 type DecryptionKeyResponse = MessageResponse & { cles: Array<DecryptionKey> };
 
-type NotepadDocumentsResponse = MessageResponse & { documents?: Array<NotepadDocumentType> };
+type NotepadDocumentsResponse = MessageResponse & { documents?: Array<NotepadDocumentType>, supprimes?: Array<string>, date_sync: number };
 
 export class AppsConnectionWorker extends ConnectionWorker {
 
@@ -153,9 +153,12 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendRequest({}, DOMAINE_DOCUMENTS, 'getCategoriesUsager') as NotepadCategoriesResponse;
     }
 
-    async getNotepadUserGroups() {
+    async getNotepadUserGroups(supprime?: boolean) {
         if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.sendRequest({}, DOMAINE_DOCUMENTS, 'getGroupesUsager') as NotepadGroupsResponse;
+        return await this.connection.sendRequest(
+            {supprime: !!supprime}, 
+            DOMAINE_DOCUMENTS, 'getGroupesUsager'
+        ) as NotepadGroupsResponse;
     }
 
     async getGroupKeys(keyIds: Array<string>) {
@@ -171,9 +174,12 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendCommand(command, DOMAINE_DOCUMENTS, 'sauvegarderDocument');
     }
 
-    async getNotepadDocumentsForGroup(groupId: string) {
+    async getNotepadDocumentsForGroup(groupId: string, supprime?: boolean, dateSync?: number) {
         if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.sendRequest({groupe_id: groupId}, DOMAINE_DOCUMENTS, 'getDocumentsGroupe') as NotepadDocumentsResponse;
+        return await this.connection.sendRequest(
+            {groupe_id: groupId, supprime: !!supprime, date_sync: dateSync}, 
+            DOMAINE_DOCUMENTS, 'getDocumentsGroupe'
+        ) as NotepadDocumentsResponse;
     }
 
     async notepadSaveGroup(command: NotepadNewGroupType, key?: Object) {
@@ -189,6 +195,26 @@ export class AppsConnectionWorker extends ConnectionWorker {
     async notepadSaveCategory(command: NotepadNewCategoryType) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendCommand(command, DOMAINE_DOCUMENTS, 'sauvegarderCategorieUsager');
+    }
+
+    async notepadDeleteDocument(docId: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({doc_id: docId}, DOMAINE_DOCUMENTS, 'supprimerDocument');
+    }
+
+    async notepadRestoreDocument(docId: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({doc_id: docId}, DOMAINE_DOCUMENTS, 'recupererDocument');
+    }
+
+    async notepadDeleteGroup(groupId: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({groupe_id: groupId}, DOMAINE_DOCUMENTS, 'supprimerGroupe');
+    }
+
+    async notepadRestoreGroup(groupId: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({groupe_id: groupId}, DOMAINE_DOCUMENTS, 'recupererGroupe');
     }
 
     async subscribeUserCategoryGroup(cb: SubscriptionCallback): Promise<void> {

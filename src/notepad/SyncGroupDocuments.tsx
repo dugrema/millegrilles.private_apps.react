@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { proxy } from 'comlink';
 
 import useWorkers, { AppWorkers } from "../workers/workers";
-import { decryptGroupDocuments, getGroupDocument, getUserGroupDocuments, NotepadDocumentType, syncDocuments } from "./idb/notepadStoreIdb";
+import { decryptGroupDocuments, deleteGroupDocument, getGroupDocument, getUserGroup, getUserGroupDocuments, NotepadDocumentType, syncDocuments } from "./idb/notepadStoreIdb";
 import useNotepadStore from "./notepadStore";
 import useConnectionStore from "../connectionStore";
 import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
@@ -15,6 +15,7 @@ function SyncGroupDocuments() {
     let groupId = useNotepadStore(state=>state.selectedGroup);
     let setGroupDocuments = useNotepadStore(state=>state.setGroupDocuments);
     let updateDocument = useNotepadStore(state=>state.updateDocument);
+    let removeDocument = useNotepadStore(state=>state.removeDocument);
     let [userId, setUserId] = useState('');
 
     useEffect(()=>{
@@ -30,26 +31,44 @@ function SyncGroupDocuments() {
     let documentGroupEventCb = useMemo(()=>{
         return proxy((event: SubscriptionMessage)=>{
             let message = event.message as MessageUpdateDocument;
-            let docId = message.document.doc_id;
-            syncDocuments([message.document], {userId})
-                .then(async () => {
-                    if(workers && groupId) {
-                        await decryptGroupDocuments(workers, userId, groupId) 
 
-                        let updatedDoc = await getGroupDocument(docId);
-                        if(updatedDoc?.decrypted) {
-                            // Update documents on display
-                            updateDocument(updatedDoc);
+            console.debug("Document event ", message);
+            if(message.document) {
+                let docId = message.document.doc_id;
+                syncDocuments([message.document], {userId})
+                    .then(async () => {
+                        if(workers && groupId) {
+                            await decryptGroupDocuments(workers, userId, groupId) 
+
+                            let updatedDoc = await getGroupDocument(docId);
+                            if(updatedDoc?.decrypted) {
+                                // Update documents on display
+                                updateDocument(updatedDoc);
+                            } else {
+                                console.warn("Error retrieving updated document, keeping the old version for display");
+                            }
                         } else {
-                            console.warn("Error retrieving updated document, keeping the old version for display");
+                            console.warn("Workers/groupId not initialized");
                         }
-                    } else {
-                        console.warn("Workers/groupId not initialized");
-                    }
-                })
-                .catch(err=>console.error("Error updating document from listener", err));
+                    })
+                    .catch(err=>console.error("Error updating document from listener", err));
+            } else if(message.supprime !== undefined) {
+                // This is a delete/restore event
+                let docId = message.doc_id;
+                if(docId && message.supprime) {
+                    console.debug("Delete document ", docId)
+                    deleteGroupDocument(docId)
+                        .then(()=>{
+                            if(docId) {
+                                console.debug("Remove %s from view", docId);
+                                removeDocument(docId);  // Remove from view
+                            }
+                        })
+                        .catch(err=>console.error("Error deleting document", err));
+                }
+            }
         })
-    }, [workers, userId, groupId, updateDocument]);
+    }, [workers, userId, groupId, updateDocument, removeDocument]);
 
     useEffect(()=>{
         if(!workers || !userId || !groupId) return;
@@ -77,22 +96,28 @@ function SyncGroupDocuments() {
 export default SyncGroupDocuments;
 
 type MessageUpdateDocument = {
-    document: NotepadDocumentType,
+    doc_id?: string,
+    supprime?: string,
+    document?: NotepadDocumentType,
 }
-
 
 async function syncGroupDocuments(workers: AppWorkers, userId: string, groupId: string, setGroupDocuments: (groupDocuments: Array<NotepadDocumentType>)=>void) {
     
     try {
-        let documentsForGroup = await workers.connection.getNotepadDocumentsForGroup(groupId);
+        let groupIdb = await getUserGroup(groupId);
+        let previousDateSync = groupIdb?.dateSync;
+
+        let documentsForGroup = await workers.connection.getNotepadDocumentsForGroup(groupId, undefined, previousDateSync);
+        console.debug("Documents for group: ", documentsForGroup);
         let groupDocuments = documentsForGroup.documents;
+        let dateSync = documentsForGroup.date_sync;
 
         if(!groupDocuments) {
             throw new Error("Error synchronizing documents: " + documentsForGroup.err);
         }
 
         // Save to IDB
-        await syncDocuments(groupDocuments, {userId});
+        await syncDocuments(groupDocuments, {userId, deleted: documentsForGroup.supprimes, groupId, dateSync});
 
         // Decrypt all encrypted documents
         await decryptGroupDocuments(workers, userId, groupId);

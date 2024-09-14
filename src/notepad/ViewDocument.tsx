@@ -11,7 +11,9 @@ import useConnectionStore from "../connectionStore";
 
 function ViewDocument() {
 
-    const params = useParams();
+    let params = useParams();
+    let workers = useWorkers();
+    let navigate = useNavigate();
 
     let groupId = params.groupId as string;
     let docId = params.docId as string;
@@ -28,8 +30,19 @@ function ViewDocument() {
     let editDocumentClose = useCallback(()=>setEditDocument(false), [setEditDocument]);
 
     let deleteDocument = useCallback(()=>{
-        console.warn("Delete - TODO");
-    }, [])
+        if(!workers) throw new Error('Workers not initialized');
+        if(!docId) throw new Error('No docId to delete');
+        workers.connection.notepadDeleteDocument(docId)
+            .then(response=>{
+                if(response.ok) {
+                    setEditDocument(false);
+                    navigate(`/apps/notepad/group/${groupId}`)
+                } else {
+                    console.error("Error (1) deleting document: ", response.err);
+                }
+            })
+            .catch(err=>console.error("Error (2) deleting document: ", err));
+    }, [workers, docId, groupId, setEditDocument, navigate])
 
     let [category, group] = useMemo(()=>{
         if(!groups || !categories) return [null, null];

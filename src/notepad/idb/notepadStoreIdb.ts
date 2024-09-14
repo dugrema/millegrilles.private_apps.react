@@ -53,6 +53,7 @@ export type NotepadGroupType = {
     data_chiffre: string,
     data?: NotepadGroupData,
     decrypted?: boolean,
+    dateSync?: number,
 }
 
 export type NotepadDocumentData = {[nom: string]: string | number | null};
@@ -76,6 +77,7 @@ export type NotepadDocumentType = {
     format: string,
     nonce: string,
     data_chiffre: string,
+    supprime?: boolean,
     label?: string,
     data?: NotepadDocumentData,
     decrypted?: boolean,
@@ -140,6 +142,12 @@ export async function getUserCategories(userId: string): Promise<Array<NotepadCa
     return categories;
 }
 
+export async function getUserGroup(groupId: string): Promise<NotepadGroupType | null> {
+    let db = await openDB();
+    let store = db.transaction(STORE_GROUPS, 'readonly').store;
+    return await store.get(groupId);
+}
+
 export async function getUserGroups(userId: string, decryptedOnly?: boolean): Promise<Array<NotepadGroupType>> {
     let db = await openDB();
     let store = db.transaction(STORE_GROUPS, 'readonly').store;
@@ -184,6 +192,12 @@ export async function getGroupDocument(docId: string): Promise<NotepadDocumentTy
     let db = await openDB();
     let store = db.transaction(STORE_DOCUMENTS, 'readonly').store;
     return await store.get(docId);
+}
+
+export async function deleteGroupDocument(docId: string) {
+    let db = await openDB();
+    let store = db.transaction(STORE_DOCUMENTS, 'readwrite').store;
+    await store.delete(docId);
 }
 
 // export async function getCategory(categoryId: string): Promise<NotepadCategoryType | null>{
@@ -264,25 +278,39 @@ export async function getMissingKeys(userId: string): Promise<Array<string>> {
 }
 
 // Met dirty a true et dechiffre a false si mismatch derniere_modification
-export async function syncDocuments(docs: Array<NotepadDocumentType>, opts?: {userId?: string}) {
-    if(!docs) return [];
-
+export async function syncDocuments(docs: Array<NotepadDocumentType>, opts?: {groupId?: string, dateSync?: number, userId?: string, deleted?: Array<string>}) {
     const db = await openDB();
     const store = db.transaction(STORE_DOCUMENTS, 'readwrite').store;
 
-    for await (const infoDoc of docs) {
-        const { doc_id, nonce } = infoDoc
-        const documentDoc = await store.get(doc_id);
-        if(documentDoc) {
-            if(nonce !== documentDoc.nonce) {
-                // Known file but different version.
-                await store.put({...documentDoc, ...infoDoc, decrypted: false});
+    if(docs) {
+        for await (const infoDoc of docs) {
+            const { doc_id, nonce } = infoDoc
+            const documentDoc = await store.get(doc_id);
+            if(documentDoc) {
+                if(nonce !== documentDoc.nonce) {
+                    // Known file but different version.
+                    await store.put({...documentDoc, ...infoDoc, decrypted: false});
+                }
+            } else {
+                const user_id = infoDoc.user_id || opts?.userId;
+                if(!user_id) throw new Error("Missing userId");
+                await store.put({...infoDoc, user_id, decrypted: false});
             }
-        } else {
-            const user_id = infoDoc.user_id || opts?.userId;
-            if(!user_id) throw new Error("Missing userId");
-            await store.put({...infoDoc, user_id, decrypted: false});
         }
+    }
+
+    let deletedDocuments = opts?.deleted;
+    if(deletedDocuments) {
+        for await (let docId of deletedDocuments) {
+            await store.delete(docId);
+        }
+    }
+
+    if(opts?.groupId && opts?.dateSync) {
+        // Save the last sync date
+        let store = db.transaction(STORE_GROUPS, 'readwrite').store;
+        let group = await store.get(opts.groupId);
+        await store.put({...group, dateSync: opts.dateSync});
     }
 }
 

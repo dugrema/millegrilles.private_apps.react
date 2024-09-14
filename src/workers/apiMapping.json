@@ -25,7 +25,11 @@
         {"domain": "senseurspassifs_relai", "action": "commandeAppareil"},
         {"domain": "Documents", "action": "sauvegarderDocument"},
         {"domain": "Documents", "action": "sauvegarderGroupeUsager"},
-        {"domain": "Documents", "action": "sauvegarderCategorieUsager"}
+        {"domain": "Documents", "action": "sauvegarderCategorieUsager"},
+        {"domain": "Documents", "action": "supprimerDocument"},
+        {"domain": "Documents", "action": "recupererDocument"},
+        {"domain": "Documents", "action": "supprimerGroupe"},
+        {"domain": "Documents", "action": "recupererGroupe"}
     ],
     "subscriptions": {
         "userDeviceEvents": {

@@ -16,6 +16,7 @@ interface NotepadStoreState {
     setSyncDone: () => void,
     updateDocument: (doc: NotepadDocumentType) => void,  // Update/add document in current group
     updateCategory: (cat: NotepadCategoryType) => void,
+    removeDocument: (docId: string) => void,  // Update/add document in current group
 };
 
 const useNotepadStore = create<NotepadStoreState>()(
@@ -83,7 +84,15 @@ const useNotepadStore = create<NotepadStoreState>()(
                 }
 
                 return {categories: updatedCategories};
-            })
+            }),
+
+            removeDocument: docId => set((state) => {
+                if(state.groupDocuments) {
+                    let updatedDocuments = state.groupDocuments.filter(item=>item.doc_id!==docId);
+                    return {groupDocuments: updatedDocuments}
+                }
+                return {};
+            }),
         })
     ),
 );
