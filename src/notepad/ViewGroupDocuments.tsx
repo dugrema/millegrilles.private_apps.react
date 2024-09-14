@@ -1,10 +1,10 @@
-import { ChangeEvent, Dispatch, useCallback, useMemo, useState } from "react";
+import { ChangeEvent, Dispatch, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import useNotepadStore from "./notepadStore";
-import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewGroupType } from "./idb/notepadStoreIdb";
+import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewGroupType, syncDocuments } from "./idb/notepadStoreIdb";
 import useConnectionStore from "../connectionStore";
-import useWorkers from "../workers/workers";
+import useWorkers, { AppWorkers } from "../workers/workers";
 import { DecryptionKeyIdb, getDecryptedKeys, saveDecryptedKey } from "../MillegrillesIdb";
 import { multiencoding, messageStruct } from "millegrilles.cryptography";
 import { EncryptionResult } from "../workers/encryption.worker";
@@ -16,6 +16,10 @@ function ViewGroupDocuments() {
 
     let groupId = params.groupId as string;
     let [editGroup, setEditGroup] = useState(groupId === 'new');
+    let [restoreDocuments, setRestoreDocuments] = useState(false);
+
+    let openRestoreDocuments = useCallback(()=>setRestoreDocuments(true), [setRestoreDocuments]);
+    let closeRestoreDocuments = useCallback(()=>setRestoreDocuments(false), [setRestoreDocuments]);
 
     let groups = useNotepadStore(state=>state.groups);
 
@@ -25,10 +29,12 @@ function ViewGroupDocuments() {
         return group || null;
     }, [groups, groupId]);
 
-    if(editGroup) {
+    if(restoreDocuments && group) {
+        return <RestoreDocuments group={group} close={closeRestoreDocuments} />
+    } else if(editGroup) {
         return <GroupEdit group={group} edit={setEditGroup} />
     } else {
-        return <ViewGroup group={group} edit={setEditGroup} />
+        return <ViewGroup group={group} edit={setEditGroup} restore={openRestoreDocuments} />
     };
 }
 
@@ -37,11 +43,12 @@ export default ViewGroupDocuments;
 type GroupProps = {
     group: NotepadGroupType | null,
     edit: Dispatch<boolean>,
+    restore?: ()=>void,
 }
 
 function ViewGroup(props: GroupProps) {
 
-    let { group, edit } = props;
+    let { group, edit, restore } = props;
 
     let workers = useWorkers();
     let navigate = useNavigate();
@@ -84,6 +91,10 @@ function ViewGroup(props: GroupProps) {
                 <button onClick={openEdit}
                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         <i className='fa fa-edit'/> Edit group
+                </button>
+                <button onClick={restore}
+                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <i className='fa fa-recycle'/> Restore documents
                 </button>
                 <button onClick={deleteGroup}
                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
@@ -329,4 +340,144 @@ function CategoryPicklist(props: {value: string, onChange: (e: ChangeEvent<HTMLS
             </select>
         </>
     );
+}
+
+function RestoreDocuments(props: {group: NotepadGroupType, close: ()=>void}) {
+
+    let { group, close } = props;
+    
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let categories = useNotepadStore(state=>state.categories);
+    let updateDocument = useNotepadStore(state=>state.updateDocument);
+
+    let [docs, setDocs] = useState(null as null | Array<NotepadDocumentType>);
+
+    let [userId, setUserId] = useState('');
+
+    useEffect(()=>{
+        workers?.connection.getMessageFactoryCertificate()
+            .then(certificate=>{
+                let userId = certificate.extensions?.userId;
+                setUserId(''+userId);
+            })
+            .catch(err=>console.error("Error loading userId", err));
+    }, [workers, setUserId]);
+
+    // Get the first field code (used for label).
+    let firstField = useMemo(()=>{
+        if(!categories || !group) return null;
+        let category = categories.filter(item=>item.categorie_id===group.categorie_id).pop();
+
+        let firstField = null;
+        if(category) {
+            firstField = category.champs[0].code_interne;
+        }
+
+        return firstField;
+    }, [categories, group]);
+
+    let restoreHandler = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
+        if(!workers || !docs) throw new Error("Workers/docs not initialized");
+        let docId = e.currentTarget.value;
+        let docToRestore = docs.filter(item=>item.doc_id===docId).pop();
+        if(!docToRestore) throw new Error("Document to restore is null");
+
+        workers.connection.notepadRestoreDocument(docId)
+            .then(async response => {
+                if(response.ok === false) throw new Error(response.err);
+
+                if(docs) {
+                    let updatedDocs = docs.filter(item=>item.doc_id!==docId);
+                    setDocs(updatedDocs);
+                }
+
+                if(docToRestore && userId) {
+                    // Save to IDB
+                    await syncDocuments([docToRestore], {userId});
+                    // Update on screen
+                    updateDocument(docToRestore);
+                }
+            })
+            .catch(err=>console.error("Error restoring document", err));
+
+    }, [workers, docs, setDocs, updateDocument, userId]);
+
+    useEffect(()=>{
+        if(!ready || !workers || !firstField) return;
+        getDeletedDocuments(workers, group, firstField) 
+            .then(setDocs)
+            .catch(err=>console.error("Error loading deleted documents", err));
+    }, [workers, ready, group, setDocs, firstField])
+
+    return (
+        <>
+            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6'>
+                <button onClick={close} className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                    Back
+                </button>
+            </div>
+
+            <section>
+                <h1 className='font-bold text-lg'>Restore documents</h1>
+                <div className='grid grid-cols-1'>
+                    <ListDeletedDocuments docs={docs} onRestore={restoreHandler} />
+                </div>
+            </section>
+        </>
+    )
+}
+
+async function getDeletedDocuments(workers: AppWorkers, group: NotepadGroupType, firstField: string): Promise<Array<NotepadDocumentType>> {
+    let groupId = group.groupe_id;
+    let keyId = group.cle_id;
+    let deletedDocumentsResponse = await workers.connection.getNotepadDocumentsForGroup(groupId, true);
+
+    let deletedDocuments = deletedDocumentsResponse.documents;
+    if(deletedDocumentsResponse.ok === false || !deletedDocuments) {
+        throw new Error("Error getting deleted documents: " + deletedDocumentsResponse.err);
+    }
+
+    let key = (await getDecryptedKeys([keyId])).pop();
+    if(!key) throw new Error("Unknown group key");
+
+    for await (let doc of deletedDocuments) {
+        let cleartext = await workers.encryption.decryptMessage(doc.format, key.cleSecrete, doc.nonce, doc.data_chiffre);
+        let data = JSON.parse(new TextDecoder().decode(cleartext));
+        doc.data = data;
+        doc.label = data[firstField] || doc.doc_id;
+        doc.decrypted = true;
+    }
+
+    return deletedDocuments;
+}
+
+function ListDeletedDocuments(props: {docs: Array<NotepadDocumentType> | null, onRestore: (e: MouseEvent<HTMLButtonElement>)=>void}) {
+
+    let { docs, onRestore } = props;
+
+    let docElems = useMemo(()=>{
+        if(!docs) return null;
+
+        let docsCopy = [...docs];
+        docsCopy.sort(sortGroupDocuments);
+        
+        return docsCopy.map(item=>{
+            return (
+                <div key={item.doc_id}>
+                    <button value={item.doc_id} onClick={onRestore}
+                        className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                            Restore
+                    </button>
+                    <span className='pl-2'>{item.label}</span>
+                </div>
+            )
+        });
+    }, [docs, onRestore]);
+
+    if(!docElems) {
+        return <p>Loading ...</p>;
+    }
+
+    return <>{docElems}</>;
 }
