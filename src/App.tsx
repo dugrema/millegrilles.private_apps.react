@@ -25,6 +25,7 @@ const ViewGroup = React.lazy(()=>import('./notepad/ViewGroup'));
 const ViewGroupDocuments = React.lazy(()=>import('./notepad/ViewGroupDocuments'));
 const ViewDocument = React.lazy(()=>import('./notepad/ViewDocument'));
 const Categories = React.lazy(()=>import('./notepad/Categories'));
+const RestoreGroups = React.lazy(()=>import('./notepad/RestoreGroups'));
 
 // SenseursPassifs
 const AppSenseursPassifs = React.lazy(()=>import('./senseurspassifs/App'));
@@ -54,6 +55,7 @@ const router = createBrowserRouter([
         children: [
             { path: "/apps/notepad", element: <NotepadMainPage /> },
             { path: "/apps/notepad/categories", element: <Categories /> },
+            { path: "/apps/notepad/restoreGroups", element: <RestoreGroups /> },
             { 
                 path: "/apps/notepad/group/:groupId", 
                 element: <ViewGroup />,

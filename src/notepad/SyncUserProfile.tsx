@@ -185,6 +185,19 @@ function ListenCategoryGroupChanges() {
                                     setGroups(updatedGroups);
                                 })
                                 .catch(err=>console.error("Error deleting group", err));
+                        } else {
+                            // Group is restored, sync groups
+                            workers?.connection.getNotepadUserGroups()
+                                .then(async groupResponse=>{
+                                    if(workers && groupResponse.groupes) {
+                                        await syncGroups(groupResponse.groupes, {userId});
+                                        await decryptGroups(workers, userId);
+                                        let updatedGroups = await getUserGroups(userId, true);
+                                        setGroups(updatedGroups);
+                                    } else {
+                                        console.error("Error sync groups: ", groupResponse.err);
+                                    }
+                                })
                         }
                     }
                 }

@@ -48,7 +48,11 @@ function DisplayGroupsSection() {
             <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 pl-2 gap-x-3 pr-4'>
                 <Link to='/apps/notepad/group/new'
                     className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
-                        New
+                        <i className='fa fa-plus'/> New
+                </Link>
+                <Link to='/apps/notepad/restoreGroups'
+                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <i className='fa fa-recycle'/> Restore
                 </Link>
             </div>
             <nav className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 pl-2 gap-x-3 pr-4'>
