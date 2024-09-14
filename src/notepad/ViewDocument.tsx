@@ -70,16 +70,23 @@ function ViewDocument() {
     return (
         <>
             <nav>
-                <Link to={`/apps/notepad/group/${groupDocument.groupe_id}`}
-                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        Back
-                </Link>
+                {editDocument?
+                    <button onClick={editDocumentClose}
+                        className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                            Cancel
+                    </button>
+                :
+                    <Link to={`/apps/notepad/group/${groupDocument.groupe_id}`}
+                        className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                            Back
+                    </Link>
+                }
                 <button onClick={editDocumentOpen} disabled={editDocument || !ready}
                     className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
                         <i className='fa fa-edit'/>Edit
                 </button>
                 <button onClick={deleteDocument} disabled={editDocument || !ready}
-                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
                         <i className='fa fa-cross'/>Delete
                 </button>
             </nav>
@@ -180,12 +187,18 @@ function ViewPasswordField(props: ViewFieldProps) {
 function ViewUrlField(props: ViewFieldProps) {
     let {field, value} = props;
 
-    let data = value.data?value.data[field.code_interne]:'';
+    let data = (value.data?value.data[field.code_interne]:'') as string;
 
     return (
         <>
             <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0'>{field.nom_champ}</label>
-            <div className='col-span-12 sm:col-span-10 break-words'>{data}</div>
+            <div className='col-span-12 sm:col-span-10 break-words'>
+                {data}
+                <a href={data} target="_blank" rel="noreferrer"
+                    className='varbtn w-10 pt-1 pb-1 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
+                        <i className='fa fa-external-link'/>
+                </a>
+            </div>
         </>
     )
 }

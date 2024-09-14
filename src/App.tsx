@@ -7,8 +7,11 @@ import InitializeWorkers from './workers/InitializeWorkers';
 import HeaderMenu from './Menu';
 
 import './i18n';
-import './App.css';
+
+import 'font-awesome/css/font-awesome.min.css';
+import 'react-datetime/css/react-datetime.css';
 import 'quill/dist/quill.snow.css'; // Add css for snow theme
+import './App.css';
 
 import Footer from './Footer';
 

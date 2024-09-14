@@ -3,9 +3,6 @@ import HeaderMenu from "../Menu";
 import Footer from '../Footer';
 import DeviceEvents from "./DeviceEvents";
 
-import 'font-awesome/css/font-awesome.min.css';
-import "react-datetime/css/react-datetime.css";
-
 export default function SenseursPassifs() {
 
     // Note : loading of device information and event updates are handled in <DeviceEvents />
