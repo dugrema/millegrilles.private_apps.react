@@ -276,8 +276,15 @@ export async function getMissingKeys(userId: string): Promise<Array<string>> {
     
     let keyIds = [];
     while(cursor) {
-        const value = cursor.value;
-        if(value.decrypted !== true) keyIds.push(value.cle_id);
+        const value = cursor.value as NotepadGroupType;
+        if(value.decrypted !== true) {
+            let keyId = value.cle_id || value.ref_hachage_bytes;
+            if(keyId) {
+                keyIds.push(keyId);
+            } else {
+                console.warn("Missing cle_id/ref_hachage_bytes for group ", value.groupe_id);
+            }
+        }
         cursor = await cursor.continue();
     }
 
