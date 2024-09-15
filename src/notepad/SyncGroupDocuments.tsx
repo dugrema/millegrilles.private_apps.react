@@ -5,7 +5,8 @@ import useWorkers, { AppWorkers } from "../workers/workers";
 import { decryptGroupDocuments, deleteGroupDocument, getGroupDocument, getUserGroup, getUserGroupDocuments, NotepadDocumentType, syncDocuments } from "./idb/notepadStoreIdb";
 import useNotepadStore from "./notepadStore";
 import useConnectionStore from "../connectionStore";
-import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
+import { MessageResponse, SubscriptionMessage } from "millegrilles.reactdeps.typescript";
+import { NotepadDocumentsResponse } from "../workers/connection.worker";
 
 function SyncGroupDocuments() {
 
@@ -99,27 +100,40 @@ type MessageUpdateDocument = {
 }
 
 async function syncGroupDocuments(workers: AppWorkers, userId: string, groupId: string, setGroupDocuments: (groupDocuments: Array<NotepadDocumentType>)=>void) {
-    
-    try {
-        let groupIdb = await getUserGroup(groupId);
-        let previousDateSync = groupIdb?.dateSync;
 
-        let documentsForGroup = await workers.connection.getNotepadDocumentsForGroup(groupId, undefined, previousDateSync);
+    const callback = proxy(async (response: MessageResponse | NotepadDocumentsResponse) => {
+        let documentsForGroup = response as NotepadDocumentsResponse;
+        if(documentsForGroup.ok === false) {
+            console.warn("Error response received on document sync", documentsForGroup.err);
+            return;
+        } else if(documentsForGroup.ok == true && documentsForGroup.code === 1) {
+            // Ok, streaming has started.
+            return;
+        }
+
         let groupDocuments = documentsForGroup.documents;
         let dateSync = documentsForGroup.date_sync;
 
-        if(!groupDocuments) {
-            throw new Error("Error synchronizing documents: " + documentsForGroup.err);
+        if(groupDocuments) {
+            // Save to IDB
+            await syncDocuments(groupDocuments, {userId, deleted: documentsForGroup.supprimes, groupId, dateSync});
+        } else {
+            console.warn("No document list received in document sync batch ", documentsForGroup);
         }
 
-        // Save to IDB
-        await syncDocuments(groupDocuments, {userId, deleted: documentsForGroup.supprimes, groupId, dateSync});
+        if(documentsForGroup.done) {
+            // Decrypt all encrypted documents
+            await decryptGroupDocuments(workers, userId, groupId);
+            let groupDocuments = await getUserGroupDocuments(userId, groupId, true);
+            setGroupDocuments(groupDocuments);
+        }
+    });
 
-        // Decrypt all encrypted documents
-        await decryptGroupDocuments(workers, userId, groupId);
-    } finally {
-        let groupDocuments = await getUserGroupDocuments(userId, groupId, true);
-        setGroupDocuments(groupDocuments);
+    let groupIdb = await getUserGroup(groupId);
+    let previousDateSync = groupIdb?.dateSync;
+
+    let initialStreamResponse = await workers.connection.getNotepadDocumentsForGroupStreamed(groupId, callback, undefined, previousDateSync);
+    if(!initialStreamResponse === true) {
+        throw new Error("Error getting documents for this group");
     }
-
 }

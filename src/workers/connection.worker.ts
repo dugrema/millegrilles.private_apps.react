@@ -1,5 +1,6 @@
 import '@solana/webcrypto-ed25519-polyfill';
 import { expose } from 'comlink';
+import { messageStruct } from 'millegrilles.cryptography';
 import { ConnectionWorker, MessageResponse, SubscriptionCallback } from 'millegrilles.reactdeps.typescript';
 import apiMapping from './apiMapping.json';
 
@@ -64,7 +65,12 @@ type NotepadGroupsResponse = MessageResponse & { groupes: Array<NotepadGroupType
 
 type DecryptionKeyResponse = MessageResponse & { cles: Array<DecryptionKey> };
 
-type NotepadDocumentsResponse = MessageResponse & { documents?: Array<NotepadDocumentType>, supprimes?: Array<string>, date_sync: number };
+export type NotepadDocumentsResponse = MessageResponse & { 
+    documents?: Array<NotepadDocumentType>, 
+    supprimes?: Array<string>, 
+    date_sync: number,
+    done: boolean,
+};
 
 export class AppsConnectionWorker extends ConnectionWorker {
 
@@ -181,6 +187,26 @@ export class AppsConnectionWorker extends ConnectionWorker {
             DOMAINE_DOCUMENTS, 'getDocumentsGroupe'
         ) as NotepadDocumentsResponse;
     }
+
+    async getNotepadDocumentsForGroupStreamed(
+        groupId: string, 
+        callback: (e: MessageResponse | NotepadDocumentsResponse)=>void,
+        supprime?: boolean, dateSync?: number) 
+    {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        let signedMessage = await this.connection.createRoutedMessage(
+            messageStruct.MessageKind.Request, 
+            {groupe_id: groupId, supprime: !!supprime, date_sync: dateSync, stream: true}, 
+            {domaine: DOMAINE_DOCUMENTS, action: 'getDocumentsGroupe'}
+        );
+        return await this.connection.emitCallbackResponses(signedMessage, callback);
+    }
+
+    // async sendChatMessage(command: any, callback: any): Promise<boolean> {
+    //     if(!this.connection) throw new Error("Connection is not initialized");
+    //     let signedMessage = await this.connection.createEncryptedCommand(command, {domaine: 'ollama_relai', action: 'chat'});
+    //     return await this.connection.emitCallbackResponses(signedMessage, callback, {domain: 'ollama_relai'});
+    // }
 
     async notepadSaveGroup(command: NotepadNewGroupType, key?: Object) {
         if(!this.connection) throw new Error("Connection is not initialized");

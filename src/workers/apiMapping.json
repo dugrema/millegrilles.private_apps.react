@@ -10,7 +10,7 @@
         {"domain": "Documents", "action": "getCategoriesUsager"},
         {"domain": "Documents", "action": "getGroupesUsager"},
         {"domain": "Documents", "action": "getClesGroupes"},
-        {"domain": "Documents", "action": "getDocumentsGroupe"}
+        {"domain": "Documents", "action": "getDocumentsGroupe", "stream": true}
     ],
     "commands": [
         {"domain": "ollama_relai", "action": "generate", "stream": true},
