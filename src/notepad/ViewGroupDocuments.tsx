@@ -2,7 +2,7 @@ import { ChangeEvent, Dispatch, MouseEvent, useCallback, useEffect, useMemo, use
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import useNotepadStore from "./notepadStore";
-import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewGroupType, syncDocuments } from "./idb/notepadStoreIdb";
+import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewCategoryType, NotepadNewGroupType, syncDocuments } from "./idb/notepadStoreIdb";
 import useConnectionStore from "../connectionStore";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import { DecryptionKeyIdb, getDecryptedKeys, saveDecryptedKey } from "../MillegrillesIdb";
@@ -197,21 +197,22 @@ function GroupEdit(props: GroupProps) {
 
         // @ts-ignore
         let keyId = group?(group.cle_id || group.ref_hachage_bytes):null;
-        if(!keyId) throw new Error("Missing cle_id/ref_hachage_bytes from group");
         let commande = {
             categorie_id: categoryId,
-        }
+        } as NotepadNewGroupType
 
-        // @ts-ignore
-        if(!newGroupFlag) commande.groupe_id = groupId;
+        if(!newGroupFlag) {
+            commande.groupe_id = groupId;
+            if(!keyId) throw new Error("Missing cle_id/ref_hachage_bytes from group");
+        }
 
         Promise.resolve().then(async () => {
             if(!workers) throw new Error("Workers not initialized");
-            if(!keyId) throw new Error("Missing keyId");
             
             let newKey = null as any;
             let key = null as DecryptionKeyIdb | null | undefined;
             if(!newGroupFlag) {
+                if(!keyId) throw new Error("Missing keyId");
                 let keys = await getDecryptedKeys([keyId]);
                 key = keys.pop();
                 if(!key) throw new Error("Unknown key");
@@ -447,7 +448,7 @@ async function getDeletedDocuments(workers: AppWorkers, group: NotepadGroupType,
     if(!key) throw new Error("Unknown group key");
 
     for await (let doc of deletedDocuments) {
-        let nonce = group.nonce;
+        let nonce = doc.nonce;
         let legacyMode = false;
         if(!nonce && group.header) {
             nonce = group.header.slice(1);  // Remove multibase 'm' marker
