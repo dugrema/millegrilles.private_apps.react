@@ -137,13 +137,20 @@ async function loadDeletedGroups(workers: AppWorkers): Promise<[Array<NotepadGro
         let secretKey = multiencoding.decodeBase64Nopad(key);
 
         let nonce = group.nonce;
-        if(!nonce && group.header) nonce = group.header.slice(1);  // Remove multibase 'm' marker
+        let legacyMode = false;
+        if(!nonce && group.header) {
+            nonce = group.header.slice(1);  // Remove multibase 'm' marker
+            legacyMode = true;
+        }
         if(!nonce) {
             console.warn("Missing group nonce/header");
             continue;
         }
 
-        let cleartext = await workers.encryption.decryptMessage(group.format, secretKey, nonce, group.data_chiffre);
+        let ciphertext = group.data_chiffre;
+        if(legacyMode) ciphertext = ciphertext.slice(1);  // Remove 'm' multibase marker
+    
+        let cleartext = await workers.encryption.decryptMessage(group.format, secretKey, nonce, ciphertext);
         let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadGroupData;
         group.data = jsonInfo;
         group.decrypted = true;

@@ -356,17 +356,21 @@ export async function decryptGroups(workers: AppWorkers, userId: string) {
         let { cle_id, ref_hachage_bytes, nonce, header, data_chiffre, format } = group;
 
         // Handle legacy header and ref_hachage_bytes fields
+        let legacyMode = false;
         if(!nonce && header) {
             nonce = header.slice(1);  // Remove leading multibase 'm' marker
         }
         if(!cle_id && ref_hachage_bytes) {
             cle_id = ref_hachage_bytes;
+            legacyMode = true;
         }
 
         if(!cle_id || !nonce) throw new Error("Error loading cle_id or nonce");
         let key = (await getDecryptedKeys([cle_id])).pop();
         if(key) {
-            let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, data_chiffre);
+            let ciphertext = data_chiffre;
+            if(legacyMode) ciphertext = ciphertext.slice(1);  // Remove 'm' multibase marker
+            let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, ciphertext);
             let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadGroupData;
             let storeRw = db.transaction(STORE_GROUPS, 'readwrite').store;
             await storeRw.put({...group, data: jsonInfo, decrypted: true});
@@ -415,8 +419,10 @@ export async function decryptGroupDocuments(workers: AppWorkers, userId: string,
         let { cle_id, nonce, header, data_chiffre, format } = groupDocument;
 
         // Handle legacy header field
+        let legacyMode = false;
         if(!nonce && header) {
             nonce = header.slice(1);  // Remove leading multibase 'm' marker
+            legacyMode = true;
         }
         if(!cle_id) {
             // Reuse the group keyId (not provided in old documents)
@@ -426,7 +432,10 @@ export async function decryptGroupDocuments(workers: AppWorkers, userId: string,
         if(!nonce) throw new Error("Nonce/header missing from document");
 
         if(key) {
-            let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, data_chiffre);
+            let ciphertext = data_chiffre;
+            if(legacyMode) ciphertext = ciphertext.slice(1);  // Remove 'm' multibase marker
+
+            let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, ciphertext);
             let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadDocumentData;
             
             // Filter jsonInfo to ensure only data fields get retained

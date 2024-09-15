@@ -448,13 +448,20 @@ async function getDeletedDocuments(workers: AppWorkers, group: NotepadGroupType,
 
     for await (let doc of deletedDocuments) {
         let nonce = group.nonce;
-        if(!nonce && group.header) nonce = group.header.slice(1);  // Remove multibase 'm' marker
+        let legacyMode = false;
+        if(!nonce && group.header) {
+            nonce = group.header.slice(1);  // Remove multibase 'm' marker
+            legacyMode = true;
+        }
         if(!nonce) {
             console.warn("Missing group nonce/header");
             continue;
         }
+        
+        let ciphertext = doc.data_chiffre;
+        if(legacyMode) ciphertext = ciphertext.slice(1);  // Remove 'm' multibase marker
 
-        let cleartext = await workers.encryption.decryptMessage(doc.format, key.cleSecrete, nonce, doc.data_chiffre);
+        let cleartext = await workers.encryption.decryptMessage(doc.format, key.cleSecrete, nonce, ciphertext);
         let data = JSON.parse(new TextDecoder().decode(cleartext));
         doc.data = data;
         doc.label = data[firstField] || doc.doc_id;
