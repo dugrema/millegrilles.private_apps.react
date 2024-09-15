@@ -144,7 +144,8 @@ function ListenCategoryGroupChanges() {
                             if(!group) throw new Error("Illegal state, group null");
 
                             // Check if the key exists locally
-                            let keyId = group.cle_id;
+                            let keyId = group.cle_id || group.ref_hachage_bytes;
+                            if(!keyId) throw new Error("Missing cle_id/ref_hachage_bytes");
                             let requiredKeyIds = await getMissingKeys(userId);
                             if(requiredKeyIds.includes(keyId)) {
                                 // Fetch missing group key

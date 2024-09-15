@@ -344,8 +344,9 @@ function EditFields(props: EditFieldsProps) {
     }, [data, setData, setHasChanged]);
 
     let saveHandler = useCallback(()=>{
-        // @ts-ignore
-        const keyId = group.cle_id || group.ref_hachage_bytes
+        const keyId = group.cle_id || group.ref_hachage_bytes;
+        if(!keyId) throw new Error("Missing group cle_id/ref_hachage_bytes");
+        
         const commande = {
             groupe_id: group.groupe_id,
             categorie_version: category.version,

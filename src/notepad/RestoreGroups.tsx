@@ -110,7 +110,9 @@ async function loadDeletedGroups(workers: AppWorkers): Promise<[Array<NotepadGro
 
     // Recover decryption keys
     let groups = response.groupes;
-    let groupIds = groups.map(item=>item.cle_id);
+    let groupIds = groups
+        .map(item=>item.cle_id || item.ref_hachage_bytes)
+        .filter(item=>item) as string[];
     let keyResponse = await workers.connection.getGroupKeys(groupIds);
     if(keyResponse.ok === false) throw new Error(keyResponse.err);
 
@@ -122,7 +124,11 @@ async function loadDeletedGroups(workers: AppWorkers): Promise<[Array<NotepadGro
 
     // Decrypt each group's data
     for await (let group of groups) {
-        let keyId = group.cle_id;
+        let keyId = group.cle_id || group.ref_hachage_bytes;
+        if(!keyId) {
+            console.warn("Missing group cle_id/ref_hachage_bytes");
+            continue;
+        }
         let key = keyDict[keyId];
         if(!key) {
             console.warn("Decryption key not available for groupId ", group.groupe_id);
@@ -130,7 +136,14 @@ async function loadDeletedGroups(workers: AppWorkers): Promise<[Array<NotepadGro
         }
         let secretKey = multiencoding.decodeBase64Nopad(key);
 
-        let cleartext = await workers.encryption.decryptMessage(group.format, secretKey, group.nonce, group.data_chiffre);
+        let nonce = group.nonce;
+        if(!nonce && group.header) nonce = group.header.slice(1);  // Remove multibase 'm' marker
+        if(!nonce) {
+            console.warn("Missing group nonce/header");
+            continue;
+        }
+
+        let cleartext = await workers.encryption.decryptMessage(group.format, secretKey, nonce, group.data_chiffre);
         let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadGroupData;
         group.data = jsonInfo;
         group.decrypted = true;

@@ -106,7 +106,7 @@ async function syncGroupDocuments(workers: AppWorkers, userId: string, groupId: 
         if(documentsForGroup.ok === false) {
             console.warn("Error response received on document sync", documentsForGroup.err);
             return;
-        } else if(documentsForGroup.ok == true && documentsForGroup.code === 1) {
+        } else if(documentsForGroup.ok === true && documentsForGroup.code === 1) {
             // Ok, streaming has started.
             return;
         }

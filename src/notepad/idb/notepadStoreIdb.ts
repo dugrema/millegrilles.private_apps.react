@@ -47,9 +47,11 @@ export type NotepadGroupType = {
     user_id: string,
     categorie_id: string,
     groupe_id: string,
-    cle_id: string,
+    cle_id?: string,
+    ref_hachage_bytes?: string,
     format: string,
-    nonce: string,
+    nonce?: string,
+    header?: string,
     data_chiffre: string,
     data?: NotepadGroupData,
     decrypted?: boolean,
@@ -73,9 +75,10 @@ export type NotepadDocumentType = {
     groupe_id: string,
     categorie_version: number,
     doc_id: string,
-    cle_id: string,
+    cle_id?: string,
     format: string,
-    nonce: string,
+    nonce?: string,
+    header?: string,
     data_chiffre: string,
     supprime?: boolean,
     label?: string,
@@ -343,7 +346,17 @@ export async function decryptGroups(workers: AppWorkers, userId: string) {
     for await(let groupId of encryptedGroups) {
         store = db.transaction(STORE_GROUPS, 'readonly').store;
         let group = await store.get(groupId) as NotepadGroupType;
-        let { cle_id, nonce, data_chiffre, format } = group;
+        let { cle_id, ref_hachage_bytes, nonce, header, data_chiffre, format } = group;
+
+        // Handle legacy header and ref_hachage_bytes fields
+        if(!nonce && header) {
+            nonce = header.slice(1);  // Remove leading multibase 'm' marker
+        }
+        if(!cle_id && ref_hachage_bytes) {
+            cle_id = ref_hachage_bytes;
+        }
+
+        if(!cle_id || !nonce) throw new Error("Error loading cle_id or nonce");
         let key = (await getDecryptedKeys([cle_id])).pop();
         if(key) {
             let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, data_chiffre);
@@ -363,8 +376,9 @@ export async function decryptGroupDocuments(workers: AppWorkers, userId: string,
     let groupStore = db.transaction(STORE_GROUPS, 'readonly').store;
     let group = await groupStore.get(groupId) as NotepadGroupType;
     if(!group) throw new Error("Unknown group");
-    let keyId = group.cle_id;
+    let keyId = group.cle_id || group.ref_hachage_bytes;
 
+    if(!keyId) throw new Error("Error loading keyId");
     let categoryStore = db.transaction(STORE_CATEGORIES, 'readonly').store;
     let categoryId = group.categorie_id;
     let category = await categoryStore.get(categoryId) as NotepadCategoryType;
@@ -391,7 +405,19 @@ export async function decryptGroupDocuments(workers: AppWorkers, userId: string,
     for await(let docId of encryptedDocuments) {
         let store = db.transaction(STORE_DOCUMENTS, 'readonly').store;
         let groupDocument = await store.get(docId) as NotepadDocumentType;
-        let { cle_id, nonce, data_chiffre, format } = groupDocument;
+        let { cle_id, nonce, header, data_chiffre, format } = groupDocument;
+
+        // Handle legacy header field
+        if(!nonce && header) {
+            nonce = header.slice(1);  // Remove leading multibase 'm' marker
+        }
+        if(!cle_id) {
+            // Reuse the group keyId (not provided in old documents)
+            cle_id = keyId;
+        }
+
+        if(!nonce) throw new Error("Nonce/header missing from document");
+
         if(key) {
             let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, data_chiffre);
             let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadDocumentData;

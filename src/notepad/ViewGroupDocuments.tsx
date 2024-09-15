@@ -197,6 +197,7 @@ function GroupEdit(props: GroupProps) {
 
         // @ts-ignore
         let keyId = group?(group.cle_id || group.ref_hachage_bytes):null;
+        if(!keyId) throw new Error("Missing cle_id/ref_hachage_bytes from group");
         let commande = {
             categorie_id: categoryId,
         }
@@ -206,6 +207,7 @@ function GroupEdit(props: GroupProps) {
 
         Promise.resolve().then(async () => {
             if(!workers) throw new Error("Workers not initialized");
+            if(!keyId) throw new Error("Missing keyId");
             
             let newKey = null as any;
             let key = null as DecryptionKeyIdb | null | undefined;
@@ -430,7 +432,10 @@ function RestoreDocuments(props: {group: NotepadGroupType, close: ()=>void}) {
 
 async function getDeletedDocuments(workers: AppWorkers, group: NotepadGroupType, firstField: string): Promise<Array<NotepadDocumentType>> {
     let groupId = group.groupe_id;
-    let keyId = group.cle_id;
+    let keyId = group.cle_id || group.ref_hachage_bytes;
+
+    if(!keyId) throw new Error("Missing cle_id/ref_hachage_bytes from group");
+
     let deletedDocumentsResponse = await workers.connection.getNotepadDocumentsForGroup(groupId, true);
 
     let deletedDocuments = deletedDocumentsResponse.documents;
@@ -442,7 +447,14 @@ async function getDeletedDocuments(workers: AppWorkers, group: NotepadGroupType,
     if(!key) throw new Error("Unknown group key");
 
     for await (let doc of deletedDocuments) {
-        let cleartext = await workers.encryption.decryptMessage(doc.format, key.cleSecrete, doc.nonce, doc.data_chiffre);
+        let nonce = group.nonce;
+        if(!nonce && group.header) nonce = group.header.slice(1);  // Remove multibase 'm' marker
+        if(!nonce) {
+            console.warn("Missing group nonce/header");
+            continue;
+        }
+
+        let cleartext = await workers.encryption.decryptMessage(doc.format, key.cleSecrete, nonce, doc.data_chiffre);
         let data = JSON.parse(new TextDecoder().decode(cleartext));
         doc.data = data;
         doc.label = data[firstField] || doc.doc_id;
