@@ -450,8 +450,8 @@ async function getDeletedDocuments(workers: AppWorkers, group: NotepadGroupType,
     for await (let doc of deletedDocuments) {
         let nonce = doc.nonce;
         let legacyMode = false;
-        if(!nonce && group.header) {
-            nonce = group.header.slice(1);  // Remove multibase 'm' marker
+        if(!nonce && doc.header) {
+            nonce = doc.header.slice(1);  // Remove multibase 'm' marker
             legacyMode = true;
         }
         if(!nonce) {
