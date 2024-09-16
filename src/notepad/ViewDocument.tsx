@@ -96,12 +96,15 @@ function ViewDocument() {
                 }
                 <button onClick={editDocumentOpen} disabled={editDocument || !ready}
                     className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
-                        <i className='fa fa-edit'/>Edit
+                        <i className='fa fa-edit'/> Edit
                 </button>
-                <button onClick={deleteDocument} disabled={editDocument || !ready}
-                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
-                        <i className='fa fa-cross'/>Delete
-                </button>
+
+                <div className='w-full sm:inline text-right pr-6'>
+                    <button onClick={deleteDocument} disabled={editDocument || !ready}
+                        className='varbtn sm:btn pt-2 pb-2 pl-2 pr-2 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
+                            <i className='fa fa-remove'/> Delete
+                    </button>
+                </div>
             </nav>
 
             <h1 className='text-lg font-bold'>{group?.data?.nom_groupe}</h1>

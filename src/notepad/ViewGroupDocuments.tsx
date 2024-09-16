@@ -92,12 +92,16 @@ function ViewGroup(props: GroupProps) {
                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         <i className='fa fa-edit'/> Edit group
                 </button>
+                <button onClick={deleteGroup}
+                    className='hidden sm:inline md:hidden btn text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <i className='fa fa-remove'/> Delete group
+                </button>
                 <button onClick={restore}
                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         <i className='fa fa-recycle'/> Restore documents
                 </button>
                 <button onClick={deleteGroup}
-                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                    className='sm:hidden md:inline btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         <i className='fa fa-remove'/> Delete group
                 </button>
             </section>
