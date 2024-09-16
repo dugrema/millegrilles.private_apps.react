@@ -2,7 +2,7 @@ import { ChangeEvent, Dispatch, MouseEvent, useCallback, useEffect, useMemo, use
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import useNotepadStore from "./notepadStore";
-import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewCategoryType, NotepadNewGroupType, syncDocuments } from "./idb/notepadStoreIdb";
+import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewGroupType, syncDocuments } from "./idb/notepadStoreIdb";
 import useConnectionStore from "../connectionStore";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import { DecryptionKeyIdb, getDecryptedKeys, saveDecryptedKey } from "../MillegrillesIdb";

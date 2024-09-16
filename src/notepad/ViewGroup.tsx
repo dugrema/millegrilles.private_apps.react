@@ -34,7 +34,7 @@ function ViewGroup() {
         return () => {
             setGroupDocuments(null);
         }
-    }, [])
+    }, [setGroupDocuments])
 
     return (
         <>
