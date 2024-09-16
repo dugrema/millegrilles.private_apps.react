@@ -12,6 +12,7 @@ function ViewGroup() {
     let categories = useNotepadStore(state=>state.categories);
     let groups = useNotepadStore(state=>state.groups);
     let setSelectedGroup = useNotepadStore(state=>state.setSelectedGroup);
+    let setGroupDocuments = useNotepadStore(state=>state.setGroupDocuments);
 
     // Set the selected group
     useEffect(()=>{
@@ -26,6 +27,14 @@ function ViewGroup() {
         
         setSelectedGroup(null);
     }, [categories, groups, groupId, setSelectedGroup]);
+
+    useEffect(()=>{
+        // Reset list of documents when leaving group
+        // Avoids flashing previous list of documents when loading new group
+        return () => {
+            setGroupDocuments(null);
+        }
+    }, [])
 
     return (
         <>
