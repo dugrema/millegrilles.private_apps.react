@@ -6,7 +6,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import useWorkers from '../workers/workers';
 import useChatStore, { ChatMessage as StoreChatMessage } from './chatStore';
 
-import Footer from '../Footer';
 import useConnectionStore from '../connectionStore';
 import { ChatAvailable } from './ChatSummaryHistory';
 import { ChatMessage, getConversationMessages, saveConversation, saveMessages } from './aichatStoreIdb';
