@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import useWorkers from '../workers/workers';
 import useConnectionStore from '../connectionStore';
 import useChatStore from './chatStore';
+import Footer from '../Footer';
 
 export default function AppAiChat() {
 
@@ -28,6 +29,7 @@ export default function AppAiChat() {
             <main id="main" className='fixed top-8 bottom-10 overflow-y-auto pt-4 pb-2 pl-2 pr-2 w-full'>
                 <Outlet />
             </main>
+            <Footer />
             <SyncConversations />
             <CheckRelayAvailable />
         </div>

@@ -186,8 +186,6 @@ export default function Chat() {
                 </Link>
             </div>
 
-            <Footer />
-
             <SyncConversation />
         </>
     )
