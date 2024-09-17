@@ -8,7 +8,7 @@ import useChatStore from './chatStore';
 
 export default function AppAiChat() {
     return (
-        <div className='pl-2 pr-2'>
+        <div>
             <HeaderMenu title='AI Chat' backLink={true} />
             <main id="main" className='fixed top-8 bottom-10 overflow-y-auto pt-4 pb-2 pl-2 pr-2 w-full'>
                 <Outlet />

@@ -88,7 +88,7 @@ export default function Chat() {
         <>
             <section className='fixed top-8 bottom-40 overflow-y-auto pl-4 pr-4 w-full'>
                 <h1>Conversation</h1>
-                <div className='font-bold'><ChatAvailable ignoreOk={true} /></div>
+                <div className='font-bold'><ChatAvailable ignoreOk={true} naClassname='text-red-500' /></div>
                 <ViewHistory triggerScrolldown={lastUpdate} />
             </section>
             

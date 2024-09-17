@@ -28,7 +28,7 @@ function ChatHistoryList() {
     return <p>No conversations yet.</p>;
 }
 
-export function ChatAvailable(props: {ignoreOk?: boolean}) {
+export function ChatAvailable(props: {ignoreOk?: boolean, naClassname?: string}) {
     let relayAvailable = useChatStore(state=>state.relayAvailable);
 
     if(relayAvailable === null) return (
@@ -39,5 +39,5 @@ export function ChatAvailable(props: {ignoreOk?: boolean}) {
         return (<p>AI chatbot is ready.</p>);
     }
 
-    return <p>AI chatbot is not available.</p>;
+    return <p className={props.naClassname}>AI chatbot is not available.</p>;
 }
