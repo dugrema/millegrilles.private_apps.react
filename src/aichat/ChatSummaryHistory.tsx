@@ -1,5 +1,9 @@
 import { Link } from "react-router-dom";
 import useChatStore from "./chatStore";
+import { Conversation, deleteConversation, getConversations } from "./aichatStoreIdb";
+import { Fragment, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import useWorkers from "../workers/workers";
+import { Formatters } from "millegrilles.reactdeps.typescript";
 
 function ChatSummaryHistory() {
 
@@ -24,10 +28,6 @@ function ChatSummaryHistory() {
 
 export default ChatSummaryHistory;
 
-function ChatHistoryList() {
-    return <p>No conversations yet.</p>;
-}
-
 export function ChatAvailable(props: {ignoreOk?: boolean, naClassname?: string}) {
     let relayAvailable = useChatStore(state=>state.relayAvailable);
 
@@ -40,4 +40,73 @@ export function ChatAvailable(props: {ignoreOk?: boolean, naClassname?: string})
     }
 
     return <p className={props.naClassname}>AI chatbot is not available.</p>;
+}
+
+function ChatHistoryList() {
+
+    let userId = useChatStore(state=>state.userId);
+
+    let [conversations, setConversations] = useState(null as null | Conversation[]);
+
+    let deleteConversationHandler = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
+        let value = e.currentTarget.value;
+        if(userId && value) {
+            deleteConversation(userId, value)
+                .then(()=>{
+                    // Update screen
+                    let updatedConversations = conversations?.filter(item=>item.conversation_id !== value) || [];
+                    setConversations(updatedConversations);
+                })
+                .catch(err=>console.error("Error deleting conversation from IDB", err));
+        }
+    }, [userId, conversations, setConversations]);
+
+    useEffect(()=>{
+        if(!userId) return;
+        getConversations(userId)
+            .then(list=>{
+                setConversations(list);
+            })
+            .catch(err=>console.error("Error loading conversations list", err));
+    }, [userId])
+
+    let conversationsElems = useMemo(()=>{
+        if(!conversations) return null;
+
+        let sortedConversations = [...conversations];
+        sortedConversations.sort((a: Conversation, b: Conversation)=>{
+            return a.startDate - b.startDate;
+        })
+        sortedConversations = sortedConversations.reverse();
+
+        return sortedConversations.map(item=>{
+            let label = item.subject || item.initial_query;
+
+            return (
+                <Fragment key={item.conversation_id}>
+                    <div className='col-span-2 sm:col-span-1'>
+                        <button value={item.conversation_id} onClick={deleteConversationHandler}
+                            className='varbtn w-10 pt-2 pb-2 pl-2 pr-2 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
+                                <i className='fa fa-remove' />
+                        </button>
+                    </div>
+                    <Link to={`/apps/aichat/conversation/${item.conversation_id}`} className='underline text-left col-span-7 sm:col-span-8'>
+                        {label}
+                    </Link>
+                    <div className='col-span-3'>
+                        <Formatters.FormatterDate value={item.startDate} />
+                    </div>
+                </Fragment>
+            );
+        })
+    }, [conversations]);
+
+    if(conversations === null) return <p>Loading...</p>;
+    if(!conversationsElems) return <p>No conversations yet.</p>;
+
+    return (
+        <div className='grid grid-cols-12'>
+            {conversationsElems}
+        </div>
+    );
 }

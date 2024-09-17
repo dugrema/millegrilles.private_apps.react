@@ -10,6 +10,7 @@ interface ChatStoreState {
     relayAvailable: null | boolean,
     conversationId: null | string,
     currentUserCommand: null | messageStruct.MilleGrillesMessage,
+    userId: null | string,
     appendCurrentResponse: (chunk: string) => void,
     pushAssistantResponse: (message_id: string) => void,
     pushUserQuery: (query: string) => void,
@@ -18,6 +19,7 @@ interface ChatStoreState {
     setConversationId: (conversationId: null | string) => void,
     setMessages: (messages: ChatMessage[]) => void,
     setCurrentUserCommand: (command: null | messageStruct.MilleGrillesMessage) => void,
+    setUserId: (userId: null | string) => void,
 };
 
 const useChatStore = create<ChatStoreState>()(
@@ -28,6 +30,7 @@ const useChatStore = create<ChatStoreState>()(
             relayAvailable: null,
             conversationId: null,
             currentUserCommand: null,
+            userId: null,
             appendCurrentResponse: (chunk) => set((state) => ({ currentResponse: state.currentResponse + chunk })),
             pushAssistantResponse: (message_id) => set((state) => ({ currentResponse: '', messages: [...state.messages, {message_id: message_id, role: 'assistant', content: state.currentResponse, date: Math.floor(new Date().getTime()/1000)}] })),
             pushUserQuery: (query) => set((state) => ({ messages: [...state.messages, {message_id: 'currentquery', role: 'user', content: query, date: Math.floor(new Date().getTime()/1000)}]})),
@@ -52,6 +55,7 @@ const useChatStore = create<ChatStoreState>()(
                 }
                 return update;
             }),
+            setUserId: (userId) => set(()=>({userId: userId})),
         })
     ),
 );

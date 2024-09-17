@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import Markdown from 'react-markdown';
 import { proxy } from 'comlink';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import useWorkers from '../workers/workers';
 import useChatStore, { ChatMessage as StoreChatMessage } from './chatStore';
@@ -9,39 +9,46 @@ import useChatStore, { ChatMessage as StoreChatMessage } from './chatStore';
 import Footer from '../Footer';
 import useConnectionStore from '../connectionStore';
 import { ChatAvailable } from './ChatSummaryHistory';
-import { ChatMessage, saveConversation, saveMessages } from './aichatStoreIdb';
+import { ChatMessage, getConversationMessages, saveConversation, saveMessages } from './aichatStoreIdb';
 import { MessageResponse, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
 import { messageStruct } from 'millegrilles.cryptography';
 
 export default function Chat() {
 
     let workers = useWorkers();
+    let navigate = useNavigate();
+
     let relayAvailable = useChatStore(state=>state.relayAvailable);
     let conversationId = useChatStore(state=>state.conversationId);
     let setConversationId = useChatStore(state=>state.setConversationId);
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let userId = useChatStore(state=>state.userId);
     let currentResponse = useChatStore(state=>state.currentResponse);
     let currentUserCommand = useChatStore(state=>state.currentUserCommand);
     let setCurrentUserCommand = useChatStore(state=>state.setCurrentUserCommand);
+    let setStoreMessages = useChatStore(state=>state.setMessages);
 
     let {conversationId: paramConversationId} = useParams();
 
     // Initialize conversationId
     useEffect(()=>{
-        if(paramConversationId) setConversationId(paramConversationId);
-        else setConversationId(null);
-    }, [setConversationId, paramConversationId])
+        if(userId && paramConversationId) {
+            setConversationId(paramConversationId);
 
-    // Get the userId from the certificate
-    let [userId, setUserId] = useState('');
-    useEffect(()=>{
-        workers?.connection.getMessageFactoryCertificate()
-            .then(certificate=>{
-                let userId = certificate.extensions?.userId;
-                setUserId(''+userId);
-            })
-            .catch(err=>console.error("Error loading userId", err));
-    }, [workers, setUserId]);
+            // Load the existing conversation messages
+            getConversationMessages(userId, paramConversationId)
+                .then(chatMessages=>{
+                    // @ts-ignore
+                    let storeMessageList: StoreChatMessage[] = chatMessages.filter(item=>item.role && item.content)
+                    storeMessageList.sort(sortMessagesByDate);
+                    setStoreMessages(storeMessageList);
+                    // Force one last screen scroll
+                    setTimeout(()=>setLastUpdate(new Date().getTime()), 250);
+                })
+                .catch(err=>console.error("Error loading messages from IDB", err));
+        }
+        else setConversationId(null);
+    }, [userId, setConversationId, paramConversationId, setStoreMessages])
 
     let messages = useChatStore(state=>state.messages);
     let appendCurrentResponse = useChatStore(state=>state.appendCurrentResponse);
@@ -60,7 +67,6 @@ export default function Chat() {
     }, [setChatInput, setLastUpdate]);
 
     let chatCallback = useMemo(() => proxy(async (event: MessageResponse & SubscriptionMessage & {partition?: string, done?: boolean, message_id?: string}) => {
-        console.debug("Chat Event callback ", event);
         let message = event.message as ChatResponse;
         if(!message) { // Status message
             if(!event.ok) {
@@ -81,10 +87,9 @@ export default function Chat() {
             // Force one last screen update
             setTimeout(()=>setLastUpdate(new Date().getTime()), 250);
         }
-    }), [appendCurrentResponse, setWaiting, pushAssistantResponse]);
+    }), [appendCurrentResponse, setWaiting, pushAssistantResponse, setLastUpdate]);
 
     let userMessageCallback = useMemo(()=>proxy(async (event: messageStruct.MilleGrillesMessage)=>{
-        console.debug("Encrypted user command: %O", event);
         setCurrentUserCommand(event);
     }), [setCurrentUserCommand]);
 
@@ -124,44 +129,33 @@ export default function Chat() {
     let clearHandler = useCallback(()=>{
         clearConversation();
         setChatInput('');
-    }, [clearConversation, setChatInput]);
+        navigate('/apps/aichat/newConversation');
+    }, [navigate, clearConversation, setChatInput]);
 
     useEffect(()=>{
         // Clear conversation on exit
-        return () => clearHandler();
-    }, [clearHandler]);
+        return () => {
+            clearConversation();
+            setChatInput('');            
+        };
+    }, [clearConversation, setChatInput]);
 
     useEffect(()=>{
-        if(waiting || !currentUserCommand || currentResponse) return;
+        if(!userId || waiting || !currentUserCommand || currentResponse) return;
         if(!messages || messages.length === 0) return;
         let currentUserMessageId = currentUserCommand.id;
         if(!currentUserMessageId) return;
         let effectiveConversationId = conversationId || currentUserMessageId;
-
-        // let updatedMessages: StoreChatMessage[] = messages.map(item=>{
-        //     if(currentUserMessageId && item.message_id === 'currentquery') {
-        //         return {...item, message_id: currentUserMessageId};
-        //     }
-        //     return item;
-        // })
 
         setCurrentUserCommand(null);  // Prevent loop
         setConversationId(effectiveConversationId);
 
         if(!conversationId) {
             // This is a new conversation
-            console.debug("Save new conversation with id %s, messages %O", effectiveConversationId, messages);
             saveConversationToIdb(userId, effectiveConversationId, messages)
-                .then(()=>{
-                    console.debug("new conversation saved");
-                })
                 .catch(err=>console.error("Error saving conversation to IDB", err));
         } else {
-            console.debug("Add messages to conversation %O:", conversationId);
             saveMessagesToIdb(userId, conversationId, messages)
-                .then(()=>{
-                    console.debug("new messages saved");
-                })
                 .catch(err=>console.error("Error saving messages to IDB", err));
         }
     }, [waiting, userId, conversationId, currentUserCommand, messages, currentResponse, setConversationId, setCurrentUserCommand])
@@ -302,7 +296,7 @@ function SyncConversation() {
     return <></>;
 }
 
-type NewChatMessage = {message_id: string, role: string, content: string, date: number};
+// type NewChatMessage = {message_id: string, role: string, content: string, date: number};
 
 /**
  * Initializes a new conversation in IDB.
@@ -323,4 +317,12 @@ async function saveConversationToIdb(userId: string, conversationId: string, mes
 async function saveMessagesToIdb(userId: string, conversationId: string,  messages: StoreChatMessage[]) {
     let messagesIdb = messages.map(item=>({user_id: userId, conversation_id: conversationId, decrypted: true, ...item} as ChatMessage));
     await saveMessages(messagesIdb);
+}
+
+function sortMessagesByDate(a: StoreChatMessage, b: StoreChatMessage) {
+    let aDate = a.date, bDate = b.date;
+    if(aDate && bDate) {
+        return aDate - bDate;
+    }
+    return a.message_id.localeCompare(b.message_id);
 }

@@ -15,7 +15,8 @@ export type Conversation = {
     decrypted: boolean, 
     encrypted_data?: encryption.EncryptedData,
     lastSync?: null | number, 
-    subject?: null | string
+    subject?: null | string,
+    initial_query?: null | string,
 };
 export type ChatMessage = {
     user_id: string, 
@@ -77,6 +78,7 @@ export async function saveConversation(messages: ChatMessage[]) {
         conversation_id: firstMessage.conversation_id,
         startDate: firstMessage.date,
         decrypted: true,
+        initial_query: firstMessage.content,
     } as Conversation;
     
     let conversationStore = db.transaction(STORE_CONVERSATIONS, 'readwrite').store;
@@ -92,6 +94,54 @@ export async function saveMessages(messages: ChatMessage[]) {
         await messageStore.put(message);
     }
 }
+
+export async function getConversations(userId: string): Promise<Conversation[]> {
+    let db = await openDB();
+    let conversationStore = db.transaction(STORE_CONVERSATIONS, 'readonly').store;
+    let index = conversationStore.index('userid');
+    let cursor = await index.openCursor(userId);
+
+    let conversations = [];
+    while(cursor) {
+        const value = cursor.value as Conversation;
+        conversations.push(value);
+        cursor = await cursor.continue();
+    }
+    return conversations;
+}
+
+export async function getConversationMessages(userId: string, conversationId: string): Promise<ChatMessage[]> {
+    let db = await openDB();
+    let messageStore = db.transaction(STORE_CONVERSATION_MESSAGES, 'readonly').store;
+    let index = messageStore.index('useridConversation');
+    let cursor = await index.openCursor([userId, conversationId]);
+
+    let messages = [];
+    while(cursor) {
+        const value = cursor.value as ChatMessage;
+        messages.push(value);
+        cursor = await cursor.continue();
+    }
+    return messages;
+}
+
+export async function deleteConversation(userId: string, conversationId: string) {
+    let db = await openDB();
+
+    // Delete messages of this conversation
+    let messageStore = db.transaction(STORE_CONVERSATION_MESSAGES, 'readwrite').store;
+    let index = messageStore.index('useridConversation');
+    let cursor = await index.openCursor([userId, conversationId]);
+    while(cursor) {
+        await cursor.delete();        
+        cursor = await cursor.continue();
+    }
+
+    // Delete conversation
+    let conversationStore = db.transaction(STORE_CONVERSATIONS, 'readwrite').store;
+    await conversationStore.delete(conversationId);
+}
+
 
 // export async function getUserCategories(userId: string): Promise<Array<NotepadCategoryType>> {
 //     let db = await openDB();
