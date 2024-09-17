@@ -1,31 +1,36 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
 import { proxy } from 'comlink';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
 import useWorkers from '../workers/workers';
 import useChatStore, { ChatMessages } from './chatStore';
 
 import Footer from '../Footer';
+import useConnectionStore from '../connectionStore';
+import { ChatAvailable } from './ChatSummaryHistory';
 
 export default function Chat() {
 
     let workers = useWorkers();
+    let relayAvailable = useChatStore(state=>state.relayAvailable);
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
     let messages = useChatStore(state=>state.messages);
     let appendCurrentResponse = useChatStore(state=>state.appendCurrentResponse);
     let pushAssistantResponse = useChatStore(state=>state.pushAssistantResponse);
     let pushUserQuery = useChatStore(state=>state.pushUserQuery);
     let clearConversation = useChatStore(state=>state.clear);
 
-    // let certificatsChiffrage = useConnectionStore(state=>state.chiffrage);
-
     let [chatInput, setChatInput] = useState('');
     let [waiting, setWaiting] = useState(false);
+    let [lastUpdate, setLastUpdate] = useState(0);
 
     let chatInputOnChange = useCallback((e: any) => {
         let value = e.currentTarget.value;
         setChatInput(value);
-    }, [setChatInput]);
+        setLastUpdate(new Date().getTime());
+    }, [setChatInput, setLastUpdate]);
 
     let chatCallback = useMemo(() => proxy(async (event: any) => {
         // console.debug("Chat Event callback ", event);
@@ -44,6 +49,8 @@ export default function Chat() {
         if(done) {
             setWaiting(false);
             pushAssistantResponse();
+            // Force one last screen update
+            setTimeout(()=>setLastUpdate(new Date().getTime()), 250);
         }
     }), [appendCurrentResponse, setWaiting, pushAssistantResponse]);
 
@@ -72,45 +79,60 @@ export default function Chat() {
         setChatInput('');
     }, [clearConversation, setChatInput]);
 
+    useEffect(()=>{
+        // Clear conversation on exit
+        return () => clearHandler();
+    }, [clearHandler]);
+
     return (
         <>
             <section className='fixed top-8 bottom-40 overflow-y-auto pl-4 pr-4 w-full'>
-                <h1>Chat history</h1>
-                <ViewHistory />
+                <h1>Conversation</h1>
+                <div className='font-bold'><ChatAvailable ignoreOk={true} /></div>
+                <ViewHistory triggerScrolldown={lastUpdate} />
             </section>
             
             <div className='fixed bottom-0 w-full pl-2 pr-6 pb-12 text-center'>
                 <textarea value={chatInput} onChange={chatInputOnChange} 
                     placeholder='Entrez votre question ou commentaire ici. Exemple : Donne-moi une liste de films sortis en 1980.'
                     className='text-black w-full rounded-md' />
-                <button disabled={waiting} 
-                    className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500' onClick={submitHandler}>
-                        Submit
+                <button disabled={waiting || !ready || !relayAvailable} 
+                    className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900' onClick={submitHandler}>
+                        Send
                 </button>
                 <button disabled={waiting} 
                     className='varbtn w-24 bg-slate-700 hover:bg-slate-600 active:bg-slate-500' onClick={clearHandler}>
                         Clear
                 </button>
-                <Link to='/apps' className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>Back</Link>
+                <Link to='/apps/aichat' 
+                    className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
+                        Back
+                </Link>
             </div>
 
             <Footer />
+
+            <SyncConversation />
         </>
     )
 }
 
-function ViewHistory() {
+function ViewHistory(props: {triggerScrolldown: number}) {
  
+    let { triggerScrolldown } = props;
+
     let messages = useChatStore(state=>state.messages);
     let currentResponse = useChatStore(state=>state.currentResponse);
 
     let refBottom = useRef(null);
 
     useEffect(()=>{
-        if(!refBottom || !currentResponse || !messages) return;
+        if(!refBottom || !messages) return;
         // @ts-ignore
         refBottom.current?.scrollIntoView({behavior: 'smooth'});
-    }, [refBottom, currentResponse, messages]);
+
+        // Note: currentResponse is needed to make the screen update during the response.
+    }, [refBottom, messages, currentResponse, triggerScrolldown]);
 
     return (
         <div className='text-left w-full pr-4'>
@@ -175,4 +197,23 @@ function ChatBubble(props: MessageRowProps) {
         )
     }
 
+}
+
+function SyncConversation() {
+    let { conversationId } = useParams();
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    useMemo(()=>{
+        if(!ready) return;
+        if(!workers) throw new Error("Workers not initialized");
+        if(conversationId) {
+            console.debug("Sync conversation ", conversationId);
+            // Load from IDB and sync the conversation from back-end.
+
+        }
+    }, [workers, ready, conversationId]);
+
+    return <></>;
 }

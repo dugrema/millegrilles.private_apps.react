@@ -17,6 +17,8 @@ import Footer from './Footer';
 
 // AI Chat
 const AppAiChat = React.lazy(()=>import('./aichat/AppAiChat'));
+const ChatSummaryHistory = React.lazy(()=>import('./aichat/ChatSummaryHistory'));
+const AiChatConversation = React.lazy(()=>import('./aichat/Conversation'));
 
 // Notepad
 const NotepadApp = React.lazy(()=>import('./notepad/AppNotepad'));
@@ -47,7 +49,12 @@ const router = createBrowserRouter([
 	{
 		path: "/apps/aichat",
 		element: <AppAiChat />,
-        errorElement: <ErrorPage />
+        errorElement: <ErrorPage />,
+        children: [
+            { path: "/apps/aichat", element: <ChatSummaryHistory /> },
+            { path: "/apps/aichat/newConversation", element: <AiChatConversation /> },
+            { path: "/apps/aichat/conversation/:conversationId", element: <AiChatConversation /> },
+        ]
   	},
     {
 		path: "/apps/notepad",

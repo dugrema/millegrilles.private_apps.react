@@ -154,14 +154,19 @@ function MaintainConnection() {
     useEffect(()=>{
         if(!reconnection) return;  // Avoids double connection on page load
 
-        //console.debug('InitializeWorkers connectionReady: %s, connectionAuthenticated: %s', connectionReady, connectionAuthenticated);
         if(connectionReady && !connectionAuthenticated) {
             if(workers && username) {
                 // Ensure this is a reconnection
                 authenticateConnectionWorker(workers, username, true, false)
-                    .catch(err=>console.error("Error authenticating ", err))
+                    .catch(err=>{
+                        console.error("Authentication error, redirect to login page", err);
+                        let currentUrl = window.location.pathname;
+                        window.location.assign(`/millegrilles?returnTo=${currentUrl}`);
+                    })
             } else {
-                console.error("Session not active");
+                console.warn("Session not active, redirect to login page");
+                let currentUrl = window.location.pathname;
+                window.location.assign(`/millegrilles?returnTo=${currentUrl}`);
             }
         }
     }, [workers, connectionReady, connectionAuthenticated, username, reconnection])

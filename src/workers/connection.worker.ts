@@ -13,6 +13,7 @@ const DOMAINE_DOCUMENTS = 'Documents';
 const DOMAINE_SENSEURSPASSIFS = 'SenseursPassifs';
 const DOMAINE_SENSEURSPASSIFS_RELAI = 'senseurspassifs_relai';
 const DOMAINE_MAITREDESCLES = 'MaitreDesCles';
+const DOMAINE_OLLAMA_RELAI = 'ollama_relai';
 
 export type ActivationCodeResponse = MessageResponse & {
     code?: number | string,
@@ -87,8 +88,13 @@ export class AppsConnectionWorker extends ConnectionWorker {
     // AI Chat application
     async sendChatMessage(command: any, callback: any): Promise<boolean> {
         if(!this.connection) throw new Error("Connection is not initialized");
-        let signedMessage = await this.connection.createEncryptedCommand(command, {domaine: 'ollama_relai', action: 'chat'});
-        return await this.connection.emitCallbackResponses(signedMessage, callback, {domain: 'ollama_relai'});
+        let signedMessage = await this.connection.createEncryptedCommand(command, {domaine: DOMAINE_OLLAMA_RELAI, action: 'chat'});
+        return await this.connection.emitCallbackResponses(signedMessage, callback, {domain: DOMAINE_OLLAMA_RELAI});
+    }
+
+    async pingRelay(): Promise<MessageResponse> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest({}, DOMAINE_OLLAMA_RELAI, 'ping', {timeout: 1_500}) as GetUserDevicesResponse;
     }
 
     // SenseursPassifs
