@@ -86,10 +86,15 @@ export class AppsConnectionWorker extends ConnectionWorker {
     }
 
     // AI Chat application
-    async sendChatMessage(command: any, callback: any): Promise<boolean> {
+    async sendChatMessage(
+        command: any, 
+        streamCallback: (e: MessageResponse)=>Promise<void>, 
+        messageCallback: (e: messageStruct.MilleGrillesMessage)=>Promise<void>
+    ): Promise<boolean> {
         if(!this.connection) throw new Error("Connection is not initialized");
         let signedMessage = await this.connection.createEncryptedCommand(command, {domaine: DOMAINE_OLLAMA_RELAI, action: 'chat'});
-        return await this.connection.emitCallbackResponses(signedMessage, callback, {domain: DOMAINE_OLLAMA_RELAI});
+        await messageCallback(signedMessage);
+        return await this.connection.emitCallbackResponses(signedMessage, streamCallback, {domain: DOMAINE_OLLAMA_RELAI});
     }
 
     async pingRelay(): Promise<MessageResponse> {

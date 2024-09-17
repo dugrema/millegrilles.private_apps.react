@@ -8,7 +8,7 @@ function VersionInfo() {
     let { t } = useTranslation();
 
     return (
-        <div className='pt-4 pb-2'>
+        <div className='pt-0 pb-2'>
             <div className='text-sm'>{t('title')} <PopoverVersion/></div>
         </div>
     );

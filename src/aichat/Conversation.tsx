@@ -1,20 +1,47 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import Markdown from 'react-markdown';
 import { proxy } from 'comlink';
 import { Link, useParams } from 'react-router-dom';
 
 import useWorkers from '../workers/workers';
-import useChatStore, { ChatMessages } from './chatStore';
+import useChatStore, { ChatMessage as StoreChatMessage } from './chatStore';
 
 import Footer from '../Footer';
 import useConnectionStore from '../connectionStore';
 import { ChatAvailable } from './ChatSummaryHistory';
+import { ChatMessage, saveConversation, saveMessages } from './aichatStoreIdb';
+import { MessageResponse, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
+import { messageStruct } from 'millegrilles.cryptography';
 
 export default function Chat() {
 
     let workers = useWorkers();
     let relayAvailable = useChatStore(state=>state.relayAvailable);
+    let conversationId = useChatStore(state=>state.conversationId);
+    let setConversationId = useChatStore(state=>state.setConversationId);
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let currentResponse = useChatStore(state=>state.currentResponse);
+    let currentUserCommand = useChatStore(state=>state.currentUserCommand);
+    let setCurrentUserCommand = useChatStore(state=>state.setCurrentUserCommand);
+
+    let {conversationId: paramConversationId} = useParams();
+
+    // Initialize conversationId
+    useEffect(()=>{
+        if(paramConversationId) setConversationId(paramConversationId);
+        else setConversationId(null);
+    }, [setConversationId, paramConversationId])
+
+    // Get the userId from the certificate
+    let [userId, setUserId] = useState('');
+    useEffect(()=>{
+        workers?.connection.getMessageFactoryCertificate()
+            .then(certificate=>{
+                let userId = certificate.extensions?.userId;
+                setUserId(''+userId);
+            })
+            .catch(err=>console.error("Error loading userId", err));
+    }, [workers, setUserId]);
 
     let messages = useChatStore(state=>state.messages);
     let appendCurrentResponse = useChatStore(state=>state.appendCurrentResponse);
@@ -26,15 +53,15 @@ export default function Chat() {
     let [waiting, setWaiting] = useState(false);
     let [lastUpdate, setLastUpdate] = useState(0);
 
-    let chatInputOnChange = useCallback((e: any) => {
+    let chatInputOnChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
         let value = e.currentTarget.value;
         setChatInput(value);
         setLastUpdate(new Date().getTime());
     }, [setChatInput, setLastUpdate]);
 
-    let chatCallback = useMemo(() => proxy(async (event: any) => {
-        // console.debug("Chat Event callback ", event);
-        let message = event.message;
+    let chatCallback = useMemo(() => proxy(async (event: MessageResponse & SubscriptionMessage & {partition?: string, done?: boolean, message_id?: string}) => {
+        console.debug("Chat Event callback ", event);
+        let message = event.message as ChatResponse;
         if(!message) { // Status message
             if(!event.ok) {
                 console.error("Erreur processing response, ", event.err);
@@ -43,21 +70,29 @@ export default function Chat() {
             return;
         }
 
-        let content = message.content;
+        let chatResponse = message as ChatResponse;
+        let content = chatResponse.content;
         appendCurrentResponse(content);
         let done = event.done;
-        if(done) {
+        let message_id = event.message_id;
+        if(done && message_id) {
             setWaiting(false);
-            pushAssistantResponse();
+            pushAssistantResponse(message_id);
             // Force one last screen update
             setTimeout(()=>setLastUpdate(new Date().getTime()), 250);
         }
     }), [appendCurrentResponse, setWaiting, pushAssistantResponse]);
 
+    let userMessageCallback = useMemo(()=>proxy(async (event: messageStruct.MilleGrillesMessage)=>{
+        console.debug("Encrypted user command: %O", event);
+        setCurrentUserCommand(event);
+    }), [setCurrentUserCommand]);
+
     let submitHandler = useCallback(() => {
+        if(!chatInput.trim()) return;  // No message, nothing to do
         if(!workers) throw new Error('workers not initialized');
 
-        let messagesAvecQuery = [...messages, {'role': 'user', 'content': chatInput}];
+        let messagesAvecQuery = [...messages, {'message_id': 'current', 'role': 'user', 'content': chatInput}];
         pushUserQuery(chatInput);
         setChatInput('');  // Reset input
         
@@ -65,14 +100,26 @@ export default function Chat() {
         setWaiting(true);
         Promise.resolve().then(async () => {
                 if(!workers) throw new Error("Workers not initialized");
-                await workers.connection.sendChatMessage(command, chatCallback);
-                setWaiting(false);
+                let ok = await workers.connection.sendChatMessage(
+                    command, 
+                    // @ts-ignore
+                    chatCallback, 
+                    userMessageCallback
+                );
+                if(!ok) console.error("Error sending chat message");
             })
-            .catch(err=>{
-                console.error("Error ", err);
-                setWaiting(false);
-            })
-    }, [workers, messages, chatInput, setChatInput, chatCallback, setWaiting, pushUserQuery]);
+            .catch(err=>console.error("Error sending message ", err))
+            .finally(()=>setWaiting(false))
+    }, [workers, messages, chatInput, setChatInput, chatCallback, setWaiting, pushUserQuery, userMessageCallback]);
+
+    // Submit on ENTER in the textarea
+    let textareaOnKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>)=>{
+        if(e.key === 'Enter' && !e.shiftKey) {
+            e.stopPropagation();
+            e.preventDefault();
+            submitHandler();
+        }
+    }, [submitHandler])
 
     let clearHandler = useCallback(()=>{
         clearConversation();
@@ -84,6 +131,41 @@ export default function Chat() {
         return () => clearHandler();
     }, [clearHandler]);
 
+    useEffect(()=>{
+        if(waiting || !currentUserCommand || currentResponse) return;
+        if(!messages || messages.length === 0) return;
+        let currentUserMessageId = currentUserCommand.id;
+        if(!currentUserMessageId) return;
+        let effectiveConversationId = conversationId || currentUserMessageId;
+
+        // let updatedMessages: StoreChatMessage[] = messages.map(item=>{
+        //     if(currentUserMessageId && item.message_id === 'currentquery') {
+        //         return {...item, message_id: currentUserMessageId};
+        //     }
+        //     return item;
+        // })
+
+        setCurrentUserCommand(null);  // Prevent loop
+        setConversationId(effectiveConversationId);
+
+        if(!conversationId) {
+            // This is a new conversation
+            console.debug("Save new conversation with id %s, messages %O", effectiveConversationId, messages);
+            saveConversationToIdb(userId, effectiveConversationId, messages)
+                .then(()=>{
+                    console.debug("new conversation saved");
+                })
+                .catch(err=>console.error("Error saving conversation to IDB", err));
+        } else {
+            console.debug("Add messages to conversation %O:", conversationId);
+            saveMessagesToIdb(userId, conversationId, messages)
+                .then(()=>{
+                    console.debug("new messages saved");
+                })
+                .catch(err=>console.error("Error saving messages to IDB", err));
+        }
+    }, [waiting, userId, conversationId, currentUserCommand, messages, currentResponse, setConversationId, setCurrentUserCommand])
+
     return (
         <>
             <section className='fixed top-8 bottom-40 overflow-y-auto pl-4 pr-4 w-full'>
@@ -92,10 +174,10 @@ export default function Chat() {
                 <ViewHistory triggerScrolldown={lastUpdate} />
             </section>
             
-            <div className='fixed bottom-0 w-full pl-2 pr-6 pb-12 text-center'>
-                <textarea value={chatInput} onChange={chatInputOnChange} 
-                    placeholder='Entrez votre question ou commentaire ici. Exemple : Donne-moi une liste de films sortis en 1980.'
-                    className='text-black w-full rounded-md' />
+            <div className='fixed bottom-0 w-full pl-2 pr-6 mb-8 text-center'>
+                <textarea value={chatInput} onChange={chatInputOnChange} onKeyDown={textareaOnKeyDown} 
+                    placeholder='Entrez votre question ici. Exemple : Donne-moi une liste de films sortis en 1980.'
+                    className='text-black w-full rounded-md h-28 sm:h-16' />
                 <button disabled={waiting || !ready || !relayAvailable} 
                     className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900' onClick={submitHandler}>
                         Send
@@ -116,6 +198,8 @@ export default function Chat() {
         </>
     )
 }
+
+type ChatResponse = {content: string, role: string};
 
 function ViewHistory(props: {triggerScrolldown: number}) {
  
@@ -138,7 +222,7 @@ function ViewHistory(props: {triggerScrolldown: number}) {
         <div className='text-left w-full pr-4'>
             {messages.map((item, idx)=>(<ChatBubble key={''+idx} value={item} />))}
             {currentResponse?
-                <ChatBubble value={{role: 'assistant', content: currentResponse}} />
+                <ChatBubble value={{role: 'assistant', content: currentResponse, message_id: 'currentresponse'}} />
                 :''
             }
             <div ref={refBottom}></div>
@@ -146,7 +230,7 @@ function ViewHistory(props: {triggerScrolldown: number}) {
     )
 }
 
-type MessageRowProps = {value: ChatMessages};
+type MessageRowProps = {value: StoreChatMessage};
 
 // Src : https://flowbite.com/docs/components/chat-bubble/
 function ChatBubble(props: MessageRowProps) {
@@ -216,4 +300,27 @@ function SyncConversation() {
     }, [workers, ready, conversationId]);
 
     return <></>;
+}
+
+type NewChatMessage = {message_id: string, role: string, content: string, date: number};
+
+/**
+ * Initializes a new conversation in IDB.
+ * @param conversationId Initial user message id
+ * @param messages Initial use message and first assistant response
+ */
+async function saveConversationToIdb(userId: string, conversationId: string, messages: StoreChatMessage[]) {
+    // Prepare messages
+    let messagesIdb = messages.map(item=>({user_id: userId, conversation_id: conversationId, decrypted: true, ...item} as ChatMessage));
+    await saveConversation(messagesIdb);
+}
+
+/**
+ * Adds subsequent messages to IDB
+ * @param conversationId 
+ * @param message 
+ */
+async function saveMessagesToIdb(userId: string, conversationId: string,  messages: StoreChatMessage[]) {
+    let messagesIdb = messages.map(item=>({user_id: userId, conversation_id: conversationId, decrypted: true, ...item} as ChatMessage));
+    await saveMessages(messagesIdb);
 }

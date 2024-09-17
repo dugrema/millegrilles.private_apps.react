@@ -1,11 +1,32 @@
 import { IDBPDatabase, openDB as openDbIdb } from 'idb';
 import { getDecryptedKeys } from '../MillegrillesIdb';
 import { AppWorkers } from '../workers/workers';
+import { encryption } from 'millegrilles.cryptography';
 
 const DB_NAME = 'aichat';
 const STORE_CONVERSATIONS = 'conversations';
 const STORE_CONVERSATION_MESSAGES = 'conversationMessages';
 const DB_VERSION_CURRENT = 2;
+
+export type Conversation = {
+    user_id: string, 
+    conversation_id: string, 
+    startDate: number, 
+    decrypted: boolean, 
+    encrypted_data?: encryption.EncryptedData,
+    lastSync?: null | number, 
+    subject?: null | string
+};
+export type ChatMessage = {
+    user_id: string, 
+    conversation_id: string, 
+    message_id: string,
+    decrypted: boolean, 
+    encrypted_data?: encryption.EncryptedData,
+    role?: string, 
+    content?: string, 
+    date?: number, 
+};
 
 export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
     if(upgrade) {
@@ -44,6 +65,31 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
             break;
         default:
             console.warn("createObjectStores Default..., version %O", oldVersion)
+    }
+}
+
+export async function saveConversation(messages: ChatMessage[]) {
+    let db = await openDB();
+
+    let firstMessage = messages[0];
+    let conversation = {
+        user_id: firstMessage.user_id, 
+        conversation_id: firstMessage.conversation_id,
+        startDate: firstMessage.date,
+        decrypted: true,
+    } as Conversation;
+    
+    let conversationStore = db.transaction(STORE_CONVERSATIONS, 'readwrite').store;
+    await conversationStore.put(conversation);
+
+    await saveMessages(messages);
+}
+
+export async function saveMessages(messages: ChatMessage[]) {
+    let db = await openDB();
+    let messageStore = db.transaction(STORE_CONVERSATION_MESSAGES, 'readwrite').store;
+    for await(let message of messages) {
+        await messageStore.put(message);
     }
 }
 
