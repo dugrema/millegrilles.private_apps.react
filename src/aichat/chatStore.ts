@@ -18,6 +18,7 @@ interface ChatStoreState {
     userId: null | string,
     key: null | ChatStoreConversationKey,
     conversationReadyToSave: boolean,
+    newConversation: boolean,
     appendCurrentResponse: (chunk: string) => void,
     pushAssistantResponse: (message_id: string) => void,
     pushUserQuery: (query: string) => void,
@@ -28,6 +29,7 @@ interface ChatStoreState {
     setUserId: (userId: null | string) => void,
     setConversationKey: (key: null | ChatStoreConversationKey) => void,
     setConversationReadyToSave: (ready: boolean) => void,
+    setNewConversation: (newConversation: boolean) => void,
 };
 
 const useChatStore = create<ChatStoreState>()(
@@ -40,11 +42,13 @@ const useChatStore = create<ChatStoreState>()(
             userId: null,
             key: null,
             conversationReadyToSave: false,
+            newConversation: false,
             appendCurrentResponse: (chunk) => set((state) => ({ currentResponse: state.currentResponse + chunk })),
             pushAssistantResponse: (message_id) => set((state) => ({ currentResponse: '', messages: [...state.messages, {message_id: message_id, role: 'assistant', content: state.currentResponse, date: Math.floor(new Date().getTime()/1000)}] })),
             pushUserQuery: (query) => set((state) => ({ messages: [...state.messages, {message_id: 'currentquery', role: 'user', content: query, date: Math.floor(new Date().getTime()/1000)}]})),
             clear: () => set(() => ({
-                messages: [], currentResponse: '', conversationId: null, currentUserCommand: null,
+                messages: [], currentResponse: '', conversationId: null,
+                newConversation: true, conversationReadyToSave: false, key: null,
             })),
             setRelayAvailable: (available) => set(()=>({relayAvailable: available})),
             setMessages: (messages) => set(()=>({messages})),
@@ -72,6 +76,7 @@ const useChatStore = create<ChatStoreState>()(
                 return {key: null, conversationId: null};
             }),
             setConversationReadyToSave: (ready) => set(()=>({conversationReadyToSave: ready})),
+            setNewConversation: (newConversation) => set(()=>({newConversation})),
         })
     ),
 );

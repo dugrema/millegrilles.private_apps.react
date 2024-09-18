@@ -30,12 +30,14 @@ export default function Chat() {
     let setStoreMessages = useChatStore(state=>state.setMessages);
     let conversationReadyToSave = useChatStore(state=>state.conversationReadyToSave);
     let setConversationReadyToSave = useChatStore(state=>state.setConversationReadyToSave);
+    let newConversation = useChatStore(state=>state.newConversation);
+    let setNewConversation = useChatStore(state=>state.setNewConversation);
 
     let {conversationId: paramConversationId} = useParams();
 
     // Initialize conversationId
     useEffect(()=>{
-        if(!ready) return;
+        if(!ready || conversationKey) return;
         if(!workers) throw new Error("Workers not initialized");
 
         if(userId && paramConversationId) {
@@ -47,6 +49,7 @@ export default function Chat() {
                     if(!workers) throw new Error("Workers not initialized");
                     if(!userId) throw new Error("UserId is missing");
                     if(!paramConversationId) throw new Error("paramConversationId is missing");
+                    setNewConversation(false);
 
                     let conversationKey = chatConversation?.conversationKey;
                     if(!conversationKey || !conversationKey.cle_id) throw new Error("Missing keyId information");
@@ -84,10 +87,11 @@ export default function Chat() {
                     let conversationKey: ChatStoreConversationKey = {...key, encrypted_keys: encryptedKeys};
                     console.debug("New conversation key ", conversationKey);
                     setConversationKey(conversationKey);
+                    setNewConversation(true);
                 })
                 .catch(err=>console.error("Error creating new conversation encryption key", err));
         }
-    }, [workers, userId, setConversationKey, paramConversationId, setStoreMessages, ready])
+    }, [workers, userId, setConversationKey, paramConversationId, setStoreMessages, ready, setNewConversation, conversationKey])
 
     let messages = useChatStore(state=>state.messages);
     let appendCurrentResponse = useChatStore(state=>state.appendCurrentResponse);
@@ -167,6 +171,7 @@ export default function Chat() {
                 role: 'user', 
                 encrypted_content: encryptedUserMessage
             };
+            if(newConversation) command.new = true;
 
             // let attachment = {history: encryptedMessageHistory, key: {signature: conversationKey.signature}};
             setWaiting(true);
@@ -183,7 +188,9 @@ export default function Chat() {
             })
             .catch(err=>console.error("Error sending message ", err))
             .finally(()=>setWaiting(false))
-    }, [workers, conversationId, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, pushUserQuery, userMessageCallback]);
+    }, [workers, conversationId, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, 
+        pushUserQuery, userMessageCallback, newConversation]
+    );
 
     // Submit on ENTER in the textarea
     let textareaOnKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>)=>{
@@ -221,27 +228,19 @@ export default function Chat() {
             if(!conversationKey) throw new Error("Missing conversationKey");
 
             // Check if conversation already exists
-            let conversation = await getConversation(conversationId);
-            if(conversation) {
-                // Add messages to existing conversation
-                await saveMessagesToIdb(userId, conversationId, messages);
-            } else {
+            if(newConversation) {
                 // Create new conversation
                 console.debug("Save new conversation id %s: %O, key %O, messages: %O", conversationId, conversationKey, messages);
                 await saveConversationToIdb(userId, conversationId, messages, conversationKey);
+                setNewConversation(false);
+            } else {
+                // Add messages to existing conversation
+                await saveMessagesToIdb(userId, conversationId, messages);
             }
         })
         .catch(err=>console.error("Error saving conversation exchange", err));
 
-        // if(!conversationId) {
-        //     // This is a new conversation
-        //     saveConversationToIdb(userId, effectiveConversationId, messages)
-        //         .catch(err=>console.error("Error saving conversation to IDB", err));
-        // } else {
-        //     saveMessagesToIdb(userId, conversationId, messages)
-        //         .catch(err=>console.error("Error saving messages to IDB", err));
-        // }
-    }, [waiting, userId, conversationId, conversationReadyToSave, setConversationReadyToSave, messages, conversationKey]);
+    }, [waiting, userId, conversationId, conversationReadyToSave, setConversationReadyToSave, messages, conversationKey, newConversation, setNewConversation]);
 
     return (
         <>

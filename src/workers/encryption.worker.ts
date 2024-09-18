@@ -22,7 +22,7 @@ export type EncryptionResult = {
 export type EncryptionBase64Result = {
     format: string, 
     nonce: string, 
-    ciphertext: string, 
+    ciphertext_base64: string, 
     digest?: string,
     cle?: {signature: keymaster.DomainSignature}
     cle_id?: string,
@@ -167,7 +167,7 @@ export class AppsEncryptionWorker {
         let infoBase64: EncryptionBase64Result = {
             format: info.format, 
             nonce: multiencoding.encodeBase64(info.nonce), 
-            ciphertext: multiencoding.encodeBase64(info.ciphertext),
+            ciphertext_base64: multiencoding.encodeBase64(info.ciphertext),
             digest: info.digest?(multiencoding.encodeBase64(info.digest)):undefined,
             cle: info.cle,
             cle_id: info.cle_id,
