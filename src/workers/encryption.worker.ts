@@ -2,6 +2,11 @@ import '@solana/webcrypto-ed25519-polyfill';
 import { expose } from 'comlink';
 
 import { encryption, encryptionMgs4, multiencoding, keymaster, x25519, certificates } from 'millegrilles.cryptography';
+import { deflate } from 'pako';
+
+export type EncryptionOptions = {
+    base64?: boolean,
+}
 
 export type EncryptionResult = {
     format: string, 
@@ -9,9 +14,23 @@ export type EncryptionResult = {
     ciphertext: Uint8Array, 
     digest?: Uint8Array,
     cle?: {signature: keymaster.DomainSignature}
-    keyId?: string,
+    cle_id?: string,
     cleSecrete?: Uint8Array,
+    compression?: string,
 };
+
+export type EncryptionBase64Result = {
+    format: string, 
+    nonce: string, 
+    ciphertext: string, 
+    digest?: string,
+    cle?: {signature: keymaster.DomainSignature}
+    cle_id?: string,
+    cleSecrete?: Uint8Array,
+    compression?: string,
+};
+
+export type GeneratedSecretKeyResult = { keyInfo: any, secret: Uint8Array, signature: keymaster.DomainSignature, cle_id: string };
 
 export class AppsEncryptionWorker {
     millegrillePublicKey: Uint8Array | null;
@@ -32,6 +51,22 @@ export class AppsEncryptionWorker {
             this.caCertificate = wrapper;
         }
     }
+
+    async getMillegrillePublicKey() {
+        if(!this.millegrillePublicKey) throw new Error('Key not initialized');
+        return this.millegrillePublicKey;
+    }
+
+    async generateSecretKey(domains: string[]): Promise<GeneratedSecretKeyResult> {
+        if(!this.millegrillePublicKey) throw new Error('Key not initialized');
+        let keyInfo = await x25519.secretFromEd25519(this.millegrillePublicKey);
+        let keySignature = new keymaster.DomainSignature(domains, 1, keyInfo.peer);
+        await keySignature.sign(keyInfo.secret);
+        let keyId = await keySignature.getKeyId();
+        return { keyInfo, secret: keyInfo.secret, signature: keySignature, cle_id: keyId };
+    }
+
+    
 
     /**
      * 
@@ -55,7 +90,7 @@ export class AppsEncryptionWorker {
             key = multiencoding.decodeBase64Nopad(key);
         }
 
-        let cleartextArray;
+        let cleartextArray: Uint8Array;
         if(typeof(cleartext) === 'string') {
             cleartextArray = new TextEncoder().encode(cleartext);
         } else if(ArrayBuffer.isView(cleartext)) {
@@ -64,6 +99,14 @@ export class AppsEncryptionWorker {
         } else {
             cleartextArray = new TextEncoder().encode(JSON.stringify(cleartext));
         }
+
+        let compression = null as null | string;
+        if(cleartextArray.length > 200) {
+            // Compress with zlib (deflate)
+            compression = 'deflate';
+            cleartextArray = deflate(cleartextArray);
+        }
+
         let cipher = null;
         let newKey = null as any;
         let keyId = null as string | null;
@@ -82,13 +125,14 @@ export class AppsEncryptionWorker {
             let keySignature = new keymaster.DomainSignature(['Documents'], 1, secret.peer);
             await keySignature.sign(cipher.key);
 
-            let cles = {} as {[key: string]: string};
-            for await(let encryptionKey of this.encryptionKeys) {
-                let fingerprint = encryptionKey.getPublicKey();
-                let pkBytes = multiencoding.decodeHex(fingerprint);
-                let newEncryptedKey = await x25519.encryptEd25519(secret.secret, pkBytes);
-                cles[fingerprint] = newEncryptedKey;
-            }
+            let cles = await this.encryptSecretKey(secret.secret)
+            // let cles = {} as {[key: string]: string};
+            // for await(let encryptionKey of this.encryptionKeys) {
+            //     let fingerprint = encryptionKey.getPublicKey();
+            //     let pkBytes = multiencoding.decodeHex(fingerprint);
+            //     let newEncryptedKey = await x25519.encryptEd25519(secret.secret, pkBytes);
+            //     cles[fingerprint] = newEncryptedKey;
+            // }
 
             keyId = await keySignature.getKeyId();
             key = secret.secret;
@@ -106,14 +150,48 @@ export class AppsEncryptionWorker {
         if(out2) buffers.push(out2);
         let ciphertext = encryption.concatBuffers(buffers);
 
-        let info = {format: 'mgs4', nonce: cipher.header, ciphertext, digest: cipher.digest} as EncryptionResult;
+        let info: EncryptionResult = {format: 'mgs4', nonce: cipher.header, ciphertext, digest: cipher.digest} as EncryptionResult;
+        if(compression) info.compression = compression;
         if(newKey && keyId) {
-            info.keyId = keyId;
+            info.cle_id = keyId;
             info.cle = newKey;
             info.cleSecrete = key;
         }
 
         return info;
+    }
+
+    async encryptMessageMgs4ToBase64(cleartext: Object | string | Uint8Array, key?: string | Uint8Array): Promise<EncryptionBase64Result> {
+        let info = await this.encryptMessageMgs4(cleartext, key);
+
+        let infoBase64: EncryptionBase64Result = {
+            format: info.format, 
+            nonce: multiencoding.encodeBase64(info.nonce), 
+            ciphertext: multiencoding.encodeBase64(info.ciphertext),
+            digest: info.digest?(multiencoding.encodeBase64(info.digest)):undefined,
+            cle: info.cle,
+            cle_id: info.cle_id,
+            cleSecrete: info.cleSecrete,
+            compression: info.compression,
+        };
+
+        return infoBase64;
+    }
+
+    /**
+     * Encrytps a secret key for all currently loaded KeyMaster public keys.
+     * @param secretKey Secret key to encrypt.
+     * @returns Dict of encrypted keys.
+     */
+    async encryptSecretKey(secretKey: Uint8Array): Promise<{[key: string]: string}> {
+        let cles = {} as {[key: string]: string};
+        for await(let encryptionKey of this.encryptionKeys) {
+            let fingerprint = encryptionKey.getPublicKey();
+            let pkBytes = multiencoding.decodeHex(fingerprint);
+            let newEncryptedKey = await x25519.encryptEd25519(secretKey, pkBytes);
+            cles[fingerprint] = newEncryptedKey;
+        }
+        return cles;
     }
 
     async decryptMessage(format: string, key: string | Uint8Array, nonce: string | Uint8Array, ciphertext: string | Uint8Array) {

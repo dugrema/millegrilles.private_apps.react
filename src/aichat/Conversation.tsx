@@ -4,13 +4,15 @@ import { proxy } from 'comlink';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import useWorkers from '../workers/workers';
-import useChatStore, { ChatMessage as StoreChatMessage } from './chatStore';
+import useChatStore, { ChatStoreConversationKey, ChatMessage as StoreChatMessage } from './chatStore';
 
 import useConnectionStore from '../connectionStore';
 import { ChatAvailable } from './ChatSummaryHistory';
-import { ChatMessage, getConversationMessages, saveConversation, saveMessages } from './aichatStoreIdb';
+import { ChatMessage, ConversationKey, getConversation, getConversationMessages, saveConversation, saveMessages } from './aichatStoreIdb';
 import { MessageResponse, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
-import { messageStruct } from 'millegrilles.cryptography';
+import { keymaster, messageStruct, multiencoding, random, x25519 } from 'millegrilles.cryptography';
+import { EncryptionBase64Result, EncryptionResult } from '../workers/encryption.worker';
+import { getDecryptedKeys, saveDecryptedKey } from '../MillegrillesIdb';
 
 export default function Chat() {
 
@@ -19,35 +21,73 @@ export default function Chat() {
 
     let relayAvailable = useChatStore(state=>state.relayAvailable);
     let conversationId = useChatStore(state=>state.conversationId);
-    let setConversationId = useChatStore(state=>state.setConversationId);
+    let conversationKey = useChatStore(state=>state.key);
+    let setConversationKey = useChatStore(state=>state.setConversationKey);
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useChatStore(state=>state.userId);
     let currentResponse = useChatStore(state=>state.currentResponse);
-    let currentUserCommand = useChatStore(state=>state.currentUserCommand);
-    let setCurrentUserCommand = useChatStore(state=>state.setCurrentUserCommand);
+    let applyCurrentUserCommand = useChatStore(state=>state.applyCurrentUserCommand);
     let setStoreMessages = useChatStore(state=>state.setMessages);
+    let conversationReadyToSave = useChatStore(state=>state.conversationReadyToSave);
+    let setConversationReadyToSave = useChatStore(state=>state.setConversationReadyToSave);
 
     let {conversationId: paramConversationId} = useParams();
 
     // Initialize conversationId
     useEffect(()=>{
+        if(!ready) return;
+        if(!workers) throw new Error("Workers not initialized");
+
         if(userId && paramConversationId) {
-            setConversationId(paramConversationId);
+            // setConversationId(paramConversationId);
 
             // Load the existing conversation messages
-            getConversationMessages(userId, paramConversationId)
-                .then(chatMessages=>{
+            getConversation(paramConversationId)
+                .then(async chatConversation => {
+                    if(!workers) throw new Error("Workers not initialized");
+                    if(!userId) throw new Error("UserId is missing");
+                    if(!paramConversationId) throw new Error("paramConversationId is missing");
+
+                    let conversationKey = chatConversation?.conversationKey;
+                    if(!conversationKey || !conversationKey.cle_id) throw new Error("Missing keyId information");
+                    let chatMessages = await getConversationMessages(userId, paramConversationId);
+                    let decryptedKey = (await getDecryptedKeys([conversationKey.cle_id])).pop();
+                    if(!decryptedKey) {
+                        // Try to load from server
+                        throw new Error("TODO load conversation key from keymaster");
+                    }
+                    console.debug("Decode decrypted key", decryptedKey);
+                    let encryptedKeys = await workers.encryption.encryptSecretKey(decryptedKey.cleSecrete);
+                    let storeConversationKey: ChatStoreConversationKey = {
+                        ...conversationKey,
+                        secret: decryptedKey.cleSecrete,
+                        encrypted_keys: encryptedKeys,
+                    };
+
                     // @ts-ignore
                     let storeMessageList: StoreChatMessage[] = chatMessages.filter(item=>item.role && item.content)
                     storeMessageList.sort(sortMessagesByDate);
+                    setConversationKey(storeConversationKey);
                     setStoreMessages(storeMessageList);
+                    
                     // Force one last screen scroll
                     setTimeout(()=>setLastUpdate(new Date().getTime()), 250);
                 })
                 .catch(err=>console.error("Error loading messages from IDB", err));
+        } else {
+            // Initialize a new conversation key
+            workers.encryption.generateSecretKey(['AiLanguage', 'ollama_relai'])
+                .then(async key => {
+                    if(!workers) throw new Error("Workers not initialized");
+                    
+                    let encryptedKeys = await workers.encryption.encryptSecretKey(key.secret);
+                    let conversationKey: ChatStoreConversationKey = {...key, encrypted_keys: encryptedKeys};
+                    console.debug("New conversation key ", conversationKey);
+                    setConversationKey(conversationKey);
+                })
+                .catch(err=>console.error("Error creating new conversation encryption key", err));
         }
-        else setConversationId(null);
-    }, [userId, setConversationId, paramConversationId, setStoreMessages])
+    }, [workers, userId, setConversationKey, paramConversationId, setStoreMessages])
 
     let messages = useChatStore(state=>state.messages);
     let appendCurrentResponse = useChatStore(state=>state.appendCurrentResponse);
@@ -69,7 +109,7 @@ export default function Chat() {
         let message = event.message as ChatResponse;
         if(!message) { // Status message
             if(!event.ok) {
-                console.error("Erreur processing response, ", event.err);
+                console.error("Erreur processing response, ", event);
                 setWaiting(false);
             }
             return;
@@ -81,31 +121,54 @@ export default function Chat() {
         let done = event.done;
         let message_id = event.message_id;
         if(done && message_id) {
+            console.debug("Last message in stream ", event);
             setWaiting(false);
             pushAssistantResponse(message_id);
+            setConversationReadyToSave(true);
             // Force one last screen update
             setTimeout(()=>setLastUpdate(new Date().getTime()), 250);
         }
-    }), [appendCurrentResponse, setWaiting, pushAssistantResponse, setLastUpdate]);
+    }), [appendCurrentResponse, setWaiting, pushAssistantResponse, setLastUpdate, setConversationReadyToSave]);
 
     let userMessageCallback = useMemo(()=>proxy(async (event: messageStruct.MilleGrillesMessage)=>{
-        setCurrentUserCommand(event);
-    }), [setCurrentUserCommand]);
+        applyCurrentUserCommand(event);
+    }), [applyCurrentUserCommand]);
 
     let submitHandler = useCallback(() => {
         if(!chatInput.trim()) return;  // No message, nothing to do
         if(!workers) throw new Error('workers not initialized');
+        if(!conversationKey) throw new Error('Encryption key is not initialized');
 
-        let messagesAvecQuery = [...messages, {'message_id': 'current', 'role': 'user', 'content': chatInput}];
+        let messageHistory = messages.map(item=>{
+            return {role: item.role, content: item.content};
+        });
+        // let newMessage = {'message_id': 'current', 'role': 'user', 'content': chatInput};
         pushUserQuery(chatInput);
         setChatInput('');  // Reset input
         
-        let command = {model: 'llama3.1:8b-instruct-q5_0', messages: messagesAvecQuery};
-        setWaiting(true);
         Promise.resolve().then(async () => {
+            if(!workers) throw new Error("Workers not initialized"); 
+            if(!conversationKey) throw new Error("Encryption key not initialized");
+
+            let encryptedMessageHistory = null as null | EncryptionBase64Result;
+            if(messages && messages.length > 0) {
+                encryptedMessageHistory = await workers.encryption.encryptMessageMgs4ToBase64(messageHistory, conversationKey?.secret);
+                encryptedMessageHistory.cle_id = conversationKey.cle_id;
+                delete encryptedMessageHistory.digest;  // Remove digest, no need for it
+            }
+            let encryptedUserMessage = await workers.encryption.encryptMessageMgs4ToBase64(chatInput, conversationKey?.secret);
+            encryptedUserMessage.cle_id = conversationKey.cle_id;
+            delete encryptedUserMessage.digest;  // Remove digest, no need for it
+
+            let command = {model: 'llama3.1:8b-instruct-q5_0', role: 'user', encrypted_content: encryptedUserMessage};
+
+            // let attachment = {history: encryptedMessageHistory, key: {signature: conversationKey.signature}};
+            setWaiting(true);
                 if(!workers) throw new Error("Workers not initialized");
+                console.debug("Sending command %O, history: %O, signature: %O, keys: %O", 
+                    command, encryptedMessageHistory, conversationKey.signature, conversationKey.encrypted_keys);
                 let ok = await workers.connection.sendChatMessage(
-                    command, 
+                    command, encryptedMessageHistory, conversationKey.signature, conversationKey.encrypted_keys,
                     // @ts-ignore
                     chatCallback, 
                     userMessageCallback
@@ -114,7 +177,7 @@ export default function Chat() {
             })
             .catch(err=>console.error("Error sending message ", err))
             .finally(()=>setWaiting(false))
-    }, [workers, messages, chatInput, setChatInput, chatCallback, setWaiting, pushUserQuery, userMessageCallback]);
+    }, [workers, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, pushUserQuery, userMessageCallback]);
 
     // Submit on ENTER in the textarea
     let textareaOnKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>)=>{
@@ -140,24 +203,39 @@ export default function Chat() {
     }, [clearConversation, setChatInput]);
 
     useEffect(()=>{
-        if(!userId || waiting || !currentUserCommand || currentResponse) return;
-        if(!messages || messages.length === 0) return;
-        let currentUserMessageId = currentUserCommand.id;
-        if(!currentUserMessageId) return;
-        let effectiveConversationId = conversationId || currentUserMessageId;
+        if(waiting || !conversationReadyToSave) return;
+        if(!conversationId || !userId) throw new Error("Error saving conversation, missing conversationId/userId");
+        if(!messages || messages.length === 0) throw new Error("Error saving conversation, no messages to save");
 
-        setCurrentUserCommand(null);  // Prevent loop
-        setConversationId(effectiveConversationId);
+        setConversationReadyToSave(false);  // Avoid loop
 
-        if(!conversationId) {
-            // This is a new conversation
-            saveConversationToIdb(userId, effectiveConversationId, messages)
-                .catch(err=>console.error("Error saving conversation to IDB", err));
-        } else {
-            saveMessagesToIdb(userId, conversationId, messages)
-                .catch(err=>console.error("Error saving messages to IDB", err));
-        }
-    }, [waiting, userId, conversationId, currentUserCommand, messages, currentResponse, setConversationId, setCurrentUserCommand])
+        Promise.resolve().then(async () => {
+            if(!conversationId) throw new Error("Missing conversationId");
+            if(!userId) throw new Error("Missing userId");
+            if(!conversationKey) throw new Error("Missing conversationKey");
+
+            // Check if conversation already exists
+            let conversation = await getConversation(conversationId);
+            if(conversation) {
+                // Add messages to existing conversation
+                await saveMessagesToIdb(userId, conversationId, messages);
+            } else {
+                // Create new conversation
+                console.debug("Save new conversation id %s: %O, key %O, messages: %O", conversationId, conversationKey, messages);
+                await saveConversationToIdb(userId, conversationId, messages, conversationKey);
+            }
+        })
+        .catch(err=>console.error("Error saving conversation exchange", err));
+
+        // if(!conversationId) {
+        //     // This is a new conversation
+        //     saveConversationToIdb(userId, effectiveConversationId, messages)
+        //         .catch(err=>console.error("Error saving conversation to IDB", err));
+        // } else {
+        //     saveMessagesToIdb(userId, conversationId, messages)
+        //         .catch(err=>console.error("Error saving messages to IDB", err));
+        // }
+    }, [waiting, userId, conversationId, conversationReadyToSave, setConversationReadyToSave, messages]);
 
     return (
         <>
@@ -300,10 +378,21 @@ function SyncConversation() {
  * @param conversationId Initial user message id
  * @param messages Initial use message and first assistant response
  */
-async function saveConversationToIdb(userId: string, conversationId: string, messages: StoreChatMessage[]) {
+async function saveConversationToIdb(userId: string, conversationId: string, messages: StoreChatMessage[], conversationKey: ChatStoreConversationKey) {
+    
+    let conversationKeyIdb: ConversationKey = {
+        signature: conversationKey.signature,
+        cle_id: conversationKey.cle_id,
+    };
+    
+    await saveDecryptedKey(conversationKey.cle_id, conversationKey.secret);
+
     // Prepare messages
-    let messagesIdb = messages.map(item=>({user_id: userId, conversation_id: conversationId, decrypted: true, ...item} as ChatMessage));
-    await saveConversation(messagesIdb);
+    let messagesIdb = messages.map(item=>({
+        user_id: userId, conversation_id: conversationId, decrypted: true, 
+        ...item,
+    } as ChatMessage));
+    await saveConversation(messagesIdb, conversationKeyIdb);
 }
 
 /**

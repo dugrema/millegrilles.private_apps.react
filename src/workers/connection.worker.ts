@@ -1,12 +1,13 @@
 import '@solana/webcrypto-ed25519-polyfill';
 import { expose } from 'comlink';
-import { messageStruct } from 'millegrilles.cryptography';
+import { keymaster, messageStruct } from 'millegrilles.cryptography';
 import { ConnectionWorker, MessageResponse, SubscriptionCallback } from 'millegrilles.reactdeps.typescript';
 import apiMapping from './apiMapping.json';
 
 import { DeviceConfiguration, DeviceReadings } from '../senseurspassifs/senseursPassifsStore';
 import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType, NotepadNewCategoryType, NotepadNewDocumentType, NotepadNewGroupType } from '../notepad/idb/notepadStoreIdb';
 import { DecryptionKey } from '../MillegrillesIdb';
+import { EncryptionBase64Result } from './encryption.worker';
 
 const DOMAINE_CORETOPOLOGIE = 'CoreTopologie';
 const DOMAINE_DOCUMENTS = 'Documents';
@@ -14,6 +15,8 @@ const DOMAINE_SENSEURSPASSIFS = 'SenseursPassifs';
 const DOMAINE_SENSEURSPASSIFS_RELAI = 'senseurspassifs_relai';
 const DOMAINE_MAITREDESCLES = 'MaitreDesCles';
 const DOMAINE_OLLAMA_RELAI = 'ollama_relai';
+
+export type SendChatMessageCommand = { model: string, role: string, encrypted_content: EncryptionBase64Result };
 
 export type ActivationCodeResponse = MessageResponse & {
     code?: number | string,
@@ -87,12 +90,23 @@ export class AppsConnectionWorker extends ConnectionWorker {
 
     // AI Chat application
     async sendChatMessage(
-        command: any, 
+        command: SendChatMessageCommand, 
+        history: EncryptionBase64Result | null,
+        signature: keymaster.DomainSignature,
+        keys: {[key: string]: string},
         streamCallback: (e: MessageResponse)=>Promise<void>, 
         messageCallback: (e: messageStruct.MilleGrillesMessage)=>Promise<void>
     ): Promise<boolean> {
         if(!this.connection) throw new Error("Connection is not initialized");
-        let signedMessage = await this.connection.createEncryptedCommand(command, {domaine: DOMAINE_OLLAMA_RELAI, action: 'chat'});
+        // let signedMessage = await this.connection.createEncryptedCommand(command, {domaine: DOMAINE_OLLAMA_RELAI, action: 'chat'});
+        // await messageCallback(signedMessage);
+        // return await this.connection.emitCallbackResponses(signedMessage, streamCallback, {domain: DOMAINE_OLLAMA_RELAI});
+        let signedMessage = await this.connection.createRoutedMessage(
+            messageStruct.MessageKind.Command,
+            command, 
+            {domaine: DOMAINE_OLLAMA_RELAI, action: 'chat'},
+        );
+        signedMessage.attachements = {history, signature, keys};
         await messageCallback(signedMessage);
         return await this.connection.emitCallbackResponses(signedMessage, streamCallback, {domain: DOMAINE_OLLAMA_RELAI});
     }

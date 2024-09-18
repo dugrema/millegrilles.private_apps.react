@@ -1,23 +1,30 @@
 import { IDBPDatabase, openDB as openDbIdb } from 'idb';
 import { getDecryptedKeys } from '../MillegrillesIdb';
 import { AppWorkers } from '../workers/workers';
-import { encryption } from 'millegrilles.cryptography';
+import { encryption, keymaster } from 'millegrilles.cryptography';
 
 const DB_NAME = 'aichat';
 const STORE_CONVERSATIONS = 'conversations';
 const STORE_CONVERSATION_MESSAGES = 'conversationMessages';
 const DB_VERSION_CURRENT = 2;
 
+export type ConversationKey = {
+    signature: keymaster.DomainSignature, 
+    cle_id: string,
+};
+
 export type Conversation = {
     user_id: string, 
     conversation_id: string, 
     startDate: number, 
     decrypted: boolean, 
+    conversationKey: ConversationKey,
     encrypted_data?: encryption.EncryptedData,
     lastSync?: null | number, 
     subject?: null | string,
     initial_query?: null | string,
 };
+
 export type ChatMessage = {
     user_id: string, 
     conversation_id: string, 
@@ -69,7 +76,7 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
     }
 }
 
-export async function saveConversation(messages: ChatMessage[]) {
+export async function saveConversation(messages: ChatMessage[], conversationKey: ConversationKey) {
     let db = await openDB();
 
     let firstMessage = messages[0];
@@ -79,6 +86,7 @@ export async function saveConversation(messages: ChatMessage[]) {
         startDate: firstMessage.date,
         decrypted: true,
         initial_query: firstMessage.content,
+        conversationKey,
     } as Conversation;
     
     let conversationStore = db.transaction(STORE_CONVERSATIONS, 'readwrite').store;
@@ -108,6 +116,12 @@ export async function getConversations(userId: string): Promise<Conversation[]> 
         cursor = await cursor.continue();
     }
     return conversations;
+}
+
+export async function getConversation(conversationId: string): Promise<Conversation | null> {
+    let db = await openDB();
+    let conversationStore = db.transaction(STORE_CONVERSATIONS, 'readonly').store;
+    return await conversationStore.get(conversationId);
 }
 
 export async function getConversationMessages(userId: string, conversationId: string): Promise<ChatMessage[]> {

@@ -231,8 +231,8 @@ function GroupEdit(props: GroupProps) {
                 encryptedData = await workers.encryption.encryptMessageMgs4(cleartextData);
 
                 // Sign the new key command
-                if(encryptedData.cle && encryptedData.keyId) {
-                    keyId = encryptedData.keyId
+                if(encryptedData.cle && encryptedData.cle_id) {
+                    keyId = encryptedData.cle_id
                     newKey = await workers.connection.createRoutedMessage(
                         messageStruct.MessageKind.Command, encryptedData.cle, 
                         {domaine: 'MaitreDesCles', action: 'ajouterCleDomaines'}

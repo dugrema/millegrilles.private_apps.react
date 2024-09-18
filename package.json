@@ -81,5 +81,8 @@
       "last 1 safari version"
     ]
   },
-  "homepage": "/apps"
+  "homepage": "/apps",
+  "devDependencies": {
+    "@types/pako": "^2.0.3"
+  }
 }

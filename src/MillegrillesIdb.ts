@@ -6,7 +6,7 @@ const CONST_STORE_KEY = 'clesDechiffrees';
 
 export type DecryptionKey = { cle_id: string, cle_secrete_base64: string };
 
-export type DecryptionKeyIdb = { hachage_bytes: string, cleSecrete: string };
+export type DecryptionKeyIdb = { hachage_bytes: string, cleSecrete: Uint8Array };
 
 export async function saveDecryptedKey(keyId: string, secretKey: Uint8Array | string) {
     const db = await openDB(CONST_DB_NAME);
