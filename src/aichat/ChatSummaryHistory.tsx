@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import useChatStore from "./chatStore";
 import { Conversation, deleteConversation, getConversations } from "./aichatStoreIdb";
 import { Fragment, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
-import useWorkers from "../workers/workers";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 
 function ChatSummaryHistory() {
@@ -99,7 +98,7 @@ function ChatHistoryList() {
                 </Fragment>
             );
         })
-    }, [conversations]);
+    }, [conversations, deleteConversationHandler]);
 
     if(conversations === null) return <p>Loading...</p>;
     if(!conversationsElems) return <p>No conversations yet.</p>;

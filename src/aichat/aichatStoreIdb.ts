@@ -1,6 +1,4 @@
 import { IDBPDatabase, openDB as openDbIdb } from 'idb';
-import { getDecryptedKeys } from '../MillegrillesIdb';
-import { AppWorkers } from '../workers/workers';
 import { encryption, keymaster } from 'millegrilles.cryptography';
 
 const DB_NAME = 'aichat';
@@ -69,6 +67,7 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
             conversationStore.createIndex('userid', 'user_id', {unique: false, multiEntry: false});
             conversationMessageStore.createIndex('useridConversation', ['user_id', 'conversation_id'], {unique: false, multiEntry: false});
 
+        // @ts-ignore Fallthrough
         case 2: // Most recent
             break;
         default:

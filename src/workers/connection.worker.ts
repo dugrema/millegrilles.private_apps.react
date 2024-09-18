@@ -16,7 +16,13 @@ const DOMAINE_SENSEURSPASSIFS_RELAI = 'senseurspassifs_relai';
 const DOMAINE_MAITREDESCLES = 'MaitreDesCles';
 const DOMAINE_OLLAMA_RELAI = 'ollama_relai';
 
-export type SendChatMessageCommand = { model: string, role: string, encrypted_content: EncryptionBase64Result };
+export type SendChatMessageCommand = { 
+    conversation_id: string,
+    model: string, 
+    role: string, 
+    encrypted_content: EncryptionBase64Result,
+    new?: boolean,
+};
 
 export type ActivationCodeResponse = MessageResponse & {
     code?: number | string,

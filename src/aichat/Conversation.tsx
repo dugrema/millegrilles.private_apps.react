@@ -10,9 +10,10 @@ import useConnectionStore from '../connectionStore';
 import { ChatAvailable } from './ChatSummaryHistory';
 import { ChatMessage, ConversationKey, getConversation, getConversationMessages, saveConversation, saveMessages } from './aichatStoreIdb';
 import { MessageResponse, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
-import { keymaster, messageStruct, multiencoding, random, x25519 } from 'millegrilles.cryptography';
-import { EncryptionBase64Result, EncryptionResult } from '../workers/encryption.worker';
+import { messageStruct } from 'millegrilles.cryptography';
+import { EncryptionBase64Result } from '../workers/encryption.worker';
 import { getDecryptedKeys, saveDecryptedKey } from '../MillegrillesIdb';
+import { SendChatMessageCommand } from '../workers/connection.worker';
 
 export default function Chat() {
 
@@ -25,7 +26,6 @@ export default function Chat() {
     let setConversationKey = useChatStore(state=>state.setConversationKey);
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useChatStore(state=>state.userId);
-    let currentResponse = useChatStore(state=>state.currentResponse);
     let applyCurrentUserCommand = useChatStore(state=>state.applyCurrentUserCommand);
     let setStoreMessages = useChatStore(state=>state.setMessages);
     let conversationReadyToSave = useChatStore(state=>state.conversationReadyToSave);
@@ -87,7 +87,7 @@ export default function Chat() {
                 })
                 .catch(err=>console.error("Error creating new conversation encryption key", err));
         }
-    }, [workers, userId, setConversationKey, paramConversationId, setStoreMessages])
+    }, [workers, userId, setConversationKey, paramConversationId, setStoreMessages, ready])
 
     let messages = useChatStore(state=>state.messages);
     let appendCurrentResponse = useChatStore(state=>state.appendCurrentResponse);
@@ -149,6 +149,7 @@ export default function Chat() {
         Promise.resolve().then(async () => {
             if(!workers) throw new Error("Workers not initialized"); 
             if(!conversationKey) throw new Error("Encryption key not initialized");
+            if(!conversationId) throw new Error("ConversationId not initialized");
 
             let encryptedMessageHistory = null as null | EncryptionBase64Result;
             if(messages && messages.length > 0) {
@@ -160,7 +161,12 @@ export default function Chat() {
             encryptedUserMessage.cle_id = conversationKey.cle_id;
             delete encryptedUserMessage.digest;  // Remove digest, no need for it
 
-            let command = {model: 'llama3.1:8b-instruct-q5_0', role: 'user', encrypted_content: encryptedUserMessage};
+            let command: SendChatMessageCommand = {
+                conversation_id: conversationId, 
+                model: 'llama3.1:8b-instruct-q5_0', 
+                role: 'user', 
+                encrypted_content: encryptedUserMessage
+            };
 
             // let attachment = {history: encryptedMessageHistory, key: {signature: conversationKey.signature}};
             setWaiting(true);
@@ -177,7 +183,7 @@ export default function Chat() {
             })
             .catch(err=>console.error("Error sending message ", err))
             .finally(()=>setWaiting(false))
-    }, [workers, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, pushUserQuery, userMessageCallback]);
+    }, [workers, conversationId, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, pushUserQuery, userMessageCallback]);
 
     // Submit on ENTER in the textarea
     let textareaOnKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>)=>{
@@ -235,7 +241,7 @@ export default function Chat() {
         //     saveMessagesToIdb(userId, conversationId, messages)
         //         .catch(err=>console.error("Error saving messages to IDB", err));
         // }
-    }, [waiting, userId, conversationId, conversationReadyToSave, setConversationReadyToSave, messages]);
+    }, [waiting, userId, conversationId, conversationReadyToSave, setConversationReadyToSave, messages, conversationKey]);
 
     return (
         <>

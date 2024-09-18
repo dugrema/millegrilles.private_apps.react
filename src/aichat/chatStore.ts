@@ -1,4 +1,4 @@
-import { keymaster, messageStruct } from 'millegrilles.cryptography';
+import { messageStruct } from 'millegrilles.cryptography';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { ConversationKey } from './aichatStoreIdb';
