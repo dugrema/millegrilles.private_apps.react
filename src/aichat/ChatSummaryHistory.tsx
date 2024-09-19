@@ -3,6 +3,7 @@ import useChatStore from "./chatStore";
 import { Conversation, deleteConversation, getConversations } from "./aichatStoreIdb";
 import { Fragment, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
+import useWorkers from "../workers/workers";
 
 function ChatSummaryHistory() {
 
@@ -43,23 +44,30 @@ export function ChatAvailable(props: {ignoreOk?: boolean, naClassname?: string})
 
 function ChatHistoryList() {
 
+    let workers = useWorkers();
     let userId = useChatStore(state=>state.userId);
     let lastConversationsUpdate = useChatStore(state=>state.lastConversationsUpdate);
 
     let [conversations, setConversations] = useState(null as null | Conversation[]);
 
     let deleteConversationHandler = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
-        let value = e.currentTarget.value;
-        if(userId && value) {
-            deleteConversation(userId, value)
-                .then(()=>{
-                    // Update screen
-                    let updatedConversations = conversations?.filter(item=>item.conversation_id !== value) || [];
-                    setConversations(updatedConversations);
-                })
-                .catch(err=>console.error("Error deleting conversation from IDB", err));
+        let conversationId = e.currentTarget.value;
+        if(workers && userId && conversationId) {
+            Promise.resolve().then(async ()=>{
+                if(!workers) throw new Error("Workers not initialized");
+                if(!userId) throw new Error("Userid null");
+                let response = await workers.connection.deleteChatConversation(conversationId);
+                if(!response.ok) {
+                    throw new Error("Error delting conversation " + response.err);
+                }
+                await deleteConversation(userId, conversationId);
+                // Update screen
+                let updatedConversations = conversations?.filter(item=>item.conversation_id !== conversationId) || [];
+                setConversations(updatedConversations);
+            })
+            .catch(err=>console.error("Error deleting conversation from IDB", err));
         }
-    }, [userId, conversations, setConversations]);
+    }, [workers, userId, conversations, setConversations]);
 
     useEffect(()=>{
         if(!userId || !lastConversationsUpdate) return;

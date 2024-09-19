@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { proxy } from 'comlink';
 
-import { decryptConversationMessages, getConversation, openDB, saveConversation, saveConversationSync, saveMessagesSync, setConversationSyncDate } from "./aichatStoreIdb";
+import { decryptConversationMessages, getConversation, openDB, saveMessagesSync, setConversationSyncDate } from "./aichatStoreIdb";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { ConversationSyncResponse } from "../workers/connection.worker";

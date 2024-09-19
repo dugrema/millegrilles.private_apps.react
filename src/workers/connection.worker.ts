@@ -173,6 +173,11 @@ export class AppsConnectionWorker extends ConnectionWorker {
         );
     }
 
+    async deleteChatConversation(conversationId: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({conversation_id: conversationId}, DOMAINE_AI_LANGUAGE, 'deleteChatConversation');
+    }
+
     // SenseursPassifs
     async getUserDevices(): Promise<GetUserDevicesResponse> {
         if(!this.connection) throw new Error("Connection is not initialized");

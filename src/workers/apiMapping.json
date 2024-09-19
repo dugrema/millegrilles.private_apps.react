@@ -17,9 +17,6 @@
         {"domain": "ollama_relai", "action": "ping"}
     ],
     "commands": [
-        {"domain": "ollama_relai", "action": "generate", "stream": true},
-        {"domain": "ollama_relai", "action": "chat", "stream": true},
-        {"domain": "ollama_relai", "action": "model"},
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},
         {"domain": "SenseursPassifs", "action": "signerAppareil"},
         {"domain": "SenseursPassifs", "action": "majAppareil"},
@@ -33,7 +30,11 @@
         {"domain": "Documents", "action": "supprimerDocument"},
         {"domain": "Documents", "action": "recupererDocument"},
         {"domain": "Documents", "action": "supprimerGroupe"},
-        {"domain": "Documents", "action": "recupererGroupe"}
+        {"domain": "Documents", "action": "recupererGroupe"},
+        {"domain": "AiLanguage", "action": "deleteChatConversation"},
+        {"domain": "ollama_relai", "action": "generate", "stream": true},
+        {"domain": "ollama_relai", "action": "chat", "stream": true},
+        {"domain": "ollama_relai", "action": "model"}
     ],
     "subscriptions": {
         "userDeviceEvents": {
