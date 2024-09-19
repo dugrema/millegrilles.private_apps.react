@@ -108,11 +108,14 @@ export async function saveMessagesSync(messages: ChatMessage[]) {
 }
 
 export async function setConversationSyncDate(conversationId: string, syncDate: number) {
+    if(!conversationId) throw new TypeError("conversationId is null");
     let db = await openDB();
     let conversationStore = db.transaction(STORE_CONVERSATIONS, 'readwrite').store;
     let updated = await conversationStore.get(conversationId) as Conversation;
-    updated.lastSync = syncDate;
-    await conversationStore.put(updated);
+    if(updated) {
+        updated.lastSync = syncDate;
+        await conversationStore.put(updated);
+    }
 }
 
 export async function saveConversation(messages: ChatMessage[], conversationKey: ConversationKey) {
