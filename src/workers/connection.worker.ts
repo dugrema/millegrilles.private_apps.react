@@ -8,12 +8,14 @@ import { DeviceConfiguration, DeviceReadings } from '../senseurspassifs/senseurs
 import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType, NotepadNewCategoryType, NotepadNewDocumentType, NotepadNewGroupType } from '../notepad/idb/notepadStoreIdb';
 import { DecryptionKey } from '../MillegrillesIdb';
 import { EncryptionBase64Result } from './encryption.worker';
+import { ChatMessage, Conversation } from '../aichat/aichatStoreIdb';
 
 const DOMAINE_CORETOPOLOGIE = 'CoreTopologie';
 const DOMAINE_DOCUMENTS = 'Documents';
 const DOMAINE_SENSEURSPASSIFS = 'SenseursPassifs';
 const DOMAINE_SENSEURSPASSIFS_RELAI = 'senseurspassifs_relai';
 const DOMAINE_MAITREDESCLES = 'MaitreDesCles';
+const DOMAINE_AI_LANGUAGE = 'AiLanguage';
 const DOMAINE_OLLAMA_RELAI = 'ollama_relai';
 
 export type SendChatMessageCommand = { 
@@ -82,6 +84,13 @@ export type NotepadDocumentsResponse = MessageResponse & {
     done: boolean,
 };
 
+export type ConversationSyncResponse = MessageResponse & {
+    conversations: Conversation[] | null,
+    messages: ChatMessage[] | null,
+    done: boolean,
+    sync_date: number,
+};
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -104,9 +113,6 @@ export class AppsConnectionWorker extends ConnectionWorker {
         messageCallback: (e: messageStruct.MilleGrillesMessage)=>Promise<void>
     ): Promise<boolean> {
         if(!this.connection) throw new Error("Connection is not initialized");
-        // let signedMessage = await this.connection.createEncryptedCommand(command, {domaine: DOMAINE_OLLAMA_RELAI, action: 'chat'});
-        // await messageCallback(signedMessage);
-        // return await this.connection.emitCallbackResponses(signedMessage, streamCallback, {domain: DOMAINE_OLLAMA_RELAI});
         let signedMessage = await this.connection.createRoutedMessage(
             messageStruct.MessageKind.Command,
             command, 
@@ -117,9 +123,54 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.emitCallbackResponses(signedMessage, streamCallback, {domain: DOMAINE_OLLAMA_RELAI});
     }
 
+    async getConversationKeys(keyIds: string[]) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {cle_ids: keyIds}, DOMAINE_AI_LANGUAGE, 'getConversationKeys', 
+            {domain: DOMAINE_MAITREDESCLES}
+        ) as DecryptionKeyResponse;
+    }
+
     async pingRelay(): Promise<MessageResponse> {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest({}, DOMAINE_OLLAMA_RELAI, 'ping', {timeout: 1_500}) as GetUserDevicesResponse;
+    }
+
+    async syncConversations(
+        streamCallback: (e: ConversationSyncResponse)=>Promise<void>, 
+        lastSyncDate?: number | null,
+    ) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        let signedMessage = await this.connection.createRoutedMessage(
+            messageStruct.MessageKind.Request,
+            {last_sync_date: lastSyncDate}, 
+            {domaine: DOMAINE_AI_LANGUAGE, action: 'syncConversations'},
+        );
+        return await this.connection.emitCallbackResponses(
+            signedMessage, 
+            // @ts-ignore
+            streamCallback, 
+            {domain: DOMAINE_AI_LANGUAGE}
+        );
+    }
+
+    async syncConversationMessages(
+        conversationId: string,
+        streamCallback: (e: ConversationSyncResponse)=>Promise<void>, 
+        lastSyncDate?: number | null,
+    ) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        let signedMessage = await this.connection.createRoutedMessage(
+            messageStruct.MessageKind.Request,
+            {conversation_id: conversationId, last_sync_date: lastSyncDate}, 
+            {domaine: DOMAINE_AI_LANGUAGE, action: 'syncConversationMessages'},
+        );
+        return await this.connection.emitCallbackResponses(
+            signedMessage, 
+            // @ts-ignore
+            streamCallback, 
+            {domain: DOMAINE_AI_LANGUAGE}
+        );
     }
 
     // SenseursPassifs

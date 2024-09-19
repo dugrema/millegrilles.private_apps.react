@@ -44,6 +44,7 @@ export function ChatAvailable(props: {ignoreOk?: boolean, naClassname?: string})
 function ChatHistoryList() {
 
     let userId = useChatStore(state=>state.userId);
+    let lastConversationsUpdate = useChatStore(state=>state.lastConversationsUpdate);
 
     let [conversations, setConversations] = useState(null as null | Conversation[]);
 
@@ -61,25 +62,25 @@ function ChatHistoryList() {
     }, [userId, conversations, setConversations]);
 
     useEffect(()=>{
-        if(!userId) return;
+        if(!userId || !lastConversationsUpdate) return;
         getConversations(userId)
             .then(list=>{
                 setConversations(list);
             })
             .catch(err=>console.error("Error loading conversations list", err));
-    }, [userId])
+    }, [userId, lastConversationsUpdate]);
 
     let conversationsElems = useMemo(()=>{
         if(!conversations) return null;
 
         let sortedConversations = [...conversations];
         sortedConversations.sort((a: Conversation, b: Conversation)=>{
-            return a.startDate - b.startDate;
+            return a.conversation_date - b.conversation_date;
         })
         sortedConversations = sortedConversations.reverse();
 
         return sortedConversations.map(item=>{
-            let label = item.subject || item.initial_query;
+            let label = item.subject || item.initial_query || item.cle_id;
 
             return (
                 <Fragment key={item.conversation_id}>
@@ -93,7 +94,7 @@ function ChatHistoryList() {
                         {label}
                     </Link>
                     <div className='col-span-3'>
-                        <Formatters.FormatterDate value={item.startDate} />
+                        <Formatters.FormatterDate value={item.conversation_date} />
                     </div>
                 </Fragment>
             );

@@ -8,12 +8,13 @@ import useChatStore, { ChatStoreConversationKey, ChatMessage as StoreChatMessage
 
 import useConnectionStore from '../connectionStore';
 import { ChatAvailable } from './ChatSummaryHistory';
-import { ChatMessage, ConversationKey, getConversation, getConversationMessages, saveConversation, saveMessages } from './aichatStoreIdb';
+import { ChatMessage, ConversationKey, getConversation, getConversationMessages, saveConversation, saveMessagesSync } from './aichatStoreIdb';
 import { MessageResponse, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
-import { messageStruct } from 'millegrilles.cryptography';
+import { messageStruct, multiencoding } from 'millegrilles.cryptography';
 import { EncryptionBase64Result } from '../workers/encryption.worker';
 import { getDecryptedKeys, saveDecryptedKey } from '../MillegrillesIdb';
 import { SendChatMessageCommand } from '../workers/connection.worker';
+import SyncConversationMessages from './SyncConversationMessages';
 
 export default function Chat() {
 
@@ -33,16 +34,17 @@ export default function Chat() {
     let newConversation = useChatStore(state=>state.newConversation);
     let setNewConversation = useChatStore(state=>state.setNewConversation);
 
+    let setLastConversationMessagesUpdate = useChatStore(state=>state.setLastConversationMessagesUpdate);
+    let lastConversationMessagesUpdate = useChatStore(state=>state.lastConversationMessagesUpdate);
+
     let {conversationId: paramConversationId} = useParams();
 
     // Initialize conversationId
     useEffect(()=>{
-        if(!ready || conversationKey) return;
+        if(!ready || !userId || conversationKey) return;
         if(!workers) throw new Error("Workers not initialized");
 
-        if(userId && paramConversationId) {
-            // setConversationId(paramConversationId);
-
+        if(paramConversationId) {
             // Load the existing conversation messages
             getConversation(paramConversationId)
                 .then(async chatConversation => {
@@ -51,28 +53,35 @@ export default function Chat() {
                     if(!paramConversationId) throw new Error("paramConversationId is missing");
                     setNewConversation(false);
 
+                    console.debug("Load chatConversation ", chatConversation);
+
                     let conversationKey = chatConversation?.conversationKey;
                     if(!conversationKey || !conversationKey.cle_id) throw new Error("Missing keyId information");
-                    let chatMessages = await getConversationMessages(userId, paramConversationId);
                     let decryptedKey = (await getDecryptedKeys([conversationKey.cle_id])).pop();
                     if(!decryptedKey) {
                         // Try to load from server
-                        throw new Error("TODO load conversation key from keymaster");
+                        let keyResponse = await workers.connection.getConversationKeys([conversationKey.cle_id]);
+                        console.debug("Key response: ", keyResponse);
+                        if(!keyResponse.ok) {
+                            throw new Error("Error receiving conversation key: " + keyResponse.err);
+                        }
+                        let keyInfo = keyResponse.cles.pop();
+                        if(!keyInfo || keyInfo.cle_id !== conversationKey.cle_id) throw new Error("No key received");
+                        let keyBytes = multiencoding.decodeBase64Nopad(keyInfo.cle_secrete_base64);
+                        await saveDecryptedKey(keyInfo.cle_id, keyBytes);
+                        decryptedKey = { hachage_bytes: keyInfo.cle_id, cleSecrete: keyBytes };
                     }
-                    console.debug("Decode decrypted key", decryptedKey);
+                    console.debug("Encrypt secret key for current keymasters ", decryptedKey);
                     let encryptedKeys = await workers.encryption.encryptSecretKey(decryptedKey.cleSecrete);
                     let storeConversationKey: ChatStoreConversationKey = {
                         ...conversationKey,
                         secret: decryptedKey.cleSecrete,
                         encrypted_keys: encryptedKeys,
                     };
-
-                    // @ts-ignore
-                    let storeMessageList: StoreChatMessage[] = chatMessages.filter(item=>item.role && item.content)
-                    storeMessageList.sort(sortMessagesByDate);
+                    console.debug("Set conversationKey ", storeConversationKey);
                     setConversationKey(storeConversationKey);
-                    setStoreMessages(storeMessageList);
-                    
+                    setLastConversationMessagesUpdate(new Date().getTime());
+
                     // Force one last screen scroll
                     setTimeout(()=>setLastUpdate(new Date().getTime()), 250);
                 })
@@ -91,7 +100,7 @@ export default function Chat() {
                 })
                 .catch(err=>console.error("Error creating new conversation encryption key", err));
         }
-    }, [workers, userId, setConversationKey, paramConversationId, setStoreMessages, ready, setNewConversation, conversationKey])
+    }, [workers, userId, setConversationKey, paramConversationId, setStoreMessages, ready, setNewConversation, conversationKey, setLastConversationMessagesUpdate])
 
     let messages = useChatStore(state=>state.messages);
     let appendCurrentResponse = useChatStore(state=>state.appendCurrentResponse);
@@ -108,6 +117,22 @@ export default function Chat() {
         setChatInput(value);
         setLastUpdate(new Date().getTime());
     }, [setChatInput, setLastUpdate]);
+
+    useEffect(()=>{
+        if(!userId || !conversationId || !lastConversationMessagesUpdate) return;
+
+        console.debug("Loading messages for userId: %s, conversationId: %s", userId, conversationId);
+        getConversationMessages(userId, conversationId)
+            .then((chatMessages)=>{
+                console.debug("Conversation chat messages ", chatMessages);
+                // @ts-ignore
+                let storeMessageList: StoreChatMessage[] = chatMessages.filter(item=>item.query_role && item.content)
+                storeMessageList.sort(sortMessagesByDate);
+                setStoreMessages(storeMessageList);
+            })
+            .catch(err=>console.error("Error loading messages ", err));
+
+    }, [userId, setStoreMessages, lastConversationMessagesUpdate, conversationId]);
 
     let chatCallback = useMemo(() => proxy(async (event: MessageResponse & SubscriptionMessage & {partition?: string, done?: boolean, message_id?: string}) => {
         let message = event.message as ChatResponse;
@@ -144,7 +169,7 @@ export default function Chat() {
         if(!conversationKey) throw new Error('Encryption key is not initialized');
 
         let messageHistory = messages.map(item=>{
-            return {role: item.role, content: item.content};
+            return {role: item.query_role, content: item.content};
         });
         // let newMessage = {'message_id': 'current', 'role': 'user', 'content': chatInput};
         pushUserQuery(chatInput);
@@ -268,7 +293,7 @@ export default function Chat() {
                 </Link>
             </div>
 
-            <SyncConversation />
+            <SyncConversationMessages />
         </>
     )
 }
@@ -296,7 +321,7 @@ function ViewHistory(props: {triggerScrolldown: number}) {
         <div className='text-left w-full pr-4'>
             {messages.map((item, idx)=>(<ChatBubble key={''+idx} value={item} />))}
             {currentResponse?
-                <ChatBubble value={{role: 'assistant', content: currentResponse, message_id: 'currentresponse'}} />
+                <ChatBubble value={{query_role: 'assistant', content: currentResponse, message_id: 'currentresponse'}} />
                 :''
             }
             <div ref={refBottom}></div>
@@ -309,12 +334,13 @@ type MessageRowProps = {value: StoreChatMessage};
 // Src : https://flowbite.com/docs/components/chat-bubble/
 function ChatBubble(props: MessageRowProps) {
 
-    let {role, content, date: messageDate} = props.value;
+    let {query_role: role, content, message_date: messageDate} = props.value;
 
     let messageDateStr = useMemo(()=>{
         if(!messageDate) return '';
-        let d = new Date(messageDate * 1000);
-        return d.toLocaleTimeString();
+        let d = new Date(messageDate);
+        let dateString = d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
+        return dateString;
     }, [messageDate]);
 
     let [roleName, bubbleSide] = useMemo(()=>{
@@ -357,27 +383,6 @@ function ChatBubble(props: MessageRowProps) {
 
 }
 
-function SyncConversation() {
-    let { conversationId } = useParams();
-
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-
-    useMemo(()=>{
-        if(!ready) return;
-        if(!workers) throw new Error("Workers not initialized");
-        if(conversationId) {
-            console.debug("Sync conversation ", conversationId);
-            // Load from IDB and sync the conversation from back-end.
-
-        }
-    }, [workers, ready, conversationId]);
-
-    return <></>;
-}
-
-// type NewChatMessage = {message_id: string, role: string, content: string, date: number};
-
 /**
  * Initializes a new conversation in IDB.
  * @param conversationId Initial user message id
@@ -407,11 +412,11 @@ async function saveConversationToIdb(userId: string, conversationId: string, mes
  */
 async function saveMessagesToIdb(userId: string, conversationId: string,  messages: StoreChatMessage[]) {
     let messagesIdb = messages.map(item=>({user_id: userId, conversation_id: conversationId, decrypted: true, ...item} as ChatMessage));
-    await saveMessages(messagesIdb);
+    await saveMessagesSync(messagesIdb);
 }
 
 function sortMessagesByDate(a: StoreChatMessage, b: StoreChatMessage) {
-    let aDate = a.date, bDate = b.date;
+    let aDate = a.message_date, bDate = b.message_date;
     if(aDate && bDate) {
         return aDate - bDate;
     }

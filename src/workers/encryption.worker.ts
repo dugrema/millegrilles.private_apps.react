@@ -2,7 +2,7 @@ import '@solana/webcrypto-ed25519-polyfill';
 import { expose } from 'comlink';
 
 import { encryption, encryptionMgs4, multiencoding, keymaster, x25519, certificates } from 'millegrilles.cryptography';
-import { deflate } from 'pako';
+import { deflate, inflate } from 'pako';
 
 export type EncryptionOptions = {
     base64?: boolean,
@@ -194,7 +194,7 @@ export class AppsEncryptionWorker {
         return cles;
     }
 
-    async decryptMessage(format: string, key: string | Uint8Array, nonce: string | Uint8Array, ciphertext: string | Uint8Array) {
+    async decryptMessage(format: string, key: string | Uint8Array, nonce: string | Uint8Array, ciphertext: string | Uint8Array, compression?: string | null) {
         if(format !== 'mgs4') throw new Error('Unsupported format');
 
         if(typeof(key) === 'string') {
@@ -204,7 +204,11 @@ export class AppsEncryptionWorker {
             nonce = multiencoding.decodeBase64Nopad(nonce);
         }
         if(typeof(ciphertext) === 'string') {
-            ciphertext = multiencoding.decodeBase64Nopad(ciphertext);
+            if(ciphertext.endsWith('=')) {
+                ciphertext = multiencoding.decodeBase64(ciphertext);
+            } else {
+                ciphertext = multiencoding.decodeBase64Nopad(ciphertext);
+            }
         }
         
         let decipher = await encryptionMgs4.getMgs4Decipher(key, nonce);
@@ -213,8 +217,14 @@ export class AppsEncryptionWorker {
         let buffers = [];
         if(cleartext1) buffers.push(cleartext1);
         if(cleartext2) buffers.push(cleartext2);
-        
-        return encryption.concatBuffers(buffers);
+
+        let completeBuffer = encryption.concatBuffers(buffers)
+
+        if(compression === 'deflate') {
+            completeBuffer = inflate(completeBuffer);
+        }
+
+        return completeBuffer;
     }
 
 }

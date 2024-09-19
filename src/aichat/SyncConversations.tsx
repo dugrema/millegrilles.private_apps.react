@@ -1,7 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { openDB } from "./aichatStoreIdb";
-import useWorkers from "../workers/workers";
+import { useCallback, useEffect, useState } from "react";
+import { proxy } from 'comlink';
+
+import { getMissingConversationKeys, openDB, saveConversationsKeys, saveConversationSync } from "./aichatStoreIdb";
+import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
+import { ConversationSyncResponse } from "../workers/connection.worker";
+import { multiencoding } from "millegrilles.cryptography";
+import useChatStore from "./chatStore";
 
 let promiseIdb: Promise<void> | null = null;
 
@@ -40,6 +45,7 @@ async function init() {
 function ListenConversationChanges() {
 
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let setLastConversationsUpdate = useChatStore(state=>state.setLastConversationsUpdate);
 
     let workers = useWorkers();
 
@@ -61,28 +67,25 @@ function ListenConversationChanges() {
         return () => setUserId('');
     }, [workers, ready, setUserId]);
 
-    let categoryGroupEventCb = useMemo(()=>{
-        // return proxy((event: SubscriptionMessage)=>{
-        //     let message = event.message as MessageUpdateCategoryGroup;
-        //     if(message) {
-                
-        //     }
-        // })
-    }, [workers, userId]);
+    let refreshConversationListHandler = useCallback(()=>{
+        // Force a refresh of the conversation list (when applicable)
+        setLastConversationsUpdate(new Date().getTime());
+    }, [setLastConversationsUpdate]);
 
     useEffect(()=>{
-        if(!workers || !ready) return;  // Note ready to sync
+        if(!workers || !ready || !userId) return;  // Note ready to sync
 
         // // Subscribe to changes on categories and groups
         // workers.connection.subscribeUserCategoryGroup(categoryGroupEventCb)
         //     .catch(err=>console.error("Error subscribing to category/group events", err));
 
-        // // Sync categories and groups for the user. Save in IDB.
-        // syncCategoriesGroups(workers, setCategories, setGroups)
-        //     .then(()=>{
-        //         setSyncDone();
-        //     })
-        //     .catch(err=>console.error("Error during notepad sync", err));
+        // Sync chat conversations with messages for the user. Save in IDB.
+        syncConversations(workers, userId)
+            .then(()=>{
+                console.debug("Sync done");
+                refreshConversationListHandler();
+            })
+            .catch(err=>console.error("Error during conversation sync: ", err));
 
         // return () => {
         //     // Remove listener for document changes on group
@@ -92,7 +95,54 @@ function ListenConversationChanges() {
         //     }
         // };
 
-    }, [workers, ready])
+    }, [workers, ready, userId, refreshConversationListHandler])
 
     return <></>;
+}
+
+async function syncConversations(workers: AppWorkers, userId: string) {
+
+    const callback = proxy(async (response: ConversationSyncResponse) => {
+        console.debug("Streaming event ", response);
+
+        if(!response.ok) {
+            console.error("Error response from conversation sync: ", response.err);
+            return;
+        }
+
+        if(response.conversations) {
+            // Save conversations to IDB
+            await saveConversationSync(response.conversations);
+        }
+
+        if(response.done) {
+            let missingKeys = await getMissingConversationKeys(userId);
+            console.debug("Missing conversation keyIds: ", missingKeys);
+
+            if(missingKeys.length > 0) {
+                // Try to load from server
+                let keyResponse = await workers.connection.getConversationKeys(missingKeys);
+                console.debug("Key response: ", keyResponse);
+                if(!keyResponse.ok) {
+                    throw new Error("Error receiving conversation key: " + keyResponse.err);
+                }
+
+                let conversationKeys = keyResponse.cles.map(item=>{
+                    if(!item.signature) throw new Error("Domaine signature missing");
+                    return {
+                        user_id: userId,
+                        secret_key: multiencoding.decodeBase64Nopad(item.cle_secrete_base64),
+                        conversationKey: {cle_id: item.cle_id, signature: item.signature},
+                    };
+                });
+
+                await saveConversationsKeys(workers, conversationKeys);
+            }
+        }
+    });
+
+    let initialStreamResponse = await workers.connection.syncConversations(callback);
+    if(!initialStreamResponse === true) {
+        throw new Error("Error getting documents for this group");
+    }
 }

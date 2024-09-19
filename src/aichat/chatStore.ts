@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { ConversationKey } from './aichatStoreIdb';
 
-export type ChatMessage = {message_id: string, role: string, content: string, date?: number};
+export type ChatMessage = {message_id: string, query_role: string, content: string, message_date?: number};
 
 export type ChatStoreConversationKey = ConversationKey & {
     secret: Uint8Array,
@@ -19,6 +19,8 @@ interface ChatStoreState {
     key: null | ChatStoreConversationKey,
     conversationReadyToSave: boolean,
     newConversation: boolean,
+    lastConversationsUpdate: number,  // Last time there was a conversation update (ms)
+    lastConversationMessagesUpdate: number,  // Last time there was a conversation update (ms)
     appendCurrentResponse: (chunk: string) => void,
     pushAssistantResponse: (message_id: string) => void,
     pushUserQuery: (query: string) => void,
@@ -30,6 +32,8 @@ interface ChatStoreState {
     setConversationKey: (key: null | ChatStoreConversationKey) => void,
     setConversationReadyToSave: (ready: boolean) => void,
     setNewConversation: (newConversation: boolean) => void,
+    setLastConversationsUpdate: (lastConversationsUpdate: number) => void,
+    setLastConversationMessagesUpdate: (lastConversationMessagesUpdate: number) => void,
 };
 
 const useChatStore = create<ChatStoreState>()(
@@ -43,9 +47,22 @@ const useChatStore = create<ChatStoreState>()(
             key: null,
             conversationReadyToSave: false,
             newConversation: false,
+            lastConversationsUpdate: 1,
+            lastConversationMessagesUpdate: 1,
             appendCurrentResponse: (chunk) => set((state) => ({ currentResponse: state.currentResponse + chunk })),
-            pushAssistantResponse: (message_id) => set((state) => ({ currentResponse: '', messages: [...state.messages, {message_id: message_id, role: 'assistant', content: state.currentResponse, date: Math.floor(new Date().getTime()/1000)}] })),
-            pushUserQuery: (query) => set((state) => ({ messages: [...state.messages, {message_id: 'currentquery', role: 'user', content: query, date: Math.floor(new Date().getTime()/1000)}]})),
+            pushAssistantResponse: (message_id) => set((state) => ({ 
+                currentResponse: '', 
+                messages: [
+                    ...state.messages, 
+                    {message_id: message_id, query_role: 'assistant', content: state.currentResponse, message_date: Math.floor(new Date().getTime())}
+                ] 
+            })),
+            pushUserQuery: (query) => set((state) => ({ 
+                messages: [
+                    ...state.messages, 
+                    {message_id: 'currentquery', query_role: 'user', content: query, message_date: Math.floor(new Date().getTime())}
+                ]
+            })),
             clear: () => set(() => ({
                 messages: [], currentResponse: '', conversationId: null,
                 newConversation: true, conversationReadyToSave: false, key: null,
@@ -77,6 +94,8 @@ const useChatStore = create<ChatStoreState>()(
             }),
             setConversationReadyToSave: (ready) => set(()=>({conversationReadyToSave: ready})),
             setNewConversation: (newConversation) => set(()=>({newConversation})),
+            setLastConversationsUpdate: (lastConversationsUpdate) => set(()=>({lastConversationsUpdate})),
+            setLastConversationMessagesUpdate: (lastConversationMessagesUpdate) => set(()=>({lastConversationMessagesUpdate})),
         })
     ),
 );
