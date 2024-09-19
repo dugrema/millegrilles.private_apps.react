@@ -259,7 +259,6 @@ export async function decryptConversations(workers: AppWorkers, userId: string) 
         cursor = await cursor.continue();
     }
 
-    console.debug("Encrypted conversations for userId %s: %O, keyIds: %O", userId, encryptedConversationIds, keyIds);
     let keyIdsList = Array.from(keyIds);
     let keyList = await getDecryptedKeys(keyIdsList);
     let decryptionKeys = {} as {[key: string]: Uint8Array};
@@ -267,7 +266,6 @@ export async function decryptConversations(workers: AppWorkers, userId: string) 
         decryptionKeys[key.hachage_bytes] = key.cleSecrete;
     }
 
-    console.debug("Decryption keys", decryptionKeys);
     for await (let conversationId of encryptedConversationIds) {
         let conversationStoreRw = db.transaction(STORE_CONVERSATIONS, 'readwrite').store;
         let existing = await conversationStoreRw.get(conversationId) as Conversation;
@@ -276,16 +274,19 @@ export async function decryptConversations(workers: AppWorkers, userId: string) 
             let {cle_id, nonce} = encryptedLabel;
             if(cle_id && nonce) {
                 let key = decryptionKeys[cle_id];
-                try {
-                    let cleartext = await workers.encryption.decryptMessage(
-                        encryptedLabel.format, key, nonce, encryptedLabel.ciphertext_base64, encryptedLabel.compression);
-                    existing.subject = new TextDecoder().decode(cleartext);
-                    existing.decrypted = true;
-                    conversationStoreRw = db.transaction(STORE_CONVERSATIONS, 'readwrite').store;
-                    console.debug("Save decrypted conversation ", existing);
-                    await conversationStoreRw.put(existing);
-                }catch (err) {
-                    console.warn("Error decrypting conversation label for conversationId: ", conversationId);
+                if(key) {
+                    try {
+                        let cleartext = await workers.encryption.decryptMessage(
+                            encryptedLabel.format, key, nonce, encryptedLabel.ciphertext_base64, encryptedLabel.compression);
+                        existing.subject = new TextDecoder().decode(cleartext);
+                        existing.decrypted = true;
+                        conversationStoreRw = db.transaction(STORE_CONVERSATIONS, 'readwrite').store;
+                        await conversationStoreRw.put(existing);
+                    } catch (err) {
+                        console.error("Error decrypting conversation label for conversationId %s: %O ", conversationId, err);
+                    }
+                } else {
+                    console.warn("Missing keyId %s for conversation %s", cle_id, conversationId);
                 }
             }
         }
@@ -311,7 +312,6 @@ export async function decryptConversationMessages(workers: AppWorkers, userId: s
         cursor = await cursor.continue();
     }
 
-    console.debug("Encrypted messages for %s: %O, keyIds: %O", conversationId, encryptedMessageIds, keyIds);
     let keyIdsList = Array.from(keyIds);
     let keyList = await getDecryptedKeys(keyIdsList);
     let decryptionKeys = {} as {[key: string]: Uint8Array};
@@ -319,7 +319,6 @@ export async function decryptConversationMessages(workers: AppWorkers, userId: s
         decryptionKeys[key.hachage_bytes] = key.cleSecrete;
     }
 
-    console.debug("Decryption keys", decryptionKeys);
     let messageStoreRw = db.transaction(STORE_CONVERSATION_MESSAGES, 'readwrite').store;
     for await (let messageId of encryptedMessageIds) {
         let existing = await messageStoreRw.get(messageId) as ChatMessage;
@@ -333,7 +332,6 @@ export async function decryptConversationMessages(workers: AppWorkers, userId: s
                 existing.content = new TextDecoder().decode(cleartext);
                 existing.decrypted = true;
                 messageStoreRw = db.transaction(STORE_CONVERSATION_MESSAGES, 'readwrite').store;
-                console.debug("Save decrypted message ", existing);
                 await messageStoreRw.put(existing);
             }
         }

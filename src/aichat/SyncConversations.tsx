@@ -82,7 +82,7 @@ function ListenConversationChanges() {
         // Sync chat conversations with messages for the user. Save in IDB.
         syncConversations(workers, userId)
             .then(()=>{
-                console.debug("Sync done");
+                console.info("Sync conversations done");
                 refreshConversationListHandler();
             })
             .catch(err=>console.error("Error during conversation sync: ", err));
@@ -102,50 +102,51 @@ function ListenConversationChanges() {
 
 async function syncConversations(workers: AppWorkers, userId: string) {
 
-    const callback = proxy(async (response: ConversationSyncResponse) => {
-        console.debug("Streaming event ", response);
-
-        if(!response.ok) {
-            console.error("Error response from conversation sync: ", response.err);
-            return;
-        }
-
-        if(response.conversations) {
-            // Save conversations to IDB
-            await saveConversationSync(response.conversations);
-        }
-
-        if(response.done) {
-            let missingKeys = await getMissingConversationKeys(userId);
-            console.debug("Missing conversation keyIds: ", missingKeys);
-
-            if(missingKeys.length > 0) {
-                // Try to load from server
-                let keyResponse = await workers.connection.getConversationKeys(missingKeys);
-                console.debug("Key response: ", keyResponse);
-                if(!keyResponse.ok) {
-                    throw new Error("Error receiving conversation key: " + keyResponse.err);
-                }
-
-                let conversationKeys = keyResponse.cles.map(item=>{
-                    if(!item.signature) throw new Error("Domaine signature missing");
-                    return {
-                        user_id: userId,
-                        secret_key: multiencoding.decodeBase64Nopad(item.cle_secrete_base64),
-                        conversationKey: {cle_id: item.cle_id, signature: item.signature},
-                    };
-                });
-
-                await saveConversationsKeys(workers, conversationKeys);
+    await new Promise(async (resolve, reject)=>{
+        const callback = proxy(async (response: ConversationSyncResponse) => {
+            if(!response.ok) {
+                console.error("Error response from conversation sync: ", response);
+                reject(response.err);
+                return;
             }
 
-            // Decrypt conversation labels
-            await decryptConversations(workers, userId);
-        }
-    });
+            if(response.conversations) {
+                // Save conversations to IDB
+                await saveConversationSync(response.conversations);
+            }
 
-    let initialStreamResponse = await workers.connection.syncConversations(callback);
-    if(!initialStreamResponse === true) {
-        throw new Error("Error getting documents for this group");
-    }
+            if(response.done) {
+                let missingKeys = await getMissingConversationKeys(userId);
+
+                if(missingKeys.length > 0) {
+                    // Try to load from server
+                    let keyResponse = await workers.connection.getConversationKeys(missingKeys);
+                    if(!keyResponse.ok) {
+                        throw new Error("Error receiving conversation key: " + keyResponse.err);
+                    }
+
+                    let conversationKeys = keyResponse.cles.map(item=>{
+                        if(!item.signature) throw new Error("Domaine signature missing");
+                        return {
+                            user_id: userId,
+                            secret_key: multiencoding.decodeBase64Nopad(item.cle_secrete_base64),
+                            conversationKey: {cle_id: item.cle_id, signature: item.signature},
+                        };
+                    });
+
+                    await saveConversationsKeys(workers, conversationKeys);
+                }
+
+                // Decrypt conversation labels
+                await decryptConversations(workers, userId);
+                
+                return resolve(null);
+            }
+        });
+
+        let initialStreamResponse = await workers.connection.syncConversations(callback);
+        if(!initialStreamResponse === true) {
+            reject(new Error("Error getting documents for this group"));
+        }
+    })
 }

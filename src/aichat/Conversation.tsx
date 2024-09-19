@@ -53,15 +53,12 @@ export default function Chat() {
                     if(!paramConversationId) throw new Error("paramConversationId is missing");
                     setNewConversation(false);
 
-                    console.debug("Load chatConversation ", chatConversation);
-
                     let conversationKey = chatConversation?.conversationKey;
                     if(!conversationKey || !conversationKey.cle_id) throw new Error("Missing keyId information");
                     let decryptedKey = (await getDecryptedKeys([conversationKey.cle_id])).pop();
                     if(!decryptedKey) {
                         // Try to load from server
                         let keyResponse = await workers.connection.getConversationKeys([conversationKey.cle_id]);
-                        console.debug("Key response: ", keyResponse);
                         if(!keyResponse.ok) {
                             throw new Error("Error receiving conversation key: " + keyResponse.err);
                         }
@@ -71,14 +68,12 @@ export default function Chat() {
                         await saveDecryptedKey(keyInfo.cle_id, keyBytes);
                         decryptedKey = { hachage_bytes: keyInfo.cle_id, cleSecrete: keyBytes };
                     }
-                    console.debug("Encrypt secret key for current keymasters ", decryptedKey);
                     let encryptedKeys = await workers.encryption.encryptSecretKey(decryptedKey.cleSecrete);
                     let storeConversationKey: ChatStoreConversationKey = {
                         ...conversationKey,
                         secret: decryptedKey.cleSecrete,
                         encrypted_keys: encryptedKeys,
                     };
-                    console.debug("Set conversationKey ", storeConversationKey);
                     setConversationKey(storeConversationKey);
                     setLastConversationMessagesUpdate(new Date().getTime());
 
@@ -94,7 +89,6 @@ export default function Chat() {
                     
                     let encryptedKeys = await workers.encryption.encryptSecretKey(key.secret);
                     let conversationKey: ChatStoreConversationKey = {...key, encrypted_keys: encryptedKeys};
-                    console.debug("New conversation key ", conversationKey);
                     setConversationKey(conversationKey);
                     setNewConversation(true);
                 })
@@ -121,10 +115,8 @@ export default function Chat() {
     useEffect(()=>{
         if(!userId || !conversationId || !lastConversationMessagesUpdate) return;
 
-        console.debug("Loading messages for userId: %s, conversationId: %s", userId, conversationId);
         getConversationMessages(userId, conversationId)
             .then((chatMessages)=>{
-                console.debug("Conversation chat messages ", chatMessages);
                 // @ts-ignore
                 let storeMessageList: StoreChatMessage[] = chatMessages.filter(item=>item.query_role && item.content)
                 storeMessageList.sort(sortMessagesByDate);
@@ -150,7 +142,6 @@ export default function Chat() {
         let done = event.done;
         let message_id = event.message_id;
         if(done && message_id) {
-            console.debug("Last message in stream ", event);
             setWaiting(false);
             pushAssistantResponse(message_id);
             setConversationReadyToSave(true);
@@ -201,8 +192,6 @@ export default function Chat() {
             // let attachment = {history: encryptedMessageHistory, key: {signature: conversationKey.signature}};
             setWaiting(true);
                 if(!workers) throw new Error("Workers not initialized");
-                console.debug("Sending command %O, history: %O, signature: %O, keys: %O", 
-                    command, encryptedMessageHistory, conversationKey.signature, conversationKey.encrypted_keys);
                 let ok = await workers.connection.sendChatMessage(
                     command, encryptedMessageHistory, conversationKey.signature, conversationKey.encrypted_keys,
                     // @ts-ignore
@@ -255,7 +244,6 @@ export default function Chat() {
             // Check if conversation already exists
             if(newConversation) {
                 // Create new conversation
-                console.debug("Save new conversation id %s: %O, key %O, messages: %O", conversationId, conversationKey, messages);
                 await saveConversationToIdb(userId, conversationId, messages, conversationKey);
                 setNewConversation(false);
             } else {

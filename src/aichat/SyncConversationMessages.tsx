@@ -61,7 +61,7 @@ function ListenMessageChanges() {
         // Sync chat conversations with messages for the user. Save in IDB.
         syncMessages(workers, conversationId)
             .then(async () => {
-                console.debug("Sync done");
+                console.info("Sync messages done");
                 // Decrypt messages
                 if(workers && conversationId && userId) {
                     await decryptConversationMessages(workers, userId, conversationId)
@@ -93,8 +93,6 @@ async function syncMessages(workers: AppWorkers, conversationId: string) {
         let lastSync = conversation?.lastSync;
 
         const callback = proxy(async (response: ConversationSyncResponse) => {
-            console.debug("Streaming event ", response);
-    
             if(!response.ok) {
                 console.error("Error response from conversation sync: ", response);
                 return reject(response.err);
