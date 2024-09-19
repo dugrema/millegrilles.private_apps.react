@@ -7,6 +7,7 @@ import useConnectionStore from "../connectionStore";
 import { ConversationSyncResponse } from "../workers/connection.worker";
 import { multiencoding } from "millegrilles.cryptography";
 import useChatStore from "./chatStore";
+import { saveDecryptedKey } from "../MillegrillesIdb";
 
 let promiseIdb: Promise<void> | null = null;
 
@@ -133,6 +134,11 @@ async function syncConversations(workers: AppWorkers, userId: string) {
                             conversationKey: {cle_id: item.cle_id, signature: item.signature},
                         };
                     });
+
+                    // Save decrypted keys
+                    for await (let key of conversationKeys) {
+                        await saveDecryptedKey(key.conversationKey.cle_id, key.secret_key);
+                    }
 
                     await saveConversationsKeys(workers, conversationKeys);
                 }
