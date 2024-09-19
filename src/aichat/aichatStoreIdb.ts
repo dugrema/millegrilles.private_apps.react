@@ -24,6 +24,8 @@ export type Conversation = {
     lastSync?: null | number, 
     subject?: null | string,
     initial_query?: null | string,
+    label_encrypted?: null | encryption.EncryptedData,
+    label_source?: null | string,
 };
 
 export type ChatMessage = {
@@ -85,7 +87,7 @@ export async function saveConversationSync(conversations: Conversation[]) {
         let updated = await conversationStore.get(conversation.conversation_id);
         if(!updated) {
             // New
-            updated = {...updated, decrypted: false}
+            updated = {...updated, decrypted: !conversation.label_encrypted}
         }
         updated = {...updated, ...conversation};
         await conversationStore.put(updated);
@@ -233,179 +235,62 @@ export async function saveConversationsKeys(
     for await (let key of keys) {
         let conversation = await store.get(key.conversationKey.cle_id);  // Note: cle_id is also the conversationId
         conversation.conversationKey = key.conversationKey;
-        store.put({...conversation, decrypted: true});
+        store.put({...conversation});
     }
 
 }
 
-// export async function getUserCategories(userId: string): Promise<Array<NotepadCategoryType>> {
-//     let db = await openDB();
-//     let store = db.transaction(STORE_CATEGORIES, 'readonly').store;
-//     let index = store.index('userid');
-//     let cursor = await index.openCursor(userId);
+export async function decryptConversations(workers: AppWorkers, userId: string) {
+    // Get the decryption key from IDB (must already be present)
+    let db = await openDB();
+    let conversationStore = db.transaction(STORE_CONVERSATIONS, 'readonly').store;
+    let index = conversationStore.index('userid');
+    let cursor = await index.openCursor(userId);
+    let encryptedConversationIds = [];
+    let keyIds: Set<string> = new Set();
+    while(cursor) {
+        const value = cursor.value as Conversation;
+        if(value.decrypted !== true) {
+            encryptedConversationIds.push(value.conversation_id);
+            if(value.label_encrypted?.cle_id) {
+                keyIds.add(value.label_encrypted.cle_id);
+            }
+        }
+        cursor = await cursor.continue();
+    }
 
-//     let categories = [];
-//     while(cursor) {
-//         const value = cursor.value as NotepadCategoryType;
-//         categories.push(value);
-//         cursor = await cursor.continue();
-//     }
-//     return categories;
-// }
+    console.debug("Encrypted conversations for userId %s: %O, keyIds: %O", userId, encryptedConversationIds, keyIds);
+    let keyIdsList = Array.from(keyIds);
+    let keyList = await getDecryptedKeys(keyIdsList);
+    let decryptionKeys = {} as {[key: string]: Uint8Array};
+    for(let key of keyList) {
+        decryptionKeys[key.hachage_bytes] = key.cleSecrete;
+    }
 
-// export async function getUserGroupDocuments(userId: string, groupId: string, decryptedOnly?: boolean): Promise<Array<NotepadDocumentType>> {
-//     let db = await openDB();
-//     let store = db.transaction(STORE_DOCUMENTS, 'readonly').store;
-//     let index = store.index('useridGroup');
-//     let cursor = await index.openCursor([userId, groupId]);
-
-//     let groupDocuments = [];
-//     while(cursor) {
-//         const value = cursor.value as NotepadDocumentType;
-//         if(decryptedOnly) {
-//             if(value.decrypted) groupDocuments.push(value);
-//         } else {
-//             groupDocuments.push(value);
-//         }
-//         cursor = await cursor.continue();
-//     }
-
-//     return groupDocuments;
-// }
-
-// export async function syncCategories(categories: Array<NotepadCategoryType>, opts?: {userId?: string}) {
-//     if(!categories) return []
-
-//     const db = await openDB();
-//     const store = db.transaction(STORE_CATEGORIES, 'readwrite').store;
-
-//     for await (const infoCategorie of categories) {
-//         const { categorie_id } = infoCategorie;
-//         const categorieDoc = await store.get(categorie_id);
-//         if(categorieDoc) {
-//             if(categorieDoc.version !== infoCategorie.version) {
-//                 await store.put(infoCategorie);
-//             }
-//         } else {
-//             const user_id = infoCategorie.user_id || opts?.userId;
-//             if(!user_id) throw new Error("UserId manquant");
-//             await store.put({...infoCategorie, user_id});
-//         }
-//     }
-// }
-
-// export async function getMissingKeys(userId: string): Promise<Array<string>> {
-//     let db = await openDB();
-//     let store = db.transaction(STORE_GROUPS, 'readonly').store;
-//     let index = store.index('userid');
-//     let cursor = await index.openCursor(userId);
-    
-//     let keyIds = [];
-//     while(cursor) {
-//         const value = cursor.value as NotepadGroupType;
-//         if(value.decrypted !== true) {
-//             let keyId = value.cle_id || value.ref_hachage_bytes;
-//             if(keyId) {
-//                 keyIds.push(keyId);
-//             } else {
-//                 console.warn("Missing cle_id/ref_hachage_bytes for group ", value.groupe_id);
-//             }
-//         }
-//         cursor = await cursor.continue();
-//     }
-
-//     // Check each key against the main key repository.
-//     let keys = await getDecryptedKeys(keyIds);
-//     let missingKeysSet = new Set(keyIds);
-//     for(let key of keys) {
-//         missingKeysSet.delete(key.hachage_bytes);
-//     }
-
-//     return Array.from(missingKeysSet);
-// }
-
-// // Met dirty a true et dechiffre a false si mismatch derniere_modification
-// export async function syncDocuments(docs: Array<NotepadDocumentType>, opts?: {groupId?: string, dateSync?: number, userId?: string, deleted?: Array<string>}) {
-//     const db = await openDB();
-//     const store = db.transaction(STORE_DOCUMENTS, 'readwrite').store;
-
-//     if(docs) {
-//         for await (const infoDoc of docs) {
-//             const { doc_id, nonce } = infoDoc
-//             const documentDoc = await store.get(doc_id);
-//             if(documentDoc) {
-//                 if(nonce !== documentDoc.nonce) {
-//                     // Known file but different version.
-//                     await store.put({...documentDoc, ...infoDoc, decrypted: false});
-//                 }
-//             } else {
-//                 const user_id = infoDoc.user_id || opts?.userId;
-//                 if(!user_id) throw new Error("Missing userId");
-//                 await store.put({...infoDoc, user_id, decrypted: false});
-//             }
-//         }
-//     }
-
-//     let deletedDocuments = opts?.deleted;
-//     if(deletedDocuments) {
-//         for await (let docId of deletedDocuments) {
-//             await store.delete(docId);
-//         }
-//     }
-
-//     if(opts?.groupId && opts?.dateSync) {
-//         // Save the last sync date
-//         let store = db.transaction(STORE_GROUPS, 'readwrite').store;
-//         let group = await store.get(opts.groupId);
-//         await store.put({...group, dateSync: opts.dateSync});
-//     }
-// }
-
-// /** Decrypts all encrypted groups using an already downloaded key. */
-// export async function decryptGroups(workers: AppWorkers, userId: string) {
-//     let db = await openDB();
-//     let store = db.transaction(STORE_GROUPS, 'readonly').store;
-//     let index = store.index('userid');
-//     let cursor = await index.openCursor(userId);
-//     let encryptedGroups = [];
-//     while(cursor) {
-//         const value = cursor.value as NotepadGroupType;
-//         if(value.decrypted !== true) {
-//             encryptedGroups.push(value.groupe_id);
-//         }
-//         cursor = await cursor.continue();
-//     }
-
-//     for await(let groupId of encryptedGroups) {
-//         store = db.transaction(STORE_GROUPS, 'readonly').store;
-//         let group = await store.get(groupId) as NotepadGroupType;
-//         let { cle_id, ref_hachage_bytes, nonce, header, data_chiffre, format } = group;
-
-//         // Handle legacy header and ref_hachage_bytes fields
-//         let legacyMode = false;
-//         if(!nonce && header) {
-//             nonce = header.slice(1);  // Remove leading multibase 'm' marker
-//         }
-//         if(!cle_id && ref_hachage_bytes) {
-//             cle_id = ref_hachage_bytes;
-//             legacyMode = true;
-//         }
-
-//         if(!cle_id || !nonce) throw new Error("Error loading cle_id or nonce");
-//         let key = (await getDecryptedKeys([cle_id])).pop();
-//         if(key) {
-//             let ciphertext = data_chiffre;
-//             if(legacyMode) ciphertext = ciphertext.slice(1);  // Remove 'm' multibase marker
-//             let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, ciphertext);
-//             let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadGroupData;
-//             let storeRw = db.transaction(STORE_GROUPS, 'readwrite').store;
-//             await storeRw.put({...group, data: jsonInfo, decrypted: true});
-//         } else {
-//             console.warn("Missing decryption key: ", cle_id);
-//         }
-//     }
-
-// }
+    console.debug("Decryption keys", decryptionKeys);
+    for await (let conversationId of encryptedConversationIds) {
+        let conversationStoreRw = db.transaction(STORE_CONVERSATIONS, 'readwrite').store;
+        let existing = await conversationStoreRw.get(conversationId) as Conversation;
+        let encryptedLabel = existing.label_encrypted;
+        if(encryptedLabel) {
+            let {cle_id, nonce} = encryptedLabel;
+            if(cle_id && nonce) {
+                let key = decryptionKeys[cle_id];
+                try {
+                    let cleartext = await workers.encryption.decryptMessage(
+                        encryptedLabel.format, key, nonce, encryptedLabel.ciphertext_base64, encryptedLabel.compression);
+                    existing.subject = new TextDecoder().decode(cleartext);
+                    existing.decrypted = true;
+                    conversationStoreRw = db.transaction(STORE_CONVERSATIONS, 'readwrite').store;
+                    console.debug("Save decrypted conversation ", existing);
+                    await conversationStoreRw.put(existing);
+                }catch (err) {
+                    console.warn("Error decrypting conversation label for conversationId: ", conversationId);
+                }
+            }
+        }
+    }
+}
 
 export async function decryptConversationMessages(workers: AppWorkers, userId: string, conversationId: string) {
     // Get the decryption key from IDB (must already be present)
@@ -453,5 +338,4 @@ export async function decryptConversationMessages(workers: AppWorkers, userId: s
             }
         }
     }
-
 }

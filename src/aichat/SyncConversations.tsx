@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { proxy } from 'comlink';
 
-import { getMissingConversationKeys, openDB, saveConversationsKeys, saveConversationSync } from "./aichatStoreIdb";
+import { decryptConversations, getMissingConversationKeys, openDB, saveConversationsKeys, saveConversationSync } from "./aichatStoreIdb";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { ConversationSyncResponse } from "../workers/connection.worker";
@@ -138,6 +138,9 @@ async function syncConversations(workers: AppWorkers, userId: string) {
 
                 await saveConversationsKeys(workers, conversationKeys);
             }
+
+            // Decrypt conversation labels
+            await decryptConversations(workers, userId);
         }
     });
 
