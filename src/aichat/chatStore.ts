@@ -54,13 +54,17 @@ const useChatStore = create<ChatStoreState>()(
                 if(state.conversationId !== conversation_id) throw new Error('Wrong conversation id');
                 return { currentResponse: state.currentResponse + chunk }
             }),
-            pushAssistantResponse: (message_id) => set((state) => ({ 
-                currentResponse: '', 
-                messages: [
-                    ...state.messages, 
-                    {message_id: message_id, query_role: 'assistant', content: state.currentResponse, message_date: Math.floor(new Date().getTime())}
-                ] 
-            })),
+            pushAssistantResponse: (message_id) => set((state) => { 
+                // Ensure we're not duplicating messages. This can happen if the server exchange event is applied first.
+                let messages = state.messages.filter(item=>item.message_id !== message_id);
+                return {
+                    currentResponse: '', 
+                    messages: [
+                        ...messages, 
+                        {message_id: message_id, query_role: 'assistant', content: state.currentResponse, message_date: Math.floor(new Date().getTime())}
+                    ] 
+                };
+            }),
             pushUserQuery: (query) => set((state) => ({ 
                 messages: [
                     ...state.messages, 
