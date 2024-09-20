@@ -184,14 +184,8 @@ function CheckRelayAvailable() {
         
         workers.connection.pingRelay()
             .then(response=>{
-                if(response.ok === true) {
-                    setRelayAvailable(true);
-                } else {
-                    console.warn("Error on ping relay: %O", response.err);
-                    setRelayAvailable(false);
-                    // Check again later
-                    setTimeout(()=>setRelayAvailable(null), 20_000);
-                }
+                let available = !!response.ok;
+                setRelayAvailable(available);
             })
             .catch(err=>{
                 console.warn("Error on ping relay, consider it offline: ", err);
@@ -210,41 +204,63 @@ type ConversationEvent = {
     event_type: string,
 };
 
+type OllamaRelaiStatus = {
+    event_type: string,
+    available?: boolean | null;
+}
+
 function receiveConversationEvent(
     workers: AppWorkers | null, userId: string,
     event: SubscriptionMessage, 
     setRelayAvailable: (available: boolean)=>void, refreshTrigger: ()=>void, 
 ) {
     let conversationEvent = event.message as ConversationEvent;
-    let {conversation, conversation_id, event_type} = conversationEvent;
-    if(event_type === 'new') {
-        if(conversation) {
-            saveConversationSync([conversation])
-                .then(async () => {
-                    if(!workers) throw new Error("Workers not initialized");
-                    if(!conversation) throw new Error("Conversation is null");
 
-                    let { cle_id } = conversation;
-                    if(!cle_id) throw new Error("Conversation has no cle_id");
+    let rks = event.routingKey.split('.');
+    let domain = rks[1];
+    let action = rks.pop();
 
-                    // Recover key
-                    let keyResponse = await workers.connection.getConversationKeys([cle_id]);
-                    await handleConversationKeyResponse(workers, keyResponse, userId);
-
-                    // Decrypt conversation
-                    await decryptConversations(workers, userId);
-                    
-                    // Refresh screen
-                    refreshTrigger()
-                })
-                .catch(err=>console.error("Error saving new conversation event %O: %O", event, err));
+    if(domain === 'ollama_relai') {
+        if(action === 'status') {
+            let message = event.message as OllamaRelaiStatus;
+            let available = !!message.available;
+            setRelayAvailable(available);
+        } else {
+            console.warn("Received unhandled event for domain ollama_relai ", event);
         }
-    } else if(event_type === 'deleted') {
-        deleteConversation(userId, conversation_id)
-            .then(()=>refreshTrigger())
-            .catch(err=>console.error("Error deleteing conversationId %s: %O", conversation_id, err));
+    } else if(domain === 'AiLanguage') {
+        let {conversation, conversation_id, event_type} = conversationEvent;
+        if(event_type === 'new') {
+            if(conversation) {
+                saveConversationSync([conversation])
+                    .then(async () => {
+                        if(!workers) throw new Error("Workers not initialized");
+                        if(!conversation) throw new Error("Conversation is null");
+
+                        let { cle_id } = conversation;
+                        if(!cle_id) throw new Error("Conversation has no cle_id");
+
+                        // Recover key
+                        let keyResponse = await workers.connection.getConversationKeys([cle_id]);
+                        await handleConversationKeyResponse(workers, keyResponse, userId);
+
+                        // Decrypt conversation
+                        await decryptConversations(workers, userId);
+                        
+                        // Refresh screen
+                        refreshTrigger()
+                    })
+                    .catch(err=>console.error("Error saving new conversation event %O: %O", event, err));
+            }
+        } else if(event_type === 'deleted') {
+            deleteConversation(userId, conversation_id)
+                .then(()=>refreshTrigger())
+                .catch(err=>console.error("Error deleteing conversationId %s: %O", conversation_id, err));
+        } else {
+            console.warn("Received unhandled event for domain AiLanguage ", event);
+        }
     } else {
-        console.warn("Received unhandled event ", event);
+        console.warn("Received unhandled event (domain) ", event);
     }
 }
 

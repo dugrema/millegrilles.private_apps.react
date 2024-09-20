@@ -11,7 +11,7 @@ function ChatSummaryHistory() {
         <>
             <section>
                 <h2 className='font-bold pt-2 pb-3'>New conversation</h2>
-                <ChatAvailable />
+                <ChatAvailable naClassname='font-bold text-red-500' />
                 <Link to='/apps/aichat/newConversation'
                     className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
                         Start

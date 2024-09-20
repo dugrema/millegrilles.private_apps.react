@@ -39,6 +39,11 @@ export default function Chat() {
 
     let {conversationId: paramConversationId} = useParams();
 
+    useEffect(()=>{
+        if(relayAvailable === null) return;
+        setLastConversationMessagesUpdate(new Date().getTime());
+    }, [relayAvailable, setLastConversationMessagesUpdate]);
+
     // Initialize conversationId
     useEffect(()=>{
         if(!ready || !userId || conversationKey) return;
@@ -269,8 +274,9 @@ export default function Chat() {
         <>
             <section className='fixed top-8 bottom-48 sm:bottom-36 overflow-y-auto pl-4 pr-4 w-full'>
                 <h1>Conversation</h1>
-                <div className='font-bold'><ChatAvailable ignoreOk={true} naClassname='text-red-500' /></div>
-                <ViewHistory triggerScrolldown={lastUpdate} />
+                <ViewHistory triggerScrolldown={lastUpdate}>
+                    <div className='font-bold'><ChatAvailable ignoreOk={true} naClassname='text-red-500' /></div>
+                </ViewHistory>
             </section>
             
             <div className='fixed bottom-0 w-full pl-2 pr-6 mb-8 text-center'>
@@ -298,7 +304,7 @@ export default function Chat() {
 
 type ChatResponse = {content: string, role: string};
 
-function ViewHistory(props: {triggerScrolldown: number}) {
+function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNode}) {
  
     let { triggerScrolldown } = props;
 
@@ -322,6 +328,7 @@ function ViewHistory(props: {triggerScrolldown: number}) {
                 <ChatBubble value={{query_role: 'assistant', content: currentResponse, message_id: 'currentresponse'}} />
                 :''
             }
+            {props.children}
             <div ref={refBottom}></div>
         </div>
     )
