@@ -21,7 +21,7 @@ interface ChatStoreState {
     newConversation: boolean,
     lastConversationsUpdate: number,  // Last time there was a conversation update (ms)
     lastConversationMessagesUpdate: number,  // Last time there was a conversation update (ms)
-    appendCurrentResponse: (chunk: string) => void,
+    appendCurrentResponse: (conversation_id: string, chunk: string) => void,
     pushAssistantResponse: (message_id: string) => void,
     pushUserQuery: (query: string) => void,
     clear: () => void,
@@ -49,7 +49,11 @@ const useChatStore = create<ChatStoreState>()(
             newConversation: false,
             lastConversationsUpdate: 1,
             lastConversationMessagesUpdate: 1,
-            appendCurrentResponse: (chunk) => set((state) => ({ currentResponse: state.currentResponse + chunk })),
+            appendCurrentResponse: (conversation_id, chunk) => set((state) => {
+                // Check that the conversation was not switched while receiving updates
+                if(state.conversationId !== conversation_id) throw new Error('Wrong conversation id');
+                return { currentResponse: state.currentResponse + chunk }
+            }),
             pushAssistantResponse: (message_id) => set((state) => ({ 
                 currentResponse: '', 
                 messages: [

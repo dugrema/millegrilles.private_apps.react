@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { proxy } from 'comlink';
 
-import { decryptConversations, getMissingConversationKeys, openDB, saveConversationsKeys, saveConversationSync } from "./aichatStoreIdb";
+import { Conversation, decryptConversations, deleteConversation, getMissingConversationKeys, openDB, saveConversationsKeys, saveConversationSync } from "./aichatStoreIdb";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
-import { ConversationSyncResponse } from "../workers/connection.worker";
+import { ConversationSyncResponse, DecryptionKeyResponse } from "../workers/connection.worker";
 import { multiencoding } from "millegrilles.cryptography";
 import useChatStore from "./chatStore";
 import { saveDecryptedKey } from "../MillegrillesIdb";
@@ -29,6 +29,7 @@ function SyncConversations() {
 
     return (
         <>
+            <CheckRelayAvailable />
             <ListenConversationChanges />
         </>
     );
@@ -48,6 +49,7 @@ function ListenConversationChanges() {
 
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let setLastConversationsUpdate = useChatStore(state=>state.setLastConversationsUpdate);
+    let setRelayAvailable = useChatStore(state=>state.setRelayAvailable);
 
     let workers = useWorkers();
 
@@ -75,13 +77,14 @@ function ListenConversationChanges() {
     }, [setLastConversationsUpdate]);
 
     let chatConversationEventCb = useMemo(()=>{
+        if(!workers || !userId) return null;
         return proxy((event: SubscriptionMessage)=>{
-            console.debug("Chat conversation event ", event);
+            receiveConversationEvent(workers, userId, event, setRelayAvailable, refreshConversationListHandler);
         })
-    }, []);
+    }, [workers, userId, setRelayAvailable, refreshConversationListHandler]);
 
     useEffect(()=>{
-        if(!workers || !ready || !userId) return;  // Note ready to sync
+        if(!workers || !ready || !userId || !chatConversationEventCb) return;  // Note ready to sync
 
         // Subscribe to changes on categories and groups
         workers.connection.subscribeChatConversationEvents(chatConversationEventCb)
@@ -97,12 +100,12 @@ function ListenConversationChanges() {
 
         return () => {
             // Remove listener for document changes on group
-            if(workers) {
+            if(workers && chatConversationEventCb) {
                 workers.connection.unsubscribeChatConversationEvents(chatConversationEventCb)
                     .catch(err=>console.error("Error unsubscribing from chat conversation events", err));
             }
         };
-    }, [workers, ready, userId, refreshConversationListHandler])
+    }, [workers, ready, userId, refreshConversationListHandler, chatConversationEventCb])
 
     return <></>;
 }
@@ -128,25 +131,26 @@ async function syncConversations(workers: AppWorkers, userId: string) {
                 if(missingKeys.length > 0) {
                     // Try to load from server
                     let keyResponse = await workers.connection.getConversationKeys(missingKeys);
-                    if(!keyResponse.ok) {
-                        throw new Error("Error receiving conversation key: " + keyResponse.err);
-                    }
+                    await handleConversationKeyResponse(workers, keyResponse, userId);
+                    // if(!keyResponse.ok) {
+                    //     throw new Error("Error receiving conversation key: " + keyResponse.err);
+                    // }
 
-                    let conversationKeys = keyResponse.cles.map(item=>{
-                        if(!item.signature) throw new Error("Domaine signature missing");
-                        return {
-                            user_id: userId,
-                            secret_key: multiencoding.decodeBase64Nopad(item.cle_secrete_base64),
-                            conversationKey: {cle_id: item.cle_id, signature: item.signature},
-                        };
-                    });
+                    // let conversationKeys = keyResponse.cles.map(item=>{
+                    //     if(!item.signature) throw new Error("Domaine signature missing");
+                    //     return {
+                    //         user_id: userId,
+                    //         secret_key: multiencoding.decodeBase64Nopad(item.cle_secrete_base64),
+                    //         conversationKey: {cle_id: item.cle_id, signature: item.signature},
+                    //     };
+                    // });
 
-                    // Save decrypted keys
-                    for await (let key of conversationKeys) {
-                        await saveDecryptedKey(key.conversationKey.cle_id, key.secret_key);
-                    }
+                    // // Save decrypted keys
+                    // for await (let key of conversationKeys) {
+                    //     await saveDecryptedKey(key.conversationKey.cle_id, key.secret_key);
+                    // }
 
-                    await saveConversationsKeys(workers, conversationKeys);
+                    // await saveConversationsKeys(workers, conversationKeys);
                 }
 
                 // Decrypt conversation labels
@@ -161,4 +165,108 @@ async function syncConversations(workers: AppWorkers, userId: string) {
             reject(new Error("Error getting documents for this group"));
         }
     })
+}
+
+function CheckRelayAvailable() {
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let relayAvailable = useChatStore(state=>state.relayAvailable);
+    let setRelayAvailable = useChatStore(state=>state.setRelayAvailable);
+
+    useEffect(()=>{
+        if(!ready) {
+            setRelayAvailable(false);
+            return;
+        };
+        if(!workers) throw new Error("Workers not initialized");
+        if(relayAvailable === true) return;  // Check done
+        
+        workers.connection.pingRelay()
+            .then(response=>{
+                if(response.ok === true) {
+                    setRelayAvailable(true);
+                } else {
+                    console.warn("Error on ping relay: %O", response.err);
+                    setRelayAvailable(false);
+                    // Check again later
+                    setTimeout(()=>setRelayAvailable(null), 20_000);
+                }
+            })
+            .catch(err=>{
+                console.warn("Error on ping relay, consider it offline: ", err);
+                setRelayAvailable(false);
+                // Check again later
+                setTimeout(()=>setRelayAvailable(null), 20_000);
+            })
+    }, [workers, ready, relayAvailable, setRelayAvailable]);
+
+    return <></>;
+}
+
+type ConversationEvent = {
+    conversation_id: string,
+    conversation?: Conversation,
+    event_type: string,
+};
+
+function receiveConversationEvent(
+    workers: AppWorkers | null, userId: string,
+    event: SubscriptionMessage, 
+    setRelayAvailable: (available: boolean)=>void, refreshTrigger: ()=>void, 
+) {
+    let conversationEvent = event.message as ConversationEvent;
+    let {conversation, conversation_id, event_type} = conversationEvent;
+    if(event_type === 'new') {
+        if(conversation) {
+            saveConversationSync([conversation])
+                .then(async () => {
+                    if(!workers) throw new Error("Workers not initialized");
+                    if(!conversation) throw new Error("Conversation is null");
+
+                    let { cle_id } = conversation;
+                    if(!cle_id) throw new Error("Conversation has no cle_id");
+
+                    // Recover key
+                    let keyResponse = await workers.connection.getConversationKeys([cle_id]);
+                    await handleConversationKeyResponse(workers, keyResponse, userId);
+
+                    // Decrypt conversation
+                    await decryptConversations(workers, userId);
+                    
+                    // Refresh screen
+                    refreshTrigger()
+                })
+                .catch(err=>console.error("Error saving new conversation event %O: %O", event, err));
+        }
+    } else if(event_type === 'deleted') {
+        console.debug("Conversation delete event on ", conversation_id);
+        deleteConversation(userId, conversation_id)
+            .then(()=>refreshTrigger())
+            .catch(err=>console.error("Error deleteing conversationId %s: %O", conversation_id, err));
+    } else {
+        console.warn("Received unhandled event ", event);
+    }
+}
+
+async function handleConversationKeyResponse(workers: AppWorkers, keyResponse: DecryptionKeyResponse, userId: string) {
+    if(!keyResponse.ok) {
+        throw new Error("Error receiving conversation key: " + keyResponse.err);
+    }
+
+    let conversationKeys = keyResponse.cles.map(item=>{
+        if(!item.signature) throw new Error("Domaine signature missing");
+        return {
+            user_id: userId,
+            secret_key: multiencoding.decodeBase64Nopad(item.cle_secrete_base64),
+            conversationKey: {cle_id: item.cle_id, signature: item.signature},
+        };
+    });
+
+    // Save decrypted keys
+    for await (let key of conversationKeys) {
+        await saveDecryptedKey(key.conversationKey.cle_id, key.secret_key);
+    }
+
+    await saveConversationsKeys(workers, conversationKeys);
 }

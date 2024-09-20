@@ -31,41 +31,6 @@ export default function AppAiChat() {
             </main>
             <Footer />
             <SyncConversations />
-            <CheckRelayAvailable />
         </div>
     )
-}
-
-function CheckRelayAvailable() {
-
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let relayAvailable = useChatStore(state=>state.relayAvailable);
-    let setRelayAvailable = useChatStore(state=>state.setRelayAvailable);
-
-    useEffect(()=>{
-        if(!ready) return;
-        if(!workers) throw new Error("Workers not initialized");
-        if(relayAvailable === true) return;  // Check done
-        
-        workers.connection.pingRelay()
-            .then(response=>{
-                if(response.ok === true) {
-                    setRelayAvailable(true);
-                } else {
-                    console.warn("Error on ping relay: %O", response.err);
-                    setRelayAvailable(false);
-                    // Check again later
-                    setTimeout(()=>setRelayAvailable(null), 20_000);
-                }
-            })
-            .catch(err=>{
-                console.warn("Error on ping relay, consider it offline: ", err);
-                setRelayAvailable(false);
-                // Check again later
-                setTimeout(()=>setRelayAvailable(null), 20_000);
-            })
-    }, [workers, ready, relayAvailable, setRelayAvailable]);
-
-    return <></>;
 }

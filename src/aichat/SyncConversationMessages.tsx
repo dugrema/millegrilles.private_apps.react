@@ -88,7 +88,7 @@ function ListenMessageChanges() {
             }
         };
 
-    }, [workers, ready, conversationId, userId, setLastConversationMessagesUpdate])
+    }, [workers, ready, conversationId, userId, setLastConversationMessagesUpdate, chatMessageEventCb])
 
     return <></>;
 }

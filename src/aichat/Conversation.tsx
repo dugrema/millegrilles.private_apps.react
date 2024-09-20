@@ -126,29 +126,38 @@ export default function Chat() {
 
     }, [userId, setStoreMessages, lastConversationMessagesUpdate, conversationId]);
 
-    let chatCallback = useMemo(() => proxy(async (event: MessageResponse & SubscriptionMessage & {partition?: string, done?: boolean, message_id?: string}) => {
-        let message = event.message as ChatResponse;
-        if(!message) { // Status message
-            if(!event.ok) {
-                console.error("Erreur processing response, ", event);
-                setWaiting(false);
+    let chatCallback = useMemo(() => {
+        if(!conversationId) return null;
+        return proxy(async (event: MessageResponse & SubscriptionMessage & {partition?: string, done?: boolean, message_id?: string}) => {
+            let message = event.message as ChatResponse;
+            if(!message) { // Status message
+                if(!event.ok) {
+                    console.error("Erreur processing response, ", event);
+                    setWaiting(false);
+                }
+                return;
             }
-            return;
-        }
 
-        let chatResponse = message as ChatResponse;
-        let content = chatResponse.content;
-        appendCurrentResponse(content);
-        let done = event.done;
-        let message_id = event.message_id;
-        if(done && message_id) {
-            setWaiting(false);
-            pushAssistantResponse(message_id);
-            setConversationReadyToSave(true);
-            // Force one last screen update
-            setTimeout(()=>setLastUpdate(new Date().getTime()), 250);
-        }
-    }), [appendCurrentResponse, setWaiting, pushAssistantResponse, setLastUpdate, setConversationReadyToSave]);
+            let chatResponse = message as ChatResponse;
+            let content = chatResponse.content;
+            if(!conversationId) throw new Error("ConversationId is null");
+            try {
+                appendCurrentResponse(conversationId, content);
+            } catch(err) {
+                console.info("Appending to wrong conversation id (%s)", conversationId);
+                return;
+            }
+
+            let done = event.done;
+            let message_id = event.message_id;
+            if(done && message_id) {
+                setWaiting(false);
+                pushAssistantResponse(message_id);
+                setConversationReadyToSave(true);
+                // Force one last screen update
+                setTimeout(()=>setLastUpdate(new Date().getTime()), 250);
+            };
+    })}, [conversationId, appendCurrentResponse, setWaiting, pushAssistantResponse, setLastUpdate, setConversationReadyToSave]);
 
     let userMessageCallback = useMemo(()=>proxy(async (event: messageStruct.MilleGrillesMessage)=>{
         applyCurrentUserCommand(event);
@@ -192,6 +201,7 @@ export default function Chat() {
             // let attachment = {history: encryptedMessageHistory, key: {signature: conversationKey.signature}};
             setWaiting(true);
                 if(!workers) throw new Error("Workers not initialized");
+                if(!chatCallback) throw new Error("Chat callback not initialized");
                 let ok = await workers.connection.sendChatMessage(
                     command, encryptedMessageHistory, conversationKey.signature, conversationKey.encrypted_keys,
                     // @ts-ignore

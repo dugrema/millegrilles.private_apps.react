@@ -36,7 +36,7 @@ export type ChatMessage = {
     query_encrypted?: encryption.EncryptedData,
     role?: string, 
     content?: string, 
-    date?: number, 
+    message_date?: number, 
 };
 
 export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
@@ -125,9 +125,9 @@ export async function saveConversation(messages: ChatMessage[], conversationKey:
     let conversation = {
         user_id: firstMessage.user_id, 
         conversation_id: firstMessage.conversation_id,
-        conversation_date: firstMessage.date,
+        conversation_date: firstMessage.message_date?firstMessage.message_date/1000:new Date().getTime(),
         decrypted: true,
-        initial_query: firstMessage.content,
+        subject: firstMessage.content,
         conversationKey,
     } as Conversation;
     
