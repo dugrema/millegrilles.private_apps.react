@@ -377,6 +377,7 @@ function EditFields(props: EditFieldsProps) {
                     format: encryptedData.format,
                     nonce: multiencoding.encodeBase64Nopad(encryptedData.nonce),
                     data_chiffre: ciphertextBase64,
+                    compression: encryptedData.compression,
                 } as NotepadNewDocumentType;
 
                 if(docId !== 'new') command.doc_id = docId;

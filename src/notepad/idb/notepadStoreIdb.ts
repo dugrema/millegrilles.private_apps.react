@@ -1,5 +1,5 @@
 import { IDBPDatabase, openDB as openDbIdb } from 'idb';
-import { getDecryptedKeys } from '../../MillegrillesIdb';
+import { getDecryptedKeys, saveDecryptedKey } from '../../MillegrillesIdb';
 import { AppWorkers } from '../../workers/workers';
 
 const DB_NAME = 'notepad';
@@ -79,6 +79,7 @@ export type NotepadDocumentType = {
     format: string,
     nonce?: string,
     header?: string,
+    compression?: string,
     data_chiffre: string,
     supprime?: boolean,
     label?: string,
@@ -398,7 +399,17 @@ export async function decryptGroupDocuments(workers: AppWorkers, userId: string,
 
     // Load group decryption key
     let key = (await getDecryptedKeys([keyId])).pop();
-    if(!key) throw new Error('Decryption key missing for group');
+    if(!key) {
+        // Get missing group decryption keys
+        let keyResponse = await workers.connection.getGroupKeys([keyId]);
+        if(keyResponse.ok !== false) {
+            for await (let key of keyResponse.cles) {
+                await saveDecryptedKey(key.cle_id, key.cle_secrete_base64);
+            }
+        } else {
+            throw new Error('Error recovering group decryption keys: ' + keyResponse.err);
+        }
+    }
 
     // Get list of encrypted documents
     let store = db.transaction(STORE_DOCUMENTS, 'readonly').store;
@@ -416,7 +427,7 @@ export async function decryptGroupDocuments(workers: AppWorkers, userId: string,
     for await(let docId of encryptedDocuments) {
         let store = db.transaction(STORE_DOCUMENTS, 'readonly').store;
         let groupDocument = await store.get(docId) as NotepadDocumentType;
-        let { cle_id, nonce, header, data_chiffre, format } = groupDocument;
+        let { cle_id, nonce, header, data_chiffre, format, compression } = groupDocument;
 
         // Handle legacy header field
         let legacyMode = false;
@@ -435,23 +446,29 @@ export async function decryptGroupDocuments(workers: AppWorkers, userId: string,
             let ciphertext = data_chiffre;
             if(legacyMode) ciphertext = ciphertext.slice(1);  // Remove 'm' multibase marker
 
-            let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, ciphertext);
-            let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadDocumentData;
-            
-            // Filter jsonInfo to ensure only data fields get retained
-            let data = {} as NotepadDocumentData;
-            let fields = new Set(category.champs.map(item=>item.code_interne));
-            for(let key of Object.keys(jsonInfo)) {
-                if(fields.has(key)) {
-                    data[key] = jsonInfo[key];
+            try {
+                let cleartext = await workers.encryption.decryptMessage(format, key.cleSecrete, nonce, ciphertext, compression);
+                let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadDocumentData;
+                
+                // Filter jsonInfo to ensure only data fields get retained
+                let data = {} as NotepadDocumentData;
+                let fields = new Set(category.champs.map(item=>item.code_interne));
+                for(let key of Object.keys(jsonInfo)) {
+                    if(fields.has(key)) {
+                        data[key] = jsonInfo[key];
+                    }
                 }
-            }
 
-            // Extract label
-            let label = data[labelFieldName] || docId;
-            
-            let storeRw = db.transaction(STORE_DOCUMENTS, 'readwrite').store;
-            await storeRw.put({...groupDocument, label, data, decrypted: true});
+                // Extract label
+                let label = data[labelFieldName] || docId;
+                
+                let storeRw = db.transaction(STORE_DOCUMENTS, 'readwrite').store;
+                await storeRw.put({...groupDocument, label, data, decrypted: true});
+            } catch(err) {
+                console.warn("Error decrypting document %s, skipping", docId);
+                let storeRw = db.transaction(STORE_DOCUMENTS, 'readwrite').store;
+                await storeRw.put({...groupDocument, label: `!!id: ${docId} !!`, data: null, decrypted: true});
+            }
         } else {
             console.warn("Missing decryption key: ", cle_id);
         }
