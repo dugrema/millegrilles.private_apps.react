@@ -178,6 +178,26 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendCommand({conversation_id: conversationId}, DOMAINE_AI_LANGUAGE, 'deleteChatConversation');
     }
 
+    async subscribeChatConversationEvents(cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.subscribe('aiLanguageChatConversationEvents', cb);
+    }
+
+    async unsubscribeChatConversationEvents(cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.unsubscribe('aiLanguageChatConversationEvents', cb);
+    }
+
+    async subscribeChatMessageEvents(conversation_id: string, cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.subscribe('aiLanguageChatMessageEvents', cb, {conversation_id});
+    }
+
+    async unsubscribeChatMessageEvents(conversation_id: string, cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.unsubscribe('aiLanguageChatMessageEvents', cb, {conversation_id});
+    }
+
     // SenseursPassifs
     async getUserDevices(): Promise<GetUserDevicesResponse> {
         if(!this.connection) throw new Error("Connection is not initialized");

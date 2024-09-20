@@ -52,6 +52,17 @@
         "notepadGroupDocumentEvents": {
             "exchanges": ["2.prive"],
             "routingKeys": ["evenement.Documents.{USER_ID}_{groupe_id}.updateGroupDocument"]
+        },
+        "aiLanguageChatConversationEvents": {
+            "exchanges": ["2.prive"],
+            "routingKeys": [
+                "evenement.ollama_relai.status",
+                "evenement.AiLanguage.{USER_ID}.chatConversation"
+            ]
+        },
+        "aiLanguageChatMessageEvents": {
+            "exchanges": ["2.prive"],
+            "routingKeys": ["evenement.AiLanguage.{USER_ID}_{conversation_id}.chatMessageExchange"]
         }
     }
 }

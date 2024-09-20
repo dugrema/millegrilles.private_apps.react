@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { proxy } from 'comlink';
 
 import { decryptConversationMessages, getConversation, openDB, saveMessagesSync, setConversationSyncDate } from "./aichatStoreIdb";
@@ -6,6 +6,7 @@ import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { ConversationSyncResponse } from "../workers/connection.worker";
 import useChatStore from "./chatStore";
+import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
 
 let promiseIdb: Promise<void> | null = null;
 
@@ -51,12 +52,18 @@ function ListenMessageChanges() {
 
     let workers = useWorkers();
 
+    let chatMessageEventCb = useMemo(()=>{
+        return proxy((event: SubscriptionMessage)=>{
+            console.debug("Chat message exchange event ", event);
+        })
+    }, []);
+
     useEffect(()=>{
         if(!workers || !ready || !conversationId) return;  // Note ready to sync
 
-        // // Subscribe to changes on categories and groups
-        // workers.connection.subscribeUserCategoryGroup(categoryGroupEventCb)
-        //     .catch(err=>console.error("Error subscribing to category/group events", err));
+        // Subscribe to changes on categories and groups
+        workers.connection.subscribeChatMessageEvents(conversationId, chatMessageEventCb)
+            .catch(err=>console.error("Error subscribing to chat message events", err));
 
         // Sync chat conversations with messages for the user. Save in IDB.
         syncMessages(workers, conversationId)
@@ -73,13 +80,13 @@ function ListenMessageChanges() {
             })
             .catch(err=>console.error("Error during conversation sync: ", err));
 
-        // return () => {
-        //     // Remove listener for document changes on group
-        //     if(workers) {
-        //         workers.connection.unsubscribeUserCategoryGroup(categoryGroupEventCb)
-        //             .catch(err=>console.error("Error unsubscribing from category/group events", err));
-        //     }
-        // };
+        return () => {
+            // Remove listener for document changes on group
+            if(workers && conversationId) {
+                workers.connection.unsubscribeChatMessageEvents(conversationId, chatMessageEventCb)
+                    .catch(err=>console.error("Error unsubscribing from chat message events", err));
+            }
+        };
 
     }, [workers, ready, conversationId, userId, setLastConversationMessagesUpdate])
 
