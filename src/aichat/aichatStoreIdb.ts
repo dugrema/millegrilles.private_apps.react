@@ -34,7 +34,7 @@ export type ChatMessage = {
     message_id: string,
     decrypted: boolean, 
     query_encrypted?: encryption.EncryptedData,
-    role?: string, 
+    query_role?: string, 
     content?: string, 
     message_date?: number, 
 };
@@ -177,6 +177,17 @@ export async function getConversationMessages(userId: string, conversationId: st
         const value = cursor.value as ChatMessage;
         messages.push(value);
         cursor = await cursor.continue();
+    }
+    return messages;
+}
+
+export async function getConversationMessagesById(messageIds: string[]): Promise<ChatMessage[]> {
+    let db = await openDB();
+    let messageStore = db.transaction(STORE_CONVERSATION_MESSAGES, 'readonly').store;
+    let messages = [];
+    for await (let messageId of messageIds) {
+        let message = await messageStore.get(messageId);
+        if(message) messages.push(message);
     }
     return messages;
 }

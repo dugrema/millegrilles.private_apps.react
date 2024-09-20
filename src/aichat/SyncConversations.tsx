@@ -240,7 +240,6 @@ function receiveConversationEvent(
                 .catch(err=>console.error("Error saving new conversation event %O: %O", event, err));
         }
     } else if(event_type === 'deleted') {
-        console.debug("Conversation delete event on ", conversation_id);
         deleteConversation(userId, conversation_id)
             .then(()=>refreshTrigger())
             .catch(err=>console.error("Error deleteing conversationId %s: %O", conversation_id, err));
