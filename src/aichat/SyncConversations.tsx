@@ -30,6 +30,7 @@ function SyncConversations() {
     return (
         <>
             <CheckRelayAvailable />
+            <LoadModels />
             <ListenConversationChanges />
         </>
     );
@@ -132,25 +133,6 @@ async function syncConversations(workers: AppWorkers, userId: string) {
                     // Try to load from server
                     let keyResponse = await workers.connection.getConversationKeys(missingKeys);
                     await handleConversationKeyResponse(workers, keyResponse, userId);
-                    // if(!keyResponse.ok) {
-                    //     throw new Error("Error receiving conversation key: " + keyResponse.err);
-                    // }
-
-                    // let conversationKeys = keyResponse.cles.map(item=>{
-                    //     if(!item.signature) throw new Error("Domaine signature missing");
-                    //     return {
-                    //         user_id: userId,
-                    //         secret_key: multiencoding.decodeBase64Nopad(item.cle_secrete_base64),
-                    //         conversationKey: {cle_id: item.cle_id, signature: item.signature},
-                    //     };
-                    // });
-
-                    // // Save decrypted keys
-                    // for await (let key of conversationKeys) {
-                    //     await saveDecryptedKey(key.conversationKey.cle_id, key.secret_key);
-                    // }
-
-                    // await saveConversationsKeys(workers, conversationKeys);
                 }
 
                 // Decrypt conversation labels
@@ -160,11 +142,34 @@ async function syncConversations(workers: AppWorkers, userId: string) {
             }
         });
 
-        let initialStreamResponse = await workers.connection.syncConversations(callback);
-        if(!initialStreamResponse === true) {
-            reject(new Error("Error getting documents for this group"));
+        try {
+            let initialStreamResponse = await workers.connection.syncConversations(callback);
+            if(!initialStreamResponse === true) {
+                reject(new Error("Error getting documents for this group"));
+            }
+        } catch(err) {
+            reject(err);
         }
     })
+}
+
+function LoadModels() {
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let setModels = useChatStore(state=>state.setModels);
+
+    useEffect(()=>{
+        if(!ready || !workers) return;
+        workers.connection.getModels()
+            .then(response=>{
+                if(response.ok !== true) throw new Error("Error receiving models: " + response.err);
+                if(response.models) setModels(response.models);
+            })
+            .catch(err=>console.error("Error loading models", err));
+    }, [ready, workers, setModels]);
+
+    return <></>;
 }
 
 function CheckRelayAvailable() {

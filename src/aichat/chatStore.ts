@@ -10,6 +10,8 @@ export type ChatStoreConversationKey = ConversationKey & {
     encrypted_keys: {[key: string]: string},
 };
 
+export type LanguageModelType = {name: string};
+
 interface ChatStoreState {
     messages: Array<ChatMessage>,
     currentResponse: string,
@@ -21,6 +23,7 @@ interface ChatStoreState {
     newConversation: boolean,
     lastConversationsUpdate: number,  // Last time there was a conversation update (ms)
     lastConversationMessagesUpdate: number,  // Last time there was a conversation update (ms)
+    models: LanguageModelType[],
     appendCurrentResponse: (conversation_id: string, chunk: string) => void,
     pushAssistantResponse: (message_id: string) => void,
     pushUserQuery: (query: string) => void,
@@ -34,6 +37,7 @@ interface ChatStoreState {
     setNewConversation: (newConversation: boolean) => void,
     setLastConversationsUpdate: (lastConversationsUpdate: number) => void,
     setLastConversationMessagesUpdate: (lastConversationMessagesUpdate: number) => void,
+    setModels: (models: LanguageModelType[]) => void,
 };
 
 const useChatStore = create<ChatStoreState>()(
@@ -49,6 +53,7 @@ const useChatStore = create<ChatStoreState>()(
             newConversation: false,
             lastConversationsUpdate: 1,
             lastConversationMessagesUpdate: 1,
+            models: [],
             appendCurrentResponse: (conversation_id, chunk) => set((state) => {
                 // Check that the conversation was not switched while receiving updates
                 if(state.conversationId !== conversation_id) throw new Error('Wrong conversation id');
@@ -104,6 +109,7 @@ const useChatStore = create<ChatStoreState>()(
             setNewConversation: (newConversation) => set(()=>({newConversation})),
             setLastConversationsUpdate: (lastConversationsUpdate) => set(()=>({lastConversationsUpdate})),
             setLastConversationMessagesUpdate: (lastConversationMessagesUpdate) => set(()=>({lastConversationMessagesUpdate})),
+            setModels: (models) => set(()=>({models})),
         })
     ),
 );

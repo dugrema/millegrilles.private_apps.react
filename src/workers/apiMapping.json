@@ -14,7 +14,8 @@
         {"domain": "AiLanguage", "action": "getConversationKeys"},
         {"domain": "AiLanguage", "action": "syncConversations", "stream": true},
         {"domain": "AiLanguage", "action": "syncConversationMessages", "stream": true},
-        {"domain": "ollama_relai", "action": "ping"}
+        {"domain": "ollama_relai", "action": "ping"},
+        {"domain": "ollama_relai", "action": "getModels"}
     ],
     "commands": [
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},

@@ -123,9 +123,13 @@ async function syncMessages(workers: AppWorkers, conversationId: string) {
             }
         });
     
-        let initialStreamResponse = await workers.connection.syncConversationMessages(conversationId, callback, lastSync);
-        if(!initialStreamResponse === true) {
-            reject(new Error("Error getting documents for this group"));
+        try {
+            let initialStreamResponse = await workers.connection.syncConversationMessages(conversationId, callback, lastSync);
+            if(!initialStreamResponse === true) {
+                reject(new Error("Error getting documents for this group"));
+            }
+        } catch(err) {
+            reject(err);
         }
 
     })

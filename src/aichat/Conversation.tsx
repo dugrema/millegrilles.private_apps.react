@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, Dispatch } from 'react';
 import Markdown from 'react-markdown';
 import { proxy } from 'comlink';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -36,6 +36,9 @@ export default function Chat() {
 
     let setLastConversationMessagesUpdate = useChatStore(state=>state.setLastConversationMessagesUpdate);
     let lastConversationMessagesUpdate = useChatStore(state=>state.lastConversationMessagesUpdate);
+
+    let [model, setModel] = useState('');
+    let modelOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setModel(e.currentTarget.value), [setModel]);
 
     let {conversationId: paramConversationId} = useParams();
 
@@ -197,11 +200,12 @@ export default function Chat() {
 
             let command: SendChatMessageCommand = {
                 conversation_id: conversationId, 
-                model: 'llama3.1:8b-instruct-q5_0', 
+                model,
                 role: 'user', 
                 encrypted_content: encryptedUserMessage
             };
             if(newConversation) command.new = true;
+            console.debug("Chat message ", command);
 
             // let attachment = {history: encryptedMessageHistory, key: {signature: conversationKey.signature}};
             setWaiting(true);
@@ -214,11 +218,12 @@ export default function Chat() {
                     userMessageCallback
                 );
                 if(!ok) console.error("Error sending chat message");
+                navigate(`/apps/aichat/conversation/${conversationId}`);
             })
             .catch(err=>console.error("Error sending message ", err))
             .finally(()=>setWaiting(false))
     }, [workers, conversationId, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, 
-        pushUserQuery, userMessageCallback, newConversation]
+        pushUserQuery, userMessageCallback, newConversation, model, navigate]
     );
 
     // Submit on ENTER in the textarea
@@ -280,6 +285,7 @@ export default function Chat() {
             </section>
             
             <div className='fixed bottom-0 w-full pl-2 pr-6 mb-8 text-center'>
+                <ModelPickList onChange={modelOnChange} />
                 <textarea value={chatInput} onChange={chatInputOnChange} onKeyDown={textareaOnKeyDown} 
                     placeholder='Entrez votre question ici. Exemple : Donne-moi une liste de films sortis en 1980.'
                     className='text-black w-full rounded-md h-28 sm:h-16' />
@@ -426,4 +432,25 @@ function sortMessagesByDate(a: StoreChatMessage, b: StoreChatMessage) {
         return aDate - bDate;
     }
     return a.message_id.localeCompare(b.message_id);
+}
+
+function ModelPickList(props: {onChange: (e: ChangeEvent<HTMLSelectElement>)=>void}) {
+
+    let {onChange} = props;
+
+    let models = useChatStore(state=>state.models);
+
+    let modelElems = useMemo(()=>{
+        if(!models) return [<option key='default'>Default</option>];
+        models.sort((a,b)=>a.name.localeCompare(b.name));
+        return models.map(item=>{
+            return <option key={item.name} value={item.name}>{item.name}</option>
+        });
+    }, [models]);
+
+    return (
+        <select className='text-black' onChange={onChange}>
+            {modelElems}
+        </select>
+    )
 }

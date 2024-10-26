@@ -9,6 +9,7 @@ import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType, NotepadNewC
 import { DecryptionKey } from '../MillegrillesIdb';
 import { EncryptionBase64Result } from './encryption.worker';
 import { ChatMessage, Conversation } from '../aichat/aichatStoreIdb';
+import { LanguageModelType } from '../aichat/chatStore';
 
 const DOMAINE_CORETOPOLOGIE = 'CoreTopologie';
 const DOMAINE_DOCUMENTS = 'Documents';
@@ -91,6 +92,8 @@ export type ConversationSyncResponse = MessageResponse & {
     sync_date: number,
 };
 
+export type GetModelsResponse = MessageResponse & {models?: LanguageModelType[]}
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -131,9 +134,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as DecryptionKeyResponse;
     }
 
-    async pingRelay(): Promise<MessageResponse> {
+    async pingRelay(): Promise<GetUserDevicesResponse> {
         if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.sendRequest({}, DOMAINE_OLLAMA_RELAI, 'ping', {timeout: 1_500}) as GetUserDevicesResponse;
+        return await this.connection.sendRequest({}, DOMAINE_OLLAMA_RELAI, 'ping', {timeout: 1_500})as GetUserDevicesResponse;
+    }
+
+    async getModels(): Promise<GetModelsResponse> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest({}, DOMAINE_OLLAMA_RELAI, 'getModels', {timeout: 3_000});
     }
 
     async syncConversations(
