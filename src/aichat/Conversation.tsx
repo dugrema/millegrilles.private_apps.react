@@ -16,6 +16,9 @@ import { getDecryptedKeys, saveDecryptedKey } from '../MillegrillesIdb';
 import { SendChatMessageCommand } from '../workers/connection.worker';
 import SyncConversationMessages from './SyncConversationMessages';
 
+const CONST_DEFAULT_MODEL = 'llama3.2:3b-instruct-q8_0';
+
+
 export default function Chat() {
 
     let workers = useWorkers();
@@ -37,7 +40,7 @@ export default function Chat() {
     let setLastConversationMessagesUpdate = useChatStore(state=>state.setLastConversationMessagesUpdate);
     let lastConversationMessagesUpdate = useChatStore(state=>state.lastConversationMessagesUpdate);
 
-    let [model, setModel] = useState('');
+    let [model, setModel] = useState(CONST_DEFAULT_MODEL);
     let modelOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setModel(e.currentTarget.value), [setModel]);
 
     let {conversationId: paramConversationId} = useParams();
@@ -284,23 +287,25 @@ export default function Chat() {
                 </ViewHistory>
             </section>
             
-            <div className='fixed bottom-0 w-full pl-2 pr-6 mb-8 text-center'>
-                <ModelPickList onChange={modelOnChange} />
+            <div className='fixed bottom-0 w-full pl-2 pr-6 mb-8 grid grid-cols-3'>
+                <div><ModelPickList onChange={modelOnChange} /></div>
                 <textarea value={chatInput} onChange={chatInputOnChange} onKeyDown={textareaOnKeyDown} 
                     placeholder='Entrez votre question ici. Exemple : Donne-moi une liste de films sortis en 1980.'
-                    className='text-black w-full rounded-md h-28 sm:h-16' />
-                <button disabled={waiting || !ready || !relayAvailable} 
-                    className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900' onClick={submitHandler}>
-                        Send
-                </button>
-                <button disabled={waiting} 
-                    className='varbtn w-24 bg-slate-700 hover:bg-slate-600 active:bg-slate-500' onClick={clearHandler}>
-                        Clear
-                </button>
-                <Link to='/apps/aichat' 
-                    className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
-                        Back
-                </Link>
+                    className='text-black w-full rounded-md h-28 sm:h-16 col-span-2' />
+                <div className='w-full text-center col-span-3'>
+                    <button disabled={waiting || !ready || !relayAvailable} 
+                        className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900' onClick={submitHandler}>
+                            Send
+                    </button>
+                    <button disabled={waiting} 
+                        className='varbtn w-24 bg-slate-700 hover:bg-slate-600 active:bg-slate-500' onClick={clearHandler}>
+                            Clear
+                    </button>
+                    <Link to='/apps/aichat' 
+                        className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
+                            Back
+                    </Link>
+                </div>
             </div>
 
             <SyncConversationMessages />
@@ -443,14 +448,22 @@ function ModelPickList(props: {onChange: (e: ChangeEvent<HTMLSelectElement>)=>vo
     let modelElems = useMemo(()=>{
         if(!models) return [<option key='default'>Default</option>];
         models.sort((a,b)=>a.name.localeCompare(b.name));
+
+        // Move default model at top of list
+        models = models.filter(item=>item.name!==CONST_DEFAULT_MODEL);
+        models.unshift({name: CONST_DEFAULT_MODEL});
+
         return models.map(item=>{
             return <option key={item.name} value={item.name}>{item.name}</option>
         });
     }, [models]);
 
     return (
-        <select className='text-black' onChange={onChange}>
-            {modelElems}
-        </select>
+        <>
+            <label htmlFor='selectModel'>Model</label>
+            <select id='selectModel' className='text-black' onChange={onChange}>
+                {modelElems}
+            </select>
+        </>
     )
 }
