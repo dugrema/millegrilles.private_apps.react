@@ -84,9 +84,14 @@ export default function EditDevicePrograms() {
 
     }, [workers, uuid_appareil, deviceConfiguration]);
 
-    let programs = configuration?.programmes;
+    let programs = useMemo(()=>{
+        if(!configuration) return null;
+        return configuration.programmes || {};
+    }, [configuration]);
 
     let body = useMemo(()=>{
+        if(!programs) return <></>;
+
         if(editValue && configuration) return (
             <ProgramEdit 
                 uuid_appareil={uuid_appareil} 
@@ -97,7 +102,14 @@ export default function EditDevicePrograms() {
                 close={programEditClose} 
                 onChange={configurationOnChange} />
         );
-        return <ProgramList programs={programs} setEditValue={setEditValue} setClassLocked={setClassLocked} removeProgram={removeProgram} />;
+
+        return (
+            <ProgramList 
+                programs={programs} 
+                setEditValue={setEditValue} 
+                setClassLocked={setClassLocked} 
+                removeProgram={removeProgram} />
+        );
     }, [editValue, classLocked, configuration, configurationOnChange, programEditClose, programs, removeProgram, saveOnClick, uuid_appareil]);
 
     return (

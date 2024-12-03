@@ -41,7 +41,7 @@ export default function DeviceEvents() {
         // Load user devices
         workers.connection.getUserDevices()
             .then(deviceResponse=>{
-                // console.debug("Device response ", deviceResponse);
+                console.debug("Device response ", deviceResponse);
                 if(deviceResponse.ok) {
                     // Build list into a map of uuid_appareils:device
                     let mappedReadings = deviceResponse.appareils.reduce((acc: {[key: string]: DeviceReadings}, device)=>{
