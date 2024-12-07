@@ -136,7 +136,7 @@ export class AppsConnectionWorker extends ConnectionWorker {
 
     async pingRelay(): Promise<GetUserDevicesResponse> {
         if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.sendRequest({}, DOMAINE_OLLAMA_RELAI, 'ping', {timeout: 1_500})as GetUserDevicesResponse;
+        return await this.connection.sendRequest({}, DOMAINE_OLLAMA_RELAI, 'ping', {timeout: 3_000})as GetUserDevicesResponse;
     }
 
     async getModels(): Promise<GetModelsResponse> {

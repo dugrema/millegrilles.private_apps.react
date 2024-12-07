@@ -9,13 +9,13 @@
         {"domain": "SenseursPassifs", "action": "getConfigurationUsager"},
         {"domain": "Documents", "action": "getCategoriesUsager"},
         {"domain": "Documents", "action": "getGroupesUsager"},
-        {"domain": "Documents", "action": "getClesGroupes"},
+        {"domain": "Documents", "action": "getClesGroupes", "domaines": ["Documents", "MaitreDesCles"]},
         {"domain": "Documents", "action": "getDocumentsGroupe", "stream": true},
-        {"domain": "AiLanguage", "action": "getConversationKeys"},
+        {"domain": "AiLanguage", "action": "getConversationKeys", "domaines": ["AiLanguage", "MaitreDesCles"]},
         {"domain": "AiLanguage", "action": "syncConversations", "stream": true},
         {"domain": "AiLanguage", "action": "syncConversationMessages", "stream": true},
-        {"domain": "ollama_relai", "action": "ping"},
-        {"domain": "ollama_relai", "action": "getModels"}
+        {"domain": "ollama_relai", "action": "ping", "roles": ["ollama_relai"]},
+        {"domain": "ollama_relai", "action": "getModels", "roles": ["ollama_relai"]}
     ],
     "commands": [
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},
@@ -33,8 +33,8 @@
         {"domain": "Documents", "action": "supprimerGroupe"},
         {"domain": "Documents", "action": "recupererGroupe"},
         {"domain": "AiLanguage", "action": "deleteChatConversation"},
-        {"domain": "ollama_relai", "action": "generate", "stream": true},
-        {"domain": "ollama_relai", "action": "chat", "stream": true},
+        {"domain": "ollama_relai", "action": "generate", "roles": ["ollama_relai"], "stream": true},
+        {"domain": "ollama_relai", "action": "chat", "roles": ["ollama_relai"], "stream": true},
         {"domain": "ollama_relai", "action": "model"}
     ],
     "subscriptions": {

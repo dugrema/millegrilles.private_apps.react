@@ -163,6 +163,7 @@ function LoadModels() {
         if(!ready || !workers) return;
         workers.connection.getModels()
             .then(response=>{
+                // console.debug("Models response: ", response);
                 if(response.ok !== true) throw new Error("Error receiving models: " + response.err);
                 if(response.models) setModels(response.models);
             })
@@ -189,6 +190,7 @@ function CheckRelayAvailable() {
         
         workers.connection.pingRelay()
             .then(response=>{
+                // console.debug("Ping response", response);
                 let available = !!response.ok;
                 setRelayAvailable(available);
             })
