@@ -20,6 +20,10 @@ const AppAiChat = React.lazy(()=>import('./aichat/AppAiChat'));
 const ChatSummaryHistory = React.lazy(()=>import('./aichat/ChatSummaryHistory'));
 const AiChatConversation = React.lazy(()=>import('./aichat/Conversation'));
 
+// Collections 2
+const AppCollections2 = React.lazy(()=>import('./collections2/AppCollections2'));
+const Collections2ViewMainPage = React.lazy(()=>import('./collections2/ViewFileBrowsing'));
+
 // Notepad
 const NotepadApp = React.lazy(()=>import('./notepad/AppNotepad'));
 const NotepadMainPage = React.lazy(()=>import('./notepad/NotepadMainPage'));
@@ -54,6 +58,14 @@ const router = createBrowserRouter([
             { path: "/apps/aichat", element: <ChatSummaryHistory /> },
             { path: "/apps/aichat/newConversation", element: <AiChatConversation /> },
             { path: "/apps/aichat/conversation/:conversationId", element: <AiChatConversation /> },
+        ]
+  	},
+      {
+		path: "/apps/collections2",
+		element: <AppCollections2 />,
+        errorElement: <ErrorPage />,
+        children: [
+            { path: "/apps/collections2", element: <Collections2ViewMainPage /> },
         ]
   	},
     {
@@ -121,6 +133,7 @@ function ApplicationList() {
                     <nav className='pt-6'>
                         <ul>
                             <li className='pt-2'><Link className='underline' to='/apps/aichat'>Ai Chat</Link></li>
+                            <li className='pt-2'><Link className='underline'to='/apps/collections2'>Collections 2</Link></li>
                             <li className='pt-2'><Link className='underline'to='/apps/notepad'>Notepad</Link></li>
                             <li className='pt-2'><Link className='underline'to='/apps/senseurspassifs'>SenseursPassifs</Link></li>
                             <li className='pt-2'><a href='/millegrilles' className='underline'>Back to portal</a></li>
