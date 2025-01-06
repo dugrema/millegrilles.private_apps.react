@@ -18,6 +18,7 @@ const DOMAINE_SENSEURSPASSIFS_RELAI = 'senseurspassifs_relai';
 const DOMAINE_MAITREDESCLES = 'MaitreDesCles';
 const DOMAINE_AI_LANGUAGE = 'AiLanguage';
 const DOMAINE_OLLAMA_RELAI = 'ollama_relai';
+const DOMAINE_GROSFICHIERS = 'GrosFichiers';
 
 export type SendChatMessageCommand = { 
     conversation_id: string,
@@ -93,6 +94,10 @@ export type ConversationSyncResponse = MessageResponse & {
 };
 
 export type GetModelsResponse = MessageResponse & {models?: LanguageModelType[]}
+
+export type Collections2SyncDirectoryResponse = MessageResponse & {
+
+};
 
 export class AppsConnectionWorker extends ConnectionWorker {
 
@@ -376,6 +381,15 @@ export class AppsConnectionWorker extends ConnectionWorker {
     async unsubscribeUserGroupDocument(groupId: string, cb: SubscriptionCallback): Promise<void> {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.unsubscribe('notepadGroupDocumentEvents', cb, {groupe_id: groupId});
+    }
+
+    // Collections 2
+    async syncDirectory(cuuid: string | null | undefined) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {cuuid}, 
+            DOMAINE_GROSFICHIERS, 'syncDirectory'
+        ) as Collections2SyncDirectoryResponse;
     }
 
 }
