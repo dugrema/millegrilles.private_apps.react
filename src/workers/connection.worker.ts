@@ -95,8 +95,25 @@ export type ConversationSyncResponse = MessageResponse & {
 
 export type GetModelsResponse = MessageResponse & {models?: LanguageModelType[]}
 
-export type Collections2SyncDirectoryResponse = MessageResponse & {
+export type DecryptedSecretKey = {
+    cle_id: string,
+    cle_secrete_base64: string,
+    format?: string,
+    nonce?: string,
+}
 
+export type Collection2DirectoryStats = {
+    count: number,
+    taille: number,
+    type_node: string
+}
+
+export type Collections2SyncDirectoryResponse = MessageResponse & {
+    complete: boolean,
+    cuuid: string | null,
+    files: Object[] | null,
+    keys: DecryptedSecretKey[] | null,
+    stats: Collection2DirectoryStats[] | null,
 };
 
 export class AppsConnectionWorker extends ConnectionWorker {
@@ -384,10 +401,10 @@ export class AppsConnectionWorker extends ConnectionWorker {
     }
 
     // Collections 2
-    async syncDirectory(cuuid: string | null | undefined) {
+    async syncDirectory(cuuid: string | null | undefined, skip: number) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest(
-            {cuuid}, 
+            {cuuid, skip}, 
             DOMAINE_GROSFICHIERS, 'syncDirectory'
         ) as Collections2SyncDirectoryResponse;
     }

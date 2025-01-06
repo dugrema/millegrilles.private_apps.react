@@ -3,8 +3,10 @@ import { devtools } from 'zustand/middleware';
 // import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType } from './idb/notepadStoreIdb';
 
 interface UserBrowsingStoreState {
-    currentTuuid: string | null,
+    currentCuuid: string | null,
     selectedTuuids: string[] | null,
+
+    setCuuid: (cuuid: string | null) => void,
 
     // setCategories: (categories: Array<NotepadCategoryType>) => void,
     // setGroups: (groups: Array<NotepadGroupType>) => void,
@@ -20,9 +22,10 @@ interface UserBrowsingStoreState {
 const useUserBrowsingStore = create<UserBrowsingStoreState>()(
     devtools(
         (set) => ({
-            currentTuuid: null,
+            currentCuuid: null,
             selectedTuuids: null,
 
+            setCuuid: (cuuid) => set(()=>({currentCuuid: cuuid})),
             // setCategories: (categories) => set(()=>({categories})),
             // setGroups: (groups) => set(()=>({groups})),
             // setGroupDocuments: (groupDocuments) => set(()=>({groupDocuments})),
