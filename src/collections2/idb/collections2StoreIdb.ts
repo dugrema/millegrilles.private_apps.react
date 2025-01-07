@@ -85,6 +85,7 @@ export type TuuidsIdbStoreRowType = {
     parent: string,  // For top level collections, this is the user_id. For all others this is the tuuid of the parent collection.
     path_cuuids?: string[] | null,
     fileData?: FileData,
+    thumbnail: Blob | null,
     derniere_modification: number,
     lastCompleteSyncMs?: number,  // For directories only, last complete sync of content
 }
@@ -126,5 +127,21 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
             break;
         default:
             console.warn("createObjectStores Default..., version %O", oldVersion)
+    }
+}
+
+// Met dirty a true et dechiffre a false si mismatch derniere_modification
+export async function updateFilesIdb(tuuids: TuuidsIdbStoreRowType[]) {
+    const db = await openDB();
+    const store = db.transaction(STORE_TUUIDS, 'readwrite').store;
+
+    for await (const file of tuuids) {
+        const { tuuid } = file
+        const fileExisting = await store.get(tuuid);
+        if(fileExisting) {
+            await store.put({...fileExisting, ...file});
+        } else {
+            await store.put(file);
+        }
     }
 }

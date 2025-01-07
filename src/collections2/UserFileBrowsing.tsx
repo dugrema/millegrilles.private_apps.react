@@ -1,14 +1,23 @@
 import { useParams } from "react-router-dom";
 import { Breadcrumb, ButtonBar } from "./BrowsingElements";
 import FilelistPane from "./FilelistPane";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
-import useUserBrowsingStore from "./userBrowsingStore";
+import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 
 function ViewUserFileBrowsing() {
 
     let { tuuid } = useParams();
+
+    let filesDict = useUserBrowsingStore(state=>state.currentDirectory);
+
+    let files = useMemo(()=>{
+        if(!filesDict) return null;
+        let filesValues = Object.values(filesDict);
+
+        return filesValues;
+    }, [filesDict]) as TuuidsBrowsingStoreRow[] | null;
 
     return (
         <>
@@ -19,7 +28,7 @@ function ViewUserFileBrowsing() {
             </section>
 
             <section className='pt-3'>
-                <FilelistPane />
+                <FilelistPane files={files} />
             </section>
 
             <DirectorySyncHandler tuuid={tuuid} />
@@ -39,8 +48,8 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
 
     let workers = useWorkers();
     let userId = useUserBrowsingStore(state=>state.userId);
+    let updateCurrentDirectory = useUserBrowsingStore(state=>state.updateCurrentDirectory);
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    
     let setCuuid = useUserBrowsingStore(state=>state.setCuuid);
 
     useEffect(()=>{
@@ -59,7 +68,7 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
         //TODO
 
         // Sync
-        synchronizeDirectory(workers, userId, tuuidValue, cancelledSignal)
+        synchronizeDirectory(workers, userId, tuuidValue, cancelledSignal, updateCurrentDirectory)
             .catch(err=>console.error("Error loading directory: %O", err));
 
         return () => {
@@ -74,7 +83,11 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
     return <></>;
 }
 
-async function synchronizeDirectory(workers: AppWorkers, userId: string, tuuid: string | null, cancelledSignal: ()=>boolean) {
+async function synchronizeDirectory(
+    workers: AppWorkers, userId: string, tuuid: string | null, 
+    cancelledSignal: ()=>boolean, 
+    updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void) 
+{
     // if(!workers) throw new Error("Workers not initialized");
 
     // Load folder from IDB (if known)
@@ -104,7 +117,8 @@ async function synchronizeDirectory(workers: AppWorkers, userId: string, tuuid: 
 
             if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 2`)
             // Save files in store
-            //TODO
+            let storeFiles = filesIdbToBrowsing(files);
+            updateCurrentDirectory(storeFiles);
         } else if(response.keys) {
             console.warn("Keys received with no files");
         }

@@ -2,10 +2,12 @@ import { expose, Remote } from 'comlink';
 
 import { Collections2FileSyncRow, DecryptedSecretKey } from './connection.worker';
 import { AppsEncryptionWorker } from './encryption.worker';
-import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType } from '../collections2/idb/collections2StoreIdb';
+import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb } from '../collections2/idb/collections2StoreIdb';
 
 export class DirectoryWorker {
-    async processDirectoryChunk(encryption: Remote<AppsEncryptionWorker>, userId: string, files: Collections2FileSyncRow[], keys: DecryptedSecretKey[] | null) {
+    async processDirectoryChunk(encryption: Remote<AppsEncryptionWorker>, userId: string, files: Collections2FileSyncRow[], 
+        keys: DecryptedSecretKey[] | null): Promise<TuuidsIdbStoreRowType[]> 
+    {
         console.debug("processDirectoryChunk\nFiles: %O\nKeys: %O", files, keys);
 
         // Map keys
@@ -78,16 +80,35 @@ export class DirectoryWorker {
                             compression,
                         );
                         let decrypted = JSON.parse(new TextDecoder().decode(decryptedBytes)) as TuuidDecryptedMetadata;
-                        console.debug("Decrypted metadata", decrypted);
                         file.decryptedMetadata = decrypted;
                     } catch (err) {
                         console.error("Error decrypting %s - SKIPPING", file.tuuid);
                     }
                 }
             }
+
+            let thumbnail = file.fileData?.images?.thumb;
+            if(thumbnail && thumbnail.cle_id && thumbnail.data_chiffre) {
+                let key = keyByCleid[thumbnail.cle_id];
+                if(key) {
+                    let nonce = thumbnail.nonce || key.nonce;
+                    let format = thumbnail.format || key.format;
+                    if(nonce && format) {
+                        let encryptedData = thumbnail.data_chiffre.slice(1);  // Remove multibase leading 'm'
+                        let thumbnailBytes = await encryption.decryptMessage(
+                            format, key.cle_secrete_base64, nonce, encryptedData, thumbnail.compression);
+                        let thumbnailBlob = new Blob([thumbnailBytes]);
+                        file.thumbnail = thumbnailBlob;
+                    }
+                }
+            }
         }
 
+        await updateFilesIdb(mappedFiles);
+
         console.debug("Decrypted and mapped files: %O", mappedFiles);
+
+        return mappedFiles;
     }
 }
 

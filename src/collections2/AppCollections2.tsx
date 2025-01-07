@@ -6,6 +6,7 @@ import useUserBrowsingStore from "./userBrowsingStore";
 import { useEffect } from "react";
 import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
+import { openDB } from "./idb/collections2StoreIdb";
 
 function Collections2() {
     return (
@@ -41,6 +42,11 @@ function InitializeStore() {
         })
         .catch(err=>console.error("Error initializing store", err));
     }, [workers, ready, setUserId]);
+
+    useEffect(()=>{
+        openDB(true)
+            .catch(err=>console.error("Error initializing collections2 IDB", err));
+    })
 
     return <></>;
 }

@@ -1,24 +1,55 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { TuuidsIdbStoreRowType } from './idb/collections2StoreIdb';
 // import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType } from './idb/notepadStoreIdb';
+
+export type TuuidsBrowsingStoreRow = {
+    tuuid: string,
+    nom: string,
+    type_node: string,
+    modification: number,
+    dateFichier: number | null,
+    taille: number | null,
+    mimetype: string | null,
+    thumbnail: Blob | null,
+    smallImageFuuid: string | null,
+    loadStatus: number | null,
+}
+
+export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsingStoreRow[] {
+    return files.map(item=>{
+        let decryptedMetadata = item.decryptedMetadata;
+        if(!decryptedMetadata) throw new Error("File not decrypted");
+        let images = item.fileData?.images;
+        let smallImageFuuid = null;
+        if(images && images.small) {
+            smallImageFuuid = images.small.hachage;
+        }
+
+        return {
+            tuuid: item.tuuid,
+            nom: decryptedMetadata.nom,
+            type_node: item.type_node,
+            modification: item.derniere_modification,
+            dateFichier: decryptedMetadata.dateFichier,
+            taille: item.fileData?.taille,
+            mimetype: item.fileData?.mimetype,
+            thumbnail: item.thumbnail,
+            smallImageFuuid,
+            // loadStatus: null,
+        } as TuuidsBrowsingStoreRow;
+    })
+}
 
 interface UserBrowsingStoreState {
     userId: string | null,
     currentCuuid: string | null,
     selectedTuuids: string[] | null,
+    currentDirectory: {[tuuid: string]: TuuidsBrowsingStoreRow} | null,
 
     setCuuid: (cuuid: string | null) => void,
     setUserId: (userId: string) => void,
-
-    // setCategories: (categories: Array<NotepadCategoryType>) => void,
-    // setGroups: (groups: Array<NotepadGroupType>) => void,
-    // setGroupDocuments: (groupDocuments: Array<NotepadDocumentType> | null) => void,
-    // setSelectedGroup: (groupId: string | null) => void,
-    // clearGroup: () => void,
-    // setSyncDone: () => void,
-    // updateDocument: (doc: NotepadDocumentType) => void,  // Update/add document in current group
-    // updateCategory: (cat: NotepadCategoryType) => void,
-    // removeDocument: (docId: string) => void,  // Update/add document in current group
+    updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
 };
 
 const useUserBrowsingStore = create<UserBrowsingStoreState>()(
@@ -27,74 +58,31 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             userId: null,
             currentCuuid: null,
             selectedTuuids: null,
+            currentDirectory: null,
 
             setCuuid: (cuuid) => set(()=>({currentCuuid: cuuid})),
             setUserId: (userId) => set(()=>({userId})),
-            // setCategories: (categories) => set(()=>({categories})),
-            // setGroups: (groups) => set(()=>({groups})),
-            // setGroupDocuments: (groupDocuments) => set(()=>({groupDocuments})),
-            // setSelectedGroup: (groupId) => set(()=>({selectedGroup: groupId})),
 
-            // clearGroup: () => set(()=>({selectedGroup: null, groupDocuments: null})),
-            // setSyncDone: () => set(()=>({syncDone: true})),
+            updateCurrentDirectory: (files) => set((state)=>{
+                if(!files) {
+                    // Clear
+                    return {currentDirectory: null};
+                }
 
-            // updateDocument: doc => set((state)=>{
-            //     let updatedDocs = state.groupDocuments || [];
-                
-            //     // Check if we're updating the current group
-            //     let selectedGroup = state.selectedGroup;
-            //     if(doc.groupe_id !== selectedGroup) return {};  // Not current group, no change to apply.
+                let currentDirectory = {} as {[tuuid: string]: TuuidsBrowsingStoreRow};
+                if(state.currentDirectory) {
+                    // Copy existing directory
+                    currentDirectory = {...state.currentDirectory};
+                }
 
-            //     if(state.groupDocuments) {
-            //         let found = false;
-            //         updatedDocs = state.groupDocuments.map(d=>{
-            //             if(d.doc_id === doc.doc_id) {
-            //                 // Replace the document with the udpate
-            //                 found = true;
-            //                 return doc;
-            //             } else {
-            //                 return d;
-            //             }
-            //         });
+                // Add and replace existing files
+                for(let file of files) {
+                    let tuuid = file.tuuid;
+                    currentDirectory[tuuid] = file;
+                }
 
-            //         if(!found) {
-            //             updatedDocs.push(doc);  // This is a new document
-            //         }
-            //     } else {
-            //         updatedDocs.push(doc);  // The group is null
-            //     }
-
-            //     return {groupDocuments: updatedDocs};
-            // }),
-
-            // updateCategory: cat => set((state)=>{
-            //     let updatedCategories = state.categories || [];
-
-            //     if(state.categories) {
-            //         let found = false;
-            //         updatedCategories = updatedCategories.map(item=>{
-            //             if(item.categorie_id === cat.categorie_id) {
-            //                 found = true;
-            //                 return cat;
-            //             } else {
-            //                 return item;
-            //             }
-            //         })
-            //         if(!found) updatedCategories.push(cat);
-            //     } else {
-            //         updatedCategories.push(cat);
-            //     }
-
-            //     return {categories: updatedCategories};
-            // }),
-
-            // removeDocument: docId => set((state) => {
-            //     if(state.groupDocuments) {
-            //         let updatedDocuments = state.groupDocuments.filter(item=>item.doc_id!==docId);
-            //         return {groupDocuments: updatedDocuments}
-            //     }
-            //     return {};
-            // }),
+                return {currentDirectory};
+            })
         })
     ),
 );
