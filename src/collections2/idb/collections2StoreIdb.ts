@@ -13,7 +13,7 @@ export type TuuidEncryptedMetadata = messageStruct.MessageDecryption & {
 
 export type TuuidDecryptedMetadata = {
     nom: string,
-    date?: number,
+    dateFichier?: number,
     hachage_original?: string,
 }
 
@@ -23,7 +23,7 @@ export type FileData = {
     supprime: boolean,
     supprime_indirect: boolean,
     taille?: number,
-    visites?: string[],
+    visites?: {[instanceId: string]: number},
     height?: number,
     width?: number,
     anime?: boolean,

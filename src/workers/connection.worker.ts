@@ -10,6 +10,7 @@ import { DecryptionKey } from '../MillegrillesIdb';
 import { EncryptionBase64Result } from './encryption.worker';
 import { ChatMessage, Conversation } from '../aichat/aichatStoreIdb';
 import { LanguageModelType } from '../aichat/chatStore';
+import { FileAudioData, FileImageDict, FileSubtitleData, FileVideoDict, TuuidEncryptedMetadata } from '../collections2/idb/collections2StoreIdb';
 
 const DOMAINE_CORETOPOLOGIE = 'CoreTopologie';
 const DOMAINE_DOCUMENTS = 'Documents';
@@ -108,10 +109,44 @@ export type Collection2DirectoryStats = {
     type_node: string
 }
 
+export type Collection2FileVersionRow = {
+    fuuid: string,
+    '_mg-derniere-modification': number,
+    taille: number,
+    anime?: boolean,
+    cle_id?: string,
+    format?: string,
+    nonce?: string,
+    fuuids_reclames?: string[],
+    visites?: {[instanceId: string]: number},
+    duration?: number,
+    height?: number,
+    width?: number,
+    images?: FileImageDict,
+    video?: FileVideoDict,
+    audio?: FileAudioData[],
+    subtitles?: FileSubtitleData[],
+}
+
+export type Collections2FileSyncRow = {
+    tuuid: string,
+    user_id: string,
+    type_node: string,
+    supprime: boolean,
+    supprime_indirect: boolean,
+    date_creation: number,
+    derniere_modification: number,
+    metadata: TuuidEncryptedMetadata,
+    path_cuuids?: string[],
+    fuuids_versions?: string[],
+    mimetype?: string,
+    version_courante?: Collection2FileVersionRow,
+};
+
 export type Collections2SyncDirectoryResponse = MessageResponse & {
     complete: boolean,
     cuuid: string | null,
-    files: Object[] | null,
+    files: Collections2FileSyncRow[] | null,
     keys: DecryptedSecretKey[] | null,
     stats: Collection2DirectoryStats[] | null,
 };
