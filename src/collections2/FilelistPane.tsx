@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 
@@ -20,21 +20,7 @@ function FilelistPane(props: FileListPaneProps) {
         }
 
         let mappedFiles = sortedFiles.map(item=>{
-            return (
-                <div key={item.tuuid} className='grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer'>
-                    <div className='col-span-7 px-1'>
-                        <div className='p-1 inline-block'>TN</div>
-                        <span className='pl-1'>{item.nom}</span>
-                    </div>
-                    <p className='col-span-1 px-1'>
-                        <Formatters.FormatteurTaille value={item.taille || undefined} />
-                    </p>
-                    <p className='col-span-2 px-1'>{item.mimetype}</p>
-                    <p className='col-span-2 px-1'>
-                        <Formatters.FormatterDate value={item.dateFichier || item.modification || undefined} />
-                    </p>
-                </div>
-            )
+            return <FileRow key={item.tuuid} value={item} />
         })
 
         return mappedFiles;
@@ -62,3 +48,44 @@ function sortByName(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
 }
 
 export default FilelistPane;
+
+function FileRow(props: {value: TuuidsBrowsingStoreRow}) {
+    
+    let value = props.value;
+    
+    let [thumbnail, setThumbnail] = useState('');
+
+    useEffect(()=>{
+        if(!value || !value.thumbnail) return;
+
+        let objectUrl = URL.createObjectURL(value.thumbnail);
+        setThumbnail(objectUrl);
+
+        return () => {
+            // Cleanup
+            setThumbnail('');
+            URL.revokeObjectURL(objectUrl);
+        }
+    }, [value]);
+
+    return (
+        <div key={value.tuuid} className='grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer'>
+            <div className='col-span-7 px-1'>
+                {thumbnail?
+                    <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' />
+                :
+                    <div className='ml-1 p-1 inline-block'>TN</div>
+                }
+                
+                <span className='pl-3'>{value.nom}</span>
+            </div>
+            <p className='col-span-1 px-1'>
+                <Formatters.FormatteurTaille value={value.taille || undefined} />
+            </p>
+            <p className='col-span-2 px-1'>{value.mimetype}</p>
+            <p className='col-span-2 px-1'>
+                <Formatters.FormatterDate value={value.dateFichier || value.modification || undefined} />
+            </p>
+        </div>
+    )
+}
