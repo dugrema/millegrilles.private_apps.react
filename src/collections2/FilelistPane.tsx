@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
+import { useNavigate } from "react-router-dom";
 
 type FileListPaneProps = {
     files: TuuidsBrowsingStoreRow[] | null,
@@ -53,7 +54,26 @@ function FileRow(props: {value: TuuidsBrowsingStoreRow}) {
     
     let value = props.value;
     
+    let navigate = useNavigate();
+
     let [thumbnail, setThumbnail] = useState('');
+
+    let onclickHandler = useCallback(()=>{
+        let tuuid = value.tuuid;
+        let typeNode = value.type_node;
+        if(typeNode === 'Fichier') {
+            // Open file
+            throw new Error('todo');
+        } else {
+            // Browse directory
+            if(!tuuid) {
+                // Back to top
+                navigate('/apps/collections2/b');
+            } else {
+                navigate('/apps/collections2/b/' + tuuid);
+            }
+        }
+    }, [navigate, value]);
 
     useEffect(()=>{
         if(!value || !value.thumbnail) return;
@@ -69,10 +89,11 @@ function FileRow(props: {value: TuuidsBrowsingStoreRow}) {
     }, [value]);
 
     return (
-        <div key={value.tuuid} className='grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer'>
+        <div key={value.tuuid} onClick={onclickHandler}
+            className='grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer'>
             <div className='col-span-7 px-1'>
                 {thumbnail?
-                    <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' />
+                    <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
                 :
                     <div className='ml-1 p-1 inline-block'>TN</div>
                 }

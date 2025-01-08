@@ -147,6 +147,7 @@ export type Collections2SyncDirectoryResponse = MessageResponse & {
     complete: boolean,
     cuuid: string | null,
     files: Collections2FileSyncRow[] | null,
+    breadcrumb: Collections2FileSyncRow[] | null,
     keys: DecryptedSecretKey[] | null,
     stats: Collection2DirectoryStats[] | null,
 };

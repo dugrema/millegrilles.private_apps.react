@@ -47,10 +47,12 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
     let {tuuid} = props;
 
     let workers = useWorkers();
+    let username = useConnectionStore(state=>state.username);
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useUserBrowsingStore(state=>state.userId);
     let updateCurrentDirectory = useUserBrowsingStore(state=>state.updateCurrentDirectory);
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let setCuuid = useUserBrowsingStore(state=>state.setCuuid);
+    let setBreadcrumb = useUserBrowsingStore(state=>state.setBreadcrumb);
 
     useEffect(()=>{
         if(!workers || !ready || !userId) return;
@@ -64,11 +66,14 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
         // Change the current directory in the store. 
         setCuuid(tuuidValue);
 
+        // Clear screen
+        updateCurrentDirectory(null);
+
         // Register directory change listener
         //TODO
 
         // Sync
-        synchronizeDirectory(workers, userId, tuuidValue, cancelledSignal, updateCurrentDirectory)
+        synchronizeDirectory(workers, userId, username, tuuidValue, cancelledSignal, updateCurrentDirectory, setBreadcrumb)
             .catch(err=>console.error("Error loading directory: %O", err));
 
         return () => {
@@ -78,15 +83,16 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
             // Unregister directory change listener
             //TODO
         }
-    }, [workers, ready, userId, tuuid, setCuuid]);
+    }, [workers, ready, userId, username, tuuid, setCuuid, setBreadcrumb, updateCurrentDirectory]);
 
     return <></>;
 }
 
 async function synchronizeDirectory(
-    workers: AppWorkers, userId: string, tuuid: string | null, 
+    workers: AppWorkers, userId: string, username: string, tuuid: string | null, 
     cancelledSignal: ()=>boolean, 
-    updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void) 
+    updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
+    setBreadcrumb: (username: string, dirs: TuuidsBrowsingStoreRow[] | null) => void) 
 {
     // if(!workers) throw new Error("Workers not initialized");
 
@@ -107,6 +113,33 @@ async function synchronizeDirectory(
         if(response.stats) {
             // Update store information with new directory stats
             //TODO
+        }
+
+        if(!tuuid) {
+            setBreadcrumb(username, null);
+        } else if(response.breadcrumb) {
+            let breadcrumb = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.breadcrumb, response.keys);
+            let currentDirIdb = breadcrumb.filter(item=>item.tuuid === tuuid).pop();
+
+            let storeFiles = filesIdbToBrowsing(breadcrumb);
+
+            let breadcrumbByTuuid = {} as {[tuuid: string]: TuuidsBrowsingStoreRow};
+            for(let dir of storeFiles) {
+                breadcrumbByTuuid[dir.tuuid] = dir;
+            }
+            // Create breadcrumb in reverse order
+            let orderedBreadcrumb = [breadcrumbByTuuid[tuuid]];
+            if(currentDirIdb?.path_cuuids) {
+                for(let cuuid of currentDirIdb.path_cuuids) {
+                    let dirValue = breadcrumbByTuuid[cuuid];
+                    orderedBreadcrumb.push(dirValue);
+                }
+            }
+            // Put breadcrumb in proper order
+            orderedBreadcrumb = orderedBreadcrumb.reverse();
+
+            console.debug("breadcrumb: %O, StoreFiles: %O", breadcrumb, storeFiles);
+            setBreadcrumb(username, orderedBreadcrumb);
         }
 
         if(response.files) { 

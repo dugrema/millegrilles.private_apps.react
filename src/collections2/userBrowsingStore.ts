@@ -46,10 +46,13 @@ interface UserBrowsingStoreState {
     currentCuuid: string | null,
     selectedTuuids: string[] | null,
     currentDirectory: {[tuuid: string]: TuuidsBrowsingStoreRow} | null,
+    usernameBreadcrumb: string | null,
+    breadcrumb: TuuidsBrowsingStoreRow[] | null,
 
     setCuuid: (cuuid: string | null) => void,
     setUserId: (userId: string) => void,
     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
+    setBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
 };
 
 const useUserBrowsingStore = create<UserBrowsingStoreState>()(
@@ -59,6 +62,8 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             currentCuuid: null,
             selectedTuuids: null,
             currentDirectory: null,
+            usernameBreadcrumb: null,
+            breadcrumb: null,
 
             setCuuid: (cuuid) => set(()=>({currentCuuid: cuuid})),
             setUserId: (userId) => set(()=>({userId})),
@@ -82,7 +87,9 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
                 }
 
                 return {currentDirectory};
-            })
+            }),
+
+            setBreadcrumb: (username, breadcrumb) => set(()=>({usernameBreadcrumb: username, breadcrumb}))
         })
     ),
 );
