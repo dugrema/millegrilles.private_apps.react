@@ -1,7 +1,7 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Breadcrumb, ButtonBar } from "./BrowsingElements";
 import FilelistPane from "./FilelistPane";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
@@ -12,6 +12,7 @@ function ViewUserFileBrowsing() {
     let { tuuid } = useParams();
 
     let filesDict = useUserBrowsingStore(state=>state.currentDirectory);
+    let navigate = useNavigate();
 
     let files = useMemo(()=>{
         if(!filesDict) return null;
@@ -19,6 +20,18 @@ function ViewUserFileBrowsing() {
 
         return filesValues;
     }, [filesDict]) as TuuidsBrowsingStoreRow[] | null;
+
+    let onClickRow = useCallback((tuuid?: string | null, typeNode?: string | null)=>{
+        if(typeNode === 'Fichier') {
+            navigate('/apps/collections2/f/' + tuuid);
+        } else {
+            if(tuuid) {
+                navigate('/apps/collections2/b/' + tuuid);
+            } else {
+                navigate('/apps/collections/b');
+            }
+        }
+    }, [navigate]);
 
     return (
         <>
@@ -29,7 +42,7 @@ function ViewUserFileBrowsing() {
             </section>
 
             <section className='pt-3'>
-                <FilelistPane files={files} />
+                <FilelistPane files={files} onClickRow={onClickRow} />
             </section>
 
             <DirectorySyncHandler tuuid={tuuid} />
@@ -130,7 +143,7 @@ async function synchronizeDirectory(
                 // Get previous second to ensure we're getting all sub-second changes on future syncs.
                 lastCompleteSyncSec = response.__original.estampille - 1;
             }
-            console.debug("Initial response batch: %O", response);
+            // console.debug("Initial response batch: %O", response);
         }
 
         // console.debug("Directory loaded: %O", response);

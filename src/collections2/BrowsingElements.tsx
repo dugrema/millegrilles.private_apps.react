@@ -1,17 +1,43 @@
 import { Link } from "react-router-dom";
 import useUserBrowsingStore from "./userBrowsingStore";
-import { useMemo } from "react";
+import { MouseEvent, useCallback, useMemo } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 
-export function Breadcrumb() {
+type BreadcrumbProps = {
+    root?: {tuuid: string | null, name: string, path?: string} | null,
+    onClick?: (tuuid: string | null) => void,
+}
+
+export function Breadcrumb(props: BreadcrumbProps) {
+
+    let { root, onClick } = props;
 
     let username = useUserBrowsingStore(state=>state.usernameBreadcrumb);
     let breadcrumb = useUserBrowsingStore(state=>state.breadcrumb);
 
+    let onClickHandler = useCallback((e: MouseEvent<HTMLLIElement | HTMLParagraphElement>)=>{
+        if(!onClick) return;
+        let value = e.currentTarget.dataset.tuuid || null;
+        onClick(value);
+    }, [onClick])
+
     let breadcrumbMapped = useMemo(()=>{
-        if(!username || !breadcrumb) return <></>;
-        let lastIdx = breadcrumb.length - 1;
-        return breadcrumb.map((item, idx)=>{
+        if(!username || !breadcrumb || !root) return <></>;
+        let breadcrumbMapped = [];
+        let ignore = true;
+        for(let file of breadcrumb) {
+            if(ignore) {
+                if(file.tuuid === root.tuuid) {
+                    ignore = false;
+                } else {
+                    continue
+                }
+            }
+            breadcrumbMapped.push(file);
+        }
+
+        let lastIdx = breadcrumbMapped.length - 1;
+        return breadcrumbMapped.map((item, idx)=>{
             if(idx === lastIdx) {
                 return (
                     <li key={item.tuuid} className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 font-bold pr-2'>
@@ -21,27 +47,37 @@ export function Breadcrumb() {
             } else {
                 return (
                     <li key={item.tuuid} className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-                        <Link to={'/apps/collections2/b/' + item.tuuid}>{item.nom}</Link>
+                        {onClick?
+                            <p onClick={onClickHandler} data-tuuid={item.tuuid}>{item.nom}</p>
+                        :
+                            <Link to={'/apps/collections2/b/' + item.tuuid}>{item.nom}</Link>
+                        }
+                        
                         <span className="pointer-events-none ml-2 text-slate-800">/</span>
                     </li>
                 )
             }
         })
-    }, [username, breadcrumb]);
+    }, [username, breadcrumb, root, onClick, onClickHandler]);
 
-    if(!username) return <p>Loading ...</p>;
+    if(!root && !username) return <p>Loading ...</p>;
 
     return (
         <nav aria-label='breadcrumb' className='w-max'>
             <ol className='flex w-full flex-wrap items-center'>
                 {breadcrumb?
                     <li className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-                        <Link to={'/apps/collections2/b'}>{username}</Link>
+                        {onClick?
+                            <p onClick={onClickHandler}>{root?.name || username}</p>
+                        :
+                            <Link to={root?.path || '/apps/collections2/b'}>{root?.name || username}</Link>
+                        }
+                        
                         <span className="pointer-events-none ml-2 text-slate-400 font-bold">&gt;</span>
                     </li>
                 :
                     <li className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 pr-2'>
-                        {username}
+                        {root?.name || username}
                     </li>
                 }
                 {breadcrumbMapped}

@@ -1,6 +1,4 @@
 import { IDBPDatabase, openDB as openDbIdb } from 'idb';
-import { getDecryptedKeys, saveDecryptedKey } from '../../MillegrillesIdb';
-import { AppWorkers } from '../../workers/workers';
 import { messageStruct } from 'millegrilles.cryptography'
 
 const DB_NAME = 'collections2';

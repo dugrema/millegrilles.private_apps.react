@@ -4,9 +4,13 @@ import { Collections2FileSyncRow, DecryptedSecretKey } from './connection.worker
 import { AppsEncryptionWorker } from './encryption.worker';
 import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync, deleteFiles } from '../collections2/idb/collections2StoreIdb';
 
+type ProcessDirectoryChunkOptions = {
+    noidb?: boolean,
+};
+
 export class DirectoryWorker {
     async processDirectoryChunk(encryption: Remote<AppsEncryptionWorker>, userId: string, files: Collections2FileSyncRow[], 
-        keys: DecryptedSecretKey[] | null): Promise<TuuidsIdbStoreRowType[]> 
+        keys: DecryptedSecretKey[] | null, opts?: ProcessDirectoryChunkOptions): Promise<TuuidsIdbStoreRowType[]> 
     {
         // Map keys
         let keyByCleid = {} as {[cleId: string]: DecryptedSecretKey};
@@ -102,7 +106,9 @@ export class DirectoryWorker {
             }
         }
 
-        await updateFilesIdb(mappedFiles);
+        if(!opts?.noidb) {
+            await updateFilesIdb(mappedFiles);
+        }
 
         return mappedFiles;
     }

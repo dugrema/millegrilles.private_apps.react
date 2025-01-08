@@ -16,7 +16,8 @@
         {"domain": "AiLanguage", "action": "syncConversationMessages", "stream": true},
         {"domain": "ollama_relai", "action": "ping", "roles": ["ollama_relai"]},
         {"domain": "ollama_relai", "action": "getModels", "roles": ["ollama_relai"]},
-        {"domain": "GrosFichiers", "action": "syncDirectory"}
+        {"domain": "GrosFichiers", "action": "syncDirectory"},
+        {"domain": "GrosFichiers", "action": "syncDeletedFiles"}
     ],
     "commands": [
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},

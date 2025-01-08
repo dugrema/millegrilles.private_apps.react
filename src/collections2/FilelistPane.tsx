@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
-import { useNavigate } from "react-router-dom";
 
 type FileListPaneProps = {
     files: TuuidsBrowsingStoreRow[] | null,
     sortKey?: string | null,
+    sortOrder?: number | null,
+    dateColumn?: string | null,
+    onClickRow: (tuuid:string, typeNode:string) => void,
 }
 
 function FilelistPane(props: FileListPaneProps) {
 
-    let { files, sortKey } = props;
+    let { files, sortKey, sortOrder, dateColumn, onClickRow } = props;
 
     let mappedFiles = useMemo(()=>{
         if(!files) return <></>;
@@ -18,14 +20,19 @@ function FilelistPane(props: FileListPaneProps) {
         let sortedFiles = [...files];
         if(!sortKey || sortKey === 'name') {
             sortedFiles.sort(sortByName)
+        } else if(sortKey === 'modification') {
+            sortedFiles.sort(sortByModification);
+        }
+        if(sortOrder && sortOrder < 0) {
+            sortedFiles = sortedFiles.reverse();
         }
 
         let mappedFiles = sortedFiles.map(item=>{
-            return <FileRow key={item.tuuid} value={item} />
+            return <FileRow key={item.tuuid} value={item} dateColumn={dateColumn} onClick={onClickRow} />
         })
 
         return mappedFiles;
-    }, [files, sortKey])
+    }, [files, sortKey, dateColumn, onClickRow, sortOrder])
 
     return (
         <>
@@ -48,32 +55,48 @@ function sortByName(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
     return a.nom.localeCompare(b.nom);
 }
 
+function sortByModification(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
+    if(a === b) return 0;
+    if(a.modification === b.modification) {
+        return a.tuuid.localeCompare(b.tuuid);
+    }
+    return a.modification - b.modification
+}
+
 export default FilelistPane;
 
-function FileRow(props: {value: TuuidsBrowsingStoreRow}) {
+function FileRow(props: {value: TuuidsBrowsingStoreRow, dateColumn?: string | null, onClick:(tuuid:string, typeNode:string)=>void}) {
     
-    let value = props.value;
+    let {value, dateColumn, onClick} = props;
     
-    let navigate = useNavigate();
+    // let navigate = useNavigate();
 
     let [thumbnail, setThumbnail] = useState('');
+
+    let dateValue = useMemo(()=>{
+        if(!value) return null;
+        if(dateColumn === 'modification') return value.modification;
+        return value.dateFichier || value.modification;
+    }, [value, dateColumn]);
 
     let onclickHandler = useCallback(()=>{
         let tuuid = value.tuuid;
         let typeNode = value.type_node;
-        if(typeNode === 'Fichier') {
-            // Open file
-            throw new Error('todo');
-        } else {
-            // Browse directory
-            if(!tuuid) {
-                // Back to top
-                navigate('/apps/collections2/b');
-            } else {
-                navigate('/apps/collections2/b/' + tuuid);
-            }
-        }
-    }, [navigate, value]);
+        onClick(tuuid, typeNode)
+        // if(typeNode === 'Fichier') {
+        //     // Open file
+        //     throw new Error('todo');
+        // } else {
+        //     // Browse directory
+        //     if(!tuuid) {
+        //         // Back to top
+        //         navigate('/apps/collections2/b');
+        //     } else {
+        //         navigate('/apps/collections2/b/' + tuuid);
+        //     }
+        // }
+    }, [value, onClick]);
+    // }, [navigate, value]);
 
     useEffect(()=>{
         if(!value || !value.thumbnail) return;
@@ -105,7 +128,7 @@ function FileRow(props: {value: TuuidsBrowsingStoreRow}) {
             </p>
             <p className='col-span-2 px-1'>{value.mimetype}</p>
             <p className='col-span-2 px-1'>
-                <Formatters.FormatterDate value={value.dateFichier || value.modification || undefined} />
+                <Formatters.FormatterDate value={dateValue || undefined} />
             </p>
         </div>
     )
