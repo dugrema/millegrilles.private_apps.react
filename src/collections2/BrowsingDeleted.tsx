@@ -73,7 +73,7 @@ function BrowsingDeleted() {
             <Breadcrumb root={{tuuid: rootTuuid, name: 'Trash'}} onClick={onClickBreadcrumb} />
 
             <section className='pt-2'>
-                <ButtonBar />                    
+                <ButtonBar disableStatistics={true} />                    
             </section>
 
             <section className='pt-3'>
@@ -100,7 +100,7 @@ function DirectorySyncHandler(props: {tuuid?: string | null | undefined}) {
     let setBreadcrumb = useUserBrowsingStore(state=>state.setBreadcrumb);
     let setDirectoryStatistics = useUserBrowsingStore(state=>state.setDirectoryStatistics);
     let deleteFilesDirectory = useUserBrowsingStore(state=>state.deleteFilesDirectory);
-
+    
     useEffect(()=>{
         if(!workers || !ready || !userId) return;
         let tuuidValue = tuuid || null;
@@ -115,6 +115,7 @@ function DirectorySyncHandler(props: {tuuid?: string | null | undefined}) {
 
         // Clear screen
         updateCurrentDirectory(null);
+        setDirectoryStatistics(null);
 
         // Register directory change listener
         //TODO

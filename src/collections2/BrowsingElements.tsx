@@ -22,18 +22,22 @@ export function Breadcrumb(props: BreadcrumbProps) {
     }, [onClick])
 
     let breadcrumbMapped = useMemo(()=>{
-        if(!username || !breadcrumb || !root) return <></>;
+        if(!username || !breadcrumb) return <></>;
         let breadcrumbMapped = [];
-        let ignore = true;
-        for(let file of breadcrumb) {
-            if(ignore) {
-                if(file.tuuid === root.tuuid) {
-                    ignore = false;
-                } else {
-                    continue
+        if(root?.tuuid) {
+            let ignore = true;
+            for(let file of breadcrumb) {
+                if(ignore) {
+                    if(file.tuuid === root.tuuid) {
+                        ignore = false;
+                    } else {
+                        continue
+                    }
                 }
+                breadcrumbMapped.push(file);
             }
-            breadcrumbMapped.push(file);
+        } else {
+            breadcrumbMapped = breadcrumb;
         }
 
         let lastIdx = breadcrumbMapped.length - 1;
@@ -86,7 +90,13 @@ export function Breadcrumb(props: BreadcrumbProps) {
     );
 }
 
-export function ButtonBar() {
+type ButtonBarProps = {
+    disableStatistics?: boolean,
+}
+
+export function ButtonBar(props: ButtonBarProps) {
+
+    let {disableStatistics} = props;
 
     return (
         <div className='grid grid-cols-2 md:grid-cols-3'>
@@ -125,7 +135,12 @@ export function ButtonBar() {
                 </Link>
             </div>
             <div className='text-sm'>
-                <DirectoryInformation />
+                {disableStatistics?
+                    <></>
+                :
+                    <DirectoryInformation />
+                }
+                
             </div>
         </div>        
     );
@@ -149,9 +164,8 @@ function DirectoryInformation() {
     }, [statistics]);
 
     if(!statistics) {
-        return (
-            <p>Loading ...</p>
-        )
+        if(statistics === false) return <></>
+        return (<p>Loading ...</p>)
     }
 
     return (
