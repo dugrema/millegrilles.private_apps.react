@@ -2,14 +2,12 @@ import { expose, Remote } from 'comlink';
 
 import { Collections2FileSyncRow, DecryptedSecretKey } from './connection.worker';
 import { AppsEncryptionWorker } from './encryption.worker';
-import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb } from '../collections2/idb/collections2StoreIdb';
+import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync } from '../collections2/idb/collections2StoreIdb';
 
 export class DirectoryWorker {
     async processDirectoryChunk(encryption: Remote<AppsEncryptionWorker>, userId: string, files: Collections2FileSyncRow[], 
         keys: DecryptedSecretKey[] | null): Promise<TuuidsIdbStoreRowType[]> 
     {
-        console.debug("processDirectoryChunk\nFiles: %O\nKeys: %O", files, keys);
-
         // Map keys
         let keyByCleid = {} as {[cleId: string]: DecryptedSecretKey};
         if(keys) {
@@ -106,9 +104,16 @@ export class DirectoryWorker {
 
         await updateFilesIdb(mappedFiles);
 
-        console.debug("Decrypted and mapped files: %O", mappedFiles);
-
         return mappedFiles;
+    }
+
+    async loadDirectory(userId: string, tuuid: string | null): Promise<LoadDirectoryResultType> {
+        let result = await loadDirectory(userId, tuuid);
+        return result;
+    }
+
+    async touchDirectorySync(tuuid: string, lastCompleteSyncSec: number) {
+        await touchDirectorySync(tuuid, lastCompleteSyncSec);
     }
 }
 

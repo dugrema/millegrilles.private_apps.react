@@ -100,16 +100,37 @@ async function synchronizeDirectory(
     // if(!workers) throw new Error("Workers not initialized");
 
     // Load folder from IDB (if known)
+    let {directory, list, breadcrumb} = await workers.directory.loadDirectory(userId, tuuid);
+    // console.debug("Loaded directory: %O, list: %O, breadcrumb: %O", directory, list, breadcrumb);
+    if(list) {
+        let storeFiles = filesIdbToBrowsing(list);
+        updateCurrentDirectory(storeFiles);
+    }
+    if(breadcrumb) {
+        // console.debug("Map breadcrumb: ", breadcrumb);
+        let breadcrumbBrowsing = filesIdbToBrowsing(breadcrumb);
+        setBreadcrumb(username, breadcrumbBrowsing);
+    }
+    let syncDate = directory?.lastCompleteSyncSec || null;
 
     // Sync folder from server
     let complete = false;
     let skip = 0;
+    let lastCompleteSyncSec = null as number | null;
     while(!complete) {
         if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 1`)
-        console.debug("Sync tuuid %s skip %d", tuuid, skip);
-        let response = await workers.connection.syncDirectory(tuuid, skip);
+        // console.debug("Sync tuuid %s skip %d", tuuid, skip);
+        let response = await workers.connection.syncDirectory(tuuid, skip, syncDate);
 
-        console.debug("Directory loaded: %O", response);
+        if(skip === 0) {
+            // Keep initial response time for complete sync date
+            if(response.__original?.estampille) {
+                // Get previous second to ensure we're getting all sub-second changes on future syncs.
+                lastCompleteSyncSec = response.__original.estampille - 1;
+            }
+        }
+
+        // console.debug("Directory loaded: %O", response);
         if(!response.ok) throw new Error(`Error during sync: ${response.err}`);
         complete = response.complete;
         
@@ -141,7 +162,7 @@ async function synchronizeDirectory(
             // Put breadcrumb in proper order
             orderedBreadcrumb = orderedBreadcrumb.reverse();
 
-            console.debug("breadcrumb: %O, StoreFiles: %O", breadcrumb, storeFiles);
+            // console.debug("breadcrumb: %O, StoreFiles: %O", breadcrumb, storeFiles);
             setBreadcrumb(username, orderedBreadcrumb);
         }
 
@@ -162,5 +183,10 @@ async function synchronizeDirectory(
             complete = true; 
         }
 
+    }
+
+    if(tuuid && lastCompleteSyncSec) {
+        // Update current directory last sync information
+        await workers.directory.touchDirectorySync(tuuid, lastCompleteSyncSec);
     }
 }

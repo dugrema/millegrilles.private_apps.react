@@ -437,10 +437,10 @@ export class AppsConnectionWorker extends ConnectionWorker {
     }
 
     // Collections 2
-    async syncDirectory(cuuid: string | null | undefined, skip: number) {
+    async syncDirectory(cuuid: string | null | undefined, skip: number, lastSyncDate: number | null) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest(
-            {cuuid, skip}, 
+            {cuuid, skip, last_sync: lastSyncDate}, 
             DOMAINE_GROSFICHIERS, 'syncDirectory'
         ) as Collections2SyncDirectoryResponse;
     }

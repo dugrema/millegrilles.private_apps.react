@@ -87,7 +87,13 @@ export type TuuidsIdbStoreRowType = {
     fileData?: FileData,
     thumbnail: Blob | null,
     derniere_modification: number,
-    lastCompleteSyncMs?: number,  // For directories only, last complete sync of content
+    lastCompleteSyncSec?: number,  // For directories only, last complete sync of content
+}
+
+export type LoadDirectoryResultType = {
+    directory: TuuidsIdbStoreRowType | null, 
+    list: TuuidsIdbStoreRowType[],
+    breadcrumb: TuuidsIdbStoreRowType[] | null,
 }
 
 export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
@@ -144,4 +150,54 @@ export async function updateFilesIdb(tuuids: TuuidsIdbStoreRowType[]) {
             await store.put(file);
         }
     }
+}
+
+export async function loadDirectory(userId: string, tuuid: string | null): Promise<LoadDirectoryResultType> {
+    const db = await openDB();
+    let store = db.transaction(STORE_TUUIDS, 'readonly').store;
+
+    let directoryKey = tuuid || userId;
+    let directoryInfo = await store.get(directoryKey);
+    
+    store = db.transaction(STORE_TUUIDS, 'readonly').store;
+    let parentIndex = store.index('parent');
+    let cursor = await parentIndex.openCursor(directoryKey);
+    let files = [] as TuuidsIdbStoreRowType[];
+    while(cursor) {
+        let value = cursor.value as TuuidsIdbStoreRowType;
+        if(value.user_id !== userId) continue;  // Security check
+        files.push(value);
+        cursor = await cursor.continue();
+    }
+
+    // Build breadcrumb in reverse
+    let breadcrumb = null as TuuidsIdbStoreRowType[] | null;
+    if(directoryInfo?.path_cuuids) {
+        let breadcrumbInner = [directoryInfo];
+        store = db.transaction(STORE_TUUIDS, 'readonly').store;
+        for(let cuuid of directoryInfo.path_cuuids) {
+            let dirIdb = await store.get(cuuid);
+            if(!dirIdb) break;  // Incomplete breadcrumb, skip
+            breadcrumbInner.push(dirIdb);
+        }
+        // Put back in proper order
+        breadcrumb = breadcrumbInner.reverse();
+    } else if(tuuid && directoryInfo) {
+        // Top-level collection
+        breadcrumb = [directoryInfo];
+    }
+
+    return {directory: directoryInfo, list: files, breadcrumb};
+}
+
+export async function touchDirectorySync(tuuid: string, lastCompleteSyncSec: number) {
+    const db = await openDB();
+    const store = db.transaction(STORE_TUUIDS, 'readwrite').store;
+    const fileExisting = await store.get(tuuid);
+    if(!fileExisting) {
+        // Not saved yet, ignore
+        return;
+    }
+    let updatedFile = {...fileExisting, lastCompleteSyncSec};
+    await store.put(updatedFile);
 }
