@@ -201,3 +201,11 @@ export async function touchDirectorySync(tuuid: string, lastCompleteSyncSec: num
     let updatedFile = {...fileExisting, lastCompleteSyncSec};
     await store.put(updatedFile);
 }
+
+export async function deleteFiles(tuuids: string[]) {
+    const db = await openDB();
+    const store = db.transaction(STORE_TUUIDS, 'readwrite').store;
+    for(let tuuid of tuuids) {
+        await store.delete(tuuid);
+    }
+}

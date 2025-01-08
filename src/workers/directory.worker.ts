@@ -2,7 +2,7 @@ import { expose, Remote } from 'comlink';
 
 import { Collections2FileSyncRow, DecryptedSecretKey } from './connection.worker';
 import { AppsEncryptionWorker } from './encryption.worker';
-import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync } from '../collections2/idb/collections2StoreIdb';
+import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync, deleteFiles } from '../collections2/idb/collections2StoreIdb';
 
 export class DirectoryWorker {
     async processDirectoryChunk(encryption: Remote<AppsEncryptionWorker>, userId: string, files: Collections2FileSyncRow[], 
@@ -114,6 +114,10 @@ export class DirectoryWorker {
 
     async touchDirectorySync(tuuid: string, lastCompleteSyncSec: number) {
         await touchDirectorySync(tuuid, lastCompleteSyncSec);
+    }
+
+    async deleteFiles(tuuids: string[]) {
+        await deleteFiles(tuuids);
     }
 }
 

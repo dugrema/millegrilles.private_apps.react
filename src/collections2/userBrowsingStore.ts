@@ -56,6 +56,7 @@ interface UserBrowsingStoreState {
     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
     setBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
     setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
+    deleteFilesDirectory: (files: string[]) => void,
 };
 
 const useUserBrowsingStore = create<UserBrowsingStoreState>()(
@@ -95,6 +96,18 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
 
             setBreadcrumb: (username, breadcrumb) => set(()=>({usernameBreadcrumb: username, breadcrumb})),
             setDirectoryStatistics: (directoryStatistics) => set(()=>({directoryStatistics})),
+            
+            deleteFilesDirectory: (files: string[]) => set((state)=>{
+                let updatedDirectory = {} as {[tuuid: string]: TuuidsBrowsingStoreRow};
+                if(state.currentDirectory) {
+                    updatedDirectory = {...state.currentDirectory};
+                    // Filter out deleted files
+                    for(let tuuid of files) {
+                        delete updatedDirectory[tuuid];
+                    }
+                }
+                return {currentDirectory: updatedDirectory};
+            })
         })
     ),
 );

@@ -150,6 +150,7 @@ export type Collections2SyncDirectoryResponse = MessageResponse & {
     breadcrumb: Collections2FileSyncRow[] | null,
     keys: DecryptedSecretKey[] | null,
     stats: Collection2DirectoryStats[] | null,
+    deleted_tuuids: string[] | null,
 };
 
 export class AppsConnectionWorker extends ConnectionWorker {

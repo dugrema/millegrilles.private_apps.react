@@ -55,6 +55,7 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
     let setCuuid = useUserBrowsingStore(state=>state.setCuuid);
     let setBreadcrumb = useUserBrowsingStore(state=>state.setBreadcrumb);
     let setDirectoryStatistics = useUserBrowsingStore(state=>state.setDirectoryStatistics);
+    let deleteFilesDirectory = useUserBrowsingStore(state=>state.deleteFilesDirectory);
 
     useEffect(()=>{
         if(!workers || !ready || !userId) return;
@@ -75,7 +76,7 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
         //TODO
 
         // Sync
-        synchronizeDirectory(workers, userId, username, tuuidValue, cancelledSignal, updateCurrentDirectory, setBreadcrumb, setDirectoryStatistics)
+        synchronizeDirectory(workers, userId, username, tuuidValue, cancelledSignal, updateCurrentDirectory, setBreadcrumb, setDirectoryStatistics, deleteFilesDirectory)
             .catch(err=>console.error("Error loading directory: %O", err));
 
         return () => {
@@ -85,7 +86,7 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
             // Unregister directory change listener
             //TODO
         }
-    }, [workers, ready, userId, username, tuuid, setCuuid, setBreadcrumb, updateCurrentDirectory, setDirectoryStatistics]);
+    }, [workers, ready, userId, username, tuuid, setCuuid, setBreadcrumb, updateCurrentDirectory, setDirectoryStatistics, deleteFilesDirectory]);
 
     return <></>;
 }
@@ -95,7 +96,8 @@ async function synchronizeDirectory(
     cancelledSignal: ()=>boolean, 
     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
     setBreadcrumb: (username: string, dirs: TuuidsBrowsingStoreRow[] | null) => void,
-    setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void) 
+    setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
+    deleteFilesDirectory: (files: string[]) => void) 
 {
     // if(!workers) throw new Error("Workers not initialized");
 
@@ -128,6 +130,7 @@ async function synchronizeDirectory(
                 // Get previous second to ensure we're getting all sub-second changes on future syncs.
                 lastCompleteSyncSec = response.__original.estampille - 1;
             }
+            console.debug("Initial response batch: %O", response);
         }
 
         // console.debug("Directory loaded: %O", response);
@@ -137,6 +140,12 @@ async function synchronizeDirectory(
         if(response.stats) {
             // Update store information with new directory stats
             setDirectoryStatistics(response.stats);
+        }
+
+        if(response.deleted_tuuids) {
+            console.debug("Delete files %O", response.deleted_tuuids);
+            await workers.directory.deleteFiles(response.deleted_tuuids);
+            deleteFilesDirectory(response.deleted_tuuids);
         }
 
         if(!tuuid) {
