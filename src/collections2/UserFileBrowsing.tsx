@@ -5,6 +5,7 @@ import { useEffect, useMemo } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
+import { Collection2DirectoryStats } from "../workers/connection.worker";
 
 function ViewUserFileBrowsing() {
 
@@ -53,6 +54,7 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
     let updateCurrentDirectory = useUserBrowsingStore(state=>state.updateCurrentDirectory);
     let setCuuid = useUserBrowsingStore(state=>state.setCuuid);
     let setBreadcrumb = useUserBrowsingStore(state=>state.setBreadcrumb);
+    let setDirectoryStatistics = useUserBrowsingStore(state=>state.setDirectoryStatistics);
 
     useEffect(()=>{
         if(!workers || !ready || !userId) return;
@@ -73,7 +75,7 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
         //TODO
 
         // Sync
-        synchronizeDirectory(workers, userId, username, tuuidValue, cancelledSignal, updateCurrentDirectory, setBreadcrumb)
+        synchronizeDirectory(workers, userId, username, tuuidValue, cancelledSignal, updateCurrentDirectory, setBreadcrumb, setDirectoryStatistics)
             .catch(err=>console.error("Error loading directory: %O", err));
 
         return () => {
@@ -83,7 +85,7 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
             // Unregister directory change listener
             //TODO
         }
-    }, [workers, ready, userId, username, tuuid, setCuuid, setBreadcrumb, updateCurrentDirectory]);
+    }, [workers, ready, userId, username, tuuid, setCuuid, setBreadcrumb, updateCurrentDirectory, setDirectoryStatistics]);
 
     return <></>;
 }
@@ -92,7 +94,8 @@ async function synchronizeDirectory(
     workers: AppWorkers, userId: string, username: string, tuuid: string | null, 
     cancelledSignal: ()=>boolean, 
     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
-    setBreadcrumb: (username: string, dirs: TuuidsBrowsingStoreRow[] | null) => void) 
+    setBreadcrumb: (username: string, dirs: TuuidsBrowsingStoreRow[] | null) => void,
+    setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void) 
 {
     // if(!workers) throw new Error("Workers not initialized");
 
@@ -103,7 +106,7 @@ async function synchronizeDirectory(
     let skip = 0;
     while(!complete) {
         if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 1`)
-        console.debug("Sync tuuid", tuuid);
+        console.debug("Sync tuuid %s skip %d", tuuid, skip);
         let response = await workers.connection.syncDirectory(tuuid, skip);
 
         console.debug("Directory loaded: %O", response);
@@ -112,7 +115,7 @@ async function synchronizeDirectory(
         
         if(response.stats) {
             // Update store information with new directory stats
-            //TODO
+            setDirectoryStatistics(response.stats);
         }
 
         if(!tuuid) {

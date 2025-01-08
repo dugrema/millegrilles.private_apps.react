@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import useUserBrowsingStore from "./userBrowsingStore";
 import { useMemo } from "react";
+import { Formatters } from "millegrilles.reactdeps.typescript";
 
 export function Breadcrumb() {
 
@@ -47,36 +48,10 @@ export function Breadcrumb() {
             </ol>
         </nav>
     );
-
-    // return (
-    //     <nav aria-label='breadcrumb' className='w-max'>
-    //         <ol className='flex w-full flex-wrap items-center'>
-    //             <li className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-    //                 <span>Usager</span>
-    //                 <span className="pointer-events-none ml-2 text-slate-400 font-bold">&gt;</span>
-    //             </li>
-    //             <li className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-    //                 <span>test 2025-01-05</span>
-    //                 <span className="pointer-events-none ml-2 text-slate-800">/</span>
-    //             </li>
-    //             <li className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-    //                 <span>subdir 1</span>
-    //                 <span className="pointer-events-none ml-2 text-slate-800">/</span>
-    //             </li>
-    //             <li className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-    //                 <span>i</span>
-    //                 <span className="pointer-events-none ml-2 text-slate-800">/</span>
-    //             </li>
-    //             <li className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-    //                 <span>Documents from last year</span>
-    //                 <span className="pointer-events-none ml-2 text-slate-800">/</span>
-    //             </li>
-    //         </ol>
-    //     </nav>
-    // );
 }
 
 export function ButtonBar() {
+
     return (
         <div className='grid grid-cols-2 md:grid-cols-3'>
             <div className='col-span-2'>
@@ -113,9 +88,80 @@ export function ButtonBar() {
                         + ZIP
                 </Link>
             </div>
-            <div className='py-2 align-text-bottom'>
-                <p>Loading ...</p>
+            <div className='text-sm'>
+                <DirectoryInformation />
             </div>
         </div>        
+    );
+}
+
+function DirectoryInformation() {
+    
+    let statistics = useUserBrowsingStore(state=>state.directoryStatistics);
+
+    let [fileInfo, dirInfo] = useMemo(()=>{
+        if(!statistics) return [null, null, 0];
+        let fileInfo = null, dirInfo = null, totalTuuids = 0;
+        for(let info of statistics) {
+            if(info.type_node === 'Fichier') {
+                fileInfo = info;
+            } else if(['Repertoire', 'Collection'].includes(info.type_node)) {
+                dirInfo = info;
+            }
+        }
+        return [fileInfo, dirInfo, totalTuuids];
+    }, [statistics]);
+
+    if(!statistics) {
+        return (
+            <p>Loading ...</p>
+        )
+    }
+
+    return (
+        <div className='grid grid-cols-2'>
+            <div>
+                {fileInfo?.count?
+                    <p>{fileInfo.count} files (<Formatters.FormatteurTaille value={fileInfo?.taille} />)</p>
+                :
+                    <p>No files</p>
+                }
+                <p>{dirInfo?.count?dirInfo.count:'No'} directories</p>
+            </div>
+            <LoadingStatus />
+        </div>
+    )
+}
+
+function LoadingStatus() {
+
+    let statistics = useUserBrowsingStore(state=>state.directoryStatistics);
+    let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
+
+    let totalTuuids = useMemo(()=>{
+        if(!statistics) return 0;
+        let totalTuuids = 0;
+        for(let info of statistics) {
+            if(info.count) totalTuuids += info.count;
+        }
+        return totalTuuids;
+    }, [statistics]);
+
+    let pctLoaded = useMemo(()=>{
+        if(!currentDirectory || !totalTuuids) return null;
+        let current = Object.keys(currentDirectory).length;
+        if(current < totalTuuids) {
+            let pctLoaded = Math.floor(current / totalTuuids * 100);
+            return pctLoaded;
+        }
+        return null;
+    }, [currentDirectory, totalTuuids]);
+
+    if(pctLoaded && pctLoaded < 100) {
+        return <p>Loading {pctLoaded}%</p>;
+    }
+
+    return (
+        <></>
     );
 }

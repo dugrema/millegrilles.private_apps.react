@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { TuuidsIdbStoreRowType } from './idb/collections2StoreIdb';
+import { Collection2DirectoryStats } from '../workers/connection.worker';
 // import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType } from './idb/notepadStoreIdb';
 
 export type TuuidsBrowsingStoreRow = {
@@ -48,11 +49,13 @@ interface UserBrowsingStoreState {
     currentDirectory: {[tuuid: string]: TuuidsBrowsingStoreRow} | null,
     usernameBreadcrumb: string | null,
     breadcrumb: TuuidsBrowsingStoreRow[] | null,
+    directoryStatistics: Collection2DirectoryStats[] | null,
 
     setCuuid: (cuuid: string | null) => void,
     setUserId: (userId: string) => void,
     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
     setBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
+    setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
 };
 
 const useUserBrowsingStore = create<UserBrowsingStoreState>()(
@@ -64,6 +67,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             currentDirectory: null,
             usernameBreadcrumb: null,
             breadcrumb: null,
+            directoryStatistics: null,
 
             setCuuid: (cuuid) => set(()=>({currentCuuid: cuuid})),
             setUserId: (userId) => set(()=>({userId})),
@@ -89,7 +93,8 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
                 return {currentDirectory};
             }),
 
-            setBreadcrumb: (username, breadcrumb) => set(()=>({usernameBreadcrumb: username, breadcrumb}))
+            setBreadcrumb: (username, breadcrumb) => set(()=>({usernameBreadcrumb: username, breadcrumb})),
+            setDirectoryStatistics: (directoryStatistics) => set(()=>({directoryStatistics})),
         })
     ),
 );
