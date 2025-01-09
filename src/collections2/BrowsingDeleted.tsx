@@ -72,10 +72,6 @@ function BrowsingDeleted() {
         <>
             <Breadcrumb root={{tuuid: rootTuuid, name: 'Trash'}} onClick={onClickBreadcrumb} />
 
-            <section className='pt-2'>
-                <ButtonBar disableStatistics={true} />                    
-            </section>
-
             <section className='pt-3'>
                 <FilelistPane files={files} sortKey={sortKey} sortOrder={sortOrder} dateColumn='modification' onClickRow={onClickRow} />
             </section>

@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 
+import FolderIcon from '../resources/icons/folder-svgrepo-com-duotoneicon.svg';
+import FileIcon from '../resources/icons/file-svgrepo-com.svg';
+import PdfIcon from '../resources/icons/document-filled-svgrepo-com.svg';
+import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
+import VideoIcon from '../resources/icons/video-file-svgrepo-com.svg';
+
 type FileListPaneProps = {
     files: TuuidsBrowsingStoreRow[] | null,
     sortKey?: string | null,
@@ -22,6 +28,8 @@ function FilelistPane(props: FileListPaneProps) {
             sortedFiles.sort(sortByName)
         } else if(sortKey === 'modification') {
             sortedFiles.sort(sortByModification);
+        } else if(sortKey === 'size') {
+            sortedFiles.sort(sortBySize);
         }
         if(sortOrder && sortOrder < 0) {
             sortedFiles = sortedFiles.reverse();
@@ -49,6 +57,12 @@ function FilelistPane(props: FileListPaneProps) {
 
 function sortByName(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
     if(a === b) return 0;
+    // NodeType first (Directory at top)
+    if(a.type_node !== b.type_node) {
+        // Fichier goes lower, Collection/Repertoire are equivalent
+        if(a.type_node === 'Fichier') return 1;
+        else return -1;
+    }
     if(a.nom === b.nom) {
         return a.tuuid.localeCompare(b.tuuid);
     }
@@ -61,6 +75,29 @@ function sortByModification(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow
         return a.tuuid.localeCompare(b.tuuid);
     }
     return a.modification - b.modification
+}
+
+function sortBySize(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
+    if(a === b) return 0;
+    // Directories/Collections do not have a size. Show first.
+    if(!b.taille) return 1;
+    if(!a.taille) return -1;
+    // NodeType (Directory at top)
+    if(a.type_node !== b.type_node) {
+        // Fichier goes lower, Collection/Repertoire are equivalent
+        if(a.type_node === 'Fichier') return 1;
+        else return -1;
+    }
+
+    // Compare size
+    if(a.taille === b.taille) {
+        // Same size, sort by name / tuuid (same as name sort)
+        if(a.nom === b.nom) {
+            return a.tuuid.localeCompare(b.tuuid);
+        }
+        return a.nom.localeCompare(b.nom);
+    }
+    return a.taille - b.taille;
 }
 
 export default FilelistPane;
@@ -111,6 +148,20 @@ function FileRow(props: {value: TuuidsBrowsingStoreRow, dateColumn?: string | nu
         }
     }, [value]);
 
+    let defaultIcon = useMemo(()=>{
+        let typeNode = value.type_node;
+        if(typeNode === 'Fichier') {
+            let mimetype = value.mimetype;
+            if(!mimetype) return FileIcon;
+            else if(mimetype === 'application/pdf') return PdfIcon;
+            else if(mimetype.startsWith('image')) return ImageIcon;
+            else if(mimetype.startsWith('video')) return VideoIcon;
+            return FileIcon;
+        } else {
+            return FolderIcon;
+        }
+    }, [value]);
+
     return (
         <div key={value.tuuid} onClick={onclickHandler}
             className='grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer'>
@@ -118,7 +169,7 @@ function FileRow(props: {value: TuuidsBrowsingStoreRow, dateColumn?: string | nu
                 {thumbnail?
                     <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
                 :
-                    <div className='ml-1 p-1 inline-block'>TN</div>
+                    <img src={defaultIcon} className='w-4 mr-1 ml-1 inline-block'/>
                 }
                 
                 <span className='pl-3'>{value.nom}</span>

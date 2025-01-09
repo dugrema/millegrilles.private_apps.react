@@ -3,6 +3,13 @@ import useUserBrowsingStore from "./userBrowsingStore";
 import { MouseEvent, useCallback, useMemo } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 
+import FileAddIcon from '../resources/icons/file-dock-svgrepo-com.svg';
+import FolderAddIcon from '../resources/icons/folder-add-fill-svgrepo-com.svg';
+import InfoIcon from '../resources/icons/info-svgrepo-com.svg';
+import ListIcon from '../resources/icons/list-pointers-svgrepo-com.svg';
+import GridIcon from '../resources/icons/grid-4-svgrepo-com.svg';
+import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
+
 type BreadcrumbProps = {
     root?: {tuuid: string | null, name: string, path?: string} | null,
     onClick?: (tuuid: string | null) => void,
@@ -99,38 +106,38 @@ export function ButtonBar(props: ButtonBarProps) {
     let {disableStatistics} = props;
 
     return (
-        <div className='grid grid-cols-2 md:grid-cols-3'>
+        <div className='grid grid-cols-2 md:grid-cols-3 pt-1'>
             <div className='col-span-2'>
                 <Link to='/apps/collection2/test'
-                    className='varbtn px-3 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        i
+                    className='varbtn ml-0 px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <img src={InfoIcon} alt='Directory add' className='w-6 inline-block' />
                 </Link>
 
                 <Link to='/apps/collection2/test'
-                    className='varbtn mx-0 px-4 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        a
+                    className='varbtn px-2 mr-0 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <img src={ListIcon} alt='List view' className='w-6 inline-block' />
                 </Link>
                 <Link to='/apps/collection2/test'
-                    className='varbtn mx-0 px-4 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        b
+                    className='varbtn mx-0 px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <img src={GridIcon} alt='Grid view' className='w-6 inline-block' />
                 </Link>
                 <Link to='/apps/collection2/test'
-                    className='varbtn mx-0 px-4 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        c
-                </Link>
-
-                <Link to='/apps/collection2/test'
-                    className='varbtn px-2 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        + Fichier
+                    className='varbtn ml-0 px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <img src={ImageIcon} alt='Image view' className='w-6 inline-block' />
                 </Link>
 
                 <Link to='/apps/collection2/test'
-                    className='varbtn px-2 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        + Collection
+                    className='varbtn px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <img src={FileAddIcon} alt='File add' className='w-6 inline-block' />
                 </Link>
 
                 <Link to='/apps/collection2/test'
-                    className='varbtn px-2 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                    className='varbtn px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                        <img src={FolderAddIcon} alt='Directory add' className='w-6 inline-block' />
+                </Link>
+
+                <Link to='/apps/collection2/test'
+                    className='varbtn mt-0 p-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                         + ZIP
                 </Link>
             </div>
