@@ -15,15 +15,12 @@ import VideoIcon from '../resources/icons/video-file-svgrepo-com.svg';
 type MenuProps = {
     title: string,
     backLink?: boolean,
-    selected?: string,
 };
 
 const selectedClassname = ' bg-violet-500 rounded-t-md';
 const unselectedClassname = ' bg-violet-900 bg-opacity-30';
 
 export default function HeaderMenu(props: MenuProps) {
-
-    let { selected } = props;
 
     let location = useLocation();
 
