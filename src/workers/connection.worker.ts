@@ -484,6 +484,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as Collections2SearchResults;
     }
 
+    async getFilesByTuuid(tuuids: string[]) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {tuuids}, 
+            DOMAINE_GROSFICHIERS, 'filesByTuuid'
+        ) as Collections2SearchResults;
+    }
+
 }
 
 var worker = new AppsConnectionWorker();

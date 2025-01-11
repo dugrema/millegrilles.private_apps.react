@@ -18,7 +18,8 @@
         {"domain": "ollama_relai", "action": "getModels", "roles": ["ollama_relai"]},
         {"domain": "GrosFichiers", "action": "syncDirectory"},
         {"domain": "GrosFichiers", "action": "syncDeletedFiles"},
-        {"domain": "GrosFichiers", "action": "searchIndexV2"}
+        {"domain": "GrosFichiers", "action": "searchIndexV2"},
+        {"domain": "GrosFichiers", "action": "filesByTuuid"}
     ],
     "commands": [
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},

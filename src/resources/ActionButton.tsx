@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { IconCheckSvg, IconCompactDiscSvg, IconXSvg } from "./Icons";
 
 type ActionButtonProps = {
@@ -9,11 +9,12 @@ type ActionButtonProps = {
     children: string,
     name?: string | undefined,
     value?: string | undefined,
+    revertSuccessTimeout?: number | undefined,  // Seconds to revert back if success
 };
 
 function ActionButton(props: ActionButtonProps) {
 
-    let { onClick, disabled, mainButton, forceErrorStatus, name, value } = props;
+    let { onClick, disabled, mainButton, forceErrorStatus, name, value, revertSuccessTimeout } = props;
 
     let [success, setSuccess] = useState(false);
     let [waiting, setWaiting] = useState(false);
@@ -57,6 +58,16 @@ function ActionButton(props: ActionButtonProps) {
             .finally(()=>setWaiting(false));
 
     }, [setSuccess, setWaiting, setError, onClick]);
+
+    useEffect(()=>{
+        if(!revertSuccessTimeout) return;
+        if(success) {
+            let timeout = setTimeout(()=>setSuccess(false), revertSuccessTimeout * 1_000);
+            return () => {
+                clearTimeout(timeout);
+            }
+        }
+    }, [revertSuccessTimeout, success]);
 
     return (
         <button onClick={clickHandler} disabled={!!disabled || waiting} name={name} value={value}

@@ -12,6 +12,8 @@ function ViewUserFileBrowsing() {
     let { tuuid } = useParams();
 
     let filesDict = useUserBrowsingStore(state=>state.currentDirectory);
+    let cuuid = useUserBrowsingStore(state=>state.currentCuuid);
+    let setCuuid = useUserBrowsingStore(state=>state.setCuuid);
     let navigate = useNavigate();
 
     let files = useMemo(()=>{
@@ -28,10 +30,25 @@ function ViewUserFileBrowsing() {
             if(tuuid) {
                 navigate('/apps/collections2/b/' + tuuid);
             } else {
-                navigate('/apps/collections/b');
+                navigate('/apps/collections2/b');
             }
         }
     }, [navigate]);
+
+    // Handle initial screen load (return to cuuid) or set current directory.
+    useEffect(()=>{
+        if(!tuuid && cuuid) {
+            // Reloading browse screen. Redirect to current directory.
+            navigate('/apps/collections2/b/' + cuuid);
+        } else {
+            if(tuuid === 'root') {
+                setCuuid(null);
+                navigate('/apps/collections2/b');
+            } else {
+                setCuuid(tuuid || null);
+            }
+        }
+    }, [tuuid, cuuid, navigate]);
 
     return (
         <>
@@ -45,7 +62,7 @@ function ViewUserFileBrowsing() {
                 <FilelistPane files={files} onClickRow={onClickRow} />
             </section>
 
-            <DirectorySyncHandler tuuid={tuuid} />
+            <DirectorySyncHandler tuuid={cuuid} />
         </>
     );
 }

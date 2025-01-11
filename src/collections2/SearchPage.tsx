@@ -1,15 +1,16 @@
-import { ChangeEvent, FormEventHandler, useCallback, useMemo, useState, FormEvent, useEffect } from "react";
+import { ChangeEvent, useCallback, useMemo, useState, FormEvent, useEffect } from "react";
 import ActionButton from "../resources/ActionButton";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore, { Collection2SearchStore, filesIdbToBrowsing, TuuidsBrowsingStoreRow, TuuidsBrowsingStoreSearchRow } from "./userBrowsingStore";
-import { Collection2DirectoryStats, Collection2SearchResultsDoc } from "../workers/connection.worker";
+import { Collection2SearchResultsDoc } from "../workers/connection.worker";
 import SearchFilelistPane from "./SearchFileListPane";
 
 
 function SearchPage() {
 
+    let navigate = useNavigate();
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let username = useConnectionStore(state=>state.username);
@@ -61,17 +62,40 @@ function SearchPage() {
     }, [searchHandler]);
 
     useEffect(()=>{
-        if(pageLoaded) return;
+        if(pageLoaded || !workers || !ready || !userId) return;
         setPageLoaded(true);
-        if(!searchInput && searchResults?.query) {
+        let searchQuery = searchResults?.query;
+        if(!searchInput && searchQuery) {
             // Put the search query back in the input box
-            setSearchInput(searchResults.query);
+            setSearchInput(searchQuery);
+            setSearchParams(params=>{
+                if(searchQuery) {
+                    params.set('search', searchQuery); 
+                }
+                return params;
+            });
+        } else if(query && !searchResults) {
+            console.debug("Run inital query");
+            // Need to run the initial query
+            if(!workers || !ready) throw new Error("workers not initialized");
+            if(!userId) throw new Error("User not initialized");
+            setSearchParams(params=>{params.set('search', searchInput); return params;});
+            runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing)
+                .catch(err=>{
+                    console.error("Error running initial search query", err);
+                })
         }
-    }, [searchInput, searchResults, setSearchInput, pageLoaded, setPageLoaded]);
+    }, [workers, ready, userId, searchInput, searchResults, setSearchInput, pageLoaded, setPageLoaded, query, setSearchParams, setSearchResults, updateSearchListing, username]);
 
-    let onClickRow = useCallback(()=>{
-        console.debug("Click row - TODO");
-    }, []);
+    let onClickRow = useCallback((tuuid: string, typeNode: string)=>{
+        console.debug("Click tuuid %s, typeNode %s", tuuid, typeNode);
+        if(typeNode === 'Fichier') {
+            console.warn("Click Fichier - todo");
+        } else {
+            // Browse to directory
+            navigate('/apps/collections2/b/' + tuuid);
+        }
+    }, [navigate]);
 
     return (
         <>
@@ -92,76 +116,22 @@ function SearchPage() {
 
             <section className='pt-3'>
                 <SearchFilelistPane files={files} onClickRow={onClickRow} sortKey='score' sortOrder={-1}/>
+                <DisplayMore />
             </section>
-
-            <SearchSyncHandler query={query} />
         </>
     );
 }
 
 export default SearchPage;
 
-/**
- * Handles the sync of files in a directory.
- * @returns 
- */
-function SearchSyncHandler(props: {query: string | null | undefined}) {
-
-    let {query} = props;
-    
-    let [searchStatistics, setSearchStatistics] = useState(null as Collection2DirectoryStats[] | null);
-
-    let [breadcrumbTuuids, setBreadcrumbTuuids] = useState(null as string[] | null);
-    let [tuuid, rootTuuid] = useMemo(()=>{
-        if(!breadcrumbTuuids || breadcrumbTuuids.length === 0) return [null, null];
-        let rootTuuid = breadcrumbTuuids[0]
-        let tuuid = breadcrumbTuuids[breadcrumbTuuids.length-1]
-        return [tuuid, rootTuuid];
-    }, [breadcrumbTuuids]);
-
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let username = useConnectionStore(state=>state.username);
-    let userId = useUserBrowsingStore(state=>state.userId);
-    let setSearchResults = useUserBrowsingStore(state=>state.setSearchResults);
-
-    // useEffect(()=>{
-    //     if(!workers || !ready || !userId) return;
-    //     if(query) {
-    //         console.debug("Search with query: %s", query);
-
-    //         // Signal to cancel sync
-    //         let cancelled = false;
-    //         let cancelledSignal = () => cancelled;
-    //         let cancel = () => {cancelled = true};
-
-    //         setBreadcrumbTuuids(null);
-
-    //         runSearchQuery(workers, query, userId, username, cancelledSignal, setSearchResults)
-    //             .catch(err=>console.error("Error running search", err));
-
-    //         return () => {
-    //             cancel();
-    //         };
-
-    //     } else {
-    //         // Empty screen
-    //         console.debug("Empty search screen");
-    //     }
-    // }, [workers, ready, query, userId, username, setBreadcrumbTuuids, setSearchResults]);
-
-    return <></>;
-}
-
 async function runSearchQuery(
     workers: AppWorkers, query: string, userId: string, username: string,
     setSearchResults: (searchResults: Collection2SearchStore | null) => void,
-    setSearchListing: (files: TuuidsBrowsingStoreSearchRow[] | null) => void)
+    updateSearchListing: (files: TuuidsBrowsingStoreSearchRow[] | null) => void)
 {
     // Run search
     let searchResults = await workers.connection.searchFiles(query);
 
-    console.debug("Search results: ", searchResults);
     if(!searchResults.ok) throw new Error(`Error during sync: ${searchResults.err}`);
 
     // Extract basic statistics
@@ -205,11 +175,11 @@ async function runSearchQuery(
                 }
             }
             console.debug("Sorted files: ", sortedFiles);
-            setSearchListing(sortedFiles);
+            updateSearchListing(sortedFiles);
         }
     } else if(searchResults.keys) {
         console.warn("Keys received with no files");
-        setSearchListing(null);
+        updateSearchListing(null);
     }
 }
 
@@ -233,9 +203,116 @@ function SearchStatistics() {
 
     return (
         <p className='pt-2'>
-            <span className='pr-2'>Found {numberFound} results:</span>
-            <span className='pr-1'>{dirInfo?dirInfo:'No'} directories,</span>
-            <span>{fileInfo?fileInfo:'No'} files</span>
+            <span className='pr-2'>Found {numberFound} files and directories. </span>
+            <span className='pr-1'>{dirInfo?dirInfo:'No'} directories and</span>
+            <span>{fileInfo?fileInfo:'No'} files are available to display.</span>
         </p>
     )
+}
+
+function DisplayMore() {
+
+    let searchListing = useUserBrowsingStore(state=>state.searchListing);
+    let searchResults = useUserBrowsingStore(state=>state.searchResults);
+
+    let [nextIndex, setNextIndex] = useState(null as number | null);
+
+    let [itemsLoaded, itemsAvailable] = useMemo(()=>{
+        if(!searchListing || !searchResults) return [0, 0];
+        let docs = searchResults.searchResults?.search_results?.docs;
+        if(!docs) return [0, 0];
+        return [Object.keys(searchListing).length, docs.length];
+    }, [searchListing, searchResults]);
+
+    let onClickHandler = useCallback(async () => {
+        // Load all remaining items
+        let nextIndex = Math.min(itemsLoaded + 40, itemsAvailable);
+        setNextIndex(nextIndex);
+    }, [itemsLoaded, itemsAvailable, setNextIndex]);
+
+    if(itemsLoaded === itemsAvailable) return <></>;  // Nothing to do
+
+    return (
+        <div className='pt-3 text-center'>
+            <ActionButton onClick={onClickHandler}revertSuccessTimeout={2}>Display more</ActionButton>
+            <SearchSyncHandler itemsLoaded={itemsLoaded} itemsAvailable={itemsAvailable} nextIndex={nextIndex} />
+        </div>
+    )
+}
+
+/**
+ * Handles the sync of files in a directory.
+ * @returns 
+ */
+function SearchSyncHandler(props: {itemsLoaded: number, itemsAvailable: number, nextIndex: number | null}) {
+
+    let {itemsLoaded, itemsAvailable, nextIndex} = props;
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let username = useConnectionStore(state=>state.username);
+    let userId = useUserBrowsingStore(state=>state.userId);
+    let searchResults = useUserBrowsingStore(state=>state.searchResults);
+    let updateSearchListing = useUserBrowsingStore(state=>state.updateSearchListing);
+
+    useEffect(()=>{
+        if(!workers || !ready || !userId || !searchResults) return;
+        if(nextIndex && itemsLoaded < nextIndex) {
+            let start = itemsLoaded, end = nextIndex;
+            let docs = searchResults?.searchResults?.search_results?.docs;
+            if(docs) {
+                let tuuids = docs.slice(start, end).map(item=>item.id);
+
+                // Signal to cancel sync
+                let cancelled = false;
+                let cancelledSignal = () => cancelled;
+                let cancel = () => {cancelled = true};
+
+                loadTuuidsToSearch(workers, userId, tuuids, docs, cancelledSignal, updateSearchListing)
+
+                return () => {
+                    cancel();
+                };
+            }
+        } else {
+            // Empty screen
+            console.debug("Empty search screen");
+        }
+    }, [workers, ready, nextIndex, itemsLoaded, itemsAvailable, userId, username, searchResults, updateSearchListing]);
+
+    return <></>;
+}
+
+async function loadTuuidsToSearch(
+    workers: AppWorkers, userId: string, tuuids: string[],
+    searchResultDocs: Collection2SearchResultsDoc[],
+    cancelledSignal: ()=>boolean,
+    updateSearchListing: (files: TuuidsBrowsingStoreSearchRow[] | null) => void) 
+{
+    // Load
+    let response = await workers.connection.getFilesByTuuid(tuuids);
+    console.debug("Files by tuuid: %O", response);
+
+    if(cancelledSignal()) return;  // Stop, search has changed
+
+    let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files || [], response.keys);
+
+    // Save files in store
+    let storeFiles = filesIdbToBrowsing(files);
+    console.debug("Search files received", storeFiles);
+    let storeFilesByTuuid = storeFiles.reduce((acc, item)=>{
+        acc[item.tuuid] = item;
+        return acc;
+    }, {} as {[tuuid: string]: TuuidsBrowsingStoreRow});
+
+    // Put files in order according to score
+    let mappedFiles = [];
+    for(let item of searchResultDocs) {
+        let file = storeFilesByTuuid[item.id];
+        if(file) {
+            mappedFiles.push({...item, ...file});
+        }
+    }
+    console.debug("Mapped files: ", mappedFiles);
+    updateSearchListing(mappedFiles);
 }

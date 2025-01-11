@@ -81,7 +81,7 @@ export function Breadcrumb(props: BreadcrumbProps) {
                         {onClick?
                             <p onClick={onClickHandler}>{root?.name || username}</p>
                         :
-                            <Link to={root?.path || '/apps/collections2/b'}>{root?.name || username}</Link>
+                            <Link to={root?.path || '/apps/collections2/b/root'}>{root?.name || username}</Link>
                         }
                         
                         <span className="pointer-events-none ml-2 text-slate-400 font-bold">&gt;</span>
