@@ -153,6 +153,28 @@ export type Collections2SyncDirectoryResponse = MessageResponse & {
     deleted_tuuids: string[] | null,
 };
 
+export type Collection2SearchResultsDoc = {
+    id: string,
+    user_id: string,
+    score: number,
+    fuuid? : string | null,
+    cuuids?: string[] | null,
+}
+
+export type Collection2SearchResultsContent = {
+    docs?: Collection2SearchResultsDoc[] | null,
+    max_score?: number,
+    numFound?: number,
+    numFoundExact?: number,
+    start?: number,
+};
+
+export type Collections2SearchResults = MessageResponse & {
+    files: Collections2FileSyncRow[] | null,
+    keys: DecryptedSecretKey[] | null,
+    search_results: Collection2SearchResultsContent | null,
+};
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -452,6 +474,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
             {skip, cuuid, deleted: true}, 
             DOMAINE_GROSFICHIERS, 'syncDirectory'
         ) as Collections2SyncDirectoryResponse;
+    }
+
+    async searchFiles(query: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {query}, 
+            DOMAINE_GROSFICHIERS, 'searchIndexV2'
+        ) as Collections2SearchResults;
     }
 
 }

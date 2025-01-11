@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { TuuidsIdbStoreRowType } from './idb/collections2StoreIdb';
-import { Collection2DirectoryStats } from '../workers/connection.worker';
+import { Collection2DirectoryStats, Collection2SearchResultsDoc, Collections2SearchResults } from '../workers/connection.worker';
 // import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType } from './idb/notepadStoreIdb';
 
 export type TuuidsBrowsingStoreRow = {
@@ -15,6 +15,15 @@ export type TuuidsBrowsingStoreRow = {
     thumbnail: Blob | null,
     smallImageFuuid: string | null,
     loadStatus: number | null,
+}
+
+export type TuuidsBrowsingStoreSearchRow = TuuidsBrowsingStoreRow & {score: number};
+
+export type Collection2SearchStore = {
+    query: string,
+    searchResults: Collections2SearchResults | null,
+    stats: {files: number, directories: number},
+    resultDate: Date,
 }
 
 export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsingStoreRow[] {
@@ -50,6 +59,8 @@ interface UserBrowsingStoreState {
     usernameBreadcrumb: string | null,
     breadcrumb: TuuidsBrowsingStoreRow[] | null,
     directoryStatistics: Collection2DirectoryStats[] | null,
+    searchResults: Collection2SearchStore | null,
+    searchListing: {[tuuid: string]: TuuidsBrowsingStoreSearchRow} | null,
 
     setCuuid: (cuuid: string | null) => void,
     setUserId: (userId: string) => void,
@@ -57,6 +68,8 @@ interface UserBrowsingStoreState {
     setBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
     setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
     deleteFilesDirectory: (files: string[]) => void,
+    setSearchResults: (searchResults: Collection2SearchStore | null) => void,
+    updateSearchListing: (listing: TuuidsBrowsingStoreSearchRow[] | null) => void,
 };
 
 const useUserBrowsingStore = create<UserBrowsingStoreState>()(
@@ -69,6 +82,8 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             usernameBreadcrumb: null,
             breadcrumb: null,
             directoryStatistics: null,
+            searchResults: null,
+            searchListing: null,
 
             setCuuid: (cuuid) => set(()=>({currentCuuid: cuuid})),
             setUserId: (userId) => set(()=>({userId})),
@@ -107,7 +122,31 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
                     }
                 }
                 return {currentDirectory: updatedDirectory};
-            })
+            }),
+
+            setSearchResults: (searchResults) => set(()=>({searchResults})),
+
+            updateSearchListing: (listing) => set((state)=>{
+                if(!listing) {
+                    // Clear
+                    return {searchListing: null};
+                }
+
+                let searchListing = {} as {[tuuid: string]: TuuidsBrowsingStoreSearchRow};
+                if(state.searchListing) {
+                    // Copy existing directory
+                    searchListing = {...state.searchListing};
+                }
+
+                // Add and replace existing files
+                for(let file of listing) {
+                    let tuuid = file.tuuid;
+                    searchListing[tuuid] = file;
+                }
+
+                return {searchListing};
+            }),
+
         })
     ),
 );

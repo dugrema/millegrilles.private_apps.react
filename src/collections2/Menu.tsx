@@ -53,40 +53,40 @@ export default function HeaderMenu(props: MenuProps) {
                 }
             </div>
             <div className='hidden md:block col-span-2 text-center border-b border-violet-500'>
-                <div className={'md:inline-block px-1 w-25' + (selectedSection==='transfer'?selectedClassname:unselectedClassname)}>
+                <div className={'md:inline-block px-1 w-25 transition-colors duration-300' + (selectedSection==='transfer'?selectedClassname:unselectedClassname)}>
                     <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />
                     <p className='inline-block text-sm'>100%</p>
                     <span className='pl-1'>/</span>
                     <img src={DownloadIcon} alt='Download' className='w-7 inline-block' />
                     <p className='inline-block text-sm'>100%</p>
                 </div>
-                <div className={'md:inline-block px-1' + (selectedSection==='browse'?selectedClassname:unselectedClassname)}>
+                <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='browse'?selectedClassname:unselectedClassname)}>
                     <Link to='/apps/collections2/b'>
                         <img src={HomeIcon} alt="Browse" 
                             className='w-7 inline-block' />
                     </Link>
                 </div>
-                <div className={'md:inline-block px-1' + (selectedSection==='search'?selectedClassname:unselectedClassname)}>
+                <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='search'?selectedClassname:unselectedClassname)}>
                     <Link to='/apps/collections2/s'>
                         <img src={SearchIcon} alt="Search" 
                             className='w-7 inline-block' />
                     </Link>
                 </div>
-                <div className={'md:inline-block px-1' + (selectedSection==='deleted'?selectedClassname:unselectedClassname)}>
+                <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='deleted'?selectedClassname:unselectedClassname)}>
                     <Link to='/apps/collections2/d'>
                         <img src={TrashIcon} alt="Deleted files" 
                             className='w-7 inline-block' />
                     </Link>
                 </div>
-                <div className={'md:inline-block px-1' + (selectedSection==='video'?selectedClassname:unselectedClassname)}>
+                <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='video'?selectedClassname:unselectedClassname)}>
                     <img src={VideoIcon} alt="Video conversion" 
                         className='w-7 inline-block' />
                 </div>
-                <div className={'md:inline-block px-1' + (selectedSection==='share'?selectedClassname:unselectedClassname)}>
+                <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='share'?selectedClassname:unselectedClassname)}>
                     <img src={ShareIcon} alt="Share" 
                         className='w-7 inline-block' />
                 </div>
-                <div className={'md:inline-block px-1' + (selectedSection==='settings'?selectedClassname:unselectedClassname)}>
+                <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='settings'?selectedClassname:unselectedClassname)}>
                     <img src={SettingIcon} alt="Settings" 
                         className='w-7 inline-block' />
                 </div>

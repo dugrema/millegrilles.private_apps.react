@@ -150,6 +150,9 @@ function ApplicationList() {
             <HeaderMenu title='MilleGrilles' />
 
             <main className='fixed top-6 bottom-8 overflow-y-auto pt-4 pb-2 pl-2 pr-2 w-full'>
+
+                <img src='/apps/millegrilles_192.jpg' alt='Logo' className='pt-2 pb-4' />
+
                 <section>
                     <h1 className='text-xl font-bold'>Application list</h1>
                     <nav className='pt-6'>
