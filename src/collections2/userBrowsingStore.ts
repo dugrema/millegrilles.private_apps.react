@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { TuuidsIdbStoreRowType } from './idb/collections2StoreIdb';
-import { Collection2DirectoryStats, Collection2SearchResultsDoc, Collections2SearchResults } from '../workers/connection.worker';
+import { Collection2DirectoryStats, Collection2SearchResultsDoc, Collections2SearchResults, Collections2SharedContactsSharedCollection, Collections2SharedContactsUser } from '../workers/connection.worker';
 // import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType } from './idb/notepadStoreIdb';
 
 export type TuuidsBrowsingStoreRow = {
@@ -24,6 +24,11 @@ export type Collection2SearchStore = {
     searchResults: Collections2SearchResults | null,
     stats: {files: number, directories: number},
     resultDate: Date,
+}
+
+export type Collection2SharedWithUser = {
+    sharedCollections: Collections2SharedContactsSharedCollection[] | null,
+    users: Collections2SharedContactsUser[] | null,
 }
 
 export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsingStoreRow[] {
@@ -62,6 +67,12 @@ interface UserBrowsingStoreState {
     directoryStatistics: Collection2DirectoryStats[] | null,
     searchResults: Collection2SearchStore | null,
     searchListing: {[tuuid: string]: TuuidsBrowsingStoreSearchRow} | null,
+    sharedWithUser: Collection2SharedWithUser | null,
+    sharedContact: Collections2SharedContactsUser | null,
+    sharedBreadcrumb: TuuidsBrowsingStoreRow[] | null,
+    sharedCollection: Collections2SharedContactsSharedCollection | null,
+    sharedCuuid: string | null,
+    sharedCurrentDirectory: {[tuuid: string]: TuuidsBrowsingStoreRow} | null,
 
     setCuuid: (cuuid: string | null) => void,
     setCuuidDeleted: (cuuid: string | null) => void,
@@ -72,6 +83,12 @@ interface UserBrowsingStoreState {
     deleteFilesDirectory: (files: string[]) => void,
     setSearchResults: (searchResults: Collection2SearchStore | null) => void,
     updateSearchListing: (listing: TuuidsBrowsingStoreSearchRow[] | null) => void,
+    setSharedWithUser: (sharedWithUser: Collection2SharedWithUser | null) => void,
+    setSharedContact: (sharedContact: Collections2SharedContactsUser | null) => void,
+    setSharedBreadcrumb: (sharedBreadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
+    setSharedCollection: (sharedCollection: Collections2SharedContactsSharedCollection | null) => void,
+    setSharedCuuid: (sharedCuuid: string | null) => void,
+    updateSharedCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
 };
 
 const useUserBrowsingStore = create<UserBrowsingStoreState>()(
@@ -87,6 +104,12 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             directoryStatistics: null,
             searchResults: null,
             searchListing: null,
+            sharedWithUser: null,
+            sharedContact: null,
+            sharedBreadcrumb: null,
+            sharedCollection: null,
+            sharedCuuid: null,
+            sharedCurrentDirectory: null,
 
             setCuuid: (cuuid) => set(()=>({currentCuuid: cuuid})),
             setCuuidDeleted: (cuuid) => set(()=>({currentCuuidDeleted: cuuid})),
@@ -151,6 +174,31 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
                 return {searchListing};
             }),
 
+            setSharedWithUser: (sharedWithUser) => set(()=>({sharedWithUser})),
+            setSharedContact: (sharedContact) => set(()=>({sharedContact})),
+            setSharedBreadcrumb: (sharedBreadcrumb) => set(()=>({sharedBreadcrumb})),
+            setSharedCollection: (sharedCollection) => set(()=>({sharedCollection})),
+            setSharedCuuid: (sharedCuuid) => set(()=>({sharedCuuid})),
+            updateSharedCurrentDirectory: (files) => set((state)=>{
+                if(!files) {
+                    // Clear
+                    return {sharedCurrentDirectory: null};
+                }
+
+                let currentDirectory = {} as {[tuuid: string]: TuuidsBrowsingStoreRow};
+                if(state.sharedCurrentDirectory) {
+                    // Copy existing directory
+                    currentDirectory = {...state.sharedCurrentDirectory};
+                }
+
+                // Add and replace existing files
+                for(let file of files) {
+                    let tuuid = file.tuuid;
+                    currentDirectory[tuuid] = file;
+                }
+
+                return {sharedCurrentDirectory: currentDirectory};
+            }),
         })
     ),
 );

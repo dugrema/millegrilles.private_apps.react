@@ -175,6 +175,22 @@ export type Collections2SearchResults = MessageResponse & {
     search_results: Collection2SearchResultsContent | null,
 };
 
+export type Collections2SharedContactsSharedCollection = {
+    user_id: string,
+    contact_id: string,
+    tuuid: string,
+}
+
+export type Collections2SharedContactsUser = {
+    user_id: string,
+    nom_usager: string,
+}
+
+export type Collections2SharedContactsWithUserResponse = MessageResponse & {
+    partages?: Collections2SharedContactsSharedCollection[] | null,
+    usagers?: Collections2SharedContactsUser[] | null,
+};
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -484,12 +500,36 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as Collections2SearchResults;
     }
 
-    async getFilesByTuuid(tuuids: string[]) {
+    async getFilesByTuuid(tuuids: string[], opts?: {shared?: boolean}) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest(
-            {tuuids}, 
+            {tuuids, shared: opts?.shared}, 
             DOMAINE_GROSFICHIERS, 'filesByTuuid'
         ) as Collections2SearchResults;
+    }
+
+    async getCollections2Contacts() {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {}, 
+            DOMAINE_GROSFICHIERS, 'chargerContacts'
+        ) as any;
+    };
+
+    async getCollections2SharedCollections() {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {}, 
+            DOMAINE_GROSFICHIERS, 'getPartagesUsager'
+        ) as any;
+    }
+
+    async getCollections2SharedContactsWithUser() {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {}, 
+            DOMAINE_GROSFICHIERS, 'getPartagesContact'
+        ) as Collections2SharedContactsWithUserResponse;
     }
 
 }

@@ -29,6 +29,8 @@ const Collections2UserFileViewing = React.lazy(()=>import('./collections2/UserFi
 const Collections2UserDeletedFilesBrowsing = React.lazy(()=>import('./collections2/BrowsingDeleted'));
 const Collections2UserVideoViewing = React.lazy(()=>import('./collections2/UserVideoViewing'));
 const Collections2Search = React.lazy(()=>import('./collections2/SearchPage'));
+const Collections2SharedContacts = React.lazy(()=>import('./collections2/SharedContacts'));
+const Collections2SharedUsers = React.lazy(()=>import('./collections2/SharedUsers'));
 const Collections2SharedFileBrowsing = React.lazy(()=>import('./collections2/SharedFileBrowsing'));
 const Collections2SharedFileViewing = React.lazy(()=>import('./collections2/SharedFileViewing'));
 const Collections2SharedVideoViewing = React.lazy(()=>import('./collections2/SharedVideoViewing'));
@@ -84,10 +86,19 @@ const router = createBrowserRouter([
             { path: "d", element: <Collections2UserDeletedFilesBrowsing /> },
             { path: "d/:tuuid", element: <Collections2UserDeletedFilesBrowsing /> },
             { path: "s", element: <Collections2Search /> },
-            { path: "c/:contactId/b/:tuuid", element: <Collections2SharedFileBrowsing /> },
-            { path: "c/:contactId/f/:tuuid", element: <Collections2SharedFileViewing /> },
-            { path: "c/:contactId/v/:tuuid", element: <Collections2SharedVideoViewing /> },
-            { path: "c/:contactId/v/:tuuid/:selector", element: <Collections2SharedVideoViewing /> },
+            { 
+                path: "c", 
+                element: <Collections2SharedContacts />,
+                children: [
+                    { path: "", element: <Collections2SharedUsers /> },
+                    { path: ":userId", element: <Collections2SharedUsers /> },
+                    { path: ":contactId/b", element: <Collections2SharedFileBrowsing /> },
+                    { path: ":contactId/b/:tuuid", element: <Collections2SharedFileBrowsing /> },
+                    { path: ":contactId/f/:tuuid", element: <Collections2SharedFileViewing /> },
+                    { path: ":contactId/v/:tuuid", element: <Collections2SharedVideoViewing /> },
+                    { path: ":contactId/v/:tuuid/:selector", element: <Collections2SharedVideoViewing /> },
+                ]
+            },
         ]
   	},
     {

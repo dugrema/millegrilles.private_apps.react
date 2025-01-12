@@ -47,7 +47,8 @@ export class DirectoryWorker {
 
             let mappedFile = {
                 tuuid: item.tuuid,
-                user_id: item.user_id,
+                // user_id: item.user_id,
+                user_id: userId,  // Override user_id with provided user (e.g. for shared files)
                 type_node: item.type_node,
                 encryptedMetadata: item.metadata,
                 parent,

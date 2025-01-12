@@ -83,8 +83,10 @@ export default function HeaderMenu(props: MenuProps) {
                         className='w-7 inline-block' />
                 </div>
                 <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='share'?selectedClassname:unselectedClassname)}>
-                    <img src={ShareIcon} alt="Share" 
-                        className='w-7 inline-block' />
+                    <Link to='/apps/collections2/c'>
+                        <img src={ShareIcon} alt="Share" 
+                            className='w-7 inline-block' />
+                    </Link>
                 </div>
                 <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='settings'?selectedClassname:unselectedClassname)}>
                     <img src={SettingIcon} alt="Settings" 

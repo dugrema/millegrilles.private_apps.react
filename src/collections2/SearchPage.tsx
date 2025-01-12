@@ -184,9 +184,15 @@ async function runSearchQuery(
 }
 
 function SearchStatistics() {
-    
-    let searchResults = useUserBrowsingStore(state=>state.searchResults);
 
+    let [searchParams, _setSearchParams] = useSearchParams();
+    let query = useMemo(()=>{
+        if(!searchParams) return null;
+        console.debug("Search params", searchParams);
+        return searchParams.get('search');
+    }, [searchParams]);
+
+    let searchResults = useUserBrowsingStore(state=>state.searchResults);
     let [fileInfo, dirInfo, numberFound] = useMemo(()=>{
         if(!searchResults || !searchResults.stats) return [null, null, null];
 
@@ -197,8 +203,8 @@ function SearchStatistics() {
     }, [searchResults]);
 
     if(!searchResults) {
-        if(searchResults === false) return <></>
-        return (<p>Loading ...</p>)
+        if(!query) return <p>Enter en query to begin.</p>;
+        return <p>Loading ...</p>;
     }
 
     return (

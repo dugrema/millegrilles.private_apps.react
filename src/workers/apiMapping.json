@@ -19,7 +19,10 @@
         {"domain": "GrosFichiers", "action": "syncDirectory"},
         {"domain": "GrosFichiers", "action": "syncDeletedFiles"},
         {"domain": "GrosFichiers", "action": "searchIndexV2"},
-        {"domain": "GrosFichiers", "action": "filesByTuuid"}
+        {"domain": "GrosFichiers", "action": "filesByTuuid"},
+        {"domain": "GrosFichiers", "action": "chargerContacts"},
+        {"domain": "GrosFichiers", "action": "getPartagesUsager"},
+        {"domain": "GrosFichiers", "action": "getPartagesContact"}
     ],
     "commands": [
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},
