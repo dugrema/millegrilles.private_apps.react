@@ -1,17 +1,34 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { MouseEvent, useCallback, useEffect, useMemo } from "react";
 import { Collection2DirectoryStats, Collections2SharedContactsSharedCollection } from "../workers/connection.worker";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
+import { ButtonBar } from "./BrowsingElements";
+import FilelistPane from "./FilelistPane";
 
 function SharedFileBrowsing() {
 
     let {contactId, tuuid} = useParams();
+    let navigate = useNavigate();
     
     let setSharedCollection = useUserBrowsingStore(state=>state.setSharedCollection);
+    let sharedCollection = useUserBrowsingStore(state=>state.sharedCollection);
     let sharedWithUser = useUserBrowsingStore(state=>state.sharedWithUser);
-    
+    let currentDirectory = useUserBrowsingStore(state=>state.sharedCurrentDirectory);
+
+    let cuuid = useMemo(()=>{
+        console.debug("Shared collection: %O, tuuid: %O", sharedCollection, tuuid);
+        if(tuuid) return tuuid;
+        return sharedCollection?.tuuid;  // Root for this shared collection
+    }, [tuuid, sharedCollection]);
+
+    let files = useMemo(()=>{
+        if(!currentDirectory) return null;
+        let filesValues = Object.values(currentDirectory);
+        return filesValues;
+    }, [currentDirectory]) as TuuidsBrowsingStoreRow[] | null;
+
     useEffect(()=>{
         if(!sharedWithUser?.sharedCollections || !contactId) {
             setSharedCollection(null);
@@ -19,12 +36,29 @@ function SharedFileBrowsing() {
             let sharedContact = sharedWithUser.sharedCollections.filter(item=>item.contact_id === contactId).pop();
             setSharedCollection(sharedContact || null);
         }
-    }, [sharedWithUser, contactId]);
+    }, [sharedWithUser, contactId, setSharedCollection]);
+
+    let onClickRowHandler = useCallback((tuuid:string, typeNode:string)=>{
+        if(typeNode === 'Fichier') {
+            console.warn("TODO - browse to file");
+        } else {
+            navigate(`/apps/collections2/c/${contactId}/b/${tuuid}`);
+        }
+    }, [contactId]);
 
     return (
         <>
-            <p>Shared file browsing</p>
-            <DirectorySyncHandler tuuid={tuuid} />
+            <Breadcrumb />
+
+            <section className='pt-2'>
+                <ButtonBar disableEdit={true} />
+            </section>
+
+            <section className='pt-3'>
+                <FilelistPane files={files} onClickRow={onClickRowHandler} />
+            </section>
+
+            <DirectorySyncHandler tuuid={cuuid} />
         </>
     );
 }
@@ -124,16 +158,16 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
     let username = useConnectionStore(state=>state.username);
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useUserBrowsingStore(state=>state.userId);
-    let updateCurrentDirectory = useUserBrowsingStore(state=>state.updateCurrentDirectory);
+    let updateCurrentDirectory = useUserBrowsingStore(state=>state.updateSharedCurrentDirectory);
     let setSharedCuuid = useUserBrowsingStore(state=>state.setSharedCuuid);
-    let setBreadcrumb = useUserBrowsingStore(state=>state.setBreadcrumb);
-    let setDirectoryStatistics = useUserBrowsingStore(state=>state.setDirectoryStatistics);
-    let deleteFilesDirectory = useUserBrowsingStore(state=>state.deleteFilesDirectory);
+    let setBreadcrumb = useUserBrowsingStore(state=>state.setSharedBreadcrumb);
+    // let setDirectoryStatistics = useUserBrowsingStore(state=>state.setDirectoryStatistics);
+    // let deleteFilesDirectory = useUserBrowsingStore(state=>state.deleteFilesDirectory);
 
     let sharedCollection = useUserBrowsingStore(state=>state.sharedCollection);
 
     useEffect(()=>{
-        if(!workers || !ready || !userId) return;
+        if(!workers || !ready || !userId || !sharedCollection) return;
         let tuuidValue = tuuid || null;
 
         // Signal to cancel sync
@@ -150,8 +184,8 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
         // Register directory change listener
         //TODO
 
-        // synchronizeDirectory(workers, userId, username, tuuidValue, cancelledSignal, updateCurrentDirectory, setBreadcrumb, setDirectoryStatistics, deleteFilesDirectory)
-        //     .catch(err=>console.error("Error loading directory: %O", err));
+        synchronizeDirectory(workers, userId, username, sharedCollection, tuuidValue, cancelledSignal, updateCurrentDirectory, setBreadcrumb)
+            .catch(err=>console.error("Error loading directory: %O", err));
 
         return () => {
             // This will stop the processing of events in flight for the previous directory (they will be ignored).
@@ -160,7 +194,8 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
             // Unregister directory change listener
             //TODO
         }
-    }, [workers, ready, userId, username, tuuid, sharedCollection, setSharedCuuid, setBreadcrumb, updateCurrentDirectory, setDirectoryStatistics, deleteFilesDirectory]);
+    }, [workers, ready, userId, username, tuuid, sharedCollection, 
+        setSharedCuuid, setBreadcrumb, updateCurrentDirectory]);
 
     return <></>;
 }
@@ -172,18 +207,19 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
 // }
 
 async function synchronizeDirectory(
-    workers: AppWorkers, userId: string, username: string, tuuid: string | null, 
+    workers: AppWorkers, userId: string, username: string, sharedCollection: Collections2SharedContactsSharedCollection, tuuid: string | null, 
     cancelledSignal: ()=>boolean, 
     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
-    setBreadcrumb: (username: string, dirs: TuuidsBrowsingStoreRow[] | null) => void,
-    setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
-    deleteFilesDirectory: (files: string[]) => void) 
+    setBreadcrumb: (dirs: TuuidsBrowsingStoreRow[] | null) => void,
+    // setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
+    // deleteFilesDirectory: (files: string[]) => void
+    ) 
 {
     // if(!workers) throw new Error("Workers not initialized");
 
     // Load folder from IDB (if known)
     let {directory, list, breadcrumb} = await workers.directory.loadDirectory(userId, tuuid);
-    // console.debug("Loaded directory: %O, list: %O, breadcrumb: %O", directory, list, breadcrumb);
+    console.debug("Loaded directory: %O, list: %O, breadcrumb: %O", directory, list, breadcrumb);
     if(list) {
         let storeFiles = filesIdbToBrowsing(list);
         updateCurrentDirectory(storeFiles);
@@ -191,7 +227,7 @@ async function synchronizeDirectory(
     if(breadcrumb) {
         // console.debug("Map breadcrumb: ", breadcrumb);
         let breadcrumbBrowsing = filesIdbToBrowsing(breadcrumb);
-        setBreadcrumb(username, breadcrumbBrowsing);
+        setBreadcrumb(breadcrumbBrowsing);
     }
     let syncDate = directory?.lastCompleteSyncSec || null;
 
@@ -201,8 +237,8 @@ async function synchronizeDirectory(
     let lastCompleteSyncSec = null as number | null;
     while(!complete) {
         if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 1`)
-        // console.debug("Sync tuuid %s skip %d", tuuid, skip);
-        let response = await workers.connection.syncDirectory(tuuid, skip, syncDate);
+        console.debug("Sync tuuid %s skip %d", tuuid, skip);
+        let response = await workers.connection.syncDirectory(tuuid, skip, syncDate, {contactId: sharedCollection.contact_id});
 
         if(skip === 0) {
             // Keep initial response time for complete sync date
@@ -216,20 +252,21 @@ async function synchronizeDirectory(
         // console.debug("Directory loaded: %O", response);
         if(!response.ok) throw new Error(`Error during sync: ${response.err}`);
         complete = response.complete;
+        console.debug("Response: ", response);
         
-        if(response.stats) {
-            // Update store information with new directory stats
-            setDirectoryStatistics(response.stats);
-        }
+        // if(response.stats) {
+        //     // Update store information with new directory stats
+        //     setDirectoryStatistics(response.stats);
+        // }
 
-        if(response.deleted_tuuids) {
-            console.debug("Delete files %O", response.deleted_tuuids);
-            await workers.directory.deleteFiles(response.deleted_tuuids);
-            deleteFilesDirectory(response.deleted_tuuids);
-        }
+        // if(response.deleted_tuuids) {
+        //     console.debug("Delete files %O", response.deleted_tuuids);
+        //     await workers.directory.deleteFiles(response.deleted_tuuids);
+        //     deleteFilesDirectory(response.deleted_tuuids);
+        // }
 
         if(!tuuid) {
-            setBreadcrumb(username, null);
+            setBreadcrumb(null);
         } else if(response.breadcrumb) {
             let breadcrumb = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.breadcrumb, response.keys);
             let currentDirIdb = breadcrumb.filter(item=>item.tuuid === tuuid).pop();
@@ -252,7 +289,7 @@ async function synchronizeDirectory(
             orderedBreadcrumb = orderedBreadcrumb.reverse();
 
             // console.debug("breadcrumb: %O, StoreFiles: %O", breadcrumb, storeFiles);
-            setBreadcrumb(username, orderedBreadcrumb);
+            setBreadcrumb(orderedBreadcrumb);
         }
 
         if(response.files) { 
@@ -260,10 +297,12 @@ async function synchronizeDirectory(
 
             // Process and save to IDB
             let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys);
+            console.debug("Files ", files);
 
             if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 2`)
             // Save files in store
             let storeFiles = filesIdbToBrowsing(files);
+            console.debug("StoreFiles: ", storeFiles);
             updateCurrentDirectory(storeFiles);
         } else if(response.keys) {
             console.warn("Keys received with no files");

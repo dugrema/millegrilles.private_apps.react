@@ -92,7 +92,6 @@ const router = createBrowserRouter([
                 children: [
                     { path: "", element: <Collections2SharedUsers /> },
                     { path: ":userId", element: <Collections2SharedUsers /> },
-                    { path: ":contactId/b", element: <Collections2SharedFileBrowsing /> },
                     { path: ":contactId/b/:tuuid", element: <Collections2SharedFileBrowsing /> },
                     { path: ":contactId/f/:tuuid", element: <Collections2SharedFileViewing /> },
                     { path: ":contactId/v/:tuuid", element: <Collections2SharedVideoViewing /> },

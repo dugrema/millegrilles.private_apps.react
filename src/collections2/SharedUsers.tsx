@@ -65,7 +65,7 @@ function SharedFromUser(props: {userId: string}) {
             }
             return (
                 <div key={item.tuuid}>
-                    <Link to={`/apps/collections2/c/${item.contact_id}/b`}>{name}</Link>
+                    <Link to={`/apps/collections2/c/${item.contact_id}/b/${item.tuuid}`}>{name}</Link>
                 </div>
             )
         });

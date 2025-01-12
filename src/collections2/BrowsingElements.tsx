@@ -99,6 +99,7 @@ export function Breadcrumb(props: BreadcrumbProps) {
 
 type ButtonBarProps = {
     disableStatistics?: boolean,
+    disableEdit?: boolean,
 }
 
 export function ButtonBar(props: ButtonBarProps) {
@@ -126,20 +127,26 @@ export function ButtonBar(props: ButtonBarProps) {
                         <img src={ImageIcon} alt='Image view' className='w-6 inline-block' />
                 </Link>
 
-                <Link to='/apps/collection2/test'
-                    className='varbtn px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        <img src={FileAddIcon} alt='File add' className='w-6 inline-block' />
-                </Link>
+                {props.disableEdit?
+                <></>    
+                :
+                    <>
+                        <Link to='/apps/collection2/test'
+                            className='varbtn px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                                <img src={FileAddIcon} alt='File add' className='w-6 inline-block' />
+                        </Link>
 
-                <Link to='/apps/collection2/test'
-                    className='varbtn px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        <img src={FolderAddIcon} alt='Directory add' className='w-6 inline-block' />
-                </Link>
+                        <Link to='/apps/collection2/test'
+                            className='varbtn px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                                <img src={FolderAddIcon} alt='Directory add' className='w-6 inline-block' />
+                        </Link>
 
-                <Link to='/apps/collection2/test'
-                    className='varbtn mt-0 p-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        + ZIP
-                </Link>
+                        <Link to='/apps/collection2/test'
+                            className='varbtn mt-0 p-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                                + ZIP
+                        </Link>
+                    </>
+                }
             </div>
             <div className='text-sm'>
                 {disableStatistics?

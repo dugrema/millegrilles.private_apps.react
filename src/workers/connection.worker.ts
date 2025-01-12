@@ -476,10 +476,10 @@ export class AppsConnectionWorker extends ConnectionWorker {
     }
 
     // Collections 2
-    async syncDirectory(cuuid: string | null | undefined, skip: number, lastSyncDate: number | null) {
+    async syncDirectory(cuuid: string | null | undefined, skip: number, lastSyncDate: number | null, opts?: {contactId?: string}) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest(
-            {cuuid, skip, last_sync: lastSyncDate}, 
+            {cuuid, skip, last_sync: lastSyncDate, contact_id: opts?.contactId}, 
             DOMAINE_GROSFICHIERS, 'syncDirectory'
         ) as Collections2SyncDirectoryResponse;
     }
@@ -500,10 +500,10 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as Collections2SearchResults;
     }
 
-    async getFilesByTuuid(tuuids: string[], opts?: {shared?: boolean}) {
+    async getFilesByTuuid(tuuids: string[], opts?: {shared?: boolean, contact_id?: string}) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest(
-            {tuuids, shared: opts?.shared}, 
+            {tuuids, shared: opts?.shared, shared_contact_id: opts?.contact_id}, 
             DOMAINE_GROSFICHIERS, 'filesByTuuid'
         ) as Collections2SearchResults;
     }
