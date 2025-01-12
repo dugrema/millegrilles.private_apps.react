@@ -92,7 +92,7 @@ function DirectorySyncHandler(props: {tuuid?: string | null | undefined}) {
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useUserBrowsingStore(state=>state.userId);
     let updateCurrentDirectory = useUserBrowsingStore(state=>state.updateCurrentDirectory);
-    let setCuuid = useUserBrowsingStore(state=>state.setCuuid);
+    let setCuuid = useUserBrowsingStore(state=>state.setCuuidDeleted);
     let setBreadcrumb = useUserBrowsingStore(state=>state.setBreadcrumb);
     let setDirectoryStatistics = useUserBrowsingStore(state=>state.setDirectoryStatistics);
     let deleteFilesDirectory = useUserBrowsingStore(state=>state.deleteFilesDirectory);

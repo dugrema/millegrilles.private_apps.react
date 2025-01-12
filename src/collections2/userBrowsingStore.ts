@@ -54,6 +54,7 @@ export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsi
 interface UserBrowsingStoreState {
     userId: string | null,
     currentCuuid: string | null,
+    currentCuuidDeleted: string | null,
     selectedTuuids: string[] | null,
     currentDirectory: {[tuuid: string]: TuuidsBrowsingStoreRow} | null,
     usernameBreadcrumb: string | null,
@@ -63,6 +64,7 @@ interface UserBrowsingStoreState {
     searchListing: {[tuuid: string]: TuuidsBrowsingStoreSearchRow} | null,
 
     setCuuid: (cuuid: string | null) => void,
+    setCuuidDeleted: (cuuid: string | null) => void,
     setUserId: (userId: string) => void,
     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
     setBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
@@ -77,6 +79,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
         (set) => ({
             userId: null,
             currentCuuid: null,
+            currentCuuidDeleted: null,
             selectedTuuids: null,
             currentDirectory: null,
             usernameBreadcrumb: null,
@@ -86,6 +89,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             searchListing: null,
 
             setCuuid: (cuuid) => set(()=>({currentCuuid: cuuid})),
+            setCuuidDeleted: (cuuid) => set(()=>({currentCuuidDeleted: cuuid})),
             setUserId: (userId) => set(()=>({userId})),
 
             updateCurrentDirectory: (files) => set((state)=>{
