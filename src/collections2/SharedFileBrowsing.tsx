@@ -14,6 +14,7 @@ function SharedFileBrowsing() {
     
     let setSharedCollection = useUserBrowsingStore(state=>state.setSharedCollection);
     let sharedCollection = useUserBrowsingStore(state=>state.sharedCollection);
+    let setSharedContact = useUserBrowsingStore(state=>state.setSharedContact);
     let sharedWithUser = useUserBrowsingStore(state=>state.sharedWithUser);
     let currentDirectory = useUserBrowsingStore(state=>state.sharedCurrentDirectory);
 
@@ -33,10 +34,15 @@ function SharedFileBrowsing() {
         if(!sharedWithUser?.sharedCollections || !contactId) {
             setSharedCollection(null);
         } else {
-            let sharedContact = sharedWithUser.sharedCollections.filter(item=>item.contact_id === contactId).pop();
-            setSharedCollection(sharedContact || null);
+            let sharedCollection = sharedWithUser.sharedCollections.filter(item=>item.contact_id === contactId).pop();
+            setSharedCollection(sharedCollection || null);
+            if(sharedCollection && sharedWithUser?.users) {
+                let sharedUserId = sharedCollection.user_id;
+                let sharedContact = sharedWithUser.users.filter(item=>item.user_id === sharedUserId).pop();
+                setSharedContact(sharedContact || null);
+            }
         }
-    }, [sharedWithUser, contactId, setSharedCollection]);
+    }, [sharedWithUser, contactId, setSharedCollection, setSharedContact]);
 
     let onClickRowHandler = useCallback((tuuid:string, typeNode:string)=>{
         if(typeNode === 'Fichier') {
@@ -86,7 +92,7 @@ export function Breadcrumb(props: BreadcrumbProps) {
     let breadcrumbMapped = useMemo(()=>{
         console.debug("Shared contact: %O, breadcrumb: %O", sharedContact, breadcrumb);
         if(!sharedContact?.nom_usager || !breadcrumb) return <></>;
-        let lastIdx = breadcrumb.length - 1;
+        let lastIdx = breadcrumb.length - 2;
         return breadcrumb.filter(item=>item).map((item, idx)=>{
             if(idx === lastIdx) {
                 return (
@@ -105,7 +111,7 @@ export function Breadcrumb(props: BreadcrumbProps) {
         })
     }, [sharedContact, breadcrumb, onClickHandler]);
 
-    if(!sharedContact) return <></>;  // Loading
+    if(!sharedContact) return <p className='text-sm'>Loading...</p>;  // Loading
 
     return (
         <nav aria-label='breadcrumb' className='w-max'>
