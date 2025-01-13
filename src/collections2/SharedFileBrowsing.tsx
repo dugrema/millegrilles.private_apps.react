@@ -19,7 +19,6 @@ function SharedFileBrowsing() {
     let currentDirectory = useUserBrowsingStore(state=>state.sharedCurrentDirectory);
 
     let cuuid = useMemo(()=>{
-        console.debug("Shared collection: %O, tuuid: %O", sharedCollection, tuuid);
         if(tuuid) return tuuid;
         return sharedCollection?.tuuid;  // Root for this shared collection
     }, [tuuid, sharedCollection]);
@@ -90,7 +89,6 @@ export function Breadcrumb(props: BreadcrumbProps) {
     }, [navigate, contactId])
 
     let breadcrumbMapped = useMemo(()=>{
-        console.debug("Shared contact: %O, breadcrumb: %O", sharedContact, breadcrumb);
         if(!sharedContact?.nom_usager || !breadcrumb) return <></>;
         let lastIdx = breadcrumb.length - 2;
         return breadcrumb.filter(item=>item).map((item, idx)=>{
@@ -203,21 +201,15 @@ async function synchronizeDirectory(
 
     // Load folder from IDB (if known)
     let {directory, list, breadcrumb} = await workers.directory.loadDirectory(userId, tuuid);
-    console.debug("Loaded directory: %O, list: %O, breadcrumb: %O", directory, list, breadcrumb);
     if(list) {
         let storeFiles = filesIdbToBrowsing(list);
         updateCurrentDirectory(storeFiles);
     }
     if(breadcrumb) {
-        console.debug("Map breadcrumb: ", breadcrumb);
-
         // Trucate breadcrumb up to the shared collection tuuid
         let idxTruncate = breadcrumb.map(item=>item.tuuid).indexOf(sharedCollection.tuuid);
         let truncatedBreadcrumb = idxTruncate>0?breadcrumb.slice(idxTruncate):breadcrumb;
-        console.debug("Idx truncate: %d, truncatedBreadcrumb: %O", idxTruncate, truncatedBreadcrumb);
-
         let breadcrumbBrowsing = filesIdbToBrowsing(truncatedBreadcrumb);
-        console.debug("Breadcrumb browsing ", breadcrumbBrowsing);
         setBreadcrumb(breadcrumbBrowsing);
     }
     let syncDate = directory?.lastCompleteSyncSec || null;
@@ -228,7 +220,6 @@ async function synchronizeDirectory(
     let lastCompleteSyncSec = null as number | null;
     while(!complete) {
         if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 1`)
-        console.debug("Sync tuuid %s skip %d", tuuid, skip);
         let response = await workers.connection.syncDirectory(tuuid, skip, syncDate, {contactId: sharedCollection.contact_id});
 
         if(skip === 0) {
@@ -243,7 +234,6 @@ async function synchronizeDirectory(
         // console.debug("Directory loaded: %O", response);
         if(!response.ok) throw new Error(`Error during sync: ${response.err}`);
         complete = response.complete;
-        console.debug("Response: ", response);
         
         if(response.stats) {
             // Update store information with new directory stats
@@ -260,17 +250,14 @@ async function synchronizeDirectory(
             setBreadcrumb(null);
         } else if(response.breadcrumb) {
             let breadcrumb = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.breadcrumb, response.keys, {shared: true});
-            console.debug("Breadcrumb", breadcrumb);
             let currentDirIdb = breadcrumb.filter(item=>item.tuuid === tuuid).pop();
 
             let storeFiles = filesIdbToBrowsing(breadcrumb);
-            console.debug("Storefiles ", storeFiles)
 
             let breadcrumbByTuuid = {} as {[tuuid: string]: TuuidsBrowsingStoreRow};
             for(let dir of storeFiles) {
                 breadcrumbByTuuid[dir.tuuid] = dir;
             }
-            console.debug("breadcrumbByTuuid ", breadcrumbByTuuid);
 
             // Create breadcrumb in reverse order
             let orderedBreadcrumb = [breadcrumbByTuuid[tuuid]];
@@ -292,12 +279,10 @@ async function synchronizeDirectory(
 
             // Process and save to IDB
             let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys);
-            console.debug("Files ", files);
 
             if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 2`)
             // Save files in store
             let storeFiles = filesIdbToBrowsing(files);
-            console.debug("StoreFiles: ", storeFiles);
             updateCurrentDirectory(storeFiles);
         } else if(response.keys) {
             console.warn("Keys received with no files");

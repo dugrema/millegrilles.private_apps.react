@@ -33,7 +33,6 @@ function SyncSharedContacts() {
             let contacts = await workers.connection.getCollections2Contacts();
             // Shared with this account
             let sharedContactsWithUser = await workers.connection.getCollections2SharedContactsWithUser();
-            console.debug("Contacts: %O, shared with: %O", contacts, sharedContactsWithUser);
             setSharedWithUser({
                 sharedCollections: sharedContactsWithUser.partages || null, 
                 users: sharedContactsWithUser.usagers || null

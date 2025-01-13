@@ -1,9 +1,10 @@
 import { MouseEvent, useCallback, useEffect, useMemo } from "react";
 import useUserBrowsingStore, { Collection2SharedWithUser, filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { Collections2SharedContactsUser } from "../workers/connection.worker";
+import FilelistPane from "./FilelistPane";
 
 function SharedUsers() {
 
@@ -22,9 +23,12 @@ function UserList() {
         if(!sharedWithUser?.users) return <></>;
         return sharedWithUser.users.map(item=>{
             return (
-                <div key={item.user_id}>
-                    <Link to={'/apps/collections2/c/' + item.user_id}>{item.nom_usager}</Link>
-                </div>
+                <li key={item.user_id}>
+                    <Link to={'/apps/collections2/c/' + item.user_id}
+                        className='underline font-bold'>
+                            {item.nom_usager}
+                    </Link>
+                </li>
             )
         });
     }, [sharedWithUser]);
@@ -36,14 +40,17 @@ function UserList() {
     return (
         <section>
             <Breadcrumb />
-            <h1>Users sharing collections with you</h1>
-            {userElems}
+            <h1 className='pt-2 pb-2'>Users sharing collections with you</h1>
+            <ol>
+                {userElems}
+            </ol>
         </section>
     )
 }
 
 function SharedFromUser(props: {userId: string}) {
 
+    let navigate = useNavigate();
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
@@ -53,22 +60,12 @@ function SharedFromUser(props: {userId: string}) {
     let updateSharedCurrentDirectory = useUserBrowsingStore(state=>state.updateSharedCurrentDirectory);
     let sharedCurrentDirectory = useUserBrowsingStore(state=>state.sharedCurrentDirectory);
     
-    let collectionsElem = useMemo(()=>{
-        if(!sharedWithUser?.sharedCollections || !sharedCurrentDirectory) return <></>;
+    let sharedCollections = useMemo(()=>{
+        if(!sharedWithUser?.sharedCollections || !sharedCurrentDirectory) return null;
         return sharedWithUser.sharedCollections.filter(item=>item.user_id === userId).map(item=>{
-            let name = item.tuuid;
-            if(sharedCurrentDirectory) {
-                let info = sharedCurrentDirectory[item.tuuid];
-                if(info) {
-                    name = info.nom;
-                }
-            }
-            return (
-                <div key={item.tuuid}>
-                    <Link to={`/apps/collections2/c/${item.contact_id}/b/${item.tuuid}`}>{name}</Link>
-                </div>
-            )
-        });
+            if(!sharedCurrentDirectory) throw new Error('sharedCurrentDirectory not initialized');
+            return sharedCurrentDirectory[item.tuuid];
+        }).filter(item=>item);
     }, [userId, sharedWithUser, sharedCurrentDirectory]);
 
     let sharedContact = useMemo(()=>{
@@ -78,6 +75,15 @@ function SharedFromUser(props: {userId: string}) {
         };
         return sharedWithUser.users.filter(item=>item.user_id === userId).pop();
     }, [userId, sharedWithUser]);
+
+    let onClickRowHandler = useCallback((tuuid: string)=>{
+        if(sharedWithUser?.sharedCollections) {
+            let collection = sharedWithUser.sharedCollections.filter(item=>item.tuuid === tuuid && item.user_id == userId).pop();
+            if(collection) {
+                navigate(`/apps/collections2/c/${collection.contact_id}/b/${tuuid}`);
+            }
+        }
+    }, [navigate, userId, sharedWithUser]);
 
     useEffect(()=>{
         setSharedContact(sharedContact || null);
@@ -93,7 +99,10 @@ function SharedFromUser(props: {userId: string}) {
     return (
         <>
             <Breadcrumb sharedContact={sharedContact} />
-            {collectionsElem}
+
+            <section className='pt-3'>
+                <FilelistPane files={sharedCollections} onClickRow={onClickRowHandler} />
+            </section>
         </>
     )
 }
@@ -107,7 +116,6 @@ async function synchronizeSharedCollections(workers: AppWorkers, userId: string,
 
     let tuuids = sharedWithUser.sharedCollections.map(item=>item.tuuid);
     let sharedCollections = await workers.connection.getFilesByTuuid(tuuids, {shared: true});
-    console.debug("Shared collections: %O", sharedCollections);
     
     if(sharedCollections.files) {
         let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, sharedCollections.files, sharedCollections.keys);
