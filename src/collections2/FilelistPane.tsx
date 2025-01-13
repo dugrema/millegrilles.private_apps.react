@@ -67,7 +67,7 @@ function ListView(props: FileListPaneProps) {
 }
 
 function ThumbnailView(props: FileListPaneProps) {
-    let { files, sortKey, sortOrder, dateColumn, onClickRow } = props;
+    let { files, sortKey, sortOrder, onClickRow } = props;
 
     let mappedFiles = useMemo(()=>{
         if(!files) return <></>;
@@ -89,7 +89,7 @@ function ThumbnailView(props: FileListPaneProps) {
         })
 
         return mappedFiles;
-    }, [files, sortKey, dateColumn, onClickRow, sortOrder]);
+    }, [files, sortKey, onClickRow, sortOrder]);
 
     return (
         <>
@@ -191,7 +191,7 @@ function FileRow(props: FileItem) {
                 {thumbnail?
                     <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
                 :
-                    <img src={defaultIcon} className='w-4 mr-1 ml-1 inline-block'/>
+                    <img src={defaultIcon} className='w-4 mr-1 ml-1 inline-block' alt='File icon' />
                 }
                 
                 <span className='pl-3'>{value.nom}</span>
@@ -213,13 +213,13 @@ function ThumbnailItem(props: FileItem) {
     
     let defaultIcon = useMemo(()=>getIcon(value.type_node, value.mimetype), [value]);
     let [thumbnail, setThumbnail] = useState('');
-    let [fileIcon, setFileIcon] = useState('');
+    // let [fileIcon, setFileIcon] = useState('');
 
     let imgSrc = useMemo(()=>{
         // if(fileIcon) return ImageIcon;
         if(thumbnail) return thumbnail;
         return defaultIcon;
-    }, [defaultIcon, thumbnail, fileIcon]);
+    }, [defaultIcon, thumbnail]);
 
     let onclickHandler = useCallback(()=>{
         let tuuid = value.tuuid;
