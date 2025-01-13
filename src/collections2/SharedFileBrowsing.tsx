@@ -44,11 +44,11 @@ function SharedFileBrowsing() {
         } else {
             navigate(`/apps/collections2/c/${contactId}/b/${tuuid}`);
         }
-    }, [contactId]);
+    }, [contactId, navigate]);
 
     return (
         <>
-            <Breadcrumb />
+            <Breadcrumb contactId={contactId} />
 
             <section className='pt-2'>
                 <ButtonBar disableEdit={true} />
@@ -66,26 +66,28 @@ function SharedFileBrowsing() {
 export default SharedFileBrowsing;
 
 type BreadcrumbProps = {
-    onClick?: (tuuid: string | null) => void,
+    contactId?: string,
 }
 
 export function Breadcrumb(props: BreadcrumbProps) {
 
-    let { onClick } = props;
+    let {contactId} = props;
 
     let sharedContact = useUserBrowsingStore(state=>state.sharedContact);
     let breadcrumb = useUserBrowsingStore(state=>state.sharedBreadcrumb);
+    let navigate = useNavigate();
 
     let onClickHandler = useCallback((e: MouseEvent<HTMLLIElement | HTMLParagraphElement>)=>{
-        if(!onClick) return;
+        if(!contactId) throw new Error("Contact_id is null");
         let value = e.currentTarget.dataset.tuuid || null;
-        onClick(value);
-    }, [onClick])
+        navigate(`/apps/collections2/c/${contactId}/b/${value}`)
+    }, [navigate, contactId])
 
     let breadcrumbMapped = useMemo(()=>{
+        console.debug("Shared contact: %O, breadcrumb: %O", sharedContact, breadcrumb);
         if(!sharedContact?.nom_usager || !breadcrumb) return <></>;
         let lastIdx = breadcrumb.length - 1;
-        return breadcrumb.map((item, idx)=>{
+        return breadcrumb.filter(item=>item).map((item, idx)=>{
             if(idx === lastIdx) {
                 return (
                     <li key={item.tuuid} className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 font-bold pr-2'>
@@ -95,51 +97,27 @@ export function Breadcrumb(props: BreadcrumbProps) {
             } else {
                 return (
                     <li key={item.tuuid} className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-                        {onClick?
-                            <p onClick={onClickHandler} data-tuuid={item.tuuid}>{item.nom}</p>
-                        :
-                            <Link to={'/apps/collections2/c/' + sharedContact?.user_id}>{sharedContact?.nom_usager}</Link>
-                        }
-                        
+                        <p onClick={onClickHandler} data-tuuid={item.tuuid}>{item.nom}</p>
                         <span className="pointer-events-none ml-2 text-slate-800">/</span>
                     </li>
                 )
             }
         })
-    }, [sharedContact, breadcrumb, onClick, onClickHandler]);
+    }, [sharedContact, breadcrumb, onClickHandler]);
 
-    if(!sharedContact) return (
-        <nav aria-label='breadcrumb' className='w-max'>
-            <ol className='flex w-full flex-wrap items-center'>
-                <li className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 pr-2'>
-                    Shares
-                </li>
-            </ol>
-        </nav>
-    );
+    if(!sharedContact) return <></>;  // Loading
 
     return (
         <nav aria-label='breadcrumb' className='w-max'>
             <ol className='flex w-full flex-wrap items-center'>
-                <li className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 pr-2'>
+                <li className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
                     <Link to='/apps/collections2/c'>Shares</Link>
+                    <span className="pointer-events-none ml-2 text-slate-300">&gt;</span>
                 </li>
-                {sharedContact?
-                    breadcrumb?
-                        <li className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-                            {onClick?
-                                <p onClick={onClickHandler}>Users</p>
-                            :
-                                <Link to='/apps/collections2/c'>Users</Link>
-                            }
-                            
-                            <span className="pointer-events-none ml-2 text-slate-400 font-bold">&gt;</span>
-                        </li>
-                    :
-                        <li className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 pr-2'>
-                            {sharedContact.nom_usager}
-                        </li>
-                :<></>}
+                <li className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
+                    <Link to={`/apps/collections2/c/${sharedContact.user_id}`}>{sharedContact.nom_usager}</Link>
+                    <span className="pointer-events-none ml-2 text-slate-400 font-bold">&gt;</span>
+                </li>
                 {breadcrumbMapped}
             </ol>
         </nav>
@@ -225,8 +203,15 @@ async function synchronizeDirectory(
         updateCurrentDirectory(storeFiles);
     }
     if(breadcrumb) {
-        // console.debug("Map breadcrumb: ", breadcrumb);
-        let breadcrumbBrowsing = filesIdbToBrowsing(breadcrumb);
+        console.debug("Map breadcrumb: ", breadcrumb);
+
+        // Trucate breadcrumb up to the shared collection tuuid
+        let idxTruncate = breadcrumb.map(item=>item.tuuid).indexOf(sharedCollection.tuuid);
+        let truncatedBreadcrumb = idxTruncate>0?breadcrumb.slice(idxTruncate):breadcrumb;
+        console.debug("Idx truncate: %d, truncatedBreadcrumb: %O", idxTruncate, truncatedBreadcrumb);
+
+        let breadcrumbBrowsing = filesIdbToBrowsing(truncatedBreadcrumb);
+        console.debug("Breadcrumb browsing ", breadcrumbBrowsing);
         setBreadcrumb(breadcrumbBrowsing);
     }
     let syncDate = directory?.lastCompleteSyncSec || null;
@@ -254,29 +239,33 @@ async function synchronizeDirectory(
         complete = response.complete;
         console.debug("Response: ", response);
         
-        // if(response.stats) {
-        //     // Update store information with new directory stats
-        //     setDirectoryStatistics(response.stats);
-        // }
+        if(response.stats) {
+            // Update store information with new directory stats
+            // setDirectoryStatistics(response.stats);
+        }
 
-        // if(response.deleted_tuuids) {
-        //     console.debug("Delete files %O", response.deleted_tuuids);
-        //     await workers.directory.deleteFiles(response.deleted_tuuids);
-        //     deleteFilesDirectory(response.deleted_tuuids);
-        // }
+        if(response.deleted_tuuids) {
+            console.debug("Delete files %O", response.deleted_tuuids);
+            await workers.directory.deleteFiles(response.deleted_tuuids);
+            // deleteFilesDirectory(response.deleted_tuuids);
+        }
 
         if(!tuuid) {
             setBreadcrumb(null);
         } else if(response.breadcrumb) {
-            let breadcrumb = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.breadcrumb, response.keys);
+            let breadcrumb = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.breadcrumb, response.keys, {shared: true});
+            console.debug("Breadcrumb", breadcrumb);
             let currentDirIdb = breadcrumb.filter(item=>item.tuuid === tuuid).pop();
 
             let storeFiles = filesIdbToBrowsing(breadcrumb);
+            console.debug("Storefiles ", storeFiles)
 
             let breadcrumbByTuuid = {} as {[tuuid: string]: TuuidsBrowsingStoreRow};
             for(let dir of storeFiles) {
                 breadcrumbByTuuid[dir.tuuid] = dir;
             }
+            console.debug("breadcrumbByTuuid ", breadcrumbByTuuid);
+
             // Create breadcrumb in reverse order
             let orderedBreadcrumb = [breadcrumbByTuuid[tuuid]];
             if(currentDirIdb?.path_cuuids) {

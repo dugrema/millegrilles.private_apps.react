@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo } from "react";
 import useUserBrowsingStore, { Collection2SharedWithUser, filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Link, useParams } from "react-router-dom";
-import { Breadcrumb } from "./SharedFileBrowsing";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
+import { Collections2SharedContactsUser } from "../workers/connection.worker";
 
 function SharedUsers() {
 
@@ -92,7 +92,7 @@ function SharedFromUser(props: {userId: string}) {
 
     return (
         <>
-            <Breadcrumb />
+            <Breadcrumb sharedContact={sharedContact} />
             {collectionsElem}
         </>
     )
@@ -115,4 +115,37 @@ async function synchronizeSharedCollections(workers: AppWorkers, userId: string,
         let storeFiles = filesIdbToBrowsing(files);
         updateSharedCurrentDirectory(storeFiles);
     }
+}
+
+type BreadcrumbProps = {
+    sharedContact?: Collections2SharedContactsUser
+}
+
+export function Breadcrumb(props: BreadcrumbProps) {
+
+    let { sharedContact } = props;
+
+    if(!sharedContact) return (
+        <nav aria-label='breadcrumb' className='w-max'>
+            <ol className='flex w-full flex-wrap items-center'>
+                <li className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 pr-2'>
+                    Shares
+                </li>
+            </ol>
+        </nav>
+    );
+
+    return (
+        <nav aria-label='breadcrumb' className='w-max'>
+            <ol className='flex w-full flex-wrap items-center'>
+                <li className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
+                    <Link to='/apps/collections2/c'>Shares</Link>
+                    <span className="pointer-events-none ml-2 text-slate-300">&gt;</span>
+                </li>
+                <li className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 pr-2'>
+                    {sharedContact.nom_usager}
+                </li>
+            </ol>
+        </nav>
+    );
 }

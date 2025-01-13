@@ -6,6 +6,7 @@ import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb
 
 type ProcessDirectoryChunkOptions = {
     noidb?: boolean,
+    shared?: boolean,
 };
 
 export class DirectoryWorker {
@@ -22,7 +23,11 @@ export class DirectoryWorker {
 
         // Map files to IDB format
         let mappedFiles = files.map(item=>{
-            let parent = item.path_cuuids?item.path_cuuids[0]:userId;
+            // Set the parent for the IDB directory index. When shared, set no parent if not in a path (do not index to root).
+            let parent = item.path_cuuids?item.path_cuuids[0]:null;
+            if(!opts?.shared) {
+                parent = parent || userId;
+            }
 
             let fileData = {
                 fuuids_versions: item.fuuids_versions,

@@ -175,7 +175,7 @@ export async function loadDirectory(userId: string, tuuid: string | null): Promi
         store = db.transaction(STORE_TUUIDS, 'readonly').store;
         for(let cuuid of directoryInfo.path_cuuids) {
             let dirIdb = await store.get(cuuid);
-            if(!dirIdb) break;  // Incomplete breadcrumb, skip
+            if(!dirIdb) break;  // Incomplete breadcrumb / truncated (shared)
             breadcrumbInner.push(dirIdb);
         }
         // Put back in proper order

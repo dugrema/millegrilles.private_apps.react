@@ -37,8 +37,10 @@ export default function HeaderMenu(props: MenuProps) {
             return 'browse';
         } else if(locationPath.startsWith('/apps/collections2/s')) {
             return 'search';
-        } if(locationPath.startsWith('/apps/collections2/d')) {
+        } else if(locationPath.startsWith('/apps/collections2/d')) {
             return 'deleted';
+        } else if(locationPath.startsWith('/apps/collections2/c')) {
+            return 'share';
         }
         return null;
     }, [location]);
