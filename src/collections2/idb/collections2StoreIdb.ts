@@ -150,6 +150,12 @@ export async function updateFilesIdb(tuuids: TuuidsIdbStoreRowType[]) {
     }
 }
 
+export async function loadTuuid(tuuid: string): Promise<TuuidsIdbStoreRowType|null> {
+    const db = await openDB();
+    let store = db.transaction(STORE_TUUIDS, 'readonly').store;
+    return await store.get(tuuid);
+}
+
 export async function loadDirectory(userId: string, tuuid: string | null): Promise<LoadDirectoryResultType> {
     const db = await openDB();
     let store = db.transaction(STORE_TUUIDS, 'readonly').store;

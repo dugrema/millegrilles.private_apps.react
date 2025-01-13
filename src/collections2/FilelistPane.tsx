@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
+import { useVisibility } from 'reactjs-visibility';
 
 import FolderIcon from '../resources/icons/folder-svgrepo-com-duotoneicon.svg';
 import FileIcon from '../resources/icons/file-svgrepo-com.svg';
 import PdfIcon from '../resources/icons/document-filled-svgrepo-com.svg';
 import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
 import VideoIcon from '../resources/icons/video-file-svgrepo-com.svg';
+import useWorkers, { AppWorkers } from "../workers/workers";
+import { loadTuuid } from "./idb/collections2StoreIdb";
+import useConnectionStore from "../connectionStore";
 
 type FileListPaneProps = {
     files: TuuidsBrowsingStoreRow[] | null,
@@ -210,10 +214,13 @@ function FileRow(props: FileItem) {
 function ThumbnailItem(props: FileItem) {
 
     let {value, onClick} = props;
-    
+    let { ref, visible } = useVisibility({});
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
     let defaultIcon = useMemo(()=>getIcon(value.type_node, value.mimetype), [value]);
     let [thumbnail, setThumbnail] = useState('');
-    // let [fileIcon, setFileIcon] = useState('');
+    let [smallImage, setSmallImage] = useState('');
 
     let imgSrc = useMemo(()=>{
         // if(fileIcon) return ImageIcon;
@@ -226,6 +233,50 @@ function ThumbnailItem(props: FileItem) {
         let typeNode = value.type_node;
         onClick(tuuid, typeNode)
     }, [value, onClick]);
+
+    useEffect(()=>{
+        if(!workers || !ready) return;  // Not ready
+        if(smallImage || !visible) return;  // Nothing to do
+        // console.debug("Tuuid %s visible %s", value.tuuid, visible);
+        // workers.directory.loadSmallImage(workers.connection, workers.encryption, value.tuuid)
+        Promise.resolve()
+            .then(async ()=>{
+                if(!workers) throw new Error('workers not initialized');
+                let tuuid = value.tuuid;
+                let file = await loadTuuid(value.tuuid);
+                console.debug("Loaded file %s from IDB: ", tuuid, file);
+                let fileData = file?.fileData
+                let images = file?.fileData?.images;
+                if(fileData && images && images.small) {
+                    let smallImageInfo = images.small;
+                    console.debug("Loaded small image info: %O", smallImageInfo);
+            
+                    // let fuuid = smallImageInfo.hachage;
+                    let fuuid = fileData.fuuids_versions?fileData.fuuids_versions[0]:null;
+                    if(fuuid) {
+                        let cleId = smallImageInfo.cle_id || fuuid;
+                        console.debug("Get cleId: ", cleId)
+                        let response = await workers.connection.getFilesByTuuid([tuuid]);
+                        console.debug("Response file by tuuid", response);
+
+                        // Get file from filehost
+                        //TODO
+                    }
+                }
+                setSmallImage('loaded');  // TODO - put blob URL
+            })
+            .catch(err=>console.error("Error loading small image", err));
+    }, [workers, value, visible, smallImage, setSmallImage]);
+
+    useEffect(()=>{
+        // Cleanup small image URL
+        if(smallImage) {
+            return () => {
+                // URL.revokeObjectURL(smallImage);
+                // setSmallImage('');
+            }
+        }
+    }, [smallImage]);
 
     useEffect(()=>{
         if(!value || !value.thumbnail) return;
@@ -241,7 +292,7 @@ function ThumbnailItem(props: FileItem) {
     }, [value, setThumbnail]);
 
     return (
-        <button className="inline-block m-1 border relative" onClick={onclickHandler} value={value.tuuid}>
+        <button ref={ref} className="inline-block m-1 border relative" onClick={onclickHandler} value={value.tuuid}>
             <p className='text-sm break-all font-bold absolute align-center bottom-0 bg-slate-800 w-full bg-opacity-70 px-1 pb-1'>{value.nom}</p>
             <img src={imgSrc} alt={'File ' + value.nom} width={200} height={200} className='opacity-100' />
         </button>
@@ -259,3 +310,4 @@ function getIcon(typeNode: string, mimetype?: string | null) {
         return FolderIcon;
     }
 }
+
