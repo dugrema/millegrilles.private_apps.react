@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { TuuidsIdbStoreRowType } from './idb/collections2StoreIdb';
-import { Collection2DirectoryStats, Collection2SearchResultsDoc, Collections2SearchResults, Collections2SharedContactsSharedCollection, Collections2SharedContactsUser } from '../workers/connection.worker';
+import { Collection2DirectoryStats, Collections2SearchResults, Collections2SharedContactsSharedCollection, Collections2SharedContactsUser } from '../workers/connection.worker';
 // import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType } from './idb/notepadStoreIdb';
 
 export type TuuidsBrowsingStoreRow = {
@@ -29,6 +29,12 @@ export type Collection2SearchStore = {
 export type Collection2SharedWithUser = {
     sharedCollections: Collections2SharedContactsSharedCollection[] | null,
     users: Collections2SharedContactsUser[] | null,
+}
+
+export enum ViewMode {
+    List = 1,
+    Thumbnails,
+    Carousel,
 }
 
 export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsingStoreRow[] {
@@ -64,6 +70,7 @@ interface UserBrowsingStoreState {
     currentDirectory: {[tuuid: string]: TuuidsBrowsingStoreRow} | null,
     usernameBreadcrumb: string | null,
     breadcrumb: TuuidsBrowsingStoreRow[] | null,
+    viewMode: ViewMode,
     directoryStatistics: Collection2DirectoryStats[] | null,
     searchResults: Collection2SearchStore | null,
     searchListing: {[tuuid: string]: TuuidsBrowsingStoreSearchRow} | null,
@@ -80,6 +87,7 @@ interface UserBrowsingStoreState {
     setUserId: (userId: string) => void,
     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
     setBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
+    setViewMode: (viewMode: ViewMode) => void,
     setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
     deleteFilesDirectory: (files: string[]) => void,
     setSearchResults: (searchResults: Collection2SearchStore | null) => void,
@@ -103,6 +111,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             currentDirectory: null,
             usernameBreadcrumb: null,
             breadcrumb: null,
+            viewMode: ViewMode.List,
             directoryStatistics: null,
             searchResults: null,
             searchListing: null,
@@ -140,6 +149,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             }),
 
             setBreadcrumb: (username, breadcrumb) => set(()=>({usernameBreadcrumb: username, breadcrumb})),
+            setViewMode: (viewMode) => set(()=>({viewMode})),
             setDirectoryStatistics: (directoryStatistics) => set(()=>({directoryStatistics})),
             
             deleteFilesDirectory: (files: string[]) => set((state)=>{

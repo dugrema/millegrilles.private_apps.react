@@ -31,7 +31,7 @@ function SyncSharedContacts() {
         Promise.resolve().then(async () => {
             if(!workers || !ready) throw new Error("Workers not initialized");
             // Contacts for this account
-            let contacts = await workers.connection.getCollections2Contacts();
+            //let contacts = await workers.connection.getCollections2Contacts();
             // Shared with this account
             let sharedContactsWithUser = await workers.connection.getCollections2SharedContactsWithUser();
             setSharedWithUser({
@@ -81,7 +81,7 @@ function BackToDirectory() {
                 navigate(`/apps/collections2/c/${userId}`)
             }
         }
-    }, [contactId, userId, tuuid, sharedContact, sharedCuuid, sharedCollection, latch, setLatch]);
+    }, [navigate, contactId, userId, tuuid, sharedContact, sharedCuuid, sharedCollection, latch, setLatch]);
 
     return <></>;
 }

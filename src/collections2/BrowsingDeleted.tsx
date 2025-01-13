@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import useConnectionStore from "../connectionStore";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
-import { Breadcrumb, ButtonBar } from "./BrowsingElements";
+import { Breadcrumb } from "./BrowsingElements";
 import FilelistPane from "./FilelistPane";
 
 function BrowsingDeleted() {

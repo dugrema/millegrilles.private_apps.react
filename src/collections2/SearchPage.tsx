@@ -48,7 +48,7 @@ function SearchPage() {
         } else {
             if(!workers || !ready) throw new Error("workers not initialized");
             if(!userId) throw new Error("User not initialized");
-            let result = await runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing);
+            await runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing);
             setSearchParams(params=>{params.set('search', searchInput); return params;});
         }
     }, [workers, ready, username, userId, searchInput, setSearchResults, setSearchParams, updateSearchListing]);
@@ -179,7 +179,7 @@ async function runSearchQuery(
 
 function SearchStatistics() {
 
-    let [searchParams, _setSearchParams] = useSearchParams();
+    let [searchParams, ] = useSearchParams();
     let query = useMemo(()=>{
         if(!searchParams) return null;
         return searchParams.get('search');
