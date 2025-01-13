@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
 import useUserBrowsingStore from "./userBrowsingStore";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate, useParams } from "react-router-dom";
 
 function SharedContacts() {
 
@@ -10,6 +10,7 @@ function SharedContacts() {
         <>
             <Outlet />
             <SyncSharedContacts />
+            <BackToDirectory />
         </>
     );
 }
@@ -46,6 +47,41 @@ function SyncSharedContacts() {
         }
 
     }, [workers, ready, setSharedWithUser]);
+
+    return <></>;
+}
+
+/** Puts user back to last browsing position */
+function BackToDirectory() {
+    let {contactId, userId, tuuid} = useParams();
+
+    let navigate = useNavigate();
+
+    let [latch, setLatch] = useState(false);
+
+    let sharedContact = useUserBrowsingStore(state=>state.sharedContact);
+    let sharedCollection = useUserBrowsingStore(state=>state.sharedCollection);
+    let sharedCuuid = useUserBrowsingStore(state=>state.sharedCuuid);
+
+    useEffect(()=>{
+        if(latch) return;  // Already loaded once
+        setLatch(true);
+        if(contactId || userId || tuuid) return;  // Nothing to do
+        if(sharedContact) {
+            if(sharedCollection) {
+                if(sharedCuuid) {
+                    // Go back to directory
+                    navigate(`/apps/collections2/c/${sharedCollection.contact_id}/b/${sharedCuuid}`)
+                } else {
+                    navigate(`/apps/collections2/c/${sharedCollection.contact_id}/b/${sharedCollection.tuuid}`)
+                }
+            } else {
+                // Go back to user
+                let userId = sharedContact.user_id;
+                navigate(`/apps/collections2/c/${userId}`)
+            }
+        }
+    }, [contactId, userId, tuuid, sharedContact, sharedCuuid, sharedCollection, latch, setLatch]);
 
     return <></>;
 }

@@ -50,14 +50,12 @@ function BrowsingDeleted() {
             throw new Error('todo')
         } else {
             if(tuuid) {
-                console.debug("Tuuid %s", tuuid);
                 if(!breadcrumbTuuids) {
                     setBreadcrumbTuuids([tuuid]);
                 } else {
                     setBreadcrumbTuuids([...breadcrumbTuuids, tuuid]);
                 }
             } else {
-                console.debug("Return to top");
                 setBreadcrumbTuuids(null);
             }
         }
@@ -145,7 +143,6 @@ async function synchronizeDirectory(
         if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 1`)
         // console.debug("Sync tuuid %s skip %d", tuuid, skip);
         let response = await workers.connection.syncDeletedFiles(skip, tuuid);
-        console.debug("Response sync deleted files", response);
 
         // // console.debug("Directory loaded: %O", response);
         if(!response.ok) throw new Error(`Error during sync: ${response.err}`);

@@ -10,6 +10,15 @@ function SharedUsers() {
 
     let {userId} = useParams();
 
+    let setSharedCuuid = useUserBrowsingStore(state=>state.setSharedCuuid);
+    let setSharedCollection = useUserBrowsingStore(state=>state.setSharedCollection);
+    
+    useEffect(()=>{
+        // Reset browsing values
+        setSharedCuuid(null);
+        setSharedCollection(null);
+    }, [setSharedCuuid, setSharedCollection]);
+
     if(userId) return <SharedFromUser userId={userId} />;
     else return <UserList />;
 }

@@ -24,7 +24,6 @@ function SearchPage() {
     let [searchParams, setSearchParams] = useSearchParams();
     let query = useMemo(()=>{
         if(!searchParams) return null;
-        console.debug("Search params", searchParams);
         return searchParams.get('search');
     }, [searchParams]);
 
@@ -50,7 +49,6 @@ function SearchPage() {
             if(!workers || !ready) throw new Error("workers not initialized");
             if(!userId) throw new Error("User not initialized");
             let result = await runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing);
-            console.debug("Search result ", result);
             setSearchParams(params=>{params.set('search', searchInput); return params;});
         }
     }, [workers, ready, username, userId, searchInput, setSearchResults, setSearchParams, updateSearchListing]);
@@ -75,7 +73,6 @@ function SearchPage() {
                 return params;
             });
         } else if(query && !searchResults) {
-            console.debug("Run inital query");
             // Need to run the initial query
             if(!workers || !ready) throw new Error("workers not initialized");
             if(!userId) throw new Error("User not initialized");
@@ -88,7 +85,6 @@ function SearchPage() {
     }, [workers, ready, userId, searchInput, searchResults, setSearchInput, pageLoaded, setPageLoaded, query, setSearchParams, setSearchResults, updateSearchListing, username]);
 
     let onClickRow = useCallback((tuuid: string, typeNode: string)=>{
-        console.debug("Click tuuid %s, typeNode %s", tuuid, typeNode);
         if(typeNode === 'Fichier') {
             console.warn("Click Fichier - todo");
         } else {
@@ -158,7 +154,6 @@ async function runSearchQuery(
 
         // Save files in store
         let storeFiles = filesIdbToBrowsing(files);
-        console.debug("Search files received", storeFiles);
         let storeFilesByTuuid = storeFiles.reduce((acc, item)=>{
             acc[item.tuuid] = item;
             return acc;
@@ -174,7 +169,6 @@ async function runSearchQuery(
                     sortedFiles.push({...item, ...file});
                 }
             }
-            console.debug("Sorted files: ", sortedFiles);
             updateSearchListing(sortedFiles);
         }
     } else if(searchResults.keys) {
@@ -188,7 +182,6 @@ function SearchStatistics() {
     let [searchParams, _setSearchParams] = useSearchParams();
     let query = useMemo(()=>{
         if(!searchParams) return null;
-        console.debug("Search params", searchParams);
         return searchParams.get('search');
     }, [searchParams]);
 
@@ -297,15 +290,12 @@ async function loadTuuidsToSearch(
 {
     // Load
     let response = await workers.connection.getFilesByTuuid(tuuids);
-    console.debug("Files by tuuid: %O", response);
-
     if(cancelledSignal()) return;  // Stop, search has changed
 
     let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files || [], response.keys);
 
     // Save files in store
     let storeFiles = filesIdbToBrowsing(files);
-    console.debug("Search files received", storeFiles);
     let storeFilesByTuuid = storeFiles.reduce((acc, item)=>{
         acc[item.tuuid] = item;
         return acc;
@@ -319,6 +309,5 @@ async function loadTuuidsToSearch(
             mappedFiles.push({...item, ...file});
         }
     }
-    console.debug("Mapped files: ", mappedFiles);
     updateSearchListing(mappedFiles);
 }
