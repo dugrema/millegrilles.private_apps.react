@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import useUserBrowsingStore from "./userBrowsingStore";
+import useUserBrowsingStore, { ViewMode } from "./userBrowsingStore";
 import { MouseEvent, useCallback, useMemo } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 
@@ -107,6 +107,14 @@ export function ButtonBar(props: ButtonBarProps) {
 
     let {disableStatistics, shared} = props;
 
+    let viewMode = useUserBrowsingStore(state=>state.viewMode);
+    let setViewMode = useUserBrowsingStore(state=>state.setViewMode);
+
+    let viewModeOnClick = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
+        let value = Number.parseInt(e.currentTarget.value) as ViewMode;
+        setViewMode(value);
+    }, [setViewMode]);
+
     return (
         <div className='grid grid-cols-2 md:grid-cols-3 pt-1'>
             <div className='col-span-2'>
@@ -115,18 +123,18 @@ export function ButtonBar(props: ButtonBarProps) {
                         <img src={InfoIcon} alt='Directory add' className='w-6 inline-block' />
                 </Link>
 
-                <Link to='/apps/collection2/test'
-                    className='varbtn px-2 mr-0 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                <button onClick={viewModeOnClick} value={ViewMode.List}
+                    className={'varbtn px-2 mr-0 py-2 hover:bg-slate-600 active:bg-slate-500 ' + (viewMode===ViewMode.List?'bg-slate-500':'bg-slate-700')}>
                         <img src={ListIcon} alt='List view' className='w-6 inline-block' />
-                </Link>
-                <Link to='/apps/collection2/test'
-                    className='varbtn mx-0 px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                </button>
+                <button onClick={viewModeOnClick} value={ViewMode.Thumbnails}
+                    className={'varbtn mx-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 ' + (viewMode===ViewMode.Thumbnails?'bg-slate-500':'bg-slate-700')}>
                         <img src={GridIcon} alt='Grid view' className='w-6 inline-block' />
-                </Link>
-                <Link to='/apps/collection2/test'
-                    className='varbtn ml-0 px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                </button>
+                <button onClick={viewModeOnClick} value={ViewMode.Carousel}
+                    className={'varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 ' + (viewMode===ViewMode.Carousel?'bg-slate-500':'bg-slate-700')}>
                         <img src={ImageIcon} alt='Carousel view' className='w-6 inline-block' />
-                </Link>
+                </button>
 
                 {props.disableEdit?
                 <></>    

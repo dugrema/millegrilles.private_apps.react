@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { TuuidsBrowsingStoreRow } from "./userBrowsingStore";
+import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 
 import FolderIcon from '../resources/icons/folder-svgrepo-com-duotoneicon.svg';
@@ -18,6 +18,17 @@ type FileListPaneProps = {
 
 function FilelistPane(props: FileListPaneProps) {
 
+    let viewMode = useUserBrowsingStore(state=>state.viewMode);
+
+    if(viewMode === ViewMode.Thumbnails) return <ThumbnailView {...props} />;
+    if(viewMode === ViewMode.Carousel) throw new Error('todo');
+
+    return <ListView {...props} />;
+}
+
+export default FilelistPane;
+
+function ListView(props: FileListPaneProps) {
     let { files, sortKey, sortOrder, dateColumn, onClickRow } = props;
 
     let mappedFiles = useMemo(()=>{
@@ -40,7 +51,7 @@ function FilelistPane(props: FileListPaneProps) {
         })
 
         return mappedFiles;
-    }, [files, sortKey, dateColumn, onClickRow, sortOrder])
+    }, [files, sortKey, dateColumn, onClickRow, sortOrder]);
 
     return (
         <>
@@ -50,6 +61,38 @@ function FilelistPane(props: FileListPaneProps) {
                 <p className='col-span-2 px-1'>Type</p>
                 <p className='col-span-2 px-1'>Date</p>
             </div>
+            {mappedFiles}
+        </>
+    );
+}
+
+function ThumbnailView(props: FileListPaneProps) {
+    let { files, sortKey, sortOrder, dateColumn, onClickRow } = props;
+
+    let mappedFiles = useMemo(()=>{
+        if(!files) return <></>;
+
+        let sortedFiles = [...files];
+        if(!sortKey || sortKey === 'name') {
+            sortedFiles.sort(sortByName)
+        } else if(sortKey === 'modification') {
+            sortedFiles.sort(sortByModification);
+        } else if(sortKey === 'size') {
+            sortedFiles.sort(sortBySize);
+        }
+        if(sortOrder && sortOrder < 0) {
+            sortedFiles = sortedFiles.reverse();
+        }
+
+        let mappedFiles = sortedFiles.map(item=>{
+            return <ThumbnailItem key={item.tuuid} value={item} onClick={onClickRow} />
+        })
+
+        return mappedFiles;
+    }, [files, sortKey, dateColumn, onClickRow, sortOrder]);
+
+    return (
+        <>
             {mappedFiles}
         </>
     );
@@ -100,9 +143,13 @@ function sortBySize(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
     return a.taille - b.taille;
 }
 
-export default FilelistPane;
+type FileItem = {
+    value: TuuidsBrowsingStoreRow, 
+    dateColumn?: string | null, 
+    onClick:(tuuid:string, typeNode:string)=>void
+};
 
-function FileRow(props: {value: TuuidsBrowsingStoreRow, dateColumn?: string | null, onClick:(tuuid:string, typeNode:string)=>void}) {
+function FileRow(props: FileItem) {
     
     let {value, dateColumn, onClick} = props;
     
@@ -120,20 +167,7 @@ function FileRow(props: {value: TuuidsBrowsingStoreRow, dateColumn?: string | nu
         let tuuid = value.tuuid;
         let typeNode = value.type_node;
         onClick(tuuid, typeNode)
-        // if(typeNode === 'Fichier') {
-        //     // Open file
-        //     throw new Error('todo');
-        // } else {
-        //     // Browse directory
-        //     if(!tuuid) {
-        //         // Back to top
-        //         navigate('/apps/collections2/b');
-        //     } else {
-        //         navigate('/apps/collections2/b/' + tuuid);
-        //     }
-        // }
     }, [value, onClick]);
-    // }, [navigate, value]);
 
     useEffect(()=>{
         if(!value || !value.thumbnail) return;
@@ -148,19 +182,7 @@ function FileRow(props: {value: TuuidsBrowsingStoreRow, dateColumn?: string | nu
         }
     }, [value]);
 
-    let defaultIcon = useMemo(()=>{
-        let typeNode = value.type_node;
-        if(typeNode === 'Fichier') {
-            let mimetype = value.mimetype;
-            if(!mimetype) return FileIcon;
-            else if(mimetype === 'application/pdf') return PdfIcon;
-            else if(mimetype.startsWith('image')) return ImageIcon;
-            else if(mimetype.startsWith('video')) return VideoIcon;
-            return FileIcon;
-        } else {
-            return FolderIcon;
-        }
-    }, [value]);
+    let defaultIcon = useMemo(()=>getIcon(value.type_node, value.mimetype), [value]);
 
     return (
         <div key={value.tuuid} onClick={onclickHandler}
@@ -183,4 +205,57 @@ function FileRow(props: {value: TuuidsBrowsingStoreRow, dateColumn?: string | nu
             </p>
         </div>
     )
+}
+
+function ThumbnailItem(props: FileItem) {
+
+    let {value, onClick} = props;
+    
+    let defaultIcon = useMemo(()=>getIcon(value.type_node, value.mimetype), [value]);
+    let [thumbnail, setThumbnail] = useState('');
+    let [fileIcon, setFileIcon] = useState('');
+
+    let imgSrc = useMemo(()=>{
+        // if(fileIcon) return ImageIcon;
+        if(thumbnail) return thumbnail;
+        return defaultIcon;
+    }, [defaultIcon, thumbnail, fileIcon]);
+
+    let onclickHandler = useCallback(()=>{
+        let tuuid = value.tuuid;
+        let typeNode = value.type_node;
+        onClick(tuuid, typeNode)
+    }, [value, onClick]);
+
+    useEffect(()=>{
+        if(!value || !value.thumbnail) return;
+
+        let objectUrl = URL.createObjectURL(value.thumbnail);
+        setThumbnail(objectUrl);
+
+        return () => {
+            // Cleanup
+            setThumbnail('');
+            URL.revokeObjectURL(objectUrl);
+        }
+    }, [value, setThumbnail]);
+
+    return (
+        <button className="inline-block m-1 border relative" onClick={onclickHandler} value={value.tuuid}>
+            <p className='text-sm break-all font-bold absolute align-center bottom-0 bg-slate-800 w-full bg-opacity-70 px-1 pb-1'>{value.nom}</p>
+            <img src={imgSrc} alt={'File ' + value.nom} width={200} height={200} className='opacity-100' />
+        </button>
+    );
+}
+
+function getIcon(typeNode: string, mimetype?: string | null) {
+    if(typeNode === 'Fichier') {
+        if(!mimetype) return FileIcon;
+        else if(mimetype === 'application/pdf') return PdfIcon;
+        else if(mimetype.startsWith('image')) return ImageIcon;
+        else if(mimetype.startsWith('video')) return VideoIcon;
+        return FileIcon;
+    } else {
+        return FolderIcon;
+    }
 }
