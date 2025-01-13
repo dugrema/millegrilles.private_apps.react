@@ -56,7 +56,7 @@ function SharedFileBrowsing() {
             <Breadcrumb contactId={contactId} />
 
             <section className='pt-2'>
-                <ButtonBar disableEdit={true} />
+                <ButtonBar disableEdit={true} shared={true} />
             </section>
 
             <section className='pt-3'>
@@ -90,7 +90,7 @@ export function Breadcrumb(props: BreadcrumbProps) {
 
     let breadcrumbMapped = useMemo(()=>{
         if(!sharedContact?.nom_usager || !breadcrumb) return <></>;
-        let lastIdx = breadcrumb.length - 2;
+        let lastIdx = breadcrumb.length - 1;
         return breadcrumb.filter(item=>item).map((item, idx)=>{
             if(idx === lastIdx) {
                 return (
@@ -143,7 +143,7 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
     let updateCurrentDirectory = useUserBrowsingStore(state=>state.updateSharedCurrentDirectory);
     let setSharedCuuid = useUserBrowsingStore(state=>state.setSharedCuuid);
     let setBreadcrumb = useUserBrowsingStore(state=>state.setSharedBreadcrumb);
-    // let setDirectoryStatistics = useUserBrowsingStore(state=>state.setDirectoryStatistics);
+    let setDirectoryStatistics = useUserBrowsingStore(state=>state.setSharedDirectoryStatistics);
     // let deleteFilesDirectory = useUserBrowsingStore(state=>state.deleteFilesDirectory);
 
     let sharedCollection = useUserBrowsingStore(state=>state.sharedCollection);
@@ -166,7 +166,9 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
         // Register directory change listener
         //TODO
 
-        synchronizeDirectory(workers, userId, username, sharedCollection, tuuidValue, cancelledSignal, updateCurrentDirectory, setBreadcrumb)
+        synchronizeDirectory(
+            workers, userId, username, sharedCollection, tuuidValue, cancelledSignal, 
+            updateCurrentDirectory, setBreadcrumb, setDirectoryStatistics)
             .catch(err=>console.error("Error loading directory: %O", err));
 
         return () => {
@@ -177,23 +179,17 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
             //TODO
         }
     }, [workers, ready, userId, username, tuuid, sharedCollection, 
-        setSharedCuuid, setBreadcrumb, updateCurrentDirectory]);
+        setSharedCuuid, setBreadcrumb, updateCurrentDirectory, setDirectoryStatistics]);
 
     return <></>;
 }
-
-// async function synchronizeUserShares(workers: AppWorkers, userId: string, sharedCollections: Collections2SharedContactsSharedCollection[]) {
-//     let tuuids = sharedCollections.map(item=>item.tuuid);
-//     let files = await workers.connection.getFilesByTuuid(tuuids);
-//     console.debug("Shared collections: %O", files);
-// }
 
 async function synchronizeDirectory(
     workers: AppWorkers, userId: string, username: string, sharedCollection: Collections2SharedContactsSharedCollection, tuuid: string | null, 
     cancelledSignal: ()=>boolean, 
     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
     setBreadcrumb: (dirs: TuuidsBrowsingStoreRow[] | null) => void,
-    // setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
+    setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
     // deleteFilesDirectory: (files: string[]) => void
     ) 
 {
@@ -237,7 +233,7 @@ async function synchronizeDirectory(
         
         if(response.stats) {
             // Update store information with new directory stats
-            // setDirectoryStatistics(response.stats);
+            setDirectoryStatistics(response.stats);
         }
 
         if(response.deleted_tuuids) {

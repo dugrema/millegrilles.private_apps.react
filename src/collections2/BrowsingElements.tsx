@@ -100,11 +100,12 @@ export function Breadcrumb(props: BreadcrumbProps) {
 type ButtonBarProps = {
     disableStatistics?: boolean,
     disableEdit?: boolean,
+    shared?: boolean,
 }
 
 export function ButtonBar(props: ButtonBarProps) {
 
-    let {disableStatistics} = props;
+    let {disableStatistics, shared} = props;
 
     return (
         <div className='grid grid-cols-2 md:grid-cols-3 pt-1'>
@@ -152,7 +153,7 @@ export function ButtonBar(props: ButtonBarProps) {
                 {disableStatistics?
                     <></>
                 :
-                    <DirectoryInformation />
+                    <DirectoryInformation shared={shared} />
                 }
                 
             </div>
@@ -160,9 +161,16 @@ export function ButtonBar(props: ButtonBarProps) {
     );
 }
 
-function DirectoryInformation() {
+function DirectoryInformation(props: {shared?: boolean}) {
     
-    let statistics = useUserBrowsingStore(state=>state.directoryStatistics);
+    let {shared} = props;
+    let browseStatistics = useUserBrowsingStore(state=>state.directoryStatistics);
+    let sharedStatistics = useUserBrowsingStore(state=>state.sharedDirectoryStatistics);
+
+    let statistics = useMemo(()=>{
+        if(shared) return sharedStatistics;
+        return browseStatistics;
+    }, [shared, browseStatistics, sharedStatistics])
 
     let [fileInfo, dirInfo] = useMemo(()=>{
         if(!statistics) return [null, null, 0];
@@ -179,7 +187,7 @@ function DirectoryInformation() {
 
     if(!statistics) {
         if(statistics === false) return <></>
-        return (<p>Loading ...</p>)
+        return (<p>Loading ...</p>);
     }
 
     return (
