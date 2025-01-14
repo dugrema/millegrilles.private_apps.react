@@ -132,7 +132,7 @@ function FileRow(props: {value: TuuidsBrowsingStoreSearchRow, dateColumn?: strin
                 {thumbnail?
                     <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
                 :
-                    <img src={defaultIcon} className='w-4 mr-1 ml-1 inline-block'/>
+                    <img src={defaultIcon} alt='File icon' className='w-4 mr-1 ml-1 inline-block'/>
                 }
                 
                 <span className='pl-3'>{value.nom}</span>

@@ -21,7 +21,6 @@ function ViewUserFileBrowsing() {
     let setSelection = useUserBrowsingStore(state=>state.setSelection);
     let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
     let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
-    let selectionPosition = useUserBrowsingStore(state=>state.selectionPosition);
     let setSelectionPosition = useUserBrowsingStore(state=>state.setSelectionPosition);
 
     let files = useMemo(()=>{
@@ -34,13 +33,14 @@ function ViewUserFileBrowsing() {
     let onClickRow = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, tuuid:string, typeNode:string, range: TuuidsBrowsingStoreRow[] | null)=>{
         let ctrl = e?.ctrlKey || false;
         let shift = e?.shiftKey || false;
+        let effectiveSelectionMode = selectionMode;
         if(!selectionMode && (ctrl||shift)) {
             // Toggle selection mode
-            selectionMode = true;
+            effectiveSelectionMode = true;
             setSelectionMode(true);
         }
 
-        if(selectionMode) {
+        if(effectiveSelectionMode) {
             // Selection mode
             let selectionSet = new Set() as Set<string>;
             if(selection) selection.forEach(item=>selectionSet.add(item));  // Copy all existing selections to Set
@@ -78,7 +78,7 @@ function ViewUserFileBrowsing() {
                 }
             }
         }
-    }, [tuuid, selectionMode, selection, selectionPosition, setSelectionMode, navigate, setSelectionPosition]);
+    }, [selectionMode, selection, setSelectionMode, navigate, setSelection, setSelectionPosition]);
 
     // Handle initial screen load (return to cuuid) or set current directory.
     useEffect(()=>{
@@ -93,7 +93,7 @@ function ViewUserFileBrowsing() {
                 setCuuid(tuuid || null);
             }
         }
-    }, [tuuid, cuuid, navigate]);
+    }, [tuuid, cuuid, navigate, setCuuid]);
 
     return (
         <>

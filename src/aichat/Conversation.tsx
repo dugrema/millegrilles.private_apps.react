@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, Dispatch } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import Markdown from 'react-markdown';
 import { proxy } from 'comlink';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -447,13 +447,14 @@ function ModelPickList(props: {onChange: (e: ChangeEvent<HTMLSelectElement>)=>vo
 
     let modelElems = useMemo(()=>{
         if(!models) return [<option key='default'>Default</option>];
-        models.sort((a,b)=>a.name.localeCompare(b.name));
+        let copyModels = [...models];
+        copyModels.sort((a,b)=>a.name.localeCompare(b.name));
 
         // Move default model at top of list
-        models = models.filter(item=>item.name!==CONST_DEFAULT_MODEL);
-        models.unshift({name: CONST_DEFAULT_MODEL});
+        copyModels = copyModels.filter(item=>item.name!==CONST_DEFAULT_MODEL);
+        copyModels.unshift({name: CONST_DEFAULT_MODEL});
 
-        return models.map(item=>{
+        return copyModels.map(item=>{
             return <option key={item.name} value={item.name}>{item.name}</option>
         });
     }, [models]);

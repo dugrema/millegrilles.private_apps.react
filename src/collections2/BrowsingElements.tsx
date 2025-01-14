@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import useUserBrowsingStore, { ViewMode } from "./userBrowsingStore";
 import { MouseEvent, useCallback, useMemo } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
+import ActionButton from "../resources/ActionButton";
 
 import FileAddIcon from '../resources/icons/file-dock-svgrepo-com.svg';
 import FolderAddIcon from '../resources/icons/folder-add-fill-svgrepo-com.svg';
@@ -9,6 +10,11 @@ import InfoIcon from '../resources/icons/info-svgrepo-com.svg';
 import ListIcon from '../resources/icons/list-pointers-svgrepo-com.svg';
 import GridIcon from '../resources/icons/grid-4-svgrepo-com.svg';
 import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
+import CopyIcon from '../resources/icons/copy-svgrepo-com.svg';
+import CutIcon from '../resources/icons/cut-svgrepo-com.svg';
+import ShareIcon from '../resources/icons/share-1-svgrepo-com.svg';
+import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
+import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
 
 type BreadcrumbProps = {
     root?: {tuuid: string | null, name: string, path?: string} | null,
@@ -121,13 +127,45 @@ export function ButtonBar(props: ButtonBarProps) {
         setSelectionMode(!selectionMode);
     }, [selectionMode, setSelectionMode]);
 
+    let directoryInfoHandler = useCallback(async () => {
+        console.debug("Info!");
+    }, []);
+
+    let addFileHandler = useCallback(async () => {
+        console.debug("Add files!");
+    }, []);
+
+    let createDirectoryHandler = useCallback(async () => {
+        console.debug("Create directory!");
+    }, []);
+
+    let importZipHandler = useCallback(async () => {
+        console.debug("Import zip!");
+    }, []);
+
+    let copyHandler = useCallback(async () => {
+        console.debug("Copy!");
+    }, []);
+
+    let cutHandler = useCallback(async () => {
+        console.debug("Cut!");
+    }, []);
+
+    let shareHandler = useCallback(async () => {
+        console.debug("Share!");
+    }, []);
+
+    let deleteHandler = useCallback(async () => {
+        console.debug("Delete!");
+    }, []);
+
     return (
         <div className='grid grid-cols-2 md:grid-cols-3 pt-1'>
             <div className='col-span-2'>
-                <Link to='/apps/collection2/test'
-                    className='varbtn ml-0 px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        <img src={InfoIcon} alt='Directory add' className='w-6 inline-block' />
-                </Link>
+                <button onClick={directoryInfoHandler}
+                    className={'varbtn px-2 mr-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'}>
+                        <img src={InfoIcon} alt='Info' className='w-6 inline-block' />
+                </button>
 
                 <button onClick={viewModeOnClick} value={ViewMode.List}
                     className={'varbtn px-2 mr-0 py-2 hover:bg-slate-600 active:bg-slate-500 ' + (viewMode===ViewMode.List?'bg-slate-500':'bg-slate-700')}>
@@ -146,39 +184,47 @@ export function ButtonBar(props: ButtonBarProps) {
                 <></>    
                 :
                     <>
-                        <Link to='/apps/collection2/test'
-                            className='varbtn px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                                <img src={FileAddIcon} alt='File add' className='w-6 inline-block' />
-                        </Link>
+                        <button onClick={addFileHandler} disabled={true}
+                            className={'varbtn ml-2 px-2 bg-slate-700 py-2 hover:bg-slate-600 active:bg-slate-500'}>
+                                <img src={FileAddIcon} alt='Add files' className='w-6 inline-block' />
+                        </button>
 
-                        <Link to='/apps/collection2/test'
-                            className='varbtn px-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                                <img src={FolderAddIcon} alt='Directory add' className='w-6 inline-block' />
-                        </Link>
+                        <button onClick={createDirectoryHandler}
+                            className={'varbtn ml-0 px-2 bg-slate-700 py-2 hover:bg-slate-600 active:bg-slate-500'}>
+                                <img src={FolderAddIcon} alt='Add directory' className='w-6 inline-block' />
+                        </button>
 
-                        <Link to='/apps/collection2/test'
-                            className='varbtn mt-0 p-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                                + ZIP
-                        </Link>
+                        <button onClick={importZipHandler}
+                            className={'varbtn px-2 mr-0 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'}>
+                                <span>+ ZIP</span>
+                        </button>
                     </>
                 }
 
                 <button onClick={toggleSelectionMode}
-                    className={'varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 ' + (selectionMode?'bg-violet-500':'bg-slate-700')}>
-                        <p>S</p>
+                    className={'varbtn ml-4 px-2 py-2 w-10 hover:bg-slate-600 active:bg-slate-500 ' + (selectionMode?'bg-violet-500':'bg-slate-700')}>
+                        <img src={SelectionModeIcon} alt="Select files" className='w-6 inline-block'/>
                 </button>
-                <button disabled={!selectionMode}
+                <button onClick={copyHandler} disabled={!selectionMode}
                     className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700'>
-                        <p>Copy</p>
+                        <img src={CopyIcon} alt="Copy files" className='w-6 inline-block'/>
                 </button>
-                <button disabled={!selectionMode}
+                <button onClick={cutHandler} disabled={!selectionMode}
                     className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700'>
-                        <p>Move</p>
+                        <img src={CutIcon} alt="Move files" className='w-6 inline-block'/>
                 </button>
-                <button disabled={!selectionMode}
+                <button onClick={shareHandler} disabled={!selectionMode}
                     className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700'>
-                        <p>Delete</p>
+                        <img src={ShareIcon} alt="Share collection" className='w-6 inline-block'/>
                 </button>
+                <ActionButton disabled={!selectionMode} onClick={deleteHandler} confirm={true} revertSuccessTimeout={2} varwidth={10}>
+                    <img src={TrashIcon} alt="Delete files" className='w-6 inline-block'/>
+                </ActionButton>
+                {/* <button disabled={!selectionMode}
+                    className='varbtn ml-0 ml-4 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700'>
+                        <img src={TrashIcon} alt="Delete files" className='w-6 inline-block'/>
+                        
+                </button> */}
 
             </div>
             <div className='text-sm'>

@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import useUserBrowsingStore, { Collection2SharedWithUser, filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import useWorkers, { AppWorkers } from "../workers/workers";

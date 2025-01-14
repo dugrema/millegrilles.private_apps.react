@@ -49,7 +49,7 @@ function FilelistPane(props: FileListPaneProps) {
         }
 
         return sortedFiles;
-    }, [files, sortKey, onClickRow, sortOrder]);
+    }, [files, sortKey, sortOrder]);
 
     let onClickRowHandler = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, item: TuuidsBrowsingStoreRow | null)=>{
         e.preventDefault();
@@ -281,30 +281,30 @@ function ThumbnailItem(props: FileItem) {
             .then(async ()=>{
                 if(!workers) throw new Error('workers not initialized');
                 let tuuid = value.tuuid;
-                let file = await loadTuuid(value.tuuid);
+                let file = await loadTuuid(tuuid);
                 //console.debug("Loaded file %s from IDB: ", tuuid, file);
                 let fileData = file?.fileData
                 let images = file?.fileData?.images;
                 if(fileData && images && images.small) {
                     let smallImageInfo = images.small;
-                    //console.debug("Loaded small image info: %O", smallImageInfo);
+                    console.debug("Loaded small image info: %O", smallImageInfo);
             
                     // let fuuid = smallImageInfo.hachage;
                     let fuuid = fileData.fuuids_versions?fileData.fuuids_versions[0]:null;
                     if(fuuid) {
-                        let cleId = smallImageInfo.cle_id || fuuid;
-                        //console.debug("Get cleId: ", cleId)
-                        let response = await workers.connection.getFilesByTuuid([tuuid]);
-                        //console.debug("Response file by tuuid", response);
+                        // let cleId = smallImageInfo.cle_id || fuuid;
+                        // //console.debug("Get cleId: ", cleId)
+                        // let response = await workers.connection.getFilesByTuuid([tuuid]);
+                        // //console.debug("Response file by tuuid", response);
 
-                        // Get file from filehost
-                        //TODO
+                        // // Get file from filehost
+                        // //TODO
                     }
                 }
                 setSmallImage('loaded');  // TODO - put blob URL
             })
             .catch(err=>console.error("Error loading small image", err));
-    }, [workers, value, visible, smallImage, setSmallImage]);
+    }, [workers, value, visible, smallImage, ready, setSmallImage]);
 
     useEffect(()=>{
         // Cleanup small image URL
