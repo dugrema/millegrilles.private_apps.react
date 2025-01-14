@@ -8,22 +8,30 @@ import FileIcon from '../resources/icons/file-svgrepo-com.svg';
 import PdfIcon from '../resources/icons/document-filled-svgrepo-com.svg';
 import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
 import VideoIcon from '../resources/icons/video-file-svgrepo-com.svg';
-import useWorkers, { AppWorkers } from "../workers/workers";
+import useWorkers from "../workers/workers";
 import { loadTuuid } from "./idb/collections2StoreIdb";
 import useConnectionStore from "../connectionStore";
+
+export type FileListPaneOnClickRowType = (
+    e: MouseEvent<HTMLButtonElement | HTMLDivElement>, 
+    tuuid:string, typeNode:string, 
+    range: TuuidsBrowsingStoreRow[] | null
+) => void;
 
 type FileListPaneProps = {
     files: TuuidsBrowsingStoreRow[] | null,
     sortKey?: string | null,
     sortOrder?: number | null,
     dateColumn?: string | null,
-    onClickRow: (tuuid:string, typeNode:string, e?: MouseEvent<HTMLDivElement>) => void,
+    onClickRow: FileListPaneOnClickRowType,
 }
 
 function FilelistPane(props: FileListPaneProps) {
 
-    let { files, sortKey, sortOrder, onClickRow } = props;
+    let { files, sortKey, sortOrder, dateColumn, onClickRow } = props;
     let viewMode = useUserBrowsingStore(state=>state.viewMode);
+
+    let [cursorItemPosition, setCursorItemPosition] = useState('');
 
     let sortedFiles = useMemo(()=>{
         if(!files) return null;
@@ -43,28 +51,58 @@ function FilelistPane(props: FileListPaneProps) {
         return sortedFiles;
     }, [files, sortKey, onClickRow, sortOrder]);
 
+    let onClickRowHandler = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, item: TuuidsBrowsingStoreRow | null)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        if(item) {
+            let tuuid = item.tuuid;
+            setCursorItemPosition(tuuid);
+            let range = null as TuuidsBrowsingStoreRow[] | null;
+            if(sortedFiles && e.shiftKey && cursorItemPosition) {
+                // Calculate range
+                let idxStart = sortedFiles.map(item=>item.tuuid).indexOf(cursorItemPosition);
+                let idxEnd = sortedFiles.map(item=>item.tuuid).indexOf(tuuid);
+                if(idxStart > idxEnd) {
+                    // Swap
+                    let idxTemp = idxStart;
+                    idxStart = idxEnd;
+                    idxEnd = idxTemp;
+                }
+                range = sortedFiles.slice(idxStart, idxEnd+1);
+            }
+            onClickRow(e, item.tuuid, item.type_node, range);
+        } else {
+            setCursorItemPosition('');  // Reset
+        }
+    }, [onClickRow, cursorItemPosition, sortedFiles, setCursorItemPosition]);
 
-    if(viewMode === ViewMode.Thumbnails) return <ThumbnailView {...props} />;
+    if(viewMode === ViewMode.Thumbnails) return <ThumbnailView onClick={onClickRowHandler} files={sortedFiles} />;
     if(viewMode === ViewMode.Carousel) throw new Error('todo');
 
-    return <ListView {...props} files={sortedFiles} />;
+    return <ListView onClick={onClickRowHandler} files={sortedFiles} dateColumn={dateColumn} />;
 }
 
 export default FilelistPane;
 
-function ListView(props: FileListPaneProps & {files: TuuidsBrowsingStoreRow[] | null}) {
-    let { files, dateColumn, onClickRow } = props;
+type ViewProps = {
+    files: TuuidsBrowsingStoreRow[] | null, 
+    dateColumn?: string | null, 
+    onClick: (e: MouseEvent<HTMLButtonElement | HTMLDivElement>, item: TuuidsBrowsingStoreRow | null)=>void    
+}
+
+function ListView(props: ViewProps) {
+    let { files, dateColumn, onClick } = props;
 
     let mappedFiles = useMemo(()=>{
         if(!files) return <></>;
         return files.map(item=>{
-            return <FileRow key={item.tuuid} value={item} dateColumn={dateColumn} onClick={onClickRow} />
+            return <FileRow key={item.tuuid} value={item} dateColumn={dateColumn} onClick={onClick} />
         })
-    }, [files, dateColumn, onClickRow]);
+    }, [files, dateColumn, onClick]);
 
     return (
         <>
-            <div className='grid grid-cols-12 bg-slate-800 text-sm'>
+            <div className='grid grid-cols-12 bg-slate-800 text-sm user-select-none'>
                 <div className='col-span-7 px-1'>Name</div>
                 <p className='col-span-1 px-1'>Size</p>
                 <p className='col-span-2 px-1'>Type</p>
@@ -75,15 +113,15 @@ function ListView(props: FileListPaneProps & {files: TuuidsBrowsingStoreRow[] | 
     );
 }
 
-function ThumbnailView(props: FileListPaneProps) {
-    let { files, onClickRow } = props;
+function ThumbnailView(props: ViewProps) {
+    let { files, onClick } = props;
 
     let mappedFiles = useMemo(()=>{
         if(!files) return <></>;
         return files.map(item=>{
-            return <ThumbnailItem key={item.tuuid} value={item} onClick={onClickRow} />
+            return <ThumbnailItem key={item.tuuid} value={item} onClick={onClick} />
         })
-    }, [files, onClickRow]);
+    }, [files, onClick]);
 
     return (
         <>
@@ -140,13 +178,14 @@ function sortBySize(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
 type FileItem = {
     value: TuuidsBrowsingStoreRow, 
     dateColumn?: string | null, 
-    onClick:(tuuid:string, typeNode:string, e?: MouseEvent<HTMLDivElement>)=>void
+    onClick:(e: MouseEvent<HTMLButtonElement | HTMLDivElement>, value: TuuidsBrowsingStoreRow | null)=>void
 };
 
 function FileRow(props: FileItem) {
     
     let {value, dateColumn, onClick} = props;
     let selection = useUserBrowsingStore(state=>state.selection);
+    let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
 
     // let navigate = useNavigate();
 
@@ -159,9 +198,7 @@ function FileRow(props: FileItem) {
     }, [value, dateColumn]);
 
     let onclickHandler = useCallback((e: MouseEvent<HTMLDivElement>)=>{
-        let tuuid = value.tuuid;
-        let typeNode = value.type_node;
-        onClick(tuuid, typeNode, e)
+        onClick(e, value)
     }, [value, onClick]);
 
     useEffect(()=>{
@@ -180,11 +217,16 @@ function FileRow(props: FileItem) {
     let defaultIcon = useMemo(()=>getIcon(value.type_node, value.mimetype), [value]);
 
     let selectionCss = useMemo(()=>{
-        if(selection && selection.includes(value.tuuid)) {
-            return 'grid grid-cols-12 odd:bg-violet-600 even:bg-violet-500 hover:bg-violet-800 odd:bg-opacity-70 even:bg-opacity-70 text-sm cursor-pointer';
+        if(selectionMode) {
+            // Disable text select (copy/paste)
+            if(selection?.includes(value.tuuid)) {
+                return 'grid grid-cols-12 odd:bg-violet-600 even:bg-violet-500 hover:bg-violet-800 odd:bg-opacity-70 even:bg-opacity-70 text-sm cursor-pointer select-none';
+            }
+            return 'grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer select-none';
         }
+        // Allow text select
         return 'grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer';
-    }, [value, selection]);
+    }, [value, selection, selectionMode]);
 
     return (
         <div key={value.tuuid} onClick={onclickHandler}
@@ -226,10 +268,8 @@ function ThumbnailItem(props: FileItem) {
         return defaultIcon;
     }, [defaultIcon, thumbnail]);
 
-    let onclickHandler = useCallback(()=>{
-        let tuuid = value.tuuid;
-        let typeNode = value.type_node;
-        onClick(tuuid, typeNode)
+    let onclickHandler = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
+        onClick(e, value)
     }, [value, onClick]);
 
     useEffect(()=>{

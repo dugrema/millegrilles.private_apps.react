@@ -31,7 +31,7 @@ function ViewUserFileBrowsing() {
         return filesValues;
     }, [filesDict]) as TuuidsBrowsingStoreRow[] | null;
 
-    let onClickRow = useCallback((tuuid?: string | null, typeNode?: string | null, e?: MouseEvent<HTMLDivElement>)=>{
+    let onClickRow = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, tuuid:string, typeNode:string, range: TuuidsBrowsingStoreRow[] | null)=>{
         let ctrl = e?.ctrlKey || false;
         let shift = e?.shiftKey || false;
         if(!selectionMode && (ctrl||shift)) {
@@ -46,8 +46,9 @@ function ViewUserFileBrowsing() {
             if(selection) selection.forEach(item=>selectionSet.add(item));  // Copy all existing selections to Set
 
             if(tuuid) {
-                if(shift) {
+                if(shift && range) {
                     // Range action
+                    range.forEach(item=>selectionSet.add(item.tuuid));
                 } else {
                     // Individual action
                     if(selectionSet.has(tuuid)) {
@@ -59,7 +60,7 @@ function ViewUserFileBrowsing() {
 
                 // Save position for range selection
                 setSelectionPosition(tuuid);
-                
+
                 // Copy set back to array, save.
                 let updatedSelection = [] as string[];
                 selectionSet.forEach(item=>updatedSelection.push(item));

@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo } from "react";
 import useUserBrowsingStore, { Collection2SharedWithUser, filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { Collections2SharedContactsUser } from "../workers/connection.worker";
-import FilelistPane from "./FilelistPane";
+import FilelistPane, { FileListPaneOnClickRowType } from "./FilelistPane";
 
 function SharedUsers() {
 
@@ -85,14 +85,14 @@ function SharedFromUser(props: {userId: string}) {
         return sharedWithUser.users.filter(item=>item.user_id === userId).pop();
     }, [userId, sharedWithUser, setSharedContact]);
 
-    let onClickRowHandler = useCallback((tuuid: string)=>{
+    let onClickRowHandler = useCallback((e, tuuid, typeNode, range)=>{
         if(sharedWithUser?.sharedCollections) {
             let collection = sharedWithUser.sharedCollections.filter(item=>item.tuuid === tuuid && item.user_id === userId).pop();
             if(collection) {
                 navigate(`/apps/collections2/c/${collection.contact_id}/b/${tuuid}`);
             }
         }
-    }, [navigate, userId, sharedWithUser]);
+    }, [navigate, userId, sharedWithUser]) as FileListPaneOnClickRowType;
 
     useEffect(()=>{
         setSharedContact(sharedContact || null);

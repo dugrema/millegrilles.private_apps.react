@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import useConnectionStore from "../connectionStore";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Breadcrumb } from "./BrowsingElements";
-import FilelistPane from "./FilelistPane";
+import FilelistPane, { FileListPaneOnClickRowType } from "./FilelistPane";
 
 function BrowsingDeleted() {
 
@@ -45,7 +45,7 @@ function BrowsingDeleted() {
 
     }, [breadcrumbTuuids, setBreadcrumbTuuids]);
 
-    let onClickRow = useCallback((tuuid?: string | null, typeNode?: string | null)=>{
+    let onClickRow = useCallback((e, tuuid, typeNode, range)=>{
         if(typeNode === 'Fichier') {
             throw new Error('todo')
         } else {
@@ -59,7 +59,7 @@ function BrowsingDeleted() {
                 setBreadcrumbTuuids(null);
             }
         }
-    }, [breadcrumbTuuids, setBreadcrumbTuuids]);
+    }, [breadcrumbTuuids, setBreadcrumbTuuids]) as FileListPaneOnClickRowType;
 
     let [sortKey, sortOrder] = useMemo(()=>{
         if(!tuuid) return ['modification', -1];

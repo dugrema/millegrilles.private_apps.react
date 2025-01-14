@@ -5,7 +5,7 @@ import { Collection2DirectoryStats, Collections2SharedContactsSharedCollection }
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { ButtonBar } from "./BrowsingElements";
-import FilelistPane from "./FilelistPane";
+import FilelistPane, { FileListPaneOnClickRowType } from "./FilelistPane";
 
 function SharedFileBrowsing() {
 
@@ -43,13 +43,13 @@ function SharedFileBrowsing() {
         }
     }, [sharedWithUser, contactId, setSharedCollection, setSharedContact]);
 
-    let onClickRowHandler = useCallback((tuuid:string, typeNode:string)=>{
+    let onClickRowHandler = useCallback((e, tuuid, typeNode, range)=>{
         if(typeNode === 'Fichier') {
             console.warn("TODO - browse to file");
         } else {
             navigate(`/apps/collections2/c/${contactId}/b/${tuuid}`);
         }
-    }, [contactId, navigate]);
+    }, [contactId, navigate]) as FileListPaneOnClickRowType;
 
     return (
         <>
