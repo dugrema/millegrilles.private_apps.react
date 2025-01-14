@@ -109,11 +109,17 @@ export function ButtonBar(props: ButtonBarProps) {
 
     let viewMode = useUserBrowsingStore(state=>state.viewMode);
     let setViewMode = useUserBrowsingStore(state=>state.setViewMode);
+    let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
+    let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
 
     let viewModeOnClick = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
         let value = Number.parseInt(e.currentTarget.value) as ViewMode;
         setViewMode(value);
     }, [setViewMode]);
+
+    let toggleSelectionMode = useCallback(()=>{
+        setSelectionMode(!selectionMode);
+    }, [selectionMode, setSelectionMode]);
 
     return (
         <div className='grid grid-cols-2 md:grid-cols-3 pt-1'>
@@ -156,6 +162,24 @@ export function ButtonBar(props: ButtonBarProps) {
                         </Link>
                     </>
                 }
+
+                <button onClick={toggleSelectionMode}
+                    className={'varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 ' + (selectionMode?'bg-violet-500':'bg-slate-700')}>
+                        <p>S</p>
+                </button>
+                <button disabled={!selectionMode}
+                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700'>
+                        <p>Copy</p>
+                </button>
+                <button disabled={!selectionMode}
+                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700'>
+                        <p>Move</p>
+                </button>
+                <button disabled={!selectionMode}
+                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700'>
+                        <p>Delete</p>
+                </button>
+
             </div>
             <div className='text-sm'>
                 {disableStatistics?

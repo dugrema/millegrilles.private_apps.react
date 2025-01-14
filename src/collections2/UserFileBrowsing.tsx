@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Breadcrumb, ButtonBar } from "./BrowsingElements";
 import FilelistPane from "./FilelistPane";
-import { useCallback, useEffect, useMemo } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
@@ -16,6 +16,14 @@ function ViewUserFileBrowsing() {
     let setCuuid = useUserBrowsingStore(state=>state.setCuuid);
     let navigate = useNavigate();
 
+    // Selecting files
+    let selection = useUserBrowsingStore(state=>state.selection);
+    let setSelection = useUserBrowsingStore(state=>state.setSelection);
+    let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
+    let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
+    let selectionPosition = useUserBrowsingStore(state=>state.selectionPosition);
+    let setSelectionPosition = useUserBrowsingStore(state=>state.setSelectionPosition);
+
     let files = useMemo(()=>{
         if(!filesDict) return null;
         let filesValues = Object.values(filesDict);
@@ -23,17 +31,53 @@ function ViewUserFileBrowsing() {
         return filesValues;
     }, [filesDict]) as TuuidsBrowsingStoreRow[] | null;
 
-    let onClickRow = useCallback((tuuid?: string | null, typeNode?: string | null)=>{
-        if(typeNode === 'Fichier') {
-            navigate('/apps/collections2/f/' + tuuid);
-        } else {
+    let onClickRow = useCallback((tuuid?: string | null, typeNode?: string | null, e?: MouseEvent<HTMLDivElement>)=>{
+        let ctrl = e?.ctrlKey || false;
+        let shift = e?.shiftKey || false;
+        if(!selectionMode && (ctrl||shift)) {
+            // Toggle selection mode
+            selectionMode = true;
+            setSelectionMode(true);
+        }
+
+        if(selectionMode) {
+            // Selection mode
+            let selectionSet = new Set() as Set<string>;
+            if(selection) selection.forEach(item=>selectionSet.add(item));  // Copy all existing selections to Set
+
             if(tuuid) {
-                navigate('/apps/collections2/b/' + tuuid);
+                if(shift) {
+                    // Range action
+                } else {
+                    // Individual action
+                    if(selectionSet.has(tuuid)) {
+                        selectionSet.delete(tuuid);
+                    } else {
+                        selectionSet.add(tuuid);
+                    }
+                }
+
+                // Save position for range selection
+                setSelectionPosition(tuuid);
+                
+                // Copy set back to array, save.
+                let updatedSelection = [] as string[];
+                selectionSet.forEach(item=>updatedSelection.push(item));
+                setSelection(updatedSelection);
+            }
+        } else {
+            // Navigation mode
+            if(typeNode === 'Fichier') {
+                navigate('/apps/collections2/f/' + tuuid);
             } else {
-                navigate('/apps/collections2/b');
+                if(tuuid) {
+                    navigate('/apps/collections2/b/' + tuuid);
+                } else {
+                    navigate('/apps/collections2/b');
+                }
             }
         }
-    }, [navigate]);
+    }, [tuuid, selectionMode, selection, selectionPosition, setSelectionMode, navigate, setSelectionPosition]);
 
     // Handle initial screen load (return to cuuid) or set current directory.
     useEffect(()=>{

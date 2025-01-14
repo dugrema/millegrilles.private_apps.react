@@ -82,6 +82,10 @@ interface UserBrowsingStoreState {
     sharedCuuid: string | null,
     sharedCurrentDirectory: {[tuuid: string]: TuuidsBrowsingStoreRow} | null,
 
+    selectionMode: boolean,
+    selection: string[] | null,
+    selectionPosition: string | null,
+
     setCuuid: (cuuid: string | null) => void,
     setCuuidDeleted: (cuuid: string | null) => void,
     setUserId: (userId: string) => void,
@@ -99,6 +103,10 @@ interface UserBrowsingStoreState {
     setSharedCollection: (sharedCollection: Collections2SharedContactsSharedCollection | null) => void,
     setSharedCuuid: (sharedCuuid: string | null) => void,
     updateSharedCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
+
+    setSelectionMode: (selectionMode: boolean) => void,
+    setSelection: (selection: string[] | null) => void,
+    setSelectionPosition: (selectionPosition: string | null) => void,
 };
 
 const useUserBrowsingStore = create<UserBrowsingStoreState>()(
@@ -123,7 +131,11 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             sharedCuuid: null,
             sharedCurrentDirectory: null,
 
-            setCuuid: (cuuid) => set(()=>({currentCuuid: cuuid})),
+            selectionMode: false,
+            selection: null,
+            selectionPosition: null,
+        
+            setCuuid: (cuuid) => set(()=>({currentCuuid: cuuid, selection: null, selectionMode: false})),
             setCuuidDeleted: (cuuid) => set(()=>({currentCuuidDeleted: cuuid})),
             setUserId: (userId) => set(()=>({userId})),
 
@@ -192,7 +204,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             setSharedBreadcrumb: (sharedBreadcrumb) => set(()=>({sharedBreadcrumb})),
             setSharedDirectoryStatistics: (sharedDirectoryStatistics) => set(()=>({sharedDirectoryStatistics})),
             setSharedCollection: (sharedCollection) => set(()=>({sharedCollection})),
-            setSharedCuuid: (sharedCuuid) => set(()=>({sharedCuuid})),
+            setSharedCuuid: (sharedCuuid) => set(()=>({sharedCuuid, selection: null, selectionMode: false})),
             updateSharedCurrentDirectory: (files) => set((state)=>{
                 if(!files) {
                     // Clear
@@ -213,6 +225,10 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
 
                 return {sharedCurrentDirectory: currentDirectory};
             }),
+
+            setSelectionMode: (selectionMode) => set(()=>({selectionMode, selection: null})),
+            setSelection: (selection) => set(()=>({selection})),
+            setSelectionPosition: (selectionPosition) => set(()=>({selectionPosition})),
         })
     ),
 );

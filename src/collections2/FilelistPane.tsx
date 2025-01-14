@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import { useVisibility } from 'reactjs-visibility';
@@ -17,26 +17,16 @@ type FileListPaneProps = {
     sortKey?: string | null,
     sortOrder?: number | null,
     dateColumn?: string | null,
-    onClickRow: (tuuid:string, typeNode:string) => void,
+    onClickRow: (tuuid:string, typeNode:string, e?: MouseEvent<HTMLDivElement>) => void,
 }
 
 function FilelistPane(props: FileListPaneProps) {
 
+    let { files, sortKey, sortOrder, onClickRow } = props;
     let viewMode = useUserBrowsingStore(state=>state.viewMode);
 
-    if(viewMode === ViewMode.Thumbnails) return <ThumbnailView {...props} />;
-    if(viewMode === ViewMode.Carousel) throw new Error('todo');
-
-    return <ListView {...props} />;
-}
-
-export default FilelistPane;
-
-function ListView(props: FileListPaneProps) {
-    let { files, sortKey, sortOrder, dateColumn, onClickRow } = props;
-
-    let mappedFiles = useMemo(()=>{
-        if(!files) return <></>;
+    let sortedFiles = useMemo(()=>{
+        if(!files) return null;
 
         let sortedFiles = [...files];
         if(!sortKey || sortKey === 'name') {
@@ -50,12 +40,27 @@ function ListView(props: FileListPaneProps) {
             sortedFiles = sortedFiles.reverse();
         }
 
-        let mappedFiles = sortedFiles.map(item=>{
+        return sortedFiles;
+    }, [files, sortKey, onClickRow, sortOrder]);
+
+
+    if(viewMode === ViewMode.Thumbnails) return <ThumbnailView {...props} />;
+    if(viewMode === ViewMode.Carousel) throw new Error('todo');
+
+    return <ListView {...props} files={sortedFiles} />;
+}
+
+export default FilelistPane;
+
+function ListView(props: FileListPaneProps & {files: TuuidsBrowsingStoreRow[] | null}) {
+    let { files, dateColumn, onClickRow } = props;
+
+    let mappedFiles = useMemo(()=>{
+        if(!files) return <></>;
+        return files.map(item=>{
             return <FileRow key={item.tuuid} value={item} dateColumn={dateColumn} onClick={onClickRow} />
         })
-
-        return mappedFiles;
-    }, [files, sortKey, dateColumn, onClickRow, sortOrder]);
+    }, [files, dateColumn, onClickRow]);
 
     return (
         <>
@@ -71,29 +76,14 @@ function ListView(props: FileListPaneProps) {
 }
 
 function ThumbnailView(props: FileListPaneProps) {
-    let { files, sortKey, sortOrder, onClickRow } = props;
+    let { files, onClickRow } = props;
 
     let mappedFiles = useMemo(()=>{
         if(!files) return <></>;
-
-        let sortedFiles = [...files];
-        if(!sortKey || sortKey === 'name') {
-            sortedFiles.sort(sortByName)
-        } else if(sortKey === 'modification') {
-            sortedFiles.sort(sortByModification);
-        } else if(sortKey === 'size') {
-            sortedFiles.sort(sortBySize);
-        }
-        if(sortOrder && sortOrder < 0) {
-            sortedFiles = sortedFiles.reverse();
-        }
-
-        let mappedFiles = sortedFiles.map(item=>{
+        return files.map(item=>{
             return <ThumbnailItem key={item.tuuid} value={item} onClick={onClickRow} />
         })
-
-        return mappedFiles;
-    }, [files, sortKey, onClickRow, sortOrder]);
+    }, [files, onClickRow]);
 
     return (
         <>
@@ -150,13 +140,14 @@ function sortBySize(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
 type FileItem = {
     value: TuuidsBrowsingStoreRow, 
     dateColumn?: string | null, 
-    onClick:(tuuid:string, typeNode:string)=>void
+    onClick:(tuuid:string, typeNode:string, e?: MouseEvent<HTMLDivElement>)=>void
 };
 
 function FileRow(props: FileItem) {
     
     let {value, dateColumn, onClick} = props;
-    
+    let selection = useUserBrowsingStore(state=>state.selection);
+
     // let navigate = useNavigate();
 
     let [thumbnail, setThumbnail] = useState('');
@@ -167,10 +158,10 @@ function FileRow(props: FileItem) {
         return value.dateFichier || value.modification;
     }, [value, dateColumn]);
 
-    let onclickHandler = useCallback(()=>{
+    let onclickHandler = useCallback((e: MouseEvent<HTMLDivElement>)=>{
         let tuuid = value.tuuid;
         let typeNode = value.type_node;
-        onClick(tuuid, typeNode)
+        onClick(tuuid, typeNode, e)
     }, [value, onClick]);
 
     useEffect(()=>{
@@ -188,9 +179,16 @@ function FileRow(props: FileItem) {
 
     let defaultIcon = useMemo(()=>getIcon(value.type_node, value.mimetype), [value]);
 
+    let selectionCss = useMemo(()=>{
+        if(selection && selection.includes(value.tuuid)) {
+            return 'grid grid-cols-12 odd:bg-violet-600 even:bg-violet-500 hover:bg-violet-800 odd:bg-opacity-70 even:bg-opacity-70 text-sm cursor-pointer';
+        }
+        return 'grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer';
+    }, [value, selection]);
+
     return (
         <div key={value.tuuid} onClick={onclickHandler}
-            className='grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer'>
+            className={selectionCss}>
             <div className='col-span-7 px-1'>
                 {thumbnail?
                     <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
@@ -244,20 +242,20 @@ function ThumbnailItem(props: FileItem) {
                 if(!workers) throw new Error('workers not initialized');
                 let tuuid = value.tuuid;
                 let file = await loadTuuid(value.tuuid);
-                console.debug("Loaded file %s from IDB: ", tuuid, file);
+                //console.debug("Loaded file %s from IDB: ", tuuid, file);
                 let fileData = file?.fileData
                 let images = file?.fileData?.images;
                 if(fileData && images && images.small) {
                     let smallImageInfo = images.small;
-                    console.debug("Loaded small image info: %O", smallImageInfo);
+                    //console.debug("Loaded small image info: %O", smallImageInfo);
             
                     // let fuuid = smallImageInfo.hachage;
                     let fuuid = fileData.fuuids_versions?fileData.fuuids_versions[0]:null;
                     if(fuuid) {
                         let cleId = smallImageInfo.cle_id || fuuid;
-                        console.debug("Get cleId: ", cleId)
+                        //console.debug("Get cleId: ", cleId)
                         let response = await workers.connection.getFilesByTuuid([tuuid]);
-                        console.debug("Response file by tuuid", response);
+                        //console.debug("Response file by tuuid", response);
 
                         // Get file from filehost
                         //TODO
