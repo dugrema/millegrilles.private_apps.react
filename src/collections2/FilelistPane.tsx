@@ -14,7 +14,8 @@ import useConnectionStore from "../connectionStore";
 
 export type FileListPaneOnClickRowType = (
     e: MouseEvent<HTMLButtonElement | HTMLDivElement>, 
-    tuuid:string, typeNode:string, 
+    tuuid:string, 
+    typeNode:string, 
     range: TuuidsBrowsingStoreRow[] | null
 ) => void;
 
@@ -24,11 +25,12 @@ type FileListPaneProps = {
     sortOrder?: number | null,
     dateColumn?: string | null,
     onClickRow: FileListPaneOnClickRowType,
+    columnNameOnly?: boolean | null,
 }
 
 function FilelistPane(props: FileListPaneProps) {
 
-    let { files, sortKey, sortOrder, dateColumn, onClickRow } = props;
+    let { files, sortKey, sortOrder, dateColumn, onClickRow, columnNameOnly } = props;
     let viewMode = useUserBrowsingStore(state=>state.viewMode);
 
     let [cursorItemPosition, setCursorItemPosition] = useState('');
@@ -79,7 +81,7 @@ function FilelistPane(props: FileListPaneProps) {
     if(viewMode === ViewMode.Thumbnails) return <ThumbnailView onClick={onClickRowHandler} files={sortedFiles} />;
     if(viewMode === ViewMode.Carousel) throw new Error('todo');
 
-    return <ListView onClick={onClickRowHandler} files={sortedFiles} dateColumn={dateColumn} />;
+    return <ListView onClick={onClickRowHandler} files={sortedFiles} dateColumn={dateColumn} columnNameOnly={columnNameOnly} />;
 }
 
 export default FilelistPane;
@@ -90,13 +92,13 @@ type ViewProps = {
     onClick: (e: MouseEvent<HTMLButtonElement | HTMLDivElement>, item: TuuidsBrowsingStoreRow | null)=>void    
 }
 
-function ListView(props: ViewProps) {
-    let { files, dateColumn, onClick } = props;
+function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
+    let { files, dateColumn, onClick, columnNameOnly } = props;
 
     let mappedFiles = useMemo(()=>{
         if(!files) return <></>;
         return files.map(item=>{
-            return <FileRow key={item.tuuid} value={item} dateColumn={dateColumn} onClick={onClick} />
+            return <FileRow key={item.tuuid} value={item} dateColumn={dateColumn} onClick={onClick} columnNameOnly={columnNameOnly} />
         })
     }, [files, dateColumn, onClick]);
 
@@ -104,9 +106,9 @@ function ListView(props: ViewProps) {
         <>
             <div className='grid grid-cols-12 bg-slate-800 text-sm user-select-none'>
                 <div className='col-span-7 px-1'>Name</div>
-                <p className='col-span-1 px-1'>Size</p>
-                <p className='col-span-2 px-1'>Type</p>
-                <p className='col-span-2 px-1'>Date</p>
+                {columnNameOnly?<></>:<p className='col-span-1 px-1'>Size</p>}
+                {columnNameOnly?<></>:<p className='col-span-2 px-1'>Type</p>}
+                {columnNameOnly?<></>:<p className='col-span-2 px-1'>Date</p>}
             </div>
             {mappedFiles}
         </>
@@ -181,9 +183,9 @@ type FileItem = {
     onClick:(e: MouseEvent<HTMLButtonElement | HTMLDivElement>, value: TuuidsBrowsingStoreRow | null)=>void
 };
 
-function FileRow(props: FileItem) {
+function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
     
-    let {value, dateColumn, onClick} = props;
+    let {value, dateColumn, onClick, columnNameOnly} = props;
     let selection = useUserBrowsingStore(state=>state.selection);
     let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
 
@@ -240,13 +242,19 @@ function FileRow(props: FileItem) {
                 
                 <span className='pl-3'>{value.nom}</span>
             </div>
-            <p className='col-span-1 px-1'>
-                <Formatters.FormatteurTaille value={value.taille || undefined} />
-            </p>
-            <p className='col-span-2 px-1'>{value.mimetype}</p>
-            <p className='col-span-2 px-1'>
-                <Formatters.FormatterDate value={dateValue || undefined} />
-            </p>
+            {columnNameOnly?
+                <></>
+                :
+                <>
+                    <p className='col-span-1 px-1'>
+                        <Formatters.FormatteurTaille value={value.taille || undefined} />
+                    </p>
+                    <p className='col-span-2 px-1'>{value.mimetype}</p>
+                    <p className='col-span-2 px-1'>
+                        <Formatters.FormatterDate value={dateValue || undefined} />
+                    </p>
+                </>
+            }
         </div>
     )
 }

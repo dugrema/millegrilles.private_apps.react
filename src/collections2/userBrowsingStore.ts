@@ -74,6 +74,7 @@ interface UserBrowsingStoreState {
     directoryStatistics: Collection2DirectoryStats[] | null,
     searchResults: Collection2SearchStore | null,
     searchListing: {[tuuid: string]: TuuidsBrowsingStoreSearchRow} | null,
+    
     sharedWithUser: Collection2SharedWithUser | null,
     sharedContact: Collections2SharedContactsUser | null,
     sharedBreadcrumb: TuuidsBrowsingStoreRow[] | null,
@@ -85,6 +86,11 @@ interface UserBrowsingStoreState {
     selectionMode: boolean,
     selection: string[] | null,
     selectionPosition: string | null,
+
+    modalNavUsername: string | null,
+    modalNavBreadcrumb: TuuidsBrowsingStoreRow[] | null,
+    modalNavCuuid: string | null,
+    modalNavCurrentDirectory: {[tuuid: string]: TuuidsBrowsingStoreRow} | null,
 
     setCuuid: (cuuid: string | null) => void,
     setCuuidDeleted: (cuuid: string | null) => void,
@@ -107,6 +113,10 @@ interface UserBrowsingStoreState {
     setSelectionMode: (selectionMode: boolean) => void,
     setSelection: (selection: string[] | null) => void,
     setSelectionPosition: (selectionPosition: string | null) => void,
+
+    setModalCuuid: (modalNavCuuid: string | null) => void,
+    setModalBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
+    updateModalCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
 };
 
 const useUserBrowsingStore = create<UserBrowsingStoreState>()(
@@ -123,6 +133,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             directoryStatistics: null,
             searchResults: null,
             searchListing: null,
+            
             sharedWithUser: null,
             sharedContact: null,
             sharedBreadcrumb: null,
@@ -134,6 +145,11 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             selectionMode: false,
             selection: null,
             selectionPosition: null,
+
+            modalNavUsername: null,
+            modalNavBreadcrumb: null,
+            modalNavCuuid: null,
+            modalNavCurrentDirectory: null,
         
             setCuuid: (cuuid) => set(()=>({currentCuuid: cuuid, selection: null, selectionMode: false})),
             setCuuidDeleted: (cuuid) => set(()=>({currentCuuidDeleted: cuuid})),
@@ -229,6 +245,29 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             setSelectionMode: (selectionMode) => set(()=>({selectionMode, selection: null})),
             setSelection: (selection) => set(()=>({selection})),
             setSelectionPosition: (selectionPosition) => set(()=>({selectionPosition})),
+
+            setModalCuuid: (modalNavCuuid) => set(()=>({modalNavCuuid})),
+            setModalBreadcrumb: (username, breadcrumb) => set(()=>({modalNavUsername: username, modalNavBreadcrumb: breadcrumb})),
+            updateModalCurrentDirectory: (files) => set((state)=>{
+                if(!files) {
+                    // Clear
+                    return {modalNavCurrentDirectory: null};
+                }
+
+                let currentDirectory = {} as {[tuuid: string]: TuuidsBrowsingStoreRow};
+                if(state.modalNavCurrentDirectory) {
+                    // Copy existing directory
+                    currentDirectory = {...state.modalNavCurrentDirectory};
+                }
+
+                // Add and replace existing files
+                for(let file of files) {
+                    let tuuid = file.tuuid;
+                    currentDirectory[tuuid] = file;
+                }
+
+                return {modalNavCurrentDirectory: currentDirectory};
+            }),
         })
     ),
 );

@@ -19,7 +19,7 @@ import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.sv
 type BreadcrumbProps = {
     root?: {tuuid: string | null, name: string, path?: string} | null,
     onClick?: (tuuid: string | null) => void,
-}
+};
 
 export function Breadcrumb(props: BreadcrumbProps) {
 
@@ -103,15 +103,25 @@ export function Breadcrumb(props: BreadcrumbProps) {
     );
 }
 
+export enum ModalEnum {
+    Info=1,
+    NewDirectory,
+    ImportZip,
+    Copy,
+    Cut,
+    Share
+};
+
 type ButtonBarProps = {
     disableStatistics?: boolean,
     disableEdit?: boolean,
     shared?: boolean,
+    onModal: (modalName: ModalEnum) => void,
 }
 
 export function ButtonBar(props: ButtonBarProps) {
 
-    let {disableStatistics, shared} = props;
+    let {disableStatistics, shared, onModal} = props;
 
     let viewMode = useUserBrowsingStore(state=>state.viewMode);
     let setViewMode = useUserBrowsingStore(state=>state.setViewMode);
@@ -127,37 +137,20 @@ export function ButtonBar(props: ButtonBarProps) {
         setSelectionMode(!selectionMode);
     }, [selectionMode, setSelectionMode]);
 
-    let directoryInfoHandler = useCallback(async () => {
-        console.debug("Info!");
-    }, []);
-
     let addFileHandler = useCallback(async () => {
         console.debug("Add files!");
-    }, []);
-
-    let createDirectoryHandler = useCallback(async () => {
-        console.debug("Create directory!");
-    }, []);
-
-    let importZipHandler = useCallback(async () => {
-        console.debug("Import zip!");
-    }, []);
-
-    let copyHandler = useCallback(async () => {
-        console.debug("Copy!");
-    }, []);
-
-    let cutHandler = useCallback(async () => {
-        console.debug("Cut!");
-    }, []);
-
-    let shareHandler = useCallback(async () => {
-        console.debug("Share!");
     }, []);
 
     let deleteHandler = useCallback(async () => {
         console.debug("Delete!");
     }, []);
+
+    let directoryInfoHandler = useCallback(() => onModal(ModalEnum.Info), [onModal]);
+    let createDirectoryHandler = useCallback(() => onModal(ModalEnum.NewDirectory), [onModal]);
+    let importZipHandler = useCallback(()=>onModal(ModalEnum.ImportZip), [onModal]);
+    let copyHandler = useCallback(()=>onModal(ModalEnum.Copy), [onModal]);
+    let cutHandler = useCallback(()=>onModal(ModalEnum.Cut), [onModal]);
+    let shareHandler = useCallback(()=>onModal(ModalEnum.Share), [onModal]);
 
     return (
         <div className='grid grid-cols-2 md:grid-cols-3 pt-1'>
@@ -194,7 +187,7 @@ export function ButtonBar(props: ButtonBarProps) {
                                 <img src={FolderAddIcon} alt='Add directory' className='w-6 inline-block' />
                         </button>
 
-                        <button onClick={importZipHandler}
+                        <button onClick={importZipHandler} disabled={true}
                             className={'varbtn px-2 mr-0 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'}>
                                 <span>+ ZIP</span>
                         </button>

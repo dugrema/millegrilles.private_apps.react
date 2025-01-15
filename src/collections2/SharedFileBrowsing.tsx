@@ -4,7 +4,7 @@ import { MouseEvent, useCallback, useEffect, useMemo } from "react";
 import { Collection2DirectoryStats, Collections2SharedContactsSharedCollection } from "../workers/connection.worker";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
-import { ButtonBar } from "./BrowsingElements";
+import { ButtonBar, ModalEnum } from "./BrowsingElements";
 import FilelistPane, { FileListPaneOnClickRowType } from "./FilelistPane";
 
 function SharedFileBrowsing() {
@@ -51,12 +51,16 @@ function SharedFileBrowsing() {
         }
     }, [contactId, navigate]) as FileListPaneOnClickRowType;
 
+    let onModal = useCallback((modal: ModalEnum)=>{
+        console.debug("Modal: ", modal);
+    }, []);
+
     return (
         <>
             <Breadcrumb contactId={contactId} />
 
             <section className='pt-2'>
-                <ButtonBar disableEdit={true} shared={true} />
+                <ButtonBar disableEdit={true} shared={true} onModal={onModal} />
             </section>
 
             <section className='pt-3'>
