@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import useUserBrowsingStore, { ViewMode } from "./userBrowsingStore";
+import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
 import { MouseEvent, useCallback, useMemo } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import ActionButton from "../resources/ActionButton";
@@ -127,6 +127,22 @@ export function ButtonBar(props: ButtonBarProps) {
     let setViewMode = useUserBrowsingStore(state=>state.setViewMode);
     let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
     let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
+    let selection = useUserBrowsingStore(state=>state.selection);
+    let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
+
+    let [selectCount, directorySelectCount] = useMemo(()=>{
+        if(!selection) return [0, 0];
+        let directorySelectCount = 0;
+        if(currentDirectory) {
+            //@ts-ignore
+            let selectedItems = selection.map(item=>currentDirectory[item]).filter(item=>item) as TuuidsBrowsingStoreRow[];
+            directorySelectCount = selectedItems.reduce((acc, item)=>{
+                if(item.type_node !== 'Fichier') return acc+1;
+                return acc;
+            }, 0);
+        }
+        return [selection.length, directorySelectCount];
+    }, [selection, currentDirectory]);
 
     let viewModeOnClick = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
         let value = Number.parseInt(e.currentTarget.value) as ViewMode;
@@ -198,27 +214,21 @@ export function ButtonBar(props: ButtonBarProps) {
                     className={'varbtn ml-4 px-2 py-2 w-10 hover:bg-slate-600 active:bg-slate-500 ' + (selectionMode?'bg-violet-500':'bg-slate-700')}>
                         <img src={SelectionModeIcon} alt="Select files" className='w-6 inline-block'/>
                 </button>
-                <button onClick={copyHandler} disabled={!selectionMode}
+                <button onClick={copyHandler} disabled={!selectionMode || !selectCount}
                     className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
                         <img src={CopyIcon} alt="Copy files" className='w-6 inline-block'/>
                 </button>
-                <button onClick={cutHandler} disabled={!selectionMode}
+                <button onClick={cutHandler} disabled={!selectionMode || !selectCount}
                     className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
                         <img src={CutIcon} alt="Move files" className='w-6 inline-block'/>
                 </button>
-                <button onClick={shareHandler} disabled={!selectionMode}
+                <button onClick={shareHandler} disabled={!selectionMode || !directorySelectCount || selectCount !== directorySelectCount}
                     className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
                         <img src={ShareIcon} alt="Share collection" className='w-6 inline-block'/>
                 </button>
-                <ActionButton disabled={!selectionMode} onClick={deleteHandler} confirm={true} revertSuccessTimeout={2} varwidth={10}>
+                <ActionButton disabled={!selectionMode || !selectCount} onClick={deleteHandler} confirm={true} revertSuccessTimeout={2} varwidth={10}>
                     <img src={TrashIcon} alt="Delete files" className='w-6 inline-block'/>
                 </ActionButton>
-                {/* <button disabled={!selectionMode}
-                    className='varbtn ml-0 ml-4 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700'>
-                        <img src={TrashIcon} alt="Delete files" className='w-6 inline-block'/>
-                        
-                </button> */}
-
             </div>
             <div className='text-sm'>
                 {disableStatistics?

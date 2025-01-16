@@ -259,6 +259,7 @@ export function ModalShareCollection(props: ModalInformationProps) {
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let selection = useUserBrowsingStore(state=>state.selection);
+    let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
 
     let [contacts, setContacts] = useState(null as Collection2ContactItem[] | null);
     let [sharedWithContactIds, setSharedWithContactIds] = useState([] as string[]);
@@ -318,8 +319,13 @@ export function ModalShareCollection(props: ModalInformationProps) {
     }, [workers, ready, sharedWithContactIds, initialSharedWithContactIds, close])
 
     useEffect(()=>{
-        if(!workers || !ready) return;
+        if(!workers || !ready || !currentDirectory) return;
         if(!selection || selection.length < 1) throw new Error('Selection invalid - selection must have at least 1 element');
+
+        // Check that all items in the selection are directories
+        //@ts-ignore
+        let selectedItems = selection.map(item=>currentDirectory[item]).filter(item=>item?.type_node!=='Fichier');
+        if(selectedItems.length !== selection.length) throw new Error('At least one selected item is not a collection/directory');
 
         Promise.resolve().then(async ()=>{
             if(!workers) throw new Error('workers not initialized');
@@ -356,7 +362,7 @@ export function ModalShareCollection(props: ModalInformationProps) {
             }
         })
         .catch(err=>console.error("Error loading contacts / shared collections", err));
-    }, [workers, ready, selection, setContacts, setInitialSharedWithContactIds, setSharedWithContactIds]);
+    }, [workers, ready, selection, currentDirectory, setContacts, setInitialSharedWithContactIds, setSharedWithContactIds]);
 
     return (
         <div tabIndex={-1} aria-hidden="true" 
