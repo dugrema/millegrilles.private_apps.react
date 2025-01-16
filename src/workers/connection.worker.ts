@@ -191,6 +191,10 @@ export type Collections2SharedContactsWithUserResponse = MessageResponse & {
     usagers?: Collections2SharedContactsUser[] | null,
 };
 
+export type Collections2StatisticsResponse = MessageResponse & {
+    info: Collection2DirectoryStats[] | null,
+};
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -530,6 +534,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
             {}, 
             DOMAINE_GROSFICHIERS, 'getPartagesContact'
         ) as Collections2SharedContactsWithUserResponse;
+    }
+
+    async getCollection2Statistics(cuuid: string | null) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {cuuid}, 
+            DOMAINE_GROSFICHIERS, 'getInfoStatistiques'
+        ) as Collections2StatisticsResponse;
     }
 
 }

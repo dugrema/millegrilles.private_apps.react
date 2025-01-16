@@ -22,7 +22,8 @@
         {"domain": "GrosFichiers", "action": "filesByTuuid"},
         {"domain": "GrosFichiers", "action": "chargerContacts"},
         {"domain": "GrosFichiers", "action": "getPartagesUsager"},
-        {"domain": "GrosFichiers", "action": "getPartagesContact"}
+        {"domain": "GrosFichiers", "action": "getPartagesContact"},
+        {"domain": "GrosFichiers", "action": "getInfoStatistiques"}
     ],
     "commands": [
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},
