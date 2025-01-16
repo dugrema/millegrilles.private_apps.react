@@ -86,7 +86,7 @@ function CurrentContactList() {
     );
 }
 
-function sortContacts(a: Collection2ContactItem, b: Collection2ContactItem) {
+export function sortContacts(a: Collection2ContactItem, b: Collection2ContactItem) {
     if(a === b) return 0;
     if(a.nom_usager === b.nom_usager) return a.user_id.localeCompare(b.user_id);
     return a.nom_usager.localeCompare(b.nom_usager);

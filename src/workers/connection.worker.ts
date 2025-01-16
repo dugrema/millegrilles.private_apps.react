@@ -199,6 +199,9 @@ export type Collection2ContactItem = {user_id: string, nom_usager: string, conta
 export type Collections2ContactList = MessageResponse & {contacts: Collection2ContactItem[] | null};
 export type Collections2AddShareContactResponse = MessageResponse & Collection2ContactItem;
 
+export type Collection2SharedCollection = {tuuid: string, user_id: string, contact_id: string};
+export type Collections2SharedCollections = MessageResponse & {partages?: Collection2SharedCollection[] | null};
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -556,6 +559,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as Collections2ContactList;
     }
 
+    async getCollection2SharedCollections() {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {}, 
+            DOMAINE_GROSFICHIERS, 'getPartagesUsager'
+        ) as Collections2SharedCollections;
+    }
+
     async addCollection2Contact(username: string) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendCommand(
@@ -569,6 +580,22 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendCommand(
             {contact_ids: [contactId]}, 
             DOMAINE_GROSFICHIERS, 'supprimerContacts'
+        ) as MessageResponse;
+    }
+
+    async shareCollection2Collection(cuuids: string[], contactIds: string[]) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {cuuids, contact_ids: contactIds}, 
+            DOMAINE_GROSFICHIERS, 'partagerCollections'
+        ) as MessageResponse;
+    }
+    
+    async removeShareCollection2Collection(cuuid: string, contactId: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {tuuid: cuuid, contact_id: contactId}, 
+            DOMAINE_GROSFICHIERS, 'supprimerPartageUsager'
         ) as MessageResponse;
     }
 }
