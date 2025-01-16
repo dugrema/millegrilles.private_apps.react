@@ -77,8 +77,11 @@ function CurrentContactList() {
             </div>
             <ActionButton onClick={addUserHandler} disabled={!ready} revertSuccessTimeout={2}>Add user</ActionButton>
 
-            <p className='pt-6'>Current contacts</p>
-            {contactElems}
+            <p className='pt-6 pb-2'>Current contacts</p>
+            {contactElems.length > 0?contactElems
+            :
+                <p>Your content is not shared.</p>
+            }
         </>
     );
 }
