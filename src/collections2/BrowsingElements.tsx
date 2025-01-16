@@ -178,7 +178,7 @@ export function ButtonBar(props: ButtonBarProps) {
                 :
                     <>
                         <button onClick={addFileHandler} disabled={true}
-                            className={'varbtn ml-2 px-2 bg-slate-700 py-2 hover:bg-slate-600 active:bg-slate-500'}>
+                            className={'varbtn ml-2 px-2 bg-slate-700 py-2 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'}>
                                 <img src={FileAddIcon} alt='Add files' className='w-6 inline-block' />
                         </button>
 
@@ -188,7 +188,7 @@ export function ButtonBar(props: ButtonBarProps) {
                         </button>
 
                         <button onClick={importZipHandler} disabled={true}
-                            className={'varbtn px-2 mr-0 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'}>
+                            className={'varbtn px-2 mr-0 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'}>
                                 <span>+ ZIP</span>
                         </button>
                     </>
@@ -199,15 +199,15 @@ export function ButtonBar(props: ButtonBarProps) {
                         <img src={SelectionModeIcon} alt="Select files" className='w-6 inline-block'/>
                 </button>
                 <button onClick={copyHandler} disabled={!selectionMode}
-                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700'>
+                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
                         <img src={CopyIcon} alt="Copy files" className='w-6 inline-block'/>
                 </button>
                 <button onClick={cutHandler} disabled={!selectionMode}
-                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700'>
+                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
                         <img src={CutIcon} alt="Move files" className='w-6 inline-block'/>
                 </button>
                 <button onClick={shareHandler} disabled={!selectionMode}
-                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700'>
+                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
                         <img src={ShareIcon} alt="Share collection" className='w-6 inline-block'/>
                 </button>
                 <ActionButton disabled={!selectionMode} onClick={deleteHandler} confirm={true} revertSuccessTimeout={2} varwidth={10}>
