@@ -5,6 +5,8 @@ import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { Collections2SharedContactsUser } from "../workers/connection.worker";
 import FilelistPane, { FileListPaneOnClickRowType } from "./FilelistPane";
+import SharedContacts from "./SharedContacts";
+
 
 function SharedUsers() {
 
@@ -29,7 +31,8 @@ function UserList() {
     let sharedWithUser = useUserBrowsingStore(state=>state.sharedWithUser);
     let setSharedContact = useUserBrowsingStore(state=>state.setSharedContact);
     let userElems = useMemo(()=>{
-        if(!sharedWithUser?.users) return <></>;
+        if(!sharedWithUser?.users) return <>Loading ...</>;
+        if(sharedWithUser.users.length === 0) return <p>No collections are shared with you.</p>;
         return sharedWithUser.users.map(item=>{
             return (
                 <li key={item.user_id}>
@@ -47,13 +50,19 @@ function UserList() {
     }, [setSharedContact])
 
     return (
-        <section>
-            <Breadcrumb />
-            <h1 className='pt-2 pb-2'>Users sharing collections with you</h1>
-            <ol>
-                {userElems}
-            </ol>
-        </section>
+        <>
+            <section>
+                <Breadcrumb />
+                <h1 className='pt-2 pb-2 text-xl font-bold'>Users sharing collections with you</h1>
+                <ol>
+                    {userElems}
+                </ol>
+            </section>
+
+            <section className='pt-6'>
+                <SharedContacts />
+            </section>
+        </>
     )
 }
 

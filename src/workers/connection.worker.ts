@@ -195,6 +195,10 @@ export type Collections2StatisticsResponse = MessageResponse & {
     info: Collection2DirectoryStats[] | null,
 };
 
+export type Collection2ContactItem = {user_id: string, nom_usager: string, contact_id: string};
+export type Collections2ContactList = MessageResponse & {contacts: Collection2ContactItem[] | null};
+export type Collections2AddShareContactResponse = MessageResponse & Collection2ContactItem;
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -544,6 +548,29 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as Collections2StatisticsResponse;
     }
 
+    async getCollection2ContactList() {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {}, 
+            DOMAINE_GROSFICHIERS, 'chargerContacts'
+        ) as Collections2ContactList;
+    }
+
+    async addCollection2Contact(username: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {nom_usager: username}, 
+            DOMAINE_GROSFICHIERS, 'ajouterContactLocal'
+        ) as Collections2AddShareContactResponse;
+    }
+
+    async deleteCollection2Contact(contactId: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {contact_ids: [contactId]}, 
+            DOMAINE_GROSFICHIERS, 'supprimerContacts'
+        ) as MessageResponse;
+    }
 }
 
 var worker = new AppsConnectionWorker();

@@ -29,7 +29,7 @@ const Collections2UserFileViewing = React.lazy(()=>import('./collections2/UserFi
 const Collections2UserDeletedFilesBrowsing = React.lazy(()=>import('./collections2/BrowsingDeleted'));
 const Collections2UserVideoViewing = React.lazy(()=>import('./collections2/UserVideoViewing'));
 const Collections2Search = React.lazy(()=>import('./collections2/SearchPage'));
-const Collections2SharedContacts = React.lazy(()=>import('./collections2/SharedContacts'));
+const Collections2SharedContent = React.lazy(()=>import('./collections2/SharedContent'));
 const Collections2SharedUsers = React.lazy(()=>import('./collections2/SharedUsers'));
 const Collections2SharedFileBrowsing = React.lazy(()=>import('./collections2/SharedFileBrowsing'));
 const Collections2SharedFileViewing = React.lazy(()=>import('./collections2/SharedFileViewing'));
@@ -88,7 +88,7 @@ const router = createBrowserRouter([
             { path: "s", element: <Collections2Search /> },
             { 
                 path: "c", 
-                element: <Collections2SharedContacts />,
+                element: <Collections2SharedContent />,
                 children: [
                     { path: "", element: <Collections2SharedUsers /> },
                     { path: ":userId", element: <Collections2SharedUsers /> },

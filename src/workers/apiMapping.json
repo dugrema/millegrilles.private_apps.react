@@ -23,7 +23,8 @@
         {"domain": "GrosFichiers", "action": "chargerContacts"},
         {"domain": "GrosFichiers", "action": "getPartagesUsager"},
         {"domain": "GrosFichiers", "action": "getPartagesContact"},
-        {"domain": "GrosFichiers", "action": "getInfoStatistiques"}
+        {"domain": "GrosFichiers", "action": "getInfoStatistiques"},
+        {"domain": "GrosFichiers", "action": "chargerContacts"}
     ],
     "commands": [
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},
@@ -43,7 +44,9 @@
         {"domain": "AiLanguage", "action": "deleteChatConversation"},
         {"domain": "ollama_relai", "action": "generate", "roles": ["ollama_relai"], "stream": true},
         {"domain": "ollama_relai", "action": "chat", "roles": ["ollama_relai"], "stream": true},
-        {"domain": "ollama_relai", "action": "model"}
+        {"domain": "ollama_relai", "action": "model"},
+        {"domain": "GrosFichiers", "action": "ajouterContactLocal"},
+        {"domain": "GrosFichiers", "action": "supprimerContacts"}
     ],
     "subscriptions": {
         "userDeviceEvents": {
