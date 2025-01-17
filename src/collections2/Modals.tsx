@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 
 import ShareIcon from '../resources/icons/share-1-svgrepo-com.svg';
 import { ModalEnum } from "./BrowsingElements";
+import { createDirectory } from "./metadataCreation";
 
 type ModalInformationProps = {
     modalType: ModalEnum,
@@ -140,7 +141,7 @@ export function ModalNewDirectory(props: ModalInformationProps) {
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
-    let cuuid = useUserBrowsingStore(state=>state.modalNavCuuid);
+    let cuuid = useUserBrowsingStore(state=>state.currentCuuid);
 
     let [directoryName, setDirectoryName] = useState('');
     let [error, setError] = useState(false);
@@ -148,10 +149,14 @@ export function ModalNewDirectory(props: ModalInformationProps) {
 
     let actionHandler = useCallback(async (e?: MouseEvent<HTMLButtonElement>, opt?: {skipTimeout?: boolean}) => {
         if(!workers || !ready) throw new Error('workers not initialzed');
-
-        //throw new Error('todo');
         if(directoryName.length === 0) throw new Error('Directory name is empty');
         setError(false);
+
+        let result = await createDirectory(workers, directoryName, cuuid);
+        console.debug("Result", result);
+        let response = await workers.connection.addDirectoryCollection2(result.command, result.key);
+        if(!response.ok) throw new Error("Error creating new directory: " + response.err);
+
         if(opt?.skipTimeout) {
             close()
         } else {

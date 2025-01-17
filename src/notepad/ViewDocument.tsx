@@ -366,7 +366,7 @@ function EditFields(props: EditFieldsProps) {
                 if(!workers) throw new Error("Workers not initialized");
                 let key = keys.pop();
                 if(!key) throw new Error("Unknown key");
-                let encryptedData = await workers.encryption.encryptMessageMgs4(data, key.cleSecrete);
+                let encryptedData = await workers.encryption.encryptMessageMgs4(data, {key: key.cleSecrete});
 
                 let ciphertextBase64 = multiencoding.encodeBase64Nopad(encryptedData.ciphertext);
 

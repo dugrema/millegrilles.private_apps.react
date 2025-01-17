@@ -213,6 +213,9 @@ export type Collection2DirectoryContentUpdateMessage = (MessageResponse | messag
     retires?: string[] | null,
 };
 
+export type KeymasterSaveKeyCommand = {cles: {[key: string]: string}, signature: keymaster.DomainSignature};
+export type Collection2CreateDirectoryType = {metadata: TuuidEncryptedMetadata, cuuid?: string | null, favoris?: boolean | null};
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -610,12 +613,12 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as MessageResponse;
     }
 
-    async addDirectoryCollection2(metadata: TuuidEncryptedMetadata, cuuid: string | null, favoris: boolean | null, cle: any) {
+    async addDirectoryCollection2(command: Collection2CreateDirectoryType, key: messageStruct.MilleGrillesMessage) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendCommand(
-            {metadata, cuuid, favoris}, 
+            command, 
             DOMAINE_GROSFICHIERS, 'nouvelleCollection',
-            {attachments: {"cle": cle}}
+            {attachments: {"cle": key}}
         ) as MessageResponse;
     }
 

@@ -226,7 +226,7 @@ function GroupEdit(props: GroupProps) {
 
             let encryptedData = null as EncryptionResult | null;
             if(key) {
-                encryptedData = await workers.encryption.encryptMessageMgs4(cleartextData, key.cleSecrete);
+                encryptedData = await workers.encryption.encryptMessageMgs4(cleartextData, {key: key.cleSecrete});
             } else {
                 encryptedData = await workers.encryption.encryptMessageMgs4(cleartextData);
 

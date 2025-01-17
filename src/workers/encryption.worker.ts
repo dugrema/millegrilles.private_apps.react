@@ -85,7 +85,10 @@ export class AppsEncryptionWorker {
         this.encryptionKeys = validWrappers;
     }
 
-    async encryptMessageMgs4(cleartext: Object | string | Uint8Array, key?: string | Uint8Array): Promise<EncryptionResult> {
+    async encryptMessageMgs4(cleartext: Object | string | Uint8Array, opts?: {key?: string | Uint8Array, domain?: string}): Promise<EncryptionResult> {
+        let key = opts?.key;
+        let domain = opts?.domain;
+
         if(typeof(key) === 'string') {
             key = multiencoding.decodeBase64Nopad(key);
         }
@@ -113,7 +116,7 @@ export class AppsEncryptionWorker {
         if(key) {
             // Reuse existing key
             cipher = await encryptionMgs4.getMgs4CipherWithSecret(key);
-        } else {
+        } else if (domain) {
             // Ensure we have the information to generate a new encryption key.
             if(!this.millegrillePublicKey) throw new Error("MilleGrille CA key not initialized");
             if(this.encryptionKeys.length === 0) throw new Error("No system encryption keys are available");
@@ -122,7 +125,7 @@ export class AppsEncryptionWorker {
             let secret = await x25519.secretFromEd25519(this.millegrillePublicKey);
             cipher = await encryptionMgs4.getMgs4CipherWithSecret(secret.secret);
             
-            let keySignature = new keymaster.DomainSignature(['Documents'], 1, secret.peer);
+            let keySignature = new keymaster.DomainSignature([domain], 1, secret.peer);
             await keySignature.sign(cipher.key);
 
             let cles = await this.encryptSecretKey(secret.secret)
@@ -140,6 +143,8 @@ export class AppsEncryptionWorker {
                 signature: keySignature,
                 cles,
             };
+        } else {
+            throw new Error('Domain must be provided');
         }
         
         let out1 = await cipher.update(cleartextArray);
@@ -162,7 +167,7 @@ export class AppsEncryptionWorker {
     }
 
     async encryptMessageMgs4ToBase64(cleartext: Object | string | Uint8Array, key?: string | Uint8Array): Promise<EncryptionBase64Result> {
-        let info = await this.encryptMessageMgs4(cleartext, key);
+        let info = await this.encryptMessageMgs4(cleartext, {key});
 
         let infoBase64: EncryptionBase64Result = {
             format: info.format, 
