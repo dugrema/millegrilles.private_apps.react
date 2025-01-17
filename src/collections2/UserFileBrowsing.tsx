@@ -288,13 +288,13 @@ function Modals(props: {show: ModalEnum | null, close:()=>void}) {
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
-    if(show === ModalEnum.Info) return <ModalInformation workers={workers} ready={ready} close={close} />;
-    if(show === ModalEnum.NewDirectory) return <ModalNewDirectory workers={workers} ready={ready} close={close} />;
-    if(show === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={close} title='Copy files' />;
-    if(show === ModalEnum.Cut) return <ModalBrowseAction workers={workers} ready={ready} close={close} title='Move files' />;
-    if(show === ModalEnum.Share) return <ModalShareCollection workers={workers} ready={ready} close={close} />;
-    if(show === ModalEnum.ImportZip) return <ModalImportZip workers={workers} ready={ready} close={close} />;
-    if(show === ModalEnum.Rename) return <ModalRenameFile workers={workers} ready={ready} close={close} />;
+    if(show === ModalEnum.Info) return <ModalInformation workers={workers} ready={ready} close={close} modalType={show} />;
+    if(show === ModalEnum.NewDirectory) return <ModalNewDirectory workers={workers} ready={ready} close={close} modalType={show} />;
+    if(show === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={close} modalType={show} title='Copy files' />;
+    if(show === ModalEnum.Cut) return <ModalBrowseAction workers={workers} ready={ready} close={close} modalType={show} title='Move files' />;
+    if(show === ModalEnum.Share) return <ModalShareCollection workers={workers} ready={ready} modalType={show} close={close} />;
+    if(show === ModalEnum.ImportZip) return <ModalImportZip workers={workers} ready={ready} modalType={show} close={close} />;
+    if(show === ModalEnum.Rename) return <ModalRenameFile workers={workers} ready={ready} modalType={show} close={close} />;
 
     return <></>;
 }

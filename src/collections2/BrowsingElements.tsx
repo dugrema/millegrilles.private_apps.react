@@ -167,7 +167,6 @@ export function ButtonBar(props: ButtonBarProps) {
     let deleteHandler = useCallback(async () => {
         if(!workers || !ready) throw new Error('Workers not initialized');
         if(!selection || selection.length === 0) throw new Error('Nothing selected to delete');
-        console.debug("Delete!");
         let response = await workers.connection.deleteFilesCollection2(selection);
         if(!response.ok) throw new Error('Error deleting files/directories: ' + response.err);
     }, [workers, ready, selection]);

@@ -632,6 +632,22 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as MessageResponse;
     }
 
+    async copyFilesCollection2(destinationCuuid: string, tuuids: string[], contactId?: string | null) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {cuuid: destinationCuuid, inclure_tuuids: tuuids, contact_id: contactId}, 
+            DOMAINE_GROSFICHIERS, 'ajouterFichiersCollection'
+        ) as MessageResponse;
+    }
+
+    async moveFilesCollection2(originCuuid: string, destinationCuuid: string, tuuids: string[]) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {cuuid_origine: originCuuid, cuuid_destination: destinationCuuid, inclure_tuuids: tuuids}, 
+            DOMAINE_GROSFICHIERS, 'deplacerFichiersCollection'
+        ) as MessageResponse;
+    }
+
 }
 
 var worker = new AppsConnectionWorker();

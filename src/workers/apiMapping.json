@@ -51,7 +51,10 @@
         {"domain": "GrosFichiers", "action": "nouvelleCollection"},
         {"domain": "GrosFichiers", "action": "decrireFichier"},
         {"domain": "GrosFichiers", "action": "decrireCollection"},
-        {"domain": "GrosFichiers", "action": "supprimerDocuments"}
+        {"domain": "GrosFichiers", "action": "supprimerDocuments"},
+        {"domain": "GrosFichiers", "action": "deplacerFichiersCollection"},
+        {"domain": "GrosFichiers", "action": "ajouterFichiersCollection"}
+        
     ],
     "subscriptions": {
         "userDeviceEvents": {

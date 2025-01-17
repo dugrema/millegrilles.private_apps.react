@@ -11,8 +11,10 @@ import { sortContacts } from "./SharedContacts";
 import { Link } from "react-router-dom";
 
 import ShareIcon from '../resources/icons/share-1-svgrepo-com.svg';
+import { ModalEnum } from "./BrowsingElements";
 
 type ModalInformationProps = {
+    modalType: ModalEnum,
     workers: AppWorkers | null,
     ready: boolean,
     close: ()=>void,
@@ -308,14 +310,17 @@ export function ModalRenameFile(props: ModalInformationProps) {
 
 export function ModalBrowseAction(props: ModalInformationProps & {title: string}) {
 
-    let {close, title} = props;
+    let {close, title, modalType} = props;
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
     let filesDict = useUserBrowsingStore(state=>state.modalNavCurrentDirectory);
-    let cuuid = useUserBrowsingStore(state=>state.modalNavCuuid);
+    let originCuuid = useUserBrowsingStore(state=>state.currentCuuid);
+    let modalNavCuuid = useUserBrowsingStore(state=>state.modalNavCuuid);
     let setModalCuuid = useUserBrowsingStore(state=>state.setModalCuuid);
+    let selection = useUserBrowsingStore(state=>state.selection);
+    let contactId = null as string | null;
 
     let files = useMemo(()=>{
         if(!filesDict) return null;
@@ -326,16 +331,29 @@ export function ModalBrowseAction(props: ModalInformationProps & {title: string}
     let onClickRow = useCallback((e, tuuid, typeNode, range)=>{
         if(typeNode === 'Repertoire' || typeNode === 'Collection') {
             setModalCuuid(tuuid);
+        } else {
+            throw new Error('A file cannot be selected for browsing');
         }
     }, [setModalCuuid]) as FileListPaneOnClickRowType;
 
     let actionHandler = useCallback(async () => {
         if(!workers || !ready) throw new Error('Workers not initialized');
+        if(!selection || selection.length === 0) throw new Error('No files are selected');
+        if(!originCuuid) throw new Error('Cannot move/copy from root');
+        if(!modalNavCuuid) throw new Error("Must select a directory (root not valid)");
+        
+        if(modalType === ModalEnum.Copy) {
+            let response = await workers.connection.copyFilesCollection2(modalNavCuuid, selection, contactId);
+            if(!response.ok) throw new Error('Error copying files: ' + response.err);
+        } else if(modalType === ModalEnum.Cut) {
+            let response = await workers.connection.moveFilesCollection2(originCuuid, modalNavCuuid, selection);
+            if(!response.ok) throw new Error('Error moving files: ' + response.err);
+        } else {
+            throw new Error('Unsupported action type');
+        }
 
-        //throw new Error('todo');
-        if(!cuuid) throw new Error("Must select a directory (root not valid)");
         setTimeout(()=>close(), 1_000);
-    }, [workers, ready, close, cuuid]);
+    }, [workers, ready, close, modalNavCuuid, modalType, originCuuid, modalNavCuuid, selection, contactId]);
 
     return (
         <>
