@@ -14,6 +14,7 @@ import CopyIcon from '../resources/icons/copy-svgrepo-com.svg';
 import CutIcon from '../resources/icons/cut-svgrepo-com.svg';
 import ShareIcon from '../resources/icons/share-1-svgrepo-com.svg';
 import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
+import EditIcon from '../resources/icons/edit-2-svgrepo-com.svg';
 import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
 
 type BreadcrumbProps = {
@@ -109,7 +110,8 @@ export enum ModalEnum {
     ImportZip,
     Copy,
     Cut,
-    Share
+    Share,
+    Rename
 };
 
 type ButtonBarProps = {
@@ -164,6 +166,7 @@ export function ButtonBar(props: ButtonBarProps) {
     let directoryInfoHandler = useCallback(() => onModal(ModalEnum.Info), [onModal]);
     let createDirectoryHandler = useCallback(() => onModal(ModalEnum.NewDirectory), [onModal]);
     let importZipHandler = useCallback(()=>onModal(ModalEnum.ImportZip), [onModal]);
+    let renameHandler = useCallback(()=>onModal(ModalEnum.Rename), [onModal]);
     let copyHandler = useCallback(()=>onModal(ModalEnum.Copy), [onModal]);
     let cutHandler = useCallback(()=>onModal(ModalEnum.Cut), [onModal]);
     let shareHandler = useCallback(()=>onModal(ModalEnum.Share), [onModal]);
@@ -194,13 +197,13 @@ export function ButtonBar(props: ButtonBarProps) {
                 :
                     <>
                         <button onClick={addFileHandler} disabled={true}
-                            className={'varbtn ml-2 px-2 bg-slate-700 py-2 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'}>
-                                <img src={FileAddIcon} alt='Add files' className='w-6 inline-block' />
+                            className={'varbtn ml-2 px-0.5 py-0.5 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'}>
+                                <img src={FileAddIcon} alt='Add files' title='Add files' className='w-10 inline-block' />
                         </button>
 
                         <button onClick={createDirectoryHandler}
-                            className={'varbtn ml-0 px-2 bg-slate-700 py-2 hover:bg-slate-600 active:bg-slate-500'}>
-                                <img src={FolderAddIcon} alt='Add directory' className='w-6 inline-block' />
+                            className={'varbtn ml-0 px-0.5 py-0.5 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'}>
+                                <img src={FolderAddIcon} alt='Add directory' title='Add directory' className='w-10 inline-block' />
                         </button>
 
                         <button onClick={importZipHandler} disabled={true}
@@ -211,23 +214,27 @@ export function ButtonBar(props: ButtonBarProps) {
                 }
 
                 <button onClick={toggleSelectionMode}
-                    className={'varbtn ml-4 px-2 py-2 w-10 hover:bg-slate-600 active:bg-slate-500 ' + (selectionMode?'bg-violet-500':'bg-slate-700')}>
-                        <img src={SelectionModeIcon} alt="Select files" className='w-6 inline-block'/>
+                    className={'varbtn ml-4 px-1 py-1 w-10 hover:bg-slate-600 active:bg-slate-500 ' + (selectionMode?'bg-violet-500':'bg-slate-700')}>
+                        <img src={SelectionModeIcon} alt="Select files" title="Select files" className='w-8 inline-block'/>
+                </button>
+                <button onClick={renameHandler} disabled={!selectionMode || selectCount !== 1}
+                    className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
+                        <img src={EditIcon} alt="Rename files" title='Rename files' className='w-8 inline-block'/>
                 </button>
                 <button onClick={copyHandler} disabled={!selectionMode || !selectCount}
-                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
-                        <img src={CopyIcon} alt="Copy files" className='w-6 inline-block'/>
+                    className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
+                        <img src={CopyIcon} alt="Copy files" title="Copy files" className='w-8 inline-block'/>
                 </button>
                 <button onClick={cutHandler} disabled={!selectionMode || !selectCount}
-                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
-                        <img src={CutIcon} alt="Move files" className='w-6 inline-block'/>
+                    className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
+                        <img src={CutIcon} alt="Move files" title="Move files" className='w-8 inline-block'/>
                 </button>
                 <button onClick={shareHandler} disabled={!selectionMode || !directorySelectCount || selectCount !== directorySelectCount}
-                    className='varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
-                        <img src={ShareIcon} alt="Share collection" className='w-6 inline-block'/>
+                    className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
+                        <img src={ShareIcon} alt="Share collection" title="Share collection" className='w-8 inline-block'/>
                 </button>
                 <ActionButton disabled={!selectionMode || !selectCount} onClick={deleteHandler} confirm={true} revertSuccessTimeout={2} varwidth={10}>
-                    <img src={TrashIcon} alt="Delete files" className='w-6 inline-block'/>
+                    <img src={TrashIcon} alt="Delete files" title="Delete files" className='w-8 inline-block'/>
                 </ActionButton>
             </div>
             <div className='text-sm'>
