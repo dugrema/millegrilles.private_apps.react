@@ -47,7 +47,11 @@
         {"domain": "GrosFichiers", "action": "ajouterContactLocal"},
         {"domain": "GrosFichiers", "action": "supprimerContacts"},
         {"domain": "GrosFichiers", "action": "partagerCollections"},
-        {"domain": "GrosFichiers", "action": "supprimerPartageUsager"}
+        {"domain": "GrosFichiers", "action": "supprimerPartageUsager"},
+        {"domain": "GrosFichiers", "action": "nouvelleCollection"},
+        {"domain": "GrosFichiers", "action": "decrireFichier"},
+        {"domain": "GrosFichiers", "action": "decrireCollection"},
+        {"domain": "GrosFichiers", "action": "supprimerDocuments"}
     ],
     "subscriptions": {
         "userDeviceEvents": {

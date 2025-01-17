@@ -598,6 +598,40 @@ export class AppsConnectionWorker extends ConnectionWorker {
             DOMAINE_GROSFICHIERS, 'supprimerPartageUsager'
         ) as MessageResponse;
     }
+
+    async addDirectoryCollection2(metadata: TuuidEncryptedMetadata, cuuid: string | null, favoris: boolean | null, cle: any) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {metadata, cuuid, favoris}, 
+            DOMAINE_GROSFICHIERS, 'nouvelleCollection',
+            {attachments: {"cle": cle}}
+        ) as MessageResponse;
+    }
+
+    async renameFileCollection2(tuuid: string, metadata: TuuidEncryptedMetadata, mimetype?: string | null) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {tuuid, metadata, mimetype}, 
+            DOMAINE_GROSFICHIERS, 'decrireFichier'
+        ) as MessageResponse;
+    }
+
+    async renameDirectoryCollection2(tuuid: string, metadata: TuuidEncryptedMetadata) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {tuuid, metadata}, 
+            DOMAINE_GROSFICHIERS, 'decrireCollection'
+        ) as MessageResponse;
+    }
+
+    async deleteFilesCollection2(tuuids: string[]) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {tuuids}, 
+            DOMAINE_GROSFICHIERS, 'supprimerDocuments'
+        ) as MessageResponse;
+    }
+
 }
 
 var worker = new AppsConnectionWorker();

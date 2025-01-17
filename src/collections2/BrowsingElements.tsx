@@ -16,6 +16,8 @@ import ShareIcon from '../resources/icons/share-1-svgrepo-com.svg';
 import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
 import EditIcon from '../resources/icons/edit-2-svgrepo-com.svg';
 import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
+import useConnectionStore from "../connectionStore";
+import useWorkers from "../workers/workers";
 
 type BreadcrumbProps = {
     root?: {tuuid: string | null, name: string, path?: string} | null,
@@ -125,6 +127,9 @@ export function ButtonBar(props: ButtonBarProps) {
 
     let {disableStatistics, shared, onModal} = props;
 
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
     let viewMode = useUserBrowsingStore(state=>state.viewMode);
     let setViewMode = useUserBrowsingStore(state=>state.setViewMode);
     let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
@@ -160,8 +165,12 @@ export function ButtonBar(props: ButtonBarProps) {
     }, []);
 
     let deleteHandler = useCallback(async () => {
+        if(!workers || !ready) throw new Error('Workers not initialized');
+        if(!selection || selection.length === 0) throw new Error('Nothing selected to delete');
         console.debug("Delete!");
-    }, []);
+        let response = await workers.connection.deleteFilesCollection2(selection);
+        if(!response.ok) throw new Error('Error deleting files/directories: ' + response.err);
+    }, [workers, ready, selection]);
 
     let directoryInfoHandler = useCallback(() => onModal(ModalEnum.Info), [onModal]);
     let createDirectoryHandler = useCallback(() => onModal(ModalEnum.NewDirectory), [onModal]);

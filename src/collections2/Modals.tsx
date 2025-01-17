@@ -135,6 +135,9 @@ export function ModalNewDirectory(props: ModalInformationProps) {
 
     let {close} = props;
 
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
     let cuuid = useUserBrowsingStore(state=>state.modalNavCuuid);
 
     let [directoryName, setDirectoryName] = useState('');
@@ -142,6 +145,8 @@ export function ModalNewDirectory(props: ModalInformationProps) {
     let directoryNameOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setDirectoryName(e.currentTarget.value), [setDirectoryName]);
 
     let actionHandler = useCallback(async (e?: MouseEvent<HTMLButtonElement>, opt?: {skipTimeout?: boolean}) => {
+        if(!workers || !ready) throw new Error('workers not initialzed');
+
         //throw new Error('todo');
         if(directoryName.length === 0) throw new Error('Directory name is empty');
         setError(false);
@@ -150,7 +155,7 @@ export function ModalNewDirectory(props: ModalInformationProps) {
         } else {
             setTimeout(()=>close(), 1_000);
         }
-    }, [close, cuuid, directoryName, setError]);
+    }, [workers, ready, close, cuuid, directoryName, setError]);
     
     let submitHandler = useCallback((e: FormEvent)=>{
         e.preventDefault();
@@ -184,7 +189,7 @@ export function ModalNewDirectory(props: ModalInformationProps) {
                         </form>
                     </div>
                     <div className="flex items-center p-4 md:p-5 border-t rounded-b border-gray-600">
-                        <ActionButton onClick={actionHandler} mainButton={true} varwidth={32} forceErrorStatus={error}>
+                        <ActionButton onClick={actionHandler} mainButton={true} varwidth={32} forceErrorStatus={error} disabled={!ready}>
                             Ok
                         </ActionButton>
                         <button onClick={close}
@@ -201,6 +206,9 @@ export function ModalNewDirectory(props: ModalInformationProps) {
 export function ModalRenameFile(props: ModalInformationProps) {
 
     let {close} = props;
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
     let selection = useUserBrowsingStore(state=>state.selection);
     let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
@@ -220,6 +228,8 @@ export function ModalRenameFile(props: ModalInformationProps) {
     let [error, setError] = useState(false);
 
     let actionHandler = useCallback(async (e?: MouseEvent<HTMLButtonElement>, opt?: {skipTimeout?: boolean}) => {
+        if(!workers || !ready) throw new Error('workers not initialzed');
+
         //throw new Error('todo');
         if(newName.length === 0) throw new Error('New name is empty');
         if(newMimetype.length === 0) throw new Error('Mimetype is empty');
@@ -242,7 +252,7 @@ export function ModalRenameFile(props: ModalInformationProps) {
         } else {
             setTimeout(()=>close(), 1_000);
         }
-    }, [close, selectedFile, newName, newMimetype, setError]);
+    }, [workers, ready, close, selectedFile, newName, newMimetype, setError]);
     
     let submitHandler = useCallback((e: FormEvent)=>{
         e.preventDefault();
@@ -282,7 +292,7 @@ export function ModalRenameFile(props: ModalInformationProps) {
                         </form>
                     </div>
                     <div className="flex items-center p-4 md:p-5 border-t rounded-b border-gray-600">
-                        <ActionButton onClick={actionHandler} mainButton={true} varwidth={32} forceErrorStatus={error}>
+                        <ActionButton onClick={actionHandler} mainButton={true} varwidth={32} forceErrorStatus={error} disabled={ready}>
                             Ok
                         </ActionButton>
                         <button onClick={close}
@@ -299,6 +309,9 @@ export function ModalRenameFile(props: ModalInformationProps) {
 export function ModalBrowseAction(props: ModalInformationProps & {title: string}) {
 
     let {close, title} = props;
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
     let filesDict = useUserBrowsingStore(state=>state.modalNavCurrentDirectory);
     let cuuid = useUserBrowsingStore(state=>state.modalNavCuuid);
@@ -317,10 +330,12 @@ export function ModalBrowseAction(props: ModalInformationProps & {title: string}
     }, [setModalCuuid]) as FileListPaneOnClickRowType;
 
     let actionHandler = useCallback(async () => {
+        if(!workers || !ready) throw new Error('Workers not initialized');
+
         //throw new Error('todo');
         if(!cuuid) throw new Error("Must select a directory (root not valid)");
         setTimeout(()=>close(), 1_000);
-    }, [close, cuuid]);
+    }, [workers, ready, close, cuuid]);
 
     return (
         <>
@@ -347,7 +362,7 @@ export function ModalBrowseAction(props: ModalInformationProps & {title: string}
                         </div>
 
                         <div className="flex items-center p-4 md:p-5 border-t rounded-b border-gray-600">
-                            <ActionButton onClick={actionHandler} mainButton={true} varwidth={32}>
+                            <ActionButton onClick={actionHandler} mainButton={true} varwidth={32} disabled={!ready}>
                                 Ok
                             </ActionButton>
                             <button onClick={close}
