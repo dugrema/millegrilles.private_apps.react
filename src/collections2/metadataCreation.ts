@@ -9,7 +9,7 @@ export async function createDirectory(workers: AppWorkers, name: string,
     let entry = {nom: name};
     let entryJson = JSON.stringify(entry);
     let directoryMetadata = await workers.encryption.encryptMessageMgs4(entryJson, {domain: 'GrosFichiers'});
-    console.debug("Metadata: ", directoryMetadata);
+
     let metadata = {
         data_chiffre: multiencoding.encodeBase64Nopad(directoryMetadata.ciphertext),
         cle_id: directoryMetadata.cle_id,
@@ -17,11 +17,13 @@ export async function createDirectory(workers: AppWorkers, name: string,
         format: directoryMetadata.format,
         verification: directoryMetadata.digest?multiencoding.hashEncode('base58btc', 'blake2b-512', directoryMetadata.digest):undefined,
     } as TuuidEncryptedMetadata;
+
     let command = {
         metadata,
         cuuid: parentCuuid,
         favoris: parentCuuid?undefined:true,  // Root entry if no cuuid
     } as Collection2CreateDirectoryType;
+
     let keyCommand = directoryMetadata.cle as KeymasterSaveKeyCommand;
     let signedKeyCommand = await workers.connection.createRoutedMessage(
         messageStruct.MessageKind.Command, keyCommand, {domaine: 'MaitreDesCles', action: 'ajouterCleDomaines'});

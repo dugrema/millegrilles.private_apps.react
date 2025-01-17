@@ -192,7 +192,7 @@ export function ModalNewDirectory(props: ModalInformationProps) {
                             Enter a name for the new directory.
                         </p>
                         <form onSubmit={submitHandler}>
-                            <input type='text' className='text-black w-full bg-slate-300' onChange={directoryNameOnChange} />
+                            <input type='text' className='text-black w-full bg-slate-300' onChange={directoryNameOnChange} autoFocus />
                         </form>
                     </div>
                     <div className="flex items-center p-4 md:p-5 border-t rounded-b border-gray-600">
@@ -290,7 +290,7 @@ export function ModalRenameFile(props: ModalInformationProps) {
                             <p className="text-base leading-relaxed text-gray-400">Rename from:</p>
                             <p className="text-base leading-relaxed text-gray-400">{selectedFile.nom}</p>
                             <label htmlFor='input-filename' className='text-base leading-relaxed text-gray-400 block pt-4'>New name</label>
-                            <input id='input-filename' type='text' value={newName} onChange={nameOnChange}
+                            <input id='input-filename' type='text' value={newName} onChange={nameOnChange} autoFocus
                                 className='text-black w-full bg-slate-300' />
                             <label htmlFor='input-mimetype' className='text-base leading-relaxed text-gray-400 block pt-4'>New mimetype</label>
                             <input id='input-mimetype' type='text' value={newMimetype} onChange={mimetypeOnChange}
