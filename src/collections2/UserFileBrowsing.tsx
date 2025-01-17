@@ -6,7 +6,7 @@ import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Collection2DirectoryStats } from "../workers/connection.worker";
-import { ModalInformation, ModalNewDirectory, ModalBrowseAction, ModalShareCollection, ModalImportZip } from './Modals';
+import { ModalInformation, ModalNewDirectory, ModalBrowseAction, ModalShareCollection, ModalImportZip, ModalRenameFile } from './Modals';
 
 function ViewUserFileBrowsing() {
 
@@ -294,6 +294,7 @@ function Modals(props: {show: ModalEnum | null, close:()=>void}) {
     if(show === ModalEnum.Cut) return <ModalBrowseAction workers={workers} ready={ready} close={close} title='Move files' />;
     if(show === ModalEnum.Share) return <ModalShareCollection workers={workers} ready={ready} close={close} />;
     if(show === ModalEnum.ImportZip) return <ModalImportZip workers={workers} ready={ready} close={close} />;
+    if(show === ModalEnum.Rename) return <ModalRenameFile workers={workers} ready={ready} close={close} />;
 
     return <></>;
 }

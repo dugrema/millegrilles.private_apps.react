@@ -181,15 +181,15 @@ export function ButtonBar(props: ButtonBarProps) {
 
                 <button onClick={viewModeOnClick} value={ViewMode.List}
                     className={'varbtn px-2 mr-0 py-2 hover:bg-slate-600 active:bg-slate-500 ' + (viewMode===ViewMode.List?'bg-slate-500':'bg-slate-700')}>
-                        <img src={ListIcon} alt='List view' className='w-6 inline-block' />
+                        <img src={ListIcon} alt='List view' title='List view' className='w-6 inline-block' />
                 </button>
                 <button onClick={viewModeOnClick} value={ViewMode.Thumbnails}
                     className={'varbtn mx-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 ' + (viewMode===ViewMode.Thumbnails?'bg-slate-500':'bg-slate-700')}>
-                        <img src={GridIcon} alt='Grid view' className='w-6 inline-block' />
+                        <img src={GridIcon} alt='Grid view' title='Grid view' className='w-6 inline-block' />
                 </button>
                 <button onClick={viewModeOnClick} value={ViewMode.Carousel}
                     className={'varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 ' + (viewMode===ViewMode.Carousel?'bg-slate-500':'bg-slate-700')}>
-                        <img src={ImageIcon} alt='Carousel view' className='w-6 inline-block' />
+                        <img src={ImageIcon} alt='Carousel view' title='Carousel view' className='w-6 inline-block' />
                 </button>
 
                 {props.disableEdit?

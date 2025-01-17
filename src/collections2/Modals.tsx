@@ -1,4 +1,4 @@
-import { ChangeEvent, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useUserBrowsingStore, { TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import FilelistPane, { FileListPaneOnClickRowType } from "./FilelistPane";
@@ -16,6 +16,14 @@ type ModalInformationProps = {
     workers: AppWorkers | null,
     ready: boolean,
     close: ()=>void,
+}
+
+function CloseIcon() {
+    return (
+        <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+        </svg>
+    )
 }
 
 export function ModalInformation(props: ModalInformationProps) {
@@ -79,10 +87,8 @@ export function ModalInformation(props: ModalInformationProps) {
                             Information
                         </h3>
                         <button onClick={close} className="bg-transparent rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center hover:bg-gray-600 hover:text-white">
-                            <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                                <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                            </svg>
-                            <span className="sr-only">Close modal</span>
+                            <CloseIcon />
+                            <span className="sr-only">Close</span>
                         </button>
                     </div>
                     <div className="p-4 md:p-5 space-y-4">
@@ -129,35 +135,160 @@ export function ModalNewDirectory(props: ModalInformationProps) {
 
     let {close} = props;
 
+    let cuuid = useUserBrowsingStore(state=>state.modalNavCuuid);
+
+    let [directoryName, setDirectoryName] = useState('');
+    let [error, setError] = useState(false);
+    let directoryNameOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setDirectoryName(e.currentTarget.value), [setDirectoryName]);
+
+    let actionHandler = useCallback(async (e?: MouseEvent<HTMLButtonElement>, opt?: {skipTimeout?: boolean}) => {
+        //throw new Error('todo');
+        if(directoryName.length === 0) throw new Error('Directory name is empty');
+        setError(false);
+        if(opt?.skipTimeout) {
+            close()
+        } else {
+            setTimeout(()=>close(), 1_000);
+        }
+    }, [close, cuuid, directoryName, setError]);
+    
+    let submitHandler = useCallback((e: FormEvent)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        actionHandler(undefined, {skipTimeout: true}).catch(err=>{
+            console.error("Error on create directory", err);
+            setError(true);
+        })
+    }, [actionHandler, setError]);
+
     return (
         <div tabIndex={-1} aria-hidden="true" 
             className="overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
             <div className="relative p-4 w-full max-w-2xl max-h-full">
-                <div className="relative rounded-lg shadow bg-gray-700">
+                <div className="relative rounded-lg shadow bg-gray-800">
                     <div className="flex items-center justify-between p-4 md:p-5 border-b rounded-t border-gray-600">
                         <h3 className="text-xl font-semibold text-white">
-                            Information
+                            Create a new directory
                         </h3>
                         <button onClick={close} className="bg-transparent rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center hover:bg-gray-600 hover:text-white" data-modal-hide="default-modal">
-                            <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                                <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                            </svg>
-                            <span className="sr-only">Close modal</span>
+                            <CloseIcon />
+                            <span className="sr-only">Close</span>
                         </button>
                     </div>
                     <div className="p-4 md:p-5 space-y-4">
                         <p className="text-base leading-relaxed text-gray-400">
-                            With less than a month to go before the European Union enacts new consumer privacy laws for its citizens, companies around the world are updating their terms of service agreements to comply.
+                            Enter a name for the new directory.
                         </p>
-                        <p className="text-base leading-relaxed text-gray-400">
-                            The European Union’s General Data Protection Regulation (G.D.P.R.) goes into effect on May 25 and is meant to ensure a common set of data rights in the European Union. It requires organizations to notify users as soon as possible of high-risk data breaches that could personally affect them.
-                        </p>
+                        <form onSubmit={submitHandler}>
+                            <input type='text' className='text-black w-full bg-slate-300' onChange={directoryNameOnChange} />
+                        </form>
                     </div>
                     <div className="flex items-center p-4 md:p-5 border-t rounded-b border-gray-600">
+                        <ActionButton onClick={actionHandler} mainButton={true} varwidth={32} forceErrorStatus={error}>
+                            Ok
+                        </ActionButton>
                         <button onClick={close}
-                            className="text-white focus:ring-4 focus:outline-none font-medium rounded-lg text-sm px-5 py-2.5 text-center bg-violet-600 hover:bg-violet-700 focus:ring-violet-800">I accept</button>
+                            className="varbtn w-32 border-gray-200 hover:bg-gray-100 focus:z-10 focus:ring-4 focus:ring-gray-600 bg-gray-700 text-gray-400 border-gray-500 hover:text-white hover:bg-gray-600">
+                                Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export function ModalRenameFile(props: ModalInformationProps) {
+
+    let {close} = props;
+
+    let selection = useUserBrowsingStore(state=>state.selection);
+    let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
+
+    let selectedFile = useMemo(()=>{
+        if(!currentDirectory) throw new Error("Directory not loaded");
+        if(!selection || selection.length !== 1) throw new Error('Only 1 file can be renamed');
+        let selectedFile = currentDirectory[selection[0]];
+        if(!selectedFile) throw new Error("Selected file not found");
+        return selectedFile;
+    }, [selection, currentDirectory]);
+
+    let [newName, setNewName] = useState(selectedFile.nom);
+    let nameOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setNewName(e.currentTarget.value), [setNewName]);
+    let [newMimetype, setNewMimetype] = useState(selectedFile.mimetype || '');
+    let mimetypeOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setNewMimetype(e.currentTarget.value), [setNewMimetype]);
+    let [error, setError] = useState(false);
+
+    let actionHandler = useCallback(async (e?: MouseEvent<HTMLButtonElement>, opt?: {skipTimeout?: boolean}) => {
+        //throw new Error('todo');
+        if(newName.length === 0) throw new Error('New name is empty');
+        if(newMimetype.length === 0) throw new Error('Mimetype is empty');
+        setError(false);
+
+        // Detect change
+        let changed = selectedFile.nom !== newName;
+        if(selectedFile.mimetype) {
+            if(selectedFile.mimetype !== newMimetype) {
+                changed = true;
+            }
+        }
+
+        if(changed) {
+            throw new Error('todo');
+        }
+
+        if(opt?.skipTimeout) {
+            close()
+        } else {
+            setTimeout(()=>close(), 1_000);
+        }
+    }, [close, selectedFile, newName, newMimetype, setError]);
+    
+    let submitHandler = useCallback((e: FormEvent)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        console.debug('Submit');
+        actionHandler(undefined, {skipTimeout: true}).catch(err=>{
+            console.error("Error on create directory", err);
+            setError(true);
+        })
+    }, [actionHandler, setError]);
+
+    return (
+        <div tabIndex={-1} aria-hidden="true" 
+            className="overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+            <div className="relative p-4 w-full max-w-2xl max-h-full">
+                <div className="relative rounded-lg shadow bg-gray-800">
+                    <div className="flex items-center justify-between p-4 md:p-5 border-b rounded-t border-gray-600">
+                        <h3 className="text-xl font-semibold text-white">
+                            Rename file or directory
+                        </h3>
+                        <button onClick={close} className="bg-transparent rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center hover:bg-gray-600 hover:text-white" data-modal-hide="default-modal">
+                            <CloseIcon />
+                            <span className="sr-only">Close</span>
+                        </button>
+                    </div>
+                    <div className="p-4 md:p-5">
+                        <form onSubmit={submitHandler}>
+                            <p className="text-base leading-relaxed text-gray-400">Rename from:</p>
+                            <p className="text-base leading-relaxed text-gray-400">{selectedFile.nom}</p>
+                            <label htmlFor='input-filename' className='text-base leading-relaxed text-gray-400 block pt-4'>New name</label>
+                            <input id='input-filename' type='text' value={newName} onChange={nameOnChange}
+                                className='text-black w-full bg-slate-300' />
+                            <label htmlFor='input-mimetype' className='text-base leading-relaxed text-gray-400 block pt-4'>New mimetype</label>
+                            <input id='input-mimetype' type='text' value={newMimetype} onChange={mimetypeOnChange}
+                                className='text-black w-full bg-slate-300' />
+                            <input type='submit' className='hidden' />
+                        </form>
+                    </div>
+                    <div className="flex items-center p-4 md:p-5 border-t rounded-b border-gray-600">
+                        <ActionButton onClick={actionHandler} mainButton={true} varwidth={32} forceErrorStatus={error}>
+                            Ok
+                        </ActionButton>
                         <button onClick={close}
-                            className="py-2.5 px-5 ms-3 text-sm font-medium focus:outline-none rounded-lg border border-gray-200 hover:bg-gray-100 focus:z-10 focus:ring-4 focus:ring-gray-700 bg-gray-800 text-gray-400 border-gray-600 hover:text-white hover:bg-gray-700">Decline</button>
+                            className="varbtn w-32 border-gray-200 hover:bg-gray-100 focus:z-10 focus:ring-4 focus:ring-gray-600 bg-gray-700 text-gray-400 border-gray-500 hover:text-white hover:bg-gray-600">
+                                Cancel
+                        </button>
                     </div>
                 </div>
             </div>
@@ -200,9 +331,7 @@ export function ModalBrowseAction(props: ModalInformationProps & {title: string}
                         <div className="flex items-center justify-between p-4 md:p-5 border-b rounded-t border-gray-600">
                             <h3 className="text-xl font-semibold text-white">{title}</h3>
                             <button onClick={close} className="bg-transparent rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center hover:bg-gray-600 hover:text-white" data-modal-hide="default-modal">
-                                <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                                    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                                </svg>
+                                <CloseIcon />
                                 <span className="sr-only">Close</span>
                             </button>
                         </div>
@@ -374,9 +503,7 @@ export function ModalShareCollection(props: ModalInformationProps) {
                             Share collection
                         </h3>
                         <button onClick={close} className="bg-transparent rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center hover:bg-gray-600 hover:text-white" data-modal-hide="default-modal">
-                            <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                                <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                            </svg>
+                            <CloseIcon />
                             <span className="sr-only">Close</span>
                         </button>
                     </div>
@@ -423,10 +550,8 @@ export function ModalImportZip(props: ModalInformationProps) {
                             Import ZIP file in directory
                         </h3>
                         <button onClick={close} className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="default-modal">
-                            <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                                <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                            </svg>
-                            <span className="sr-only">Close modal</span>
+                            <CloseIcon />
+                            <span className="sr-only">Close</span>
                         </button>
                     </div>
                     <div className="p-4 md:p-5 space-y-4">
