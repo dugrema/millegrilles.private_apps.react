@@ -6,6 +6,7 @@ import { Collection2DirectoryStats, Collections2SearchResults, Collections2Share
 
 export type TuuidsBrowsingStoreRow = {
     tuuid: string,
+    parentCuuid: string | null,
     nom: string,
     type_node: string,
     modification: number,
@@ -49,6 +50,7 @@ export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsi
 
         return {
             tuuid: item.tuuid,
+            parentCuuid: item.path_cuuids?item.parent:null,
             nom: decryptedMetadata.nom,
             type_node: item.type_node,
             modification: item.derniere_modification,
@@ -168,7 +170,14 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
                 }
 
                 // Add and replace existing files
+                let cuuid = state.currentCuuid;
                 for(let file of files) {
+                    // Ensure the file is for the correct directory (e.g. not a late event)
+                    if(cuuid) {
+                        if(file.parentCuuid !== cuuid) continue;  // Directory changed
+                    } else {
+                        if(file.parentCuuid) continue;  // Directory changed to root
+                    }
                     let tuuid = file.tuuid;
                     currentDirectory[tuuid] = file;
                 }

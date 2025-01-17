@@ -202,6 +202,8 @@ export type Collections2AddShareContactResponse = MessageResponse & Collection2C
 export type Collection2SharedCollection = {tuuid: string, user_id: string, contact_id: string};
 export type Collections2SharedCollections = MessageResponse & {partages?: Collection2SharedCollection[] | null};
 
+export type Collection2DirectoryUpdateMessage = (MessageResponse | messageStruct.MilleGrillesMessage) & Collections2FileSyncRow;
+
 export type Collection2DirectoryContentUpdateMessage = (MessageResponse | messageStruct.MilleGrillesMessage) & {
     cuuid: string | null,
     fichiers_ajoutes?: string[] | null,

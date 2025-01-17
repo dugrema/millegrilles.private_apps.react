@@ -1,14 +1,15 @@
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { proxy } from "comlink";
+import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
+
 import { Breadcrumb, ButtonBar, ModalEnum } from "./BrowsingElements";
 import FilelistPane from "./FilelistPane";
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
-import { Collection2DirectoryContentUpdateMessage, Collection2DirectoryStats } from "../workers/connection.worker";
+import { Collection2DirectoryContentUpdateMessage, Collection2DirectoryStats, Collection2DirectoryUpdateMessage } from "../workers/connection.worker";
 import { ModalInformation, ModalNewDirectory, ModalBrowseAction, ModalShareCollection, ModalImportZip, ModalRenameFile } from './Modals';
-import { SubscriptionCallback, SubscriptionMessage } from "millegrilles.reactdeps.typescript";
-import { proxy } from "comlink";
 
 function ViewUserFileBrowsing() {
 
@@ -143,12 +144,15 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
 
     let directoryUpdateHandler = useCallback((e: SubscriptionMessage)=>{
         console.debug("directoryUpdateHandler Event: ", e);
-        if(!workers) {
-            console.warn("Subscription message received when workers is not initialized, ignored");
+        if(!workers || !userId) {
+            console.warn("Subscription message received when workers/userId is not initialized, ignored");
             return;
         }
-        console.warn("TODO");
-    }, [workers]);
+        let content = e.message as Collection2DirectoryUpdateMessage;
+        console.debug("Update breadcrumb");
+        // updateCollection(workers, userId, updateBreadcrumb, content)
+        //     .catch(err=>console.error("Error handling directory content update", err));
+    }, [workers, userId]);
     let directoryUpdateProxy = useMemo(()=>proxy(directoryUpdateHandler), [directoryUpdateHandler]);
 
     let directoryContentUpdateHandler = useCallback((e: SubscriptionMessage)=>{
@@ -180,7 +184,6 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
 
         // Register directory change listener
         Promise.resolve().then(async () => {
-            console.debug("Register listener on cuuid: ", tuuid);
             if(!workers) throw new Error("workers not initialized");
             await workers.connection.subscribe("collection2CollectionEvents", directoryUpdateHandler, {cuuid: tuuid});
             await workers.connection.subscribe("collection2CollectionContentEvents", directoryContentUpdateHandler, {cuuid: tuuid});
@@ -197,7 +200,6 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
 
             // Unregister directory change listener
             Promise.resolve().then(async () => {
-                console.debug("Unregister listener on cuuid: ", tuuid);
                 if(!workers) throw new Error("workers not initialized");
                 await workers.connection.unsubscribe("collection2CollectionEvents", directoryUpdateProxy, {cuuid: tuuid});
                 await workers.connection.unsubscribe("collection2CollectionContentEvents", directoryContentUpdateProxy, {cuuid: tuuid});
@@ -335,6 +337,23 @@ function Modals(props: {show: ModalEnum | null, close:()=>void}) {
     if(show === ModalEnum.Rename) return <ModalRenameFile workers={workers} ready={ready} modalType={show} close={close} />;
 
     return <></>;
+}
+
+async function updateCollection(
+    workers: AppWorkers, 
+    userId: string,
+    updateBreadcrumb: (files: TuuidsBrowsingStoreRow[] | null) => void, 
+    message: Collection2DirectoryUpdateMessage) 
+{
+    let tuuid = message.tuuid;
+    let response = await workers.connection.getFilesByTuuid([tuuid]);
+    if(response.files && response.keys) {
+        let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys);
+        let storeFiles = filesIdbToBrowsing(files);
+        // updateBreadcrumb(storeFiles);
+    } else {
+        console.error("Error loading file/directory updates: ", response.err);
+    }
 }
 
 async function updateCollectionContent(
