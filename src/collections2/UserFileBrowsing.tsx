@@ -5,8 +5,10 @@ import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
-import { Collection2DirectoryStats } from "../workers/connection.worker";
+import { Collection2DirectoryContentUpdateMessage, Collection2DirectoryStats } from "../workers/connection.worker";
 import { ModalInformation, ModalNewDirectory, ModalBrowseAction, ModalShareCollection, ModalImportZip, ModalRenameFile } from './Modals';
+import { SubscriptionCallback, SubscriptionMessage } from "millegrilles.reactdeps.typescript";
+import { proxy } from "comlink";
 
 function ViewUserFileBrowsing() {
 
@@ -139,6 +141,28 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
     let setDirectoryStatistics = useUserBrowsingStore(state=>state.setDirectoryStatistics);
     let deleteFilesDirectory = useUserBrowsingStore(state=>state.deleteFilesDirectory);
 
+    let directoryUpdateHandler = useCallback((e: SubscriptionMessage)=>{
+        console.debug("directoryUpdateHandler Event: ", e);
+        if(!workers) {
+            console.warn("Subscription message received when workers is not initialized, ignored");
+            return;
+        }
+        console.warn("TODO");
+    }, [workers]);
+    let directoryUpdateProxy = useMemo(()=>proxy(directoryUpdateHandler), [directoryUpdateHandler]);
+
+    let directoryContentUpdateHandler = useCallback((e: SubscriptionMessage)=>{
+        console.debug("directoryContentUpdateHandler Event: ", e);
+        if(!workers || !userId) {
+            console.warn("Subscription message received when workers/userId is not initialized, ignored");
+            return;
+        }
+        let content = e.message as Collection2DirectoryContentUpdateMessage;
+        updateCollectionContent(workers, userId, updateCurrentDirectory, deleteFilesDirectory, content)
+            .catch(err=>console.error("Error handling directory content update", err));
+    }, [workers, userId, updateCurrentDirectory, deleteFilesDirectory]);
+    let directoryContentUpdateProxy = useMemo(()=>proxy(directoryContentUpdateHandler), [directoryContentUpdateHandler]);
+
     useEffect(()=>{
         if(!workers || !ready || !userId) return;
         let tuuidValue = tuuid || null;
@@ -155,7 +179,13 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
         updateCurrentDirectory(null);
 
         // Register directory change listener
-        //TODO
+        Promise.resolve().then(async () => {
+            console.debug("Register listener on cuuid: ", tuuid);
+            if(!workers) throw new Error("workers not initialized");
+            await workers.connection.subscribe("collection2CollectionEvents", directoryUpdateHandler, {cuuid: tuuid});
+            await workers.connection.subscribe("collection2CollectionContentEvents", directoryContentUpdateHandler, {cuuid: tuuid});
+        })
+        .catch(err=>console.error("Error registering directory listener on %s: %O", tuuid, err));
 
         // Sync
         synchronizeDirectory(workers, userId, username, tuuidValue, cancelledSignal, updateCurrentDirectory, setBreadcrumb, setDirectoryStatistics, deleteFilesDirectory)
@@ -166,9 +196,17 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
             cancel();
 
             // Unregister directory change listener
-            //TODO
+            Promise.resolve().then(async () => {
+                console.debug("Unregister listener on cuuid: ", tuuid);
+                if(!workers) throw new Error("workers not initialized");
+                await workers.connection.unsubscribe("collection2CollectionEvents", directoryUpdateProxy, {cuuid: tuuid});
+                await workers.connection.unsubscribe("collection2CollectionContentEvents", directoryContentUpdateProxy, {cuuid: tuuid});
+            })
+            .catch(err=>console.error("Error unregistering directory listener on %s: %O", tuuid, err));
         }
-    }, [workers, ready, userId, username, tuuid, setCuuid, setBreadcrumb, updateCurrentDirectory, setDirectoryStatistics, deleteFilesDirectory]);
+    }, [workers, ready, userId, username, tuuid, 
+        setCuuid, setBreadcrumb, updateCurrentDirectory, setDirectoryStatistics, deleteFilesDirectory, 
+        directoryUpdateProxy, directoryContentUpdateProxy]);
 
     return <></>;
 }
@@ -297,4 +335,36 @@ function Modals(props: {show: ModalEnum | null, close:()=>void}) {
     if(show === ModalEnum.Rename) return <ModalRenameFile workers={workers} ready={ready} modalType={show} close={close} />;
 
     return <></>;
+}
+
+async function updateCollectionContent(
+    workers: AppWorkers, 
+    userId: string,
+    updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void, 
+    deleteFilesDirectory: (files: string[]) => void, 
+    message: Collection2DirectoryContentUpdateMessage) 
+{
+    let tuuids = [
+        ...(message.fichiers_ajoutes?message.fichiers_ajoutes:[]),
+        ...(message.fichiers_modifies?message.fichiers_modifies:[]),
+        ...(message.collections_ajoutees?message.collections_ajoutees:[]),
+        ...(message.collections_modifiees?message.collections_modifiees:[]),
+    ];
+
+    if(tuuids.length > 0) {
+        let response = await workers.connection.getFilesByTuuid(tuuids);
+        if(response.files && response.keys) {
+            let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys);
+            let storeFiles = filesIdbToBrowsing(files);
+            updateCurrentDirectory(storeFiles);
+        } else {
+            console.error("Error loading file/directory updates: ", response.err);
+        }
+    }
+
+    if(message.retires && message.retires.length > 0) {
+        let removedTuuids = message.retires;
+        await workers.directory.deleteFiles(removedTuuids);
+        deleteFilesDirectory(removedTuuids);
+    }
 }

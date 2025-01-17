@@ -1,7 +1,7 @@
 import '@solana/webcrypto-ed25519-polyfill';
 import { expose } from 'comlink';
 import { keymaster, messageStruct } from 'millegrilles.cryptography';
-import { ConnectionWorker, MessageResponse, SubscriptionCallback } from 'millegrilles.reactdeps.typescript';
+import { ConnectionWorker, MessageResponse, SubscriptionCallback, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
 import apiMapping from './apiMapping.json';
 
 import { DeviceConfiguration, DeviceReadings } from '../senseurspassifs/senseursPassifsStore';
@@ -201,6 +201,15 @@ export type Collections2AddShareContactResponse = MessageResponse & Collection2C
 
 export type Collection2SharedCollection = {tuuid: string, user_id: string, contact_id: string};
 export type Collections2SharedCollections = MessageResponse & {partages?: Collection2SharedCollection[] | null};
+
+export type Collection2DirectoryContentUpdateMessage = (MessageResponse | messageStruct.MilleGrillesMessage) & {
+    cuuid: string | null,
+    fichiers_ajoutes?: string[] | null,
+    fichiers_modifies?: string[] | null,
+    collections_ajoutees?: string[] | null,
+    collections_modifiees?: string[] | null,
+    retires?: string[] | null,
+};
 
 export class AppsConnectionWorker extends ConnectionWorker {
 

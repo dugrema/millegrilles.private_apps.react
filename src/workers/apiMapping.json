@@ -83,6 +83,22 @@
         "aiLanguageChatMessageEvents": {
             "exchanges": ["2.prive"],
             "routingKeys": ["evenement.AiLanguage.{USER_ID}_{conversation_id}.chatMessageExchange"]
+        },
+        "collection2CollectionEvents": {
+            "exchanges": ["2.prive"],
+            "routingKeys": ["evenement.GrosFichiers.{cuuid}.majCollection"]
+        },
+        "collection2CollectionContentEvents": {
+            "exchanges": ["2.prive"],
+            "routingKeys": ["evenement.GrosFichiers.{cuuid}.majContenuCollection"]
+        },
+        "collection2CuuidMajCollectionEvents": {
+            "exchanges": ["2.prive"],
+            "routingKeys": [
+                "evenement.media.{USER_ID}.transcodageProgres",
+                "evenement.GrosFichiers.{USER_ID}.jobAjoutee",
+                "evenement.GrosFichiers.{USER_ID}.jobSupprimee"
+            ]
         }
     }
 }
