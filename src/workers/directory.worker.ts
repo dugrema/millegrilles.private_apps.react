@@ -3,6 +3,7 @@ import { expose, Remote } from 'comlink';
 import { Collections2FileSyncRow, DecryptedSecretKey } from './connection.worker';
 import { AppsEncryptionWorker } from './encryption.worker';
 import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync, deleteFiles } from '../collections2/idb/collections2StoreIdb';
+import { multiencoding } from 'millegrilles.cryptography';
 
 type ProcessDirectoryChunkOptions = {
     noidb?: boolean,
@@ -56,9 +57,11 @@ export class DirectoryWorker {
                 user_id: userId,  // Override user_id with provided user (e.g. for shared files)
                 type_node: item.type_node,
                 encryptedMetadata: item.metadata,
+                secretKey: null,
                 parent,
                 path_cuuids: item.path_cuuids,
                 fileData,
+                thumbnailDownloaded: false,
                 derniere_modification: item.derniere_modification,
             } as TuuidsIdbStoreRowType;
 
@@ -80,15 +83,17 @@ export class DirectoryWorker {
                     let compression = encrypted.compression;
 
                     try {
+                        let secretKeyBytes = multiencoding.decodeBase64(key.cle_secrete_base64);
                         let decryptedBytes = await encryption.decryptMessage(
                             format, 
-                            key.cle_secrete_base64, 
+                            secretKeyBytes, 
                             nonce, 
                             encrypted.data_chiffre,
                             compression,
                         );
                         let decrypted = JSON.parse(new TextDecoder().decode(decryptedBytes)) as TuuidDecryptedMetadata;
                         file.decryptedMetadata = decrypted;
+                        file.secretKey = secretKeyBytes;  // Keep the key to open, download files and images, rename, etc.
                     } catch (err) {
                         console.error("Error decrypting %s - SKIPPING", file.tuuid);
                     }

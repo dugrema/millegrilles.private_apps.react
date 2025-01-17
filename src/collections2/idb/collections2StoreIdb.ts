@@ -7,13 +7,13 @@ const DB_VERSION_CURRENT = 2;
 
 export type TuuidEncryptedMetadata = messageStruct.MessageDecryption & {
     data_chiffre: string,
-}
+};
 
 export type TuuidDecryptedMetadata = {
     nom: string,
     dateFichier?: number,
     hachage_original?: string,
-}
+};
 
 export type FileData = {
     fuuids_versions?: string[] | null,
@@ -32,8 +32,8 @@ export type FileData = {
     subtitles?: FileSubtitleData[],
 }
 
-export type FileImageDict = {[key: string]: FileImageData}
-export type FileVideoDict = {[key: string]: FileVideoData}
+export type FileImageDict = {[key: string]: FileImageData};
+export type FileVideoDict = {[key: string]: FileVideoData};
 
 export type FileImageData = messageStruct.MessageDecryption & {
     data_chiffre?: string,
@@ -43,7 +43,7 @@ export type FileImageData = messageStruct.MessageDecryption & {
     height: number,
     taille: number,
     resolution: number,
-}
+};
 
 export type FileVideoData = messageStruct.MessageDecryption & {
     fuuid: string,
@@ -56,7 +56,7 @@ export type FileVideoData = messageStruct.MessageDecryption & {
     height?: number,
     quality?: number,
     resolution: number,
-}
+};
 
 export type FileAudioData = {
     index?: number,
@@ -65,34 +65,36 @@ export type FileAudioData = {
     codec_name?: string | null,
     bit_rate?: number | null,
     default?: boolean | null,
-}
+};
 
 export type FileSubtitleData = {
     index?: number,
     language?: string | null,
     title?: string | null,
     codec_name?: string | null,
-}
+};
 
 export type TuuidsIdbStoreRowType = {
     tuuid: string,
     user_id: string,
     type_node: string,
     encryptedMetadata?: TuuidEncryptedMetadata,
+    secretKey: Uint8Array | null,
     decryptedMetadata?: TuuidDecryptedMetadata,
     parent: string,  // For top level collections, this is the user_id. For all others this is the tuuid of the parent collection.
     path_cuuids?: string[] | null,
     fileData?: FileData,
     thumbnail: Blob | null,
+    thumbnailDownloaded?: boolean | null,  // True if high quality (small) image was downloaded to replace the inline thumbnail
     derniere_modification: number,
     lastCompleteSyncSec?: number,  // For directories only, last complete sync of content
-}
+};
 
 export type LoadDirectoryResultType = {
     directory: TuuidsIdbStoreRowType | null, 
     list: TuuidsIdbStoreRowType[],
     breadcrumb: TuuidsIdbStoreRowType[] | null,
-}
+};
 
 export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
     if(upgrade) {

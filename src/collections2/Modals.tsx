@@ -12,7 +12,8 @@ import { Link } from "react-router-dom";
 
 import ShareIcon from '../resources/icons/share-1-svgrepo-com.svg';
 import { ModalEnum } from "./BrowsingElements";
-import { createDirectory } from "./metadataCreation";
+import { createDirectory, updateEncryptedContent } from "./metadataCreation";
+import { loadTuuid } from "./idb/collections2StoreIdb";
 
 type ModalInformationProps = {
     modalType: ModalEnum,
@@ -220,12 +221,12 @@ export function ModalRenameFile(props: ModalInformationProps) {
     let selection = useUserBrowsingStore(state=>state.selection);
     let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
 
-    let selectedFile = useMemo(()=>{
+    let [selectedFile, isFile] = useMemo(()=>{
         if(!currentDirectory) throw new Error("Directory not loaded");
         if(!selection || selection.length !== 1) throw new Error('Only 1 file can be renamed');
         let selectedFile = currentDirectory[selection[0]];
         if(!selectedFile) throw new Error("Selected file not found");
-        return selectedFile;
+        return [selectedFile, selectedFile.type_node === 'Fichier'];
     }, [selection, currentDirectory]);
 
     let [newName, setNewName] = useState(selectedFile.nom);
@@ -239,8 +240,10 @@ export function ModalRenameFile(props: ModalInformationProps) {
 
         //throw new Error('todo');
         if(newName.length === 0) throw new Error('New name is empty');
-        if(newMimetype.length === 0) throw new Error('Mimetype is empty');
+        if(isFile && newMimetype.length === 0) throw new Error('Mimetype is empty');
         setError(false);
+
+        let tuuid = selectedFile.tuuid;
 
         // Detect change
         let changed = selectedFile.nom !== newName;
@@ -251,7 +254,24 @@ export function ModalRenameFile(props: ModalInformationProps) {
         }
 
         if(changed) {
-            throw new Error('todo');
+            let fileIdb = await loadTuuid(tuuid);
+            if(!fileIdb || !fileIdb.secretKey || !fileIdb.decryptedMetadata) throw new Error('File detail not available locally');
+            let {decryptedMetadata, secretKey, encryptedMetadata} = fileIdb;
+            if(!encryptedMetadata || !encryptedMetadata.cle_id) throw new Error('Insufficient information to re-encrypt data');
+            let cleId = encryptedMetadata.cle_id;
+
+            let updatedMetadata = {...decryptedMetadata};
+            updatedMetadata.nom = newName;
+            let reencryptedMetadata = await updateEncryptedContent(workers, cleId, secretKey, updatedMetadata);
+            console.debug("Updated file/directory metadata: ", reencryptedMetadata);
+
+            if(isFile) {
+                let result = await workers.connection.renameFileCollection2(tuuid, reencryptedMetadata, newMimetype);
+                if(!result.ok) throw new Error("Error updating file: " + result.err);
+            } else {
+                let result = await workers.connection.renameDirectoryCollection2(tuuid, reencryptedMetadata);
+                if(!result.ok) throw new Error("Error updating directory: " + result.err);
+            }
         }
 
         if(opt?.skipTimeout) {
@@ -259,12 +279,11 @@ export function ModalRenameFile(props: ModalInformationProps) {
         } else {
             setTimeout(()=>close(), 1_000);
         }
-    }, [workers, ready, close, selectedFile, newName, newMimetype, setError]);
+    }, [workers, ready, close, selectedFile, isFile, newName, newMimetype, setError]);
     
     let submitHandler = useCallback((e: FormEvent)=>{
         e.preventDefault();
         e.stopPropagation();
-        console.debug('Submit');
         actionHandler(undefined, {skipTimeout: true}).catch(err=>{
             console.error("Error on create directory", err);
             setError(true);
@@ -278,7 +297,7 @@ export function ModalRenameFile(props: ModalInformationProps) {
                 <div className="relative rounded-lg shadow bg-gray-800">
                     <div className="flex items-center justify-between p-4 md:p-5 border-b rounded-t border-gray-600">
                         <h3 className="text-xl font-semibold text-white">
-                            Rename file or directory
+                            {isFile?<>Rename file</>:<>Rename directory</>}
                         </h3>
                         <button onClick={close} className="bg-transparent rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center hover:bg-gray-600 hover:text-white" data-modal-hide="default-modal">
                             <CloseIcon />
@@ -292,14 +311,18 @@ export function ModalRenameFile(props: ModalInformationProps) {
                             <label htmlFor='input-filename' className='text-base leading-relaxed text-gray-400 block pt-4'>New name</label>
                             <input id='input-filename' type='text' value={newName} onChange={nameOnChange} autoFocus
                                 className='text-black w-full bg-slate-300' />
-                            <label htmlFor='input-mimetype' className='text-base leading-relaxed text-gray-400 block pt-4'>New mimetype</label>
-                            <input id='input-mimetype' type='text' value={newMimetype} onChange={mimetypeOnChange}
-                                className='text-black w-full bg-slate-300' />
+                            {isFile?
+                                <>
+                                    <label htmlFor='input-mimetype' className='text-base leading-relaxed text-gray-400 block pt-4'>New mimetype</label>
+                                    <input id='input-mimetype' type='text' value={newMimetype} onChange={mimetypeOnChange}
+                                        className='text-black w-full bg-slate-300' />
+                                </>
+                            :<></>}
                             <input type='submit' className='hidden' />
                         </form>
                     </div>
                     <div className="flex items-center p-4 md:p-5 border-t rounded-b border-gray-600">
-                        <ActionButton onClick={actionHandler} mainButton={true} varwidth={32} forceErrorStatus={error} disabled={ready}>
+                        <ActionButton onClick={actionHandler} mainButton={true} varwidth={32} forceErrorStatus={error} disabled={!ready}>
                             Ok
                         </ActionButton>
                         <button onClick={close}
