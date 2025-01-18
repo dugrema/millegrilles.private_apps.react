@@ -85,8 +85,6 @@ function FilehostManager() {
 
 async function maintainFilehosts(workers: AppWorkers, setFilehostAuthenticated: (authenticated: boolean)=>void) {
     let filehostResponse = await workers.connection.getFilehosts();
-    console.debug("Filehost list response", filehostResponse);
-
     if(!filehostResponse.ok) throw new Error('Error loading filehosts: ' + filehostResponse.err);
     let list = filehostResponse.list;
     try {
@@ -102,7 +100,6 @@ async function maintainFilehosts(workers: AppWorkers, setFilehostAuthenticated: 
             let authMessage = await workers.connection.createRoutedMessage(
                 messageStruct.MessageKind.Command, {}, {domaine: 'filehost', action: 'authenticate'});
             authMessage.millegrille = caPem;
-            console.debug("Filehost authentication message: ", authMessage);
 
             await workers.directory.authenticateFilehost(authMessage);
 

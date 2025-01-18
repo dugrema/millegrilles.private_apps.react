@@ -1,15 +1,19 @@
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
-import useUserBrowsingStore from "./userBrowsingStore";
+import useUserBrowsingStore, { filesIdbToBrowsing } from "./userBrowsingStore";
 import { DirectorySyncHandler } from "./UserFileBrowsing";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FileImageData, loadTuuid, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
+import { Formatters } from "millegrilles.reactdeps.typescript";
 
 function UserFileViewing() {
 
     let {tuuid} = useParams();
     let navigate = useNavigate();
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.filehostAuthenticated);
+    let userId = useUserBrowsingStore(state=>state.userId);
 
     let [file, setFile] = useState(null as TuuidsIdbStoreRowType | null);
     let cuuid = useMemo(()=>{
@@ -23,7 +27,6 @@ function UserFileViewing() {
     }, [file]) as Blob | null;
 
     let breacrumbOnClick = useCallback((tuuid: string | null)=>{
-        console.warn("TODO - click breadcrumb tuuid ", tuuid);
         if(tuuid) {
             navigate('/apps/collections2/b/' + tuuid);
         } else {
@@ -34,12 +37,37 @@ function UserFileViewing() {
     useEffect(()=>{
         if(tuuid) {
             loadTuuid(tuuid)
-                .then(file=>setFile(file))
+                .then(file=>{
+                    setFile(file);
+                })
                 .catch(err=>console.error("Error loading file", err));
         } else {
             setFile(null);
         }
     }, [setFile, tuuid]);
+
+    useEffect(()=>{
+        if(!workers || !ready || !userId || !tuuid) return;
+        workers.connection.getFilesByTuuid([tuuid])
+            .then(async response => {
+                if(!workers) throw new Error('workers not initialzed');
+                if(!userId) throw new Error('User id is null');
+                
+                if(response.ok === false) {
+                    throw new Error('Error loading file: ' + response.err);
+                }
+                if(response.files?.length === 1 && response.keys?.length === 1) {
+                    let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys);
+                    // Update file on screen
+                    if(files.length === 1) {
+                        setFile(files[0])
+                    }
+                } else {
+                    console.warn("Error loading file, mising content or key for tuuid", tuuid);
+                }
+            })
+            .catch(err=>console.error("Error loading file %s: %O", tuuid, err));
+    }, [workers, ready, tuuid, userId]);
 
     return (
         <>
@@ -83,27 +111,24 @@ function FileMediaLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: 
         }
     }, [setBlobUrl, thumbnail]);
 
+    // Load full size image when applicable
     useEffect(()=>{
         if(!workers || !ready || !file?.secretKey) return;
 
         // Load the full size image if available
         let images = file?.fileData?.images;
-        console.debug("Images", images);
         if(images) {
             // Find image with greatest resolution
             let maxImage = Object.values(images).reduce((acc, item)=>{
-                if(!acc.value?.resolution || acc.value?.resolution < item.resolution) return {resolution: item.resolution, value: item};
+                if(!acc?.resolution || acc?.resolution < item.resolution) return item;
                 return acc;
-            }, {resolution: 0, value: null as FileImageData | null});
-            console.debug("Max image", maxImage);
-            if(maxImage.value) {
-                let image = maxImage.value;
+            }, null as FileImageData | null);
+            if(maxImage) {
                 // Download image
-                let fuuid = image.hachage;
+                let fuuid = maxImage.hachage;
                 let secretKey = file.secretKey;
-                workers.directory.openFile(fuuid, secretKey, image)
+                workers.directory.openFile(fuuid, secretKey, maxImage)
                     .then(imageBlob=>{
-                        console.debug("Full size image: ", imageBlob);
                         let imageBlobUrl = URL.createObjectURL(imageBlob);
                         setFullSizeBlobUrl(imageBlobUrl);
                     })
@@ -151,10 +176,18 @@ function FileDetail(props: {file: TuuidsIdbStoreRowType}) {
     let {file} = props;
     
     return (
-        <>
-            <p>File name</p>
+        <div className='grid-cols-1'>
+            <p className='text-slate-400'>File name</p>
             <p>{file.decryptedMetadata?.nom}</p>
-        </>
+            <p className='text-slate-400'>File size</p>
+            <p><Formatters.FormatteurTaille value={file.fileData?.taille} /></p>
+            <p className='text-slate-400'>File date</p>
+            <p><Formatters.FormatterDate value={file.decryptedMetadata?.dateFichier || file.date_creation} /></p>
+            <p className='text-slate-400'>Type</p>
+            <p>{file.fileData?.mimetype}</p>
+            <ImageDimensions file={file} />
+            <VideoDuration file={file} />
+        </div>
     )
 }
 
@@ -220,4 +253,26 @@ function Breadcrumb(props: BreadcrumbProps) {
             </ol>
         </nav>
     );
+}
+
+function ImageDimensions(props: {file: TuuidsIdbStoreRowType | null}) {
+    let {file} = props;
+    if(!file?.fileData?.height || !file?.fileData?.width) return <></>;
+    return (
+        <>
+            <p className='text-slate-400'>Dimension</p>
+            <p>{file.fileData.width} x {file.fileData.height}</p>
+        </>
+    )
+}
+
+function VideoDuration(props: {file: TuuidsIdbStoreRowType | null}) {
+    let {file} = props;
+    if(!file?.fileData?.duration) return <></>;
+    return (
+        <>
+            <p className='text-slate-400'>Duration</p>
+            <Formatters.FormatterDuree value={file.fileData.duration} />
+        </>
+    )
 }

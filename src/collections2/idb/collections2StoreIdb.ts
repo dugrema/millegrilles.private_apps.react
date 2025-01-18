@@ -86,6 +86,7 @@ export type TuuidsIdbStoreRowType = {
     fileData?: FileData,
     thumbnail: Blob | null,
     thumbnailDownloaded?: boolean | null,  // True if high quality (small) image was downloaded to replace the inline thumbnail
+    date_creation: number,
     derniere_modification: number,
     lastCompleteSyncSec?: number,  // For directories only, last complete sync of content
 };

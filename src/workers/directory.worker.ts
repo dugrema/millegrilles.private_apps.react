@@ -81,6 +81,7 @@ export class DirectoryWorker {
                 path_cuuids: item.path_cuuids,
                 fileData,
                 thumbnailDownloaded: false,
+                date_creation: item.date_creation,
                 derniere_modification: item.derniere_modification,
             } as TuuidsIdbStoreRowType;
 
