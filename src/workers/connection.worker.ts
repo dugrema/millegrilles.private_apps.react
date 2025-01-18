@@ -216,7 +216,23 @@ export type Collection2DirectoryContentUpdateMessage = (MessageResponse | messag
 export type KeymasterSaveKeyCommand = {cles: {[key: string]: string}, signature: keymaster.DomainSignature};
 export type Collection2CreateDirectoryType = {metadata: TuuidEncryptedMetadata, cuuid?: string | null, favoris?: boolean | null};
 
+export type Filehost = {
+    filehost_id: string,
+    instance_id?: string | null,
+    tls_external?: string | null,
+    url_external?: string | null,
+    url_internal?: string | null,
+}
+
+export type Collection2FilehostResponse = MessageResponse & {
+    list?: Filehost[] | null,
+};
+
 export class AppsConnectionWorker extends ConnectionWorker {
+
+    constructor() {
+        super()
+    }
 
     async authenticate(reconnect?: boolean) {
         if(!this.connection) throw new Error("Connection is not initialized");
@@ -662,6 +678,13 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as MessageResponse;
     }
 
+    async getFilehosts() {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {}, 
+            DOMAINE_CORETOPOLOGIE, 'getFilehosts'
+        ) as Collection2FilehostResponse;
+    }
 }
 
 var worker = new AppsConnectionWorker();

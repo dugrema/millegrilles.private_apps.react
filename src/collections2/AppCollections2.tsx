@@ -4,9 +4,10 @@ import HeaderMenu from "./Menu";
 import Footer from "../Footer";
 import useUserBrowsingStore from "./userBrowsingStore";
 import { useEffect } from "react";
-import useWorkers from "../workers/workers";
+import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { openDB } from "./idb/collections2StoreIdb";
+import { messageStruct } from "millegrilles.cryptography";
 
 function Collections2() {
     return (
@@ -17,6 +18,7 @@ function Collections2() {
             </main>
             <Footer />
             <InitializeStore />
+            <FilehostManager />
         </div>
     );
 }
@@ -49,4 +51,60 @@ function InitializeStore() {
     })
 
     return <></>;
+}
+
+/**
+ * Connects and maintains connections to filehosts.
+ * @returns 
+ */
+function FilehostManager() {
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    useEffect(()=>{
+        if(!workers || !ready) return;
+
+        maintainFilehosts(workers)
+            .catch(err=>console.error("Error during filehost initialization", err));
+
+        let interval = setInterval(()=>{
+            if(!workers) throw new Error('workers not initialized');
+            maintainFilehosts(workers)
+                .catch(err=>console.error("Error during filehost maintenance", err));
+        }, 180_000);
+
+        return () => {
+            clearInterval(interval);
+        }
+    }, [workers, ready]);
+
+    return <></>;
+}
+
+async function maintainFilehosts(workers: AppWorkers) {
+    console.debug("Maintaining filehosts");
+    let filehostResponse = await workers.connection.getFilehosts();
+    console.debug("Filehost list response", filehostResponse);
+
+    if(!filehostResponse.ok) throw new Error('Error loading filehosts: ' + filehostResponse.err);
+    let list = filehostResponse.list;
+    if(list) {
+        await workers.directory.setFilehostList(list);
+        let localUrl = new URL(window.location.href);
+        localUrl.pathname = ''
+        await workers.directory.selectFilehost(localUrl.href);
+
+        // Generate an authentication message
+        let caPem = (await workers.connection.getMessageFactoryCertificate()).pemMillegrille;
+        if(!caPem) throw new Error('CA certificate not available');
+        let authMessage = await workers.connection.createRoutedMessage(
+            messageStruct.MessageKind.Command, {}, {domaine: 'filehost', action: 'authenticate'});
+        authMessage.millegrille = caPem;
+        console.debug("Filehost authentication message: ", authMessage);
+
+        await workers.directory.authenticateFilehost(authMessage);
+    } else {
+        console.warn("No filehost available on this system");
+    }
 }

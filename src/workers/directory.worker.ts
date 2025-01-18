@@ -1,16 +1,34 @@
 import { expose, Remote } from 'comlink';
+import axios from 'axios';
 
-import { Collections2FileSyncRow, DecryptedSecretKey } from './connection.worker';
+import { AppsConnectionWorker, Collections2FileSyncRow, DecryptedSecretKey, Filehost } from './connection.worker';
 import { AppsEncryptionWorker } from './encryption.worker';
 import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync, deleteFiles } from '../collections2/idb/collections2StoreIdb';
-import { multiencoding } from 'millegrilles.cryptography';
+import { messageStruct, multiencoding } from 'millegrilles.cryptography';
 
 type ProcessDirectoryChunkOptions = {
     noidb?: boolean,
     shared?: boolean,
 };
 
+type FilehostDirType = Filehost & {
+    url?: URL | null,
+    jwt?: string | null,
+    lastPing?: number | null,
+};
+
+/**
+ * Worker that handles browsing and file opening tasks.
+ */
 export class DirectoryWorker {
+    filehosts: FilehostDirType[] | null;
+    selectedFilehost: FilehostDirType | null;
+
+    constructor() {
+        this.filehosts = null;
+        this.selectedFilehost = null;
+    }
+
     async processDirectoryChunk(encryption: Remote<AppsEncryptionWorker>, userId: string, files: Collections2FileSyncRow[], 
         keys: DecryptedSecretKey[] | null, opts?: ProcessDirectoryChunkOptions): Promise<TuuidsIdbStoreRowType[]> 
     {
@@ -136,6 +154,92 @@ export class DirectoryWorker {
     async deleteFiles(tuuids: string[]) {
         await deleteFiles(tuuids);
     }
+
+    async setFilehostList(filehosts: Filehost[]) {
+        this.filehosts = filehosts;
+    }
+
+    async selectFilehost(localUrl: string) {
+        // Check if the local filehost is available first
+        try {
+            await axios({url: localUrl + 'filehost/status'})
+            console.debug("Local filehost is available, using by default");
+
+            let url = new URL(localUrl + 'filehost');
+            let localFilehost = {filehost_id: 'LOCAL', url} as FilehostDirType;
+            this.selectedFilehost = localFilehost;
+
+            return;
+        } catch(err: any) {
+            if(err.status) {
+                console.debug("Local /filehost is not available: ", err.status);
+            } else {
+                throw err;
+            }
+        }
+
+        if(!this.filehosts || this.filehosts.length === 0) throw new Error('No filehosts are available');
+        if(this.filehosts.length === 1) {
+            // Only one filehost, select and test
+            let filehost = this.filehosts[0];
+            console.debug("Selecting the only filehost available: ", filehost);
+
+            // Extract url
+            if(filehost.url_external && filehost.tls_external !== 'millegrille') {
+                let url = new URL(filehost.url_external);
+                if(url.pathname.endsWith('filehost')) {
+                    url.pathname += 'filehost';
+                }
+            } else {
+                throw new Error('The only available filehost has no means of accessing it from a browser');
+            }
+
+            this.selectedFilehost = filehost;
+            return;
+        }
+
+        // Find a suitable filehost from the list. Ping the status of each to get an idea of the connection speed.
+        //let performance = {} as {[filehostId: string]: number};
+        throw new Error('todo - select filehost from list');
+    }
+
+    async authenticateFilehost(authenticationMessage: messageStruct.MilleGrillesMessage) {
+        let filehost = this.selectedFilehost;
+        if(!filehost) throw new Error('No filehost has been selected');
+        let url = filehost.url;
+        if(!url) throw new Error('No URL is available for the selected filehost');
+
+        console.debug("Log into filehost ", filehost);
+
+        let authUrl = new URL(url + '/authenticate')
+        // authUrl.pathname = authUrl.pathname.replaceAll('//', '/');
+
+        console.debug('Authenticate url: %s, Signed message: %O', authUrl.href, authenticationMessage);
+        let response = await axios({
+            method: 'POST',
+            url: authUrl.href,
+            data: authenticationMessage,
+            withCredentials: true,
+        });
+
+        console.debug("Authentication response: ", response)
+        if(!response.data.ok) {
+            throw new Error("Authentication error");
+        }
+    }
+
+    /**
+     * 
+     * @param fuuid File unique identifier
+     * @param secretKey Secret key used to decrypt the file
+     * @param decryptionInformation Decryption information (nonce, format, etc.)
+     */
+    async openFile(fuuid: string, secretKey: Uint8Array, decryptionInformation: messageStruct.MessageDecryption): Promise<Blob> {
+        if(!this.selectedFilehost) throw new Error('No filehost is available');
+
+        throw new Error('todo');
+    }
+
 }
 
 var worker = new DirectoryWorker();

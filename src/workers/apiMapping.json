@@ -23,7 +23,8 @@
         {"domain": "GrosFichiers", "action": "chargerContacts"},
         {"domain": "GrosFichiers", "action": "getPartagesUsager"},
         {"domain": "GrosFichiers", "action": "getPartagesContact"},
-        {"domain": "GrosFichiers", "action": "getInfoStatistiques"}
+        {"domain": "GrosFichiers", "action": "getInfoStatistiques"},
+        {"domain": "CoreTopologie", "action": "getFilehosts", "exchange": "1.public"}
     ],
     "commands": [
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},
