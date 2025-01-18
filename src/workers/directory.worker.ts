@@ -91,32 +91,36 @@ export class DirectoryWorker {
         // Decrypt file metadata
         for(let file of mappedFiles) {
             let encrypted = file.encryptedMetadata;
-            if(encrypted && encrypted.cle_id) {
-                let key = keyByCleid[encrypted.cle_id]
-                if(key) {
-                    let format = encrypted.format || key.format;
-                    let nonce = encrypted.nonce || key.nonce;
-                    if(!format || !nonce) {
-                        console.warn("No format/nonce for file %s - SKIPPING", file.tuuid);
-                        continue;
-                    }
-                    let compression = encrypted.compression;
+            if(encrypted) {
+                if(encrypted.cle_id) {
+                    let key = keyByCleid[encrypted.cle_id]
+                    if(key) {
+                        let format = encrypted.format || key.format;
+                        let nonce = encrypted.nonce || key.nonce;
+                        if(!format || !nonce) {
+                            console.warn("No format/nonce for file %s - SKIPPING", file.tuuid);
+                            continue;
+                        }
+                        let compression = encrypted.compression;
 
-                    try {
-                        let secretKeyBytes = multiencoding.decodeBase64(key.cle_secrete_base64);
-                        let decryptedBytes = await encryption.decryptMessage(
-                            format, 
-                            secretKeyBytes, 
-                            nonce, 
-                            encrypted.data_chiffre,
-                            compression,
-                        );
-                        let decrypted = JSON.parse(new TextDecoder().decode(decryptedBytes)) as TuuidDecryptedMetadata;
-                        file.decryptedMetadata = decrypted;
-                        file.secretKey = secretKeyBytes;  // Keep the key to open, download files and images, rename, etc.
-                    } catch (err) {
-                        console.error("Error decrypting %s - SKIPPING", file.tuuid);
+                        try {
+                            let secretKeyBytes = multiencoding.decodeBase64(key.cle_secrete_base64);
+                            let decryptedBytes = await encryption.decryptMessage(
+                                format, 
+                                secretKeyBytes, 
+                                nonce, 
+                                encrypted.data_chiffre,
+                                compression,
+                            );
+                            let decrypted = JSON.parse(new TextDecoder().decode(decryptedBytes)) as TuuidDecryptedMetadata;
+                            file.decryptedMetadata = decrypted;
+                            file.secretKey = secretKeyBytes;  // Keep the key to open, download files and images, rename, etc.
+                        } catch (err) {
+                            console.error("Error decrypting %s - SKIPPING", file.tuuid);
+                        }
                     }
+                } else {
+                    console.warn("File tuuid:%s, cleId:%s is not available", file.tuuid, encrypted.cle_id);
                 }
             }
 

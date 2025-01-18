@@ -39,15 +39,9 @@ export enum ViewMode {
 }
 
 export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsingStoreRow[] {
-    return files.map(item=>{
+    return files.filter(item=>item.decryptedMetadata).map(item=>{
         let decryptedMetadata = item.decryptedMetadata;
         if(!decryptedMetadata) throw new Error("File not decrypted");
-        // let images = item.fileData?.images;
-        // let smallImageFuuid = null;
-        // if(images && images.small) {
-        //     smallImageFuuid = images.small.hachage;
-        // }
-
         return {
             tuuid: item.tuuid,
             parentCuuid: item.path_cuuids?item.parent:null,
