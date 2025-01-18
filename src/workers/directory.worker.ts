@@ -92,12 +92,23 @@ export class DirectoryWorker {
         for(let file of mappedFiles) {
             let encrypted = file.encryptedMetadata;
             if(encrypted) {
-                if(encrypted.cle_id) {
-                    let key = keyByCleid[encrypted.cle_id]
+                //@ts-ignore
+                let keyId = encrypted.cle_id || encrypted.ref_hachage_bytes;  // ref_hachage_bytes is the old format for cle_id
+                if(keyId) {
+                    let key = keyByCleid[keyId]
                     if(key) {
                         let format = encrypted.format || key.format;
+                        if(format !== 'mgs4') {
+                            console.warn("Unsupported decryption format: %s - SKIPPING", format);
+                            continue;
+                        }
+
                         let nonce = encrypted.nonce || key.nonce;
-                        if(!format || !nonce) {
+                        let header = encrypted.header;
+                        if(header) {
+                            nonce = header.slice(1);  // Remove multibase 'm' marker
+                        }
+                        if(!nonce) {
                             console.warn("No format/nonce for file %s - SKIPPING", file.tuuid);
                             continue;
                         }
@@ -118,9 +129,11 @@ export class DirectoryWorker {
                         } catch (err) {
                             console.error("Error decrypting %s - SKIPPING", file.tuuid);
                         }
+                    } else {
+                        console.warn("File tuuid:%s, cleId:%s not provided", file.tuuid, keyId)
                     }
                 } else {
-                    console.warn("File tuuid:%s, cleId:%s is not available", file.tuuid, encrypted.cle_id);
+                    console.warn("File tuuid:%s, cleId:%s is not available", file.tuuid, keyId);
                 }
             }
 
