@@ -92,8 +92,14 @@ export class DirectoryWorker {
         for(let file of mappedFiles) {
             let encrypted = file.encryptedMetadata;
             if(encrypted) {
+                let keyId = encrypted.cle_id;
+                let data_chiffre = encrypted.data_chiffre;
                 //@ts-ignore
-                let keyId = encrypted.cle_id || encrypted.ref_hachage_bytes;  // ref_hachage_bytes is the old format for cle_id
+                let ref_hachage_bytes = encrypted.ref_hachage_bytes as string | null;
+                if(!keyId && ref_hachage_bytes) {
+                    keyId = ref_hachage_bytes;  // ref_hachage_bytes is the old format for cle_id
+                    data_chiffre = data_chiffre.slice(1);  // Remove leading multibase 'm' marker
+                }
                 if(keyId) {
                     let key = keyByCleid[keyId]
                     if(key) {
@@ -105,7 +111,7 @@ export class DirectoryWorker {
 
                         let nonce = encrypted.nonce || key.nonce;
                         let header = encrypted.header;
-                        if(header) {
+                        if(!nonce && header) {  // Legacy
                             nonce = header.slice(1);  // Remove multibase 'm' marker
                         }
                         if(!nonce) {
@@ -120,7 +126,7 @@ export class DirectoryWorker {
                                 format, 
                                 secretKeyBytes, 
                                 nonce, 
-                                encrypted.data_chiffre,
+                                data_chiffre,
                                 compression,
                             );
                             let decrypted = JSON.parse(new TextDecoder().decode(decryptedBytes)) as TuuidDecryptedMetadata;
