@@ -16,6 +16,8 @@ interface ConnectionStoreState {
     certificateRemoteVersions?: {version: number, date: number},
     certificateRenewable: boolean,
     connectionInsecure: boolean,
+    filehostAuthenticated: boolean,
+    
     setFiche: (idmg: string, ca: string, chiffrage: Array<Array<string>>) => void,
     setUserSessionActive: (userSessionActive: boolean) => void,
     setUsername: (newUsername: string) => void,
@@ -29,6 +31,7 @@ interface ConnectionStoreState {
     setCertificateRemoteVersions: (certificateRemoteVersions?: {version: number, date: number}) => void,
     setCertificateRenewable: (certificateRenewable: boolean) => void,
     setConnectionInsecure: (connectionInsecure: boolean) => void,
+    setFilehostAuthenticated: (authenticated: boolean) => void,
 };
 
 const useConnectionStore = create<ConnectionStoreState>()(
@@ -48,6 +51,8 @@ const useConnectionStore = create<ConnectionStoreState>()(
             certificateRemoteVersions: undefined,
             certificateRenewable: false,
             connectionInsecure: false,
+            filehostAuthenticated: false,
+
             setFiche: (idmg, ca, chiffrage) => set(() => ({ idmg, ca, chiffrage })),
             setUsername: (username) => set(() => ({ username })),
             setUserSessionActive: (userSessionActive) => set(() => ({ userSessionActive })),
@@ -61,6 +66,7 @@ const useConnectionStore = create<ConnectionStoreState>()(
             setCertificateRemoteVersions: (certificateRemoteVersions) => set(() => ({certificateRemoteVersions})),
             setCertificateRenewable: (certificateRenewable) => set(() => ({ certificateRenewable })),
             setConnectionInsecure: (connectionInsecure) => set(() => ({ connectionInsecure })),
+            setFilehostAuthenticated: (authenticated: boolean) => set(()=>({filehostAuthenticated: authenticated})),
         })
     ),
 );

@@ -14,7 +14,7 @@ export type TuuidsBrowsingStoreRow = {
     taille: number | null,
     mimetype: string | null,
     thumbnail: Blob | null,
-    smallImageFuuid: string | null,
+    thumbnailDownloaded: boolean,
     loadStatus: number | null,
 }
 
@@ -42,11 +42,11 @@ export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsi
     return files.map(item=>{
         let decryptedMetadata = item.decryptedMetadata;
         if(!decryptedMetadata) throw new Error("File not decrypted");
-        let images = item.fileData?.images;
-        let smallImageFuuid = null;
-        if(images && images.small) {
-            smallImageFuuid = images.small.hachage;
-        }
+        // let images = item.fileData?.images;
+        // let smallImageFuuid = null;
+        // if(images && images.small) {
+        //     smallImageFuuid = images.small.hachage;
+        // }
 
         return {
             tuuid: item.tuuid,
@@ -58,8 +58,7 @@ export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsi
             taille: item.fileData?.taille,
             mimetype: item.fileData?.mimetype,
             thumbnail: item.thumbnail,
-            smallImageFuuid,
-            // loadStatus: null,
+            thumbnailDownloaded: item.thumbnailDownloaded || false,
         } as TuuidsBrowsingStoreRow;
     })
 }
@@ -101,6 +100,7 @@ interface UserBrowsingStoreState {
     setBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
     setViewMode: (viewMode: ViewMode) => void,
     setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
+    updateThumbnail: (tuuid: string, thumbnail: Blob) => void,
     deleteFilesDirectory: (files: string[]) => void,
     setSearchResults: (searchResults: Collection2SearchStore | null) => void,
     updateSearchListing: (listing: TuuidsBrowsingStoreSearchRow[] | null) => void,
@@ -188,6 +188,20 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             setBreadcrumb: (username, breadcrumb) => set(()=>({usernameBreadcrumb: username, breadcrumb})),
             setViewMode: (viewMode) => set(()=>({viewMode})),
             setDirectoryStatistics: (directoryStatistics) => set(()=>({directoryStatistics})),
+            updateThumbnail: (tuuid, thumbnail) => set((state)=>{
+                let currentDirectory = state.currentDirectory;
+                if(currentDirectory) {
+                    currentDirectory = {...currentDirectory};  // Copy
+                    let file = currentDirectory[tuuid];
+                    if(file) {
+                        let fileCopy = {...file};
+                        fileCopy.thumbnail = thumbnail;
+                        fileCopy.thumbnailDownloaded = true;
+                        currentDirectory[tuuid] = fileCopy;
+                    }
+                }
+                return {currentDirectory};
+            }),
             
             deleteFilesDirectory: (files: string[]) => set((state)=>{
                 let updatedDirectory = {} as {[tuuid: string]: TuuidsBrowsingStoreRow};

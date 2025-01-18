@@ -9,7 +9,7 @@ import PdfIcon from '../resources/icons/document-filled-svgrepo-com.svg';
 import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
 import VideoIcon from '../resources/icons/video-file-svgrepo-com.svg';
 import useWorkers from "../workers/workers";
-import { loadTuuid } from "./idb/collections2StoreIdb";
+import { loadTuuid, updateFilesIdb } from "./idb/collections2StoreIdb";
 import useConnectionStore from "../connectionStore";
 
 export type FileListPaneOnClickRowType = (
@@ -265,10 +265,12 @@ function ThumbnailItem(props: FileItem) {
     let { ref, visible } = useVisibility({});
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let filehostReady = useConnectionStore(state=>state.filehostAuthenticated);
+    let updateThumbnail = useUserBrowsingStore(state=>state.updateThumbnail);
 
     let defaultIcon = useMemo(()=>getIcon(value.type_node, value.mimetype), [value]);
     let [thumbnail, setThumbnail] = useState('');
-    let [smallImage, setSmallImage] = useState('');
+    // let [smallImage, setSmallImage] = useState('');
 
     let imgSrc = useMemo(()=>{
         // if(fileIcon) return ImageIcon;
@@ -281,8 +283,10 @@ function ThumbnailItem(props: FileItem) {
     }, [value, onClick]);
 
     useEffect(()=>{
-        if(!workers || !ready) return;  // Not ready
-        if(smallImage || !visible) return;  // Nothing to do
+        if(!workers || !ready || !filehostReady) return;    // Not ready
+        if(value.thumbnailDownloaded) return;               // High quality thumbnail already downloaded, nothing to do
+        if(!visible) return;                                // Not visible
+        
         // console.debug("Tuuid %s visible %s", value.tuuid, visible);
         // workers.directory.loadSmallImage(workers.connection, workers.encryption, value.tuuid)
         Promise.resolve()
@@ -291,38 +295,29 @@ function ThumbnailItem(props: FileItem) {
                 let tuuid = value.tuuid;
                 let file = await loadTuuid(tuuid);
                 //console.debug("Loaded file %s from IDB: ", tuuid, file);
+                let secretKey = file?.secretKey;
                 let fileData = file?.fileData
                 let images = file?.fileData?.images;
-                if(fileData && images && images.small) {
+                if(file && secretKey && fileData && images && images.small) {
                     let smallImageInfo = images.small;
-                    console.debug("Loaded small image info: %O", smallImageInfo);
             
-                    // let fuuid = smallImageInfo.hachage;
-                    let fuuid = fileData.fuuids_versions?fileData.fuuids_versions[0]:null;
+                    let fuuid = smallImageInfo.hachage;
+                    // let fuuid = fileData.fuuids_versions?fileData.fuuids_versions[0]:null;
                     if(fuuid) {
-                        // let cleId = smallImageInfo.cle_id || fuuid;
-                        // //console.debug("Get cleId: ", cleId)
-                        // let response = await workers.connection.getFilesByTuuid([tuuid]);
-                        // //console.debug("Response file by tuuid", response);
-
-                        // // Get file from filehost
-                        // //TODO
+                        let imageBlob = await workers.directory.openFile(fuuid, secretKey, smallImageInfo);
+                        
+                        // Save high quality thumbnail to IDB
+                        file.thumbnail = imageBlob;
+                        file.thumbnailDownloaded = true;
+                        await updateFilesIdb([file]);
+                        
+                        // Reload on screen
+                        updateThumbnail(tuuid, imageBlob);
                     }
                 }
-                setSmallImage('loaded');  // TODO - put blob URL
             })
             .catch(err=>console.error("Error loading small image", err));
-    }, [workers, value, visible, smallImage, ready, setSmallImage]);
-
-    useEffect(()=>{
-        // Cleanup small image URL
-        if(smallImage) {
-            return () => {
-                // URL.revokeObjectURL(smallImage);
-                // setSmallImage('');
-            }
-        }
-    }, [smallImage]);
+    }, [workers, value, visible, ready, filehostReady, updateThumbnail]);
 
     useEffect(()=>{
         if(!value || !value.thumbnail) return;

@@ -1,10 +1,10 @@
-import { expose, Remote } from 'comlink';
 import axios from 'axios';
+import { expose, Remote } from 'comlink';
+import { messageStruct, encryptionMgs4, multiencoding } from 'millegrilles.cryptography';
 
-import { AppsConnectionWorker, Collections2FileSyncRow, DecryptedSecretKey, Filehost } from './connection.worker';
+import { Collections2FileSyncRow, DecryptedSecretKey, Filehost } from './connection.worker';
 import { AppsEncryptionWorker } from './encryption.worker';
 import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync, deleteFiles } from '../collections2/idb/collections2StoreIdb';
-import { messageStruct, multiencoding } from 'millegrilles.cryptography';
 
 type ProcessDirectoryChunkOptions = {
     noidb?: boolean,
@@ -14,6 +14,7 @@ type ProcessDirectoryChunkOptions = {
 type FilehostDirType = Filehost & {
     url?: URL | null,
     jwt?: string | null,
+    authenticated?: boolean | null,
     lastPing?: number | null,
 };
 
@@ -163,7 +164,7 @@ export class DirectoryWorker {
         // Check if the local filehost is available first
         try {
             await axios({url: localUrl + 'filehost/status'})
-            console.debug("Local filehost is available, using by default");
+            // console.debug("Local filehost is available, using by default");
 
             let url = new URL(localUrl + 'filehost');
             let localFilehost = {filehost_id: 'LOCAL', url} as FilehostDirType;
@@ -172,7 +173,7 @@ export class DirectoryWorker {
             return;
         } catch(err: any) {
             if(err.status) {
-                console.debug("Local /filehost is not available: ", err.status);
+                console.info("Local /filehost is not available: ", err.status);
             } else {
                 throw err;
             }
@@ -182,7 +183,7 @@ export class DirectoryWorker {
         if(this.filehosts.length === 1) {
             // Only one filehost, select and test
             let filehost = this.filehosts[0];
-            console.debug("Selecting the only filehost available: ", filehost);
+            // console.debug("Selecting the only filehost available: ", filehost);
 
             // Extract url
             if(filehost.url_external && filehost.tls_external !== 'millegrille') {
@@ -209,22 +210,30 @@ export class DirectoryWorker {
         let url = filehost.url;
         if(!url) throw new Error('No URL is available for the selected filehost');
 
-        console.debug("Log into filehost ", filehost);
+        // console.debug("Log into filehost ", filehost);
 
         let authUrl = new URL(url + '/authenticate')
         // authUrl.pathname = authUrl.pathname.replaceAll('//', '/');
 
-        console.debug('Authenticate url: %s, Signed message: %O', authUrl.href, authenticationMessage);
-        let response = await axios({
-            method: 'POST',
-            url: authUrl.href,
-            data: authenticationMessage,
-            withCredentials: true,
-        });
+        // console.debug('Authenticate url: %s, Signed message: %O', authUrl.href, authenticationMessage);
+        try {
+            let response = await axios({
+                method: 'POST',
+                url: authUrl.href,
+                data: authenticationMessage,
+                withCredentials: true,
+            });
 
-        console.debug("Authentication response: ", response)
-        if(!response.data.ok) {
-            throw new Error("Authentication error");
+            // console.debug("Authentication response: ", response)
+            if(!response.data.ok) {
+                throw new Error("Authentication error");
+            }
+
+            filehost.authenticated = true;
+        } catch(err) {
+            filehost.authenticated = false;
+            filehost.jwt = null;
+            throw err;
         }
     }
 
@@ -235,11 +244,49 @@ export class DirectoryWorker {
      * @param decryptionInformation Decryption information (nonce, format, etc.)
      */
     async openFile(fuuid: string, secretKey: Uint8Array, decryptionInformation: messageStruct.MessageDecryption): Promise<Blob> {
-        if(!this.selectedFilehost) throw new Error('No filehost is available');
+        let filehost = this.selectedFilehost;
+        if(!filehost) throw new Error('No filehost is available');
+        if(!filehost.authenticated) throw new Error('Connection to filehost not authenticated');
+        let url = filehost.url;
+        if(!url) throw new Error('No URL is available for the selected filehost');
+        if(decryptionInformation.format !== 'mgs4') throw new Error('Unsupported encryption format: ' + decryptionInformation.format);
+        if(!decryptionInformation.nonce) throw new Error('Nonce missing');
 
-        throw new Error('todo');
+        let fileUrl = new URL(url + '/files/' + fuuid);
+        let response = await axios({method: 'GET', url: fileUrl.href, responseType: 'blob'})
+
+        let encryptedBlob = response.data as Blob;
+        
+        // Decrypt file
+        let nonce = multiencoding.decodeBase64(decryptionInformation.nonce);
+        let decipher = await encryptionMgs4.getMgs4Decipher(secretKey, nonce);
+
+        // @ts-ignore
+        let readableStream = encryptedBlob.stream() as ReadableStream;
+        let reader = readableStream.getReader();
+        let blobs = [] as Blob[];  // Save all chunks in blobs, they will get concatenated at finalize.
+        while(true) {
+            let {done, value} = await reader.read();
+            if(done) break;
+            if(value && value.length > 0) {
+                let output = await decipher.update(value);
+                if(output && output.length > 0) {
+                    let blob = new Blob([output]);
+                    blobs.push(blob);
+                }
+            }
+        }
+
+        let finalOutput = await decipher.finalize();
+        let outputBlob = null as Blob | null;
+        if(finalOutput && finalOutput.length > 0) {
+            outputBlob = new Blob([...blobs, finalOutput]);
+        } else {
+            outputBlob = new Blob(blobs);
+        }
+
+        return outputBlob;
     }
-
 }
 
 var worker = new DirectoryWorker();
