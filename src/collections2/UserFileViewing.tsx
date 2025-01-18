@@ -75,7 +75,8 @@ function FileMediaLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: 
     useEffect(()=>{
         if(!thumbnail) return;
         let blobUrl = URL.createObjectURL(thumbnail);
-        setBlobUrl(blobUrl);
+        // Introduce delay to allow full size to load first when possible (avoids flickering).
+        setTimeout(()=>setBlobUrl(blobUrl), 500);
 
         return () => {
             URL.revokeObjectURL(blobUrl);
