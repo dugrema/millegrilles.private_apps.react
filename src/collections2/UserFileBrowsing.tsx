@@ -149,7 +149,7 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) 
             return;
         }
         let content = e.message as Collection2DirectoryUpdateMessage;
-        console.debug("Update breadcrumb");
+        console.debug("Update breadcrumb with ", content);
         // updateCollection(workers, userId, updateBreadcrumb, content)
         //     .catch(err=>console.error("Error handling directory content update", err));
     }, [workers, userId]);
@@ -185,8 +185,8 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) 
         // Register directory change listener
         Promise.resolve().then(async () => {
             if(!workers) throw new Error("workers not initialized");
-            await workers.connection.subscribe("collection2CollectionEvents", directoryUpdateHandler, {cuuid: tuuid});
-            await workers.connection.subscribe("collection2CollectionContentEvents", directoryContentUpdateHandler, {cuuid: tuuid});
+            await workers.connection.subscribe("collection2CollectionEvents", directoryUpdateProxy, {cuuid: tuuid});
+            await workers.connection.subscribe("collection2CollectionContentEvents", directoryContentUpdateProxy, {cuuid: tuuid});
         })
         .catch(err=>console.error("Error registering directory listener on %s: %O", tuuid, err));
 
@@ -339,22 +339,22 @@ function Modals(props: {show: ModalEnum | null, close:()=>void}) {
     return <></>;
 }
 
-async function updateCollection(
-    workers: AppWorkers, 
-    userId: string,
-    updateBreadcrumb: (files: TuuidsBrowsingStoreRow[] | null) => void, 
-    message: Collection2DirectoryUpdateMessage) 
-{
-    let tuuid = message.tuuid;
-    let response = await workers.connection.getFilesByTuuid([tuuid]);
-    if(response.files && response.keys) {
-        let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys);
-        let storeFiles = filesIdbToBrowsing(files);
-        // updateBreadcrumb(storeFiles);
-    } else {
-        console.error("Error loading file/directory updates: ", response.err);
-    }
-}
+// async function updateCollection(
+//     workers: AppWorkers, 
+//     userId: string,
+//     updateBreadcrumb: (files: TuuidsBrowsingStoreRow[] | null) => void, 
+//     message: Collection2DirectoryUpdateMessage) 
+// {
+//     let tuuid = message.tuuid;
+//     let response = await workers.connection.getFilesByTuuid([tuuid]);
+//     if(response.files && response.keys) {
+//         let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys);
+//         let storeFiles = filesIdbToBrowsing(files);
+//         // updateBreadcrumb(storeFiles);
+//     } else {
+//         console.error("Error loading file/directory updates: ", response.err);
+//     }
+// }
 
 async function updateCollectionContent(
     workers: AppWorkers, 

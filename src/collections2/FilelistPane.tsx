@@ -100,7 +100,7 @@ function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
         return files.map(item=>{
             return <FileRow key={item.tuuid} value={item} dateColumn={dateColumn} onClick={onClick} columnNameOnly={columnNameOnly} />
         })
-    }, [files, dateColumn, onClick]);
+    }, [files, dateColumn, columnNameOnly, onClick]);
 
     return (
         <>
