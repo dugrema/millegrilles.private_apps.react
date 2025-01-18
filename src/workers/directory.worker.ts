@@ -94,12 +94,17 @@ export class DirectoryWorker {
             if(encrypted) {
                 let keyId = encrypted.cle_id;
                 let data_chiffre = encrypted.data_chiffre;
+
+                // Legacy handling to get keyId
+                let fuuids = file.fileData?.fuuids_versions;
+                let fuuid = (fuuids&&fuuids.length>0)?fuuids[0]:null;
                 //@ts-ignore
-                let ref_hachage_bytes = encrypted.ref_hachage_bytes as string | null;
-                if(!keyId && ref_hachage_bytes) {
+                let ref_hachage_bytes = encrypted.ref_hachage_bytes || fuuid as string | null;
+                if(!keyId && (ref_hachage_bytes || fuuid)) {
                     keyId = ref_hachage_bytes;  // ref_hachage_bytes is the old format for cle_id
                     data_chiffre = data_chiffre.slice(1);  // Remove leading multibase 'm' marker
                 }
+
                 if(keyId) {
                     let key = keyByCleid[keyId]
                     if(key) {
