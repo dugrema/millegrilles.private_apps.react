@@ -288,7 +288,6 @@ function ThumbnailItem(props: FileItem) {
         if(!visible) return;                                // Not visible
         
         // console.debug("Tuuid %s visible %s", value.tuuid, visible);
-        // workers.directory.loadSmallImage(workers.connection, workers.encryption, value.tuuid)
         Promise.resolve()
             .then(async ()=>{
                 if(!workers) throw new Error('workers not initialized');

@@ -128,7 +128,7 @@ export default ViewUserFileBrowsing;
  * Handles the sync of files in a directory.
  * @returns 
  */
-function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
+export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
 
     let {tuuid} = props;
 

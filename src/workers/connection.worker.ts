@@ -1,7 +1,7 @@
 import '@solana/webcrypto-ed25519-polyfill';
 import { expose } from 'comlink';
 import { keymaster, messageStruct } from 'millegrilles.cryptography';
-import { ConnectionWorker, MessageResponse, SubscriptionCallback, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
+import { ConnectionWorker, MessageResponse, SubscriptionCallback } from 'millegrilles.reactdeps.typescript';
 import apiMapping from './apiMapping.json';
 
 import { DeviceConfiguration, DeviceReadings } from '../senseurspassifs/senseursPassifsStore';
@@ -229,10 +229,6 @@ export type Collection2FilehostResponse = MessageResponse & {
 };
 
 export class AppsConnectionWorker extends ConnectionWorker {
-
-    constructor() {
-        super()
-    }
 
     async authenticate(reconnect?: boolean) {
         if(!this.connection) throw new Error("Connection is not initialized");
