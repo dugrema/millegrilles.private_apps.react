@@ -682,7 +682,7 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as Collection2FilehostResponse;
     }
 
-    async getStreamingJwt(fuuidVideo: string, fuuidRef: string, contactId?: string) {
+    async getStreamingJwt(fuuidVideo: string, fuuidRef?: string | null, contactId?: string | null) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest(
             {fuuid: fuuidVideo, fuuid_ref: fuuidRef, contact_id: contactId}, 

@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Dispatch, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from 'axios';
 import { Formatters } from "millegrilles.reactdeps.typescript";
@@ -89,13 +89,16 @@ export default UserFileViewing;
 
 function ViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
     let {file, thumbnail} = props;
-    if(!file || !thumbnail) return <FileViewLayout file={file} />;
-    return <FileMediaLayout file={file} thumbnail={thumbnail} />;
+
+    let [selectedVideo, setSelectedVideo] = useState(null as FileVideoData | null);
+
+    if(!file || !thumbnail) return <FileViewLayout file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} />;
+    return <FileMediaLayout file={file} thumbnail={thumbnail} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} />;
 }
 
-function FileMediaLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
+function FileMediaLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null, selectedVideo: FileVideoData | null, setSelectedVideo: Dispatch<FileVideoData | null>}) {
 
-    let {file, thumbnail} = props;
+    let {file, thumbnail, selectedVideo, setSelectedVideo} = props;
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.filehostAuthenticated);
 
@@ -159,22 +162,21 @@ function FileMediaLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: 
     return (
         <div className='grid grid-cols-3 pt-2'>
             <div className='flex grow col-span-2 pr-4 max-h-screen pb-32'>
-                <MediaContentDisplay file={file} thumbnailBlobUrl={fullSizeBlobUrl || blobUrl} />
+                <MediaContentDisplay file={file} thumbnailBlobUrl={fullSizeBlobUrl || blobUrl} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} />
             </div>
             <div>
-                <FileDetail file={file} />
+                <FileDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} />
             </div>
         </div>
     )
 }
 
-function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbnailBlobUrl: string}) {
-    let {file, thumbnailBlobUrl} = props;
+function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbnailBlobUrl: string, selectedVideo: FileVideoData | null, setSelectedVideo: Dispatch<FileVideoData | null>}) {
+    let {file, thumbnailBlobUrl, selectedVideo, setSelectedVideo} = props;
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.filehostAuthenticated);
 
     let [playVideo, setPlayVideo] = useState(false);
-    let [selectedVideo, setSelectedVideo] = useState(null as FileVideoData | null);
     let [jwt, setJwt] = useState('');
     let [videoSrc, setVideoSrc] = useState('');
     let [loadProgress, setLoadProgress] = useState(null as number | null);
@@ -200,7 +202,7 @@ function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbna
 
         // Select a video
         let videos = file.fileData?.video;
-        console.debug("Videos: ", videos);
+        // console.debug("Videos: ", videos);
         if(!videos) return;
         let video = Object.values(videos).reduce((previous, item)=>{
             let resolutionPrevious = null as number | null, resolutionCurrent = null as number | null;
@@ -227,8 +229,13 @@ function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbna
         setLoadProgress(0);
 
         // Get JWT
-        let fuuidRef = selectedVideo.fuuid;
         let fuuidVideo = selectedVideo.fuuid_video;
+        let fuuidRef = null as string | null;
+        if(fuuidVideo) {
+            fuuidRef = selectedVideo.fuuid;
+        } else {
+            fuuidVideo = selectedVideo.fuuid;
+        }
 
         workers.connection.getStreamingJwt(fuuidVideo, fuuidRef)
             .then(response=>{
@@ -245,9 +252,9 @@ function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbna
 
     useEffect(()=>{
         if(!jwt || !selectedVideo) return;
-        console.debug("Monitor the loading of the video for token", jwt);
+        console.debug("Monitor the loading of the video for token %s, selected video: %O", jwt, selectedVideo);
 
-        let fuuidVideo = selectedVideo.fuuid_video;
+        let fuuidVideo = selectedVideo.fuuid_video || selectedVideo.fuuid;
         let videoSrc = `/streams/${fuuidVideo}?jwt=${jwt}`;
         setLoadProgress(1);
 
@@ -271,7 +278,7 @@ function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbna
     if(file && thumbnailBlobUrl && selectedVideo && videoReady) {
         return (
             <VideoPlayer 
-                fuuidVideo={selectedVideo.fuuid_video} 
+                fuuidVideo={selectedVideo.fuuid_video || selectedVideo.fuuid} 
                 mimetypeVideo={selectedVideo.mimetype} 
                 jwt={jwt} 
                 thumbnailBlobUrl={thumbnailBlobUrl} />
@@ -280,21 +287,21 @@ function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbna
     return <img src={thumbnailBlobUrl} alt='Content of the file' className='grow object-contain object-right' onClick={onClickStart} />;
 }
 
-function FileViewLayout(props: {file: TuuidsIdbStoreRowType | null}) {
+function FileViewLayout(props: {file: TuuidsIdbStoreRowType | null, selectedVideo: FileVideoData | null, setSelectedVideo: Dispatch<FileVideoData | null>}) {
 
-    let {file} = props;
+    let {file, selectedVideo, setSelectedVideo} = props;
 
     if(!file) return <></>;
 
     return (
         <div className='pt-2'>
-            <FileDetail file={file} />
+            <FileDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} />
         </div>
     )
 }
 
-function FileDetail(props: {file: TuuidsIdbStoreRowType}) {
-    let {file} = props;
+function FileDetail(props: {file: TuuidsIdbStoreRowType, selectedVideo: FileVideoData | null, setSelectedVideo: Dispatch<FileVideoData | null>}) {
+    let {file, selectedVideo, setSelectedVideo} = props;
     
     return (
         <div className='grid-cols-1'>
@@ -308,6 +315,7 @@ function FileDetail(props: {file: TuuidsIdbStoreRowType}) {
             <p>{file.fileData?.mimetype}</p>
             <ImageDimensions file={file} />
             <VideoDuration file={file} />
+            <VideoSelectionDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} />
         </div>
     )
 }
@@ -409,7 +417,7 @@ function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimet
 
     return (
         <>
-            <video controls poster={thumbnailBlobUrl} className='grow object-contain object-right'>
+            <video controls poster={thumbnailBlobUrl} className='grow object-contain object-right' autoPlay>
                 {videoSrc?
                     <source src={videoSrc} type={mimetypeVideo} />
                     :
@@ -418,4 +426,123 @@ function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimet
             </video>
         </>
     )
+}
+
+function sortVideoEntries(a: FileVideoDataWithItemKey, b: FileVideoDataWithItemKey): number {
+    if(a === b) return 0;
+    let resolutionA = a.resolution;
+    let resolutionB = b.resolution;
+    if(resolutionA === resolutionB) return 0;
+    if(resolutionA === null) return 1;
+    if(resolutionB === null) return -1;
+    return resolutionA - resolutionB;
+}
+
+type FileVideoDataWithItemKey = FileVideoData & {entryKey: string, resolution: number};
+
+function VideoSelectionDetail(props: {file: TuuidsIdbStoreRowType | null, selectedVideo: FileVideoData | null, setSelectedVideo: Dispatch<FileVideoData | null>}) {
+    let {file, selectedVideo, setSelectedVideo} = props;
+
+    let fuuid = useMemo(()=>{
+        let fuuids = file?.fileData?.fuuids_versions;
+        let fuuid = (fuuids&&fuuids.length>0)?fuuids[0]:null;
+        return fuuid;
+    }, [file]);
+
+    let onClickHandler = useCallback((e: MouseEvent<HTMLLIElement>)=>{
+        let videos = file?.fileData?.video;
+        if(!videos) throw new Error('No video information to select');
+        let value = e.currentTarget.dataset.key;
+        // console.debug("Selecting ", value);
+        if(value) {
+            let video = videos[value];
+            if(video) {
+                setSelectedVideo(video);
+            } else if(fuuid && value === 'original') {
+                // Create original entry as FileVideoData
+                let originalEntry = {fuuid, mimetype: file?.fileData?.mimetype} as FileVideoData;
+                setSelectedVideo(originalEntry);
+            } else {
+                console.warn("No video matches key ", value);
+            }
+        } else {
+            console.warn("No dataset.key value provided");
+        }
+    }, [file, fuuid, setSelectedVideo]);
+
+    let elems = useMemo(()=>{
+        let video = file?.fileData?.video;
+        if(!video) return <></>;
+
+        let videoItems = Object.keys(video)
+        .map(key=>{
+            if(!video) throw new Error('video null');
+            let videoData = video[key] || {};
+            let resolution = videoData.resolution;
+            if(!resolution) {
+                if(videoData.height && videoData.width) {
+                    resolution = Math.min(videoData.height, videoData.width);
+                } else {
+                    resolution = videoData.height || videoData.width || 0;
+                }
+            }
+            return {entryKey: key, resolution, ...videoData} as FileVideoDataWithItemKey;
+        })
+        .sort(sortVideoEntries);
+
+        // console.debug("Video items: ", videoItems);
+
+        let values = [];
+        
+        // Handle original format, detect if it is supported
+        let mimetype = file?.fileData?.mimetype;
+        if(fuuid && mimetype) {
+            let support = supportsVideoFormat(mimetype);
+            //let originalItem = { fuuid, mimetype, height, width, codec, supportMedia };
+            // codec, fuuid, fuuid_video: fuuid, width, height, mimetype, quality: 1, original: true
+            if(support) {
+                let originalSelected = false;
+                if(!selectedVideo?.fuuid_video && selectedVideo?.fuuid === fuuid) {
+                    originalSelected = true;
+                }
+                // console.debug("Original video format %s supported (%s), selected: %s ", mimetype, support, originalSelected);
+                values.push(
+                    <li key='original' data-key='original' className={'pl-2 ' + (originalSelected?'bg-violet-500 font-bold':'')} onClick={onClickHandler}>Original</li>
+                );
+            }
+        }
+
+        for(let videoItem of videoItems) {
+            let selected = videoItem.fuuid_video === selectedVideo?.fuuid_video;
+            values.push((
+                <li key={videoItem.fuuid_video} data-key={videoItem.entryKey} onClick={onClickHandler}  className={'pl-2 ' + (selected?'bg-violet-500 font-bold':'')} >{videoItem.resolution}</li>
+            ));
+        }
+
+        return values;
+    }, [file, fuuid, selectedVideo]);
+
+    if(!file?.fileData?.video) return <></>;
+
+    return (
+        <>
+            <p className='text-slate-400'>Selected video resolution</p>
+            <ol className="cursor-pointer items-pl-2">
+                {elems}
+            </ol>
+        </>
+    )
+}
+
+/**
+ * 
+ * @param videoType Video type string. Example: 'video/webm; codecs="vp9, vorbis"'
+ * @returns One of: 'probably', 'maybe', ''
+ */
+export function supportsVideoFormat(videoType: string): CanPlayTypeResult {
+    // Example: 'video/webm; codecs="vp9, vorbis"'
+    const video = document.createElement('video')
+    const canPlayType = video.canPlayType(videoType)
+    // Returns 'probably', 'maybe', ''
+    return canPlayType
 }
