@@ -127,6 +127,12 @@ function FileMediaLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: 
                 // Download image
                 let fuuid = maxImage.hachage;
                 let secretKey = file.secretKey;
+
+                if(!maxImage.nonce && maxImage.header) {
+                    // Legacy, replace the nonce with header
+                    maxImage.nonce = maxImage.header.slice(1);  // Remove the leading 'm' multibase marker
+                }
+
                 workers.directory.openFile(fuuid, secretKey, maxImage)
                     .then(imageBlob=>{
                         let imageBlobUrl = URL.createObjectURL(imageBlob);
