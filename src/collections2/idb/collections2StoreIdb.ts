@@ -3,7 +3,8 @@ import { messageStruct } from 'millegrilles.cryptography'
 
 const DB_NAME = 'collections2';
 const STORE_TUUIDS = 'tuuids';
-const DB_VERSION_CURRENT = 2;
+const STORE_VIDEO_PLAY = 'videoPlayback';
+const DB_VERSION_CURRENT = 3;
 
 export type TuuidEncryptedMetadata = messageStruct.MessageDecryption & {
     data_chiffre: string,
@@ -99,6 +100,12 @@ export type LoadDirectoryResultType = {
     breadcrumb: TuuidsIdbStoreRowType[] | null,
 };
 
+export type VideoPlaybackRowType = {
+    tuuid: string,
+    userId: string,
+    position: number | null,
+}
+
 export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
     if(upgrade) {
         return openDbIdb(DB_NAME, DB_VERSION_CURRENT, {
@@ -118,7 +125,7 @@ export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
 }
 
 function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
-    let tuuidStore = null;
+    let tuuidStore = null, videoPlayStore = null;
     switch(oldVersion) {
         // @ts-ignore Fallthrough
         case 0:
@@ -133,7 +140,12 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
 
         // @ts-ignore Fallthrough
         case 2: // Most recent
+            videoPlayStore = db.createObjectStore(STORE_VIDEO_PLAY, {keyPath: ['tuuid', 'userId']});
+
+        // @ts-ignore Fallthrough
+        case 3: // Most recent
             break;
+
         default:
             console.warn("createObjectStores Default..., version %O", oldVersion)
     }
@@ -217,4 +229,22 @@ export async function deleteFiles(tuuids: string[]) {
     for(let tuuid of tuuids) {
         await store.delete(tuuid);
     }
+}
+
+export async function setVideoPosition(tuuid: string, userId: string, position: number | null) {
+    const db = await openDB();
+    const store = db.transaction(STORE_VIDEO_PLAY, 'readwrite').store;
+    await store.put({tuuid, userId, position});
+}
+
+export async function removeVideoPosition(tuuid: string, userId: string) {
+    const db = await openDB();
+    const store = db.transaction(STORE_VIDEO_PLAY, 'readwrite').store;
+    await store.delete([tuuid, userId])
+}
+
+export async function getCurrentVideoPosition(tuuid: string, userId: string): Promise<VideoPlaybackRowType | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_VIDEO_PLAY, 'readonly').store;
+    return await store.get([tuuid, userId]);
 }

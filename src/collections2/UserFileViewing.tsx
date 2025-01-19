@@ -1,9 +1,9 @@
-import { Dispatch, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, Dispatch, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from 'axios';
 import { Formatters } from "millegrilles.reactdeps.typescript";
 
-import { FileImageData, FileVideoData, loadTuuid, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
+import { FileImageData, FileVideoData, getCurrentVideoPosition, loadTuuid, removeVideoPosition, setVideoPosition, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
 import useUserBrowsingStore from "./userBrowsingStore";
 import { DirectorySyncHandler } from "./UserFileBrowsing";
 import useConnectionStore from "../connectionStore";
@@ -474,15 +474,55 @@ function VideoDuration(props: {file: TuuidsIdbStoreRowType | null}) {
 function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimetypeVideo: string, jwt: string | null}) {
 
     let {fuuidVideo, mimetypeVideo, thumbnailBlobUrl, jwt} = props;
+    let {tuuid} = useParams();
+    let userId = useUserBrowsingStore(state=>state.userId);
+
+    let refVideo = useRef(null as HTMLVideoElement | null);
+
+    let [jumpToTimeStamp, setJumpToTimeStamp] = useState(null as number | null);
 
     let videoSrc = useMemo(()=>{
         if(!fuuidVideo || !jwt) return '';
         return `/streams/${fuuidVideo}?jwt=${jwt}`;
     }, [fuuidVideo, jwt]);
 
+    let onTimeUpdate = useCallback((e: ChangeEvent<HTMLVideoElement>)=>{
+        let currentTime = e.target.currentTime
+        console.debug("Timestamp", currentTime);
+        if(!tuuid || !userId) return;  // Missing information
+        setVideoPosition(tuuid, userId, currentTime)
+            .catch(err=>console.warn("Error updating video position", err));
+    }, [tuuid, userId]);
+
+    let onEnded = useCallback((e: ChangeEvent<HTMLVideoElement>)=>{
+        console.debug("Video ended");
+        if(!tuuid || !userId) return;  // Missing information
+        removeVideoPosition(tuuid, userId)
+            .catch(err=>console.warn("Error removing video position", err));
+    }, [tuuid, userId]);
+
+    useEffect(()=>{
+        if(!tuuid || !userId) return;
+        getCurrentVideoPosition(tuuid, userId)
+            .then(positionRow=>{
+                if(positionRow && positionRow.position) {
+                    setJumpToTimeStamp(positionRow.position);
+                }
+            })
+            .catch(err=>console.warn("Error getting video position", err));
+    }, [tuuid, userId, setJumpToTimeStamp]);
+
+    useEffect(()=>{
+        if(!jumpToTimeStamp) return;
+        if(refVideo.current && refVideo.current.currentTime !== undefined) {
+            refVideo.current.currentTime = jumpToTimeStamp;
+        }
+    }, [jumpToTimeStamp, refVideo])
+
     return (
         <>
-            <video controls poster={thumbnailBlobUrl} className='grow object-contain object-right' autoPlay>
+            <video ref={refVideo} controls poster={thumbnailBlobUrl} className='grow object-contain object-right' autoPlay 
+                onTimeUpdate={onTimeUpdate} onEnded={onEnded}>
                 {videoSrc?
                     <source src={videoSrc} type={mimetypeVideo} />
                     :
