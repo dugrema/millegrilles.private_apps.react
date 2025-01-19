@@ -55,7 +55,6 @@ export function Breadcrumb(props: BreadcrumbProps) {
         } else {
             breadcrumbMapped = breadcrumb;
         }
-        console.debug("Breadcrumb: ", breadcrumbMapped);
 
         let lastIdx = breadcrumbMapped.length - 1;
         return breadcrumbMapped

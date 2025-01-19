@@ -215,18 +215,18 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
 
         if(videoFuuid) {
             // A video parameter is present. Try to match.
-            console.debug("VideoFuuid param: ", videoFuuid);
+            // console.debug("VideoFuuid param: ", videoFuuid);
             if(fuuid === videoFuuid) {
                 // Original
                 let video = {fuuid: fuuid, mimetype: file.fileData?.mimetype} as FileVideoData;
-                console.debug("Selecting original video: ", video);
+                // console.debug("Selecting original video: ", video);
                 setSelectedVideo(video);
                 return;
             } else {
                 let video = Object.values(videos).filter(item=>item.fuuid_video === videoFuuid).pop();
                 if(video) {
                     // Found match
-                    console.debug("Found param video: %O", video);
+                    // console.debug("Found param video: %O", video);
                     setSelectedVideo(video);
                     return;
                 }
@@ -245,7 +245,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             if(originalResolution && originalResolution < userMaxDefaultResolution) {
                 // Check if the browser supports the format
                 if(supportsVideoFormat(mimetype)) {
-                    console.debug("Set original video as default");
+                    // console.debug("Set original video as default");
                     setSelectedVideo({fuuid, mimetype} as FileVideoData);
                     return;
                 }
@@ -263,14 +263,14 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             if(resolutionCurrent < resolutionPrevious) return previous;
             return item;
         }, null as FileVideoData | null);
-        console.debug("Selected video: %O", videos);
+        // console.debug("Selected video: %O", videos);
         setSelectedVideo(video);
     }, [file, isVideoFile, selectedVideo, setSelectedVideo, fuuid, videoFuuid]);
 
     useEffect(()=>{
         if(!workers || !ready) return;
         if(!playVideo || !file || !selectedVideo) return;
-        console.debug("Start loading video");
+        // console.debug("Start loading video");
 
         // Reset flags
         setVideoReady(false);
@@ -287,7 +287,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
 
         workers.connection.getStreamingJwt(fuuidVideo, fuuidRef)
             .then(response=>{
-                console.debug("JWT response: ", response);
+                // console.debug("JWT response: ", response);
                 if(response.ok === false) throw new Error(response.err);
                 if(response.jwt_token) {
                     setJwt(response.jwt_token);
@@ -300,18 +300,18 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
 
     useEffect(()=>{
         if(!jwt || !selectedVideo) return;
-        console.debug("Monitor the loading of the video for token %s, selected video: %O", jwt, selectedVideo);
+        // console.debug("Monitor the loading of the video for token %s, selected video: %O", jwt, selectedVideo);
 
         let fuuidVideo = selectedVideo.fuuid_video || selectedVideo.fuuid;
         let videoSrc = `/streams/${fuuidVideo}?jwt=${jwt}`;
         setLoadProgress(1);
 
         Promise.resolve().then(async ()=>{
-            console.debug("Check load progress on video ", videoSrc);
+            // console.debug("Check load progress on video ", videoSrc);
             // Put a limit of 60 HEAD query loads (about 5 seconds each)
             for(let loadingCount = 0; loadingCount < 60; loadingCount++) {
                 let result = await axios({method: 'HEAD', url: videoSrc, timeout: 20_000});
-                console.debug("Video load result: ", result.status);
+                // console.debug("Video load result: ", result.status);
                 let status = result.status;
                 if(status === 200 || status === 206) {
                     // Done
@@ -488,14 +488,12 @@ function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimet
 
     let onTimeUpdate = useCallback((e: ChangeEvent<HTMLVideoElement>)=>{
         let currentTime = e.target.currentTime
-        console.debug("Timestamp", currentTime);
         if(!tuuid || !userId) return;  // Missing information
         setVideoPosition(tuuid, userId, currentTime)
             .catch(err=>console.warn("Error updating video position", err));
     }, [tuuid, userId]);
 
     let onEnded = useCallback((e: ChangeEvent<HTMLVideoElement>)=>{
-        console.debug("Video ended");
         if(!tuuid || !userId) return;  // Missing information
         removeVideoPosition(tuuid, userId)
             .catch(err=>console.warn("Error removing video position", err));
