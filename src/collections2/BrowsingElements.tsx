@@ -55,9 +55,18 @@ export function Breadcrumb(props: BreadcrumbProps) {
         } else {
             breadcrumbMapped = breadcrumb;
         }
+        console.debug("Breadcrumb: ", breadcrumbMapped);
 
         let lastIdx = breadcrumbMapped.length - 1;
-        return breadcrumbMapped.map((item, idx)=>{
+        return breadcrumbMapped
+            .filter(item=>{
+                if(!item) {
+                    console.warn("Breacrumb with null items");
+                    return false;
+                }
+                return true;
+            })
+            .map((item, idx)=>{
             if(idx === lastIdx) {
                 return (
                     <li key={item.tuuid} className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 font-bold pr-2'>

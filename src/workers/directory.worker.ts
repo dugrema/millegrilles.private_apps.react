@@ -100,7 +100,7 @@ export class DirectoryWorker {
                 let fuuid = (fuuids&&fuuids.length>0)?fuuids[0]:null;
                 //@ts-ignore
                 let ref_hachage_bytes = encrypted.ref_hachage_bytes || fuuid as string | null;
-                if(!keyId && (ref_hachage_bytes || fuuid)) {
+                if(!keyId && ref_hachage_bytes) {
                     keyId = ref_hachage_bytes;  // ref_hachage_bytes is the old format for cle_id
                     data_chiffre = data_chiffre.slice(1);  // Remove leading multibase 'm' marker
                 }
@@ -114,13 +114,12 @@ export class DirectoryWorker {
                             continue;
                         }
 
-                        let nonce = encrypted.nonce || key.nonce;
-                        let header = encrypted.header;
-                        if(!nonce && header) {  // Legacy
-                            nonce = header.slice(1);  // Remove multibase 'm' marker
+                        let nonce = encrypted.nonce;
+                        if(!nonce && encrypted.header) {  // Legacy
+                            nonce = encrypted.header.slice(1);  // Remove multibase 'm' marker
                         }
                         if(!nonce) {
-                            console.warn("No format/nonce for file %s - SKIPPING", file.tuuid);
+                            console.warn("No format/nonce for metadata of file %s - SKIPPING", file.tuuid);
                             continue;
                         }
                         let compression = encrypted.compression;
@@ -138,7 +137,7 @@ export class DirectoryWorker {
                             file.decryptedMetadata = decrypted;
                             file.secretKey = secretKeyBytes;  // Keep the key to open, download files and images, rename, etc.
                         } catch (err) {
-                            console.error("Error decrypting %s - SKIPPING", file.tuuid);
+                            console.error("Error decrypting %s - SKIPPING. Err:\n%O", file.tuuid, err);
                         }
                     } else {
                         console.warn("File tuuid:%s, cleId:%s not provided", file.tuuid, keyId)
