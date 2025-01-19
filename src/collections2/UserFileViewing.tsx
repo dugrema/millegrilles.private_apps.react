@@ -181,7 +181,6 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
 
     let [playVideo, setPlayVideo] = useState(false);
     let [jwt, setJwt] = useState('');
-    let [videoSrc, setVideoSrc] = useState('');
     let [videoReady, setVideoReady] = useState(false);
 
     let isVideoFile = useMemo(()=>{
@@ -214,20 +213,9 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         // console.debug("Videos: ", videos);
         if(!videos) return;
 
-        let video = Object.values(videos).reduce((previous, item)=>{
-            let resolutionPrevious = null as number | null, resolutionCurrent = null as number | null;
-            if(previous && previous.width && previous.height) resolutionPrevious = Math.min(previous.width, previous.height);
-            if(item && item.width && item.height) resolutionCurrent = Math.min(item.width, item.height);
-            if(resolutionPrevious === resolutionCurrent) return previous;
-            if(!resolutionPrevious) return item;
-            if(!resolutionCurrent) return previous;
-            if(resolutionCurrent > resolutionPrevious) return previous;
-            return item;
-        }, null as FileVideoData | null);
-
         if(videoFuuid) {
-            console.debug("VideoFuuid param: ", videoFuuid);
             // A video parameter is present. Try to match.
+            console.debug("VideoFuuid param: ", videoFuuid);
             if(fuuid === videoFuuid) {
                 // Original
                 let video = {fuuid: fuuid, mimetype: file.fileData?.mimetype} as FileVideoData;
@@ -245,6 +233,36 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             }
         }
 
+        let userMaxDefaultResolution = 8192;  //TODO: load user profile default
+        let mimetype = file.fileData?.mimetype;
+        if(fuuid && mimetype) {
+            let originalResolution = null as number | null;
+            if(file.fileData?.width && file.fileData?.height) {
+                originalResolution = Math.min(file.fileData.width, file.fileData.height);
+            } else {
+                originalResolution = file?.fileData?.width || file?.fileData?.height || null;
+            }
+            if(originalResolution && originalResolution < userMaxDefaultResolution) {
+                // Check if the browser supports the format
+                if(supportsVideoFormat(mimetype)) {
+                    console.debug("Set original video as default");
+                    setSelectedVideo({fuuid, mimetype} as FileVideoData);
+                    return;
+                }
+            }
+        }
+
+        let video = Object.values(videos).reduce((previous, item)=>{
+            let resolutionPrevious = null as number | null, resolutionCurrent = null as number | null;
+            if(previous && previous.width && previous.height) resolutionPrevious = Math.min(previous.width, previous.height);
+            if(item && item.width && item.height) resolutionCurrent = Math.min(item.width, item.height);
+            if(resolutionPrevious === resolutionCurrent) return previous;
+            if(!resolutionPrevious) return item;
+            if(!resolutionCurrent) return previous;
+            if(resolutionCurrent > userMaxDefaultResolution) return previous;
+            if(resolutionCurrent < resolutionPrevious) return previous;
+            return item;
+        }, null as FileVideoData | null);
         console.debug("Selected video: %O", videos);
         setSelectedVideo(video);
     }, [file, isVideoFile, selectedVideo, setSelectedVideo, fuuid, videoFuuid]);
@@ -301,9 +319,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
                     setVideoReady(true);
                     break;
                 } else if(status === 204) {
-                    // In progress
-                    // 'X-File-Size': str(job.file_size),
-                    // 'X-File-Position': str(job.file_position),
+                    // In progress, headers have detail: 'X-File-Size', 'X-File-Position'
                     let position = Number.parseInt(result.headers['x-file-position']);
                     let size = Number.parseInt(result.headers['x-file-size']);
                     let pctProgress = Math.floor(100 * position / size);
@@ -315,7 +331,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             }
         })
         .catch(err=>console.error("Error loading video", err));
-    }, [selectedVideo, jwt, setLoadProgress, setVideoSrc, setVideoReady]);
+    }, [selectedVideo, jwt, setLoadProgress, setVideoReady]);
 
     if(file && thumbnailBlobUrl && selectedVideo && videoReady) {
         return (
@@ -366,7 +382,7 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType}) 
             <VideoDuration file={file} />
             <VideoSelectionDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} />
         </div>
-    )
+    );
 }
 
 type BreadcrumbProps = {
@@ -385,7 +401,7 @@ function Breadcrumb(props: BreadcrumbProps) {
         if(!onClick) return;
         let value = e.currentTarget.dataset.tuuid || null;
         onClick(value);
-    }, [onClick])
+    }, [onClick]);
 
     let breadcrumbMapped = useMemo(()=>{
         if(!file || !breadcrumb) return null;
@@ -481,9 +497,21 @@ function sortVideoEntries(a: FileVideoDataWithItemKey, b: FileVideoDataWithItemK
     if(a === b) return 0;
     let resolutionA = a.resolution;
     let resolutionB = b.resolution;
-    if(resolutionA === resolutionB) return 0;
-    if(resolutionA === null) return 1;
-    if(resolutionB === null) return -1;
+    if(resolutionA === resolutionB) {
+        if(a.subtitle_stream_idx === b.subtitle_stream_idx) {
+            if(typeof(a.audio_stream_idx) !== 'number') return -1;
+            if(typeof(b.audio_stream_idx) !== 'number') return 1;
+            // Return desc sort - will place the 0 stream first
+            return b.audio_stream_idx - a.audio_stream_idx;
+        }
+        if(typeof(a.subtitle_stream_idx) !== 'number') return -1;
+        if(typeof(b.subtitle_stream_idx) !== 'number') return 1;
+        // Return desc sort - will place the 0 stream first
+        return b.subtitle_stream_idx - a.subtitle_stream_idx;
+    };
+
+    if(typeof(resolutionA) !== 'number') return 1;
+    if(typeof(resolutionB) !== 'number') return -1;
     return resolutionA - resolutionB;
 }
 
@@ -545,9 +573,21 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
         
         for(let videoItem of videoItems) {
             let selected = videoItem.fuuid_video === selectedVideo?.fuuid_video;
+
+            let streamInfo = '';
+            if(typeof(videoItem.audio_stream_idx)==='number') {
+                streamInfo += 'A' + videoItem.audio_stream_idx;
+            }
+            if(typeof(videoItem.subtitle_stream_idx)==='number') {
+                streamInfo += 'S' + videoItem.subtitle_stream_idx;
+            }
+
             values.push((
                 <li key={videoItem.fuuid_video} data-key={videoItem.entryKey} onClick={onClickHandler} className={'pl-2 ' + (selected?'bg-violet-500 font-bold':'')} >
-                    <Link to={`/apps/collections2/f/${file?.tuuid}/v/${videoItem.fuuid_video}`}>{videoItem.resolution}</Link>
+                    <Link to={`/apps/collections2/f/${file?.tuuid}/v/${videoItem.fuuid_video}`}>
+                        {videoItem.resolution}
+                        {streamInfo?<span className='pl-2'>{streamInfo}</span>:<></>}
+                    </Link>
                 </li>
             ));
         }

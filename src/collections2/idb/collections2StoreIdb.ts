@@ -56,6 +56,8 @@ export type FileVideoData = messageStruct.MessageDecryption & {
     height?: number,
     quality?: number,
     resolution?: number,
+    audio_stream_idx?: number | null,
+    subtitle_stream_idx?: number | null,
 };
 
 export type FileAudioData = {
