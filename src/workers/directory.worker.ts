@@ -149,39 +149,43 @@ export class DirectoryWorker {
                 }
             }
 
-            let thumbnail = file.fileData?.images?.thumb;
-            if(thumbnail) {
-                let keyId = thumbnail.cle_id;
-                // Legacy handling
-                if(!keyId && fuuid) {
-                    keyId = fuuid;
-                }
+            try {
+                let thumbnail = file.fileData?.images?.thumb;
+                if(thumbnail) {
+                    let keyId = thumbnail.cle_id;
+                    // Legacy handling
+                    if(!keyId && fuuid) {
+                        keyId = fuuid;
+                    }
 
-                if(keyId && thumbnail.data_chiffre) {
-                    let key = keyByCleid[keyId];
-                    if(key) {
-                        let format = thumbnail.format || key.format;
-                        if(format === 'mgs4') {
-                            let nonce = thumbnail.nonce || key.nonce;
-                            if(!nonce && thumbnail.header) {
-                                nonce = thumbnail.header.slice(1);  // Remove multibase 'm' marker
-                            }
-                            if(nonce) {
-                                let encryptedData = thumbnail.data_chiffre.slice(1);  // Remove multibase leading 'm'
-                                let thumbnailBytes = await encryption.decryptMessage(
-                                    format, key.cle_secrete_base64, nonce, encryptedData, thumbnail.compression);
-                                let thumbnailBlob = new Blob([thumbnailBytes]);
-                                file.thumbnail = thumbnailBlob;
+                    if(keyId && thumbnail.data_chiffre) {
+                        let key = keyByCleid[keyId];
+                        if(key) {
+                            let format = thumbnail.format || key.format;
+                            if(format === 'mgs4') {
+                                let nonce = thumbnail.nonce;
+                                if(!nonce && thumbnail.header) {
+                                    nonce = thumbnail.header.slice(1);  // Remove multibase 'm' marker
+                                }
+                                if(nonce) {
+                                    let encryptedData = thumbnail.data_chiffre.slice(1);  // Remove multibase leading 'm'
+                                    let thumbnailBytes = await encryption.decryptMessage(
+                                        format, key.cle_secrete_base64, nonce, encryptedData, thumbnail.compression);
+                                    let thumbnailBlob = new Blob([thumbnailBytes]);
+                                    file.thumbnail = thumbnailBlob;
+                                }
+                            } else {
+                                console.warn("Unsupported encryption format for thumbnail (%s)", format);
                             }
                         } else {
-                            console.warn("Unsupported encryption format for thumbnail (%s)", format);
+                            console.warn("Key not provided to decrypt thumbnail for tuuid: %s", file.tuuid);
                         }
                     } else {
-                        console.warn("Key not provided to decrypt thumbnail for tuuid: %s", file.tuuid);
+                        console.warn("No key available to decrypt thumbnail for tuuid: %s", file.tuuid);
                     }
-                } else {
-                    console.warn("No key available to decrypt thumbnail for tuuid: %s", file.tuuid);
                 }
+            } catch(err) {
+                console.error("Error decrypting thumbnail for tuuid %s: ", file.tuuid, err);
             }
         }
 
