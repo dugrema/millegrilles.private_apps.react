@@ -301,6 +301,12 @@ function ThumbnailItem(props: FileItem) {
                     let smallImageInfo = images.small;
             
                     let fuuid = smallImageInfo.hachage;
+
+                    if(!smallImageInfo.nonce && smallImageInfo.header) {
+                        // Legacy, replace the nonce with header
+                        smallImageInfo.nonce = smallImageInfo.header.slice(1);  // Remove the leading 'm' multibase marker
+                    }
+
                     // let fuuid = fileData.fuuids_versions?fileData.fuuids_versions[0]:null;
                     if(fuuid) {
                         let imageBlob = await workers.directory.openFile(fuuid, secretKey, smallImageInfo);
