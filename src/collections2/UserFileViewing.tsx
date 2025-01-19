@@ -1,11 +1,13 @@
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
-import useUserBrowsingStore, { filesIdbToBrowsing } from "./userBrowsingStore";
-import { DirectorySyncHandler } from "./UserFileBrowsing";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { FileImageData, loadTuuid, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
+import axios from 'axios';
+import { Formatters } from "millegrilles.reactdeps.typescript";
+
+import { FileImageData, FileVideoData, loadTuuid, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
+import useUserBrowsingStore from "./userBrowsingStore";
+import { DirectorySyncHandler } from "./UserFileBrowsing";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
-import { Formatters } from "millegrilles.reactdeps.typescript";
 
 function UserFileViewing() {
 
@@ -74,12 +76,7 @@ function UserFileViewing() {
             <Breadcrumb onClick={breacrumbOnClick} file={file} />
 
             <section>
-                {
-                    thumbnailBlob?
-                    <FileMediaLayout file={file} thumbnail={thumbnailBlob} />
-                    :
-                    <FileViewLayout file={file} />
-                }
+                <ViewLayout file={file} thumbnail={thumbnailBlob} />
             </section>
             
             <DirectorySyncHandler tuuid={cuuid} />
@@ -89,6 +86,12 @@ function UserFileViewing() {
 }
 
 export default UserFileViewing;
+
+function ViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
+    let {file, thumbnail} = props;
+    if(!file || !thumbnail) return <FileViewLayout file={file} />;
+    return <FileMediaLayout file={file} thumbnail={thumbnail} />;
+}
 
 function FileMediaLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
 
@@ -156,13 +159,125 @@ function FileMediaLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: 
     return (
         <div className='grid grid-cols-3 pt-2'>
             <div className='flex grow col-span-2 pr-4 max-h-screen pb-32'>
-                <img src={fullSizeBlobUrl || blobUrl} alt='Content of the file' className='grow object-contain object-right' />
+                <MediaContentDisplay file={file} thumbnailBlobUrl={fullSizeBlobUrl || blobUrl} />
             </div>
             <div>
                 <FileDetail file={file} />
             </div>
         </div>
     )
+}
+
+function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbnailBlobUrl: string}) {
+    let {file, thumbnailBlobUrl} = props;
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.filehostAuthenticated);
+
+    let [playVideo, setPlayVideo] = useState(false);
+    let [selectedVideo, setSelectedVideo] = useState(null as FileVideoData | null);
+    let [jwt, setJwt] = useState('');
+    let [videoSrc, setVideoSrc] = useState('');
+    let [loadProgress, setLoadProgress] = useState(null as number | null);
+    let [videoReady, setVideoReady] = useState(false);
+
+    let isVideoFile = useMemo(()=>{
+        if(file?.fileData?.video) {
+            // Check that there is at least 1 available video
+            return Object.keys(file.fileData.video).length > 0;
+        }
+        return false;
+    }, [file]);
+
+    let onClickStart = useCallback(()=>{
+        if(!isVideoFile) return;  // Not a video, nothing to do
+        setPlayVideo(true)
+    }, [isVideoFile, setPlayVideo]);
+
+    useEffect(()=>{
+        if(!file) return;
+        if(!isVideoFile) return;    // Not a video
+        if(selectedVideo) return;   // Already selected
+
+        // Select a video
+        let videos = file.fileData?.video;
+        console.debug("Videos: ", videos);
+        if(!videos) return;
+        let video = Object.values(videos).reduce((previous, item)=>{
+            let resolutionPrevious = null as number | null, resolutionCurrent = null as number | null;
+            if(previous && previous.width && previous.height) resolutionPrevious = Math.min(previous.width, previous.height);
+            if(item && item.width && item.height) resolutionCurrent = Math.min(item.width, item.height);
+            if(resolutionPrevious === resolutionCurrent) return previous;
+            if(!resolutionPrevious) return item;
+            if(!resolutionCurrent) return previous;
+            if(resolutionCurrent < resolutionPrevious) return item;
+            return item;
+        }, null as FileVideoData | null);
+
+        console.debug("Selected video: %O", videos);
+        setSelectedVideo(video);
+    }, [file, isVideoFile, selectedVideo, setSelectedVideo]);
+
+    useEffect(()=>{
+        if(!workers || !ready) return;
+        if(!playVideo || !file || !selectedVideo) return;
+        console.debug("Start loading video");
+
+        // Reset flags
+        setVideoReady(false);
+        setLoadProgress(0);
+
+        // Get JWT
+        let fuuidRef = selectedVideo.fuuid;
+        let fuuidVideo = selectedVideo.fuuid_video;
+
+        workers.connection.getStreamingJwt(fuuidVideo, fuuidRef)
+            .then(response=>{
+                console.debug("JWT response: ", response);
+                if(response.ok === false) throw new Error(response.err);
+                if(response.jwt_token) {
+                    setJwt(response.jwt_token);
+                } else {
+                    throw new Error('No streaming JWT received in server response');
+                }
+            })
+            .catch(err=>console.error("Error loading JWT", err));
+    }, [workers, ready, file, playVideo, selectedVideo, setJwt]);
+
+    useEffect(()=>{
+        if(!jwt || !selectedVideo) return;
+        console.debug("Monitor the loading of the video for token", jwt);
+
+        let fuuidVideo = selectedVideo.fuuid_video;
+        let videoSrc = `/streams/${fuuidVideo}?jwt=${jwt}`;
+        setLoadProgress(1);
+
+        Promise.resolve().then(async ()=>{
+            console.debug("Check load progress on video ", videoSrc);
+            let result = await axios({method: 'HEAD', url: videoSrc, timeout: 10_000});
+            console.debug("Video load result: ", result.status);
+            let status = result.status;
+            if(status === 200) {
+                // Done
+                setLoadProgress(100);
+                setVideoReady(true);
+            } else {
+                //TODO - set progress
+                console.debug("Load in progress %d: %O", status, result.data);
+            }
+        })
+        .catch(err=>console.error("Error loading video", err));
+    }, [selectedVideo, jwt, setLoadProgress, setVideoSrc, setVideoReady]);
+
+    if(file && thumbnailBlobUrl && selectedVideo && videoReady) {
+        return (
+            <VideoPlayer 
+                fuuidVideo={selectedVideo.fuuid_video} 
+                mimetypeVideo={selectedVideo.mimetype} 
+                jwt={jwt} 
+                thumbnailBlobUrl={thumbnailBlobUrl} />
+        )
+    }
+    return <img src={thumbnailBlobUrl} alt='Content of the file' className='grow object-contain object-right' onClick={onClickStart} />;
 }
 
 function FileViewLayout(props: {file: TuuidsIdbStoreRowType | null}) {
@@ -279,6 +394,28 @@ function VideoDuration(props: {file: TuuidsIdbStoreRowType | null}) {
         <>
             <p className='text-slate-400'>Duration</p>
             <Formatters.FormatterDuree value={file.fileData.duration} />
+        </>
+    )
+}
+
+function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimetypeVideo: string, jwt: string | null}) {
+
+    let {fuuidVideo, mimetypeVideo, thumbnailBlobUrl, jwt} = props;
+
+    let videoSrc = useMemo(()=>{
+        if(!fuuidVideo || !jwt) return '';
+        return `/streams/${fuuidVideo}?jwt=${jwt}`;
+    }, [fuuidVideo, jwt]);
+
+    return (
+        <>
+            <video controls poster={thumbnailBlobUrl} className='grow object-contain object-right'>
+                {videoSrc?
+                    <source src={videoSrc} type={mimetypeVideo} />
+                    :
+                    <></>
+                }
+            </video>
         </>
     )
 }

@@ -224,9 +224,9 @@ export type Filehost = {
     url_internal?: string | null,
 }
 
-export type Collection2FilehostResponse = MessageResponse & {
-    list?: Filehost[] | null,
-};
+export type Collection2FilehostResponse = MessageResponse & {list?: Filehost[] | null};
+
+export type Collection2StreamingJwtResponse = MessageResponse & {jwt_token?: string | null};
 
 export class AppsConnectionWorker extends ConnectionWorker {
 
@@ -680,6 +680,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
             {}, 
             DOMAINE_CORETOPOLOGIE, 'getFilehosts'
         ) as Collection2FilehostResponse;
+    }
+
+    async getStreamingJwt(fuuidVideo: string, fuuidRef: string, contactId?: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {fuuid: fuuidVideo, fuuid_ref: fuuidRef, contact_id: contactId}, 
+            DOMAINE_GROSFICHIERS, 'getJwtStreaming'
+        ) as Collection2StreamingJwtResponse;
     }
 }
 
