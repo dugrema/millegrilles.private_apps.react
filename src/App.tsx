@@ -81,8 +81,7 @@ const router = createBrowserRouter([
             { path: "b", element: <Collections2UserFileBrowsing /> },
             { path: "b/:tuuid", element: <Collections2UserFileBrowsing /> },
             { path: "f/:tuuid", element: <Collections2UserFileViewing /> },
-            { path: "f/:tuuid/v", element: <Collections2UserVideoViewing /> },
-            { path: "f/:tuuid/v/:selector", element: <Collections2UserVideoViewing /> },
+            { path: "f/:tuuid/v/:videoFuuid", element: <Collections2UserFileViewing /> },
             { path: "d", element: <Collections2UserDeletedFilesBrowsing /> },
             { path: "d/:tuuid", element: <Collections2UserDeletedFilesBrowsing /> },
             { path: "s", element: <Collections2Search /> },
@@ -94,6 +93,7 @@ const router = createBrowserRouter([
                     { path: ":userId", element: <Collections2SharedUsers /> },
                     { path: ":contactId/b/:tuuid", element: <Collections2SharedFileBrowsing /> },
                     { path: ":contactId/f/:tuuid", element: <Collections2SharedFileViewing /> },
+                    { path: ":contactId/f/:tuuid/v/:videoFuuid", element: <Collections2SharedFileViewing /> },
                     { path: ":contactId/v/:tuuid", element: <Collections2SharedVideoViewing /> },
                     { path: ":contactId/v/:tuuid/:selector", element: <Collections2SharedVideoViewing /> },
                 ]

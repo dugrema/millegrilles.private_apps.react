@@ -176,6 +176,8 @@ function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbna
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.filehostAuthenticated);
 
+    let {videoFuuid} = useParams();
+
     let [playVideo, setPlayVideo] = useState(false);
     let [jwt, setJwt] = useState('');
     let [videoSrc, setVideoSrc] = useState('');
@@ -190,11 +192,18 @@ function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbna
         return false;
     }, [file]);
 
+    let fuuid = useMemo(()=>{
+        let fuuids = file?.fileData?.fuuids_versions;
+        let fuuid = (fuuids&&fuuids.length>0)?fuuids[0]:null;
+        return fuuid;
+    }, [file]);
+
     let onClickStart = useCallback(()=>{
         if(!isVideoFile) return;  // Not a video, nothing to do
         setPlayVideo(true)
     }, [isVideoFile, setPlayVideo]);
 
+    // Select the video
     useEffect(()=>{
         if(!file) return;
         if(!isVideoFile) return;    // Not a video
@@ -204,6 +213,7 @@ function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbna
         let videos = file.fileData?.video;
         // console.debug("Videos: ", videos);
         if(!videos) return;
+
         let video = Object.values(videos).reduce((previous, item)=>{
             let resolutionPrevious = null as number | null, resolutionCurrent = null as number | null;
             if(previous && previous.width && previous.height) resolutionPrevious = Math.min(previous.width, previous.height);
@@ -211,13 +221,33 @@ function MediaContentDisplay(props: {file: TuuidsIdbStoreRowType | null, thumbna
             if(resolutionPrevious === resolutionCurrent) return previous;
             if(!resolutionPrevious) return item;
             if(!resolutionCurrent) return previous;
-            if(resolutionCurrent < resolutionPrevious) return item;
+            if(resolutionCurrent > resolutionPrevious) return previous;
             return item;
         }, null as FileVideoData | null);
 
+        if(videoFuuid) {
+            console.debug("VideoFuuid param: ", videoFuuid);
+            // A video parameter is present. Try to match.
+            if(fuuid === videoFuuid) {
+                // Original
+                let video = {fuuid: fuuid, mimetype: file.fileData?.mimetype} as FileVideoData;
+                console.debug("Selecting original video: ", video);
+                setSelectedVideo(video);
+                return;
+            } else {
+                let video = Object.values(videos).filter(item=>item.fuuid_video === videoFuuid).pop();
+                if(video) {
+                    // Found match
+                    console.debug("Found param video: %O", video);
+                    setSelectedVideo(video);
+                    return;
+                }
+            }
+        }
+
         console.debug("Selected video: %O", videos);
         setSelectedVideo(video);
-    }, [file, isVideoFile, selectedVideo, setSelectedVideo]);
+    }, [file, isVideoFile, selectedVideo, setSelectedVideo, fuuid, videoFuuid]);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -494,6 +524,15 @@ function VideoSelectionDetail(props: {file: TuuidsIdbStoreRowType | null, select
 
         let values = [];
         
+        for(let videoItem of videoItems) {
+            let selected = videoItem.fuuid_video === selectedVideo?.fuuid_video;
+            values.push((
+                <li key={videoItem.fuuid_video} data-key={videoItem.entryKey} onClick={onClickHandler} className={'pl-2 ' + (selected?'bg-violet-500 font-bold':'')} >
+                    <Link to={`/apps/collections2/f/${file?.tuuid}/v/${videoItem.fuuid_video}`}>{videoItem.resolution}</Link>
+                </li>
+            ));
+        }
+
         // Handle original format, detect if it is supported
         let mimetype = file?.fileData?.mimetype;
         if(fuuid && mimetype) {
@@ -507,18 +546,15 @@ function VideoSelectionDetail(props: {file: TuuidsIdbStoreRowType | null, select
                 }
                 // console.debug("Original video format %s supported (%s), selected: %s ", mimetype, support, originalSelected);
                 values.push(
-                    <li key='original' data-key='original' className={'pl-2 ' + (originalSelected?'bg-violet-500 font-bold':'')} onClick={onClickHandler}>Original</li>
+                    <li key='original' data-key='original' onClick={onClickHandler} className={'pl-2 ' + (originalSelected?'bg-violet-500 font-bold':'')}>
+                        <Link to={`/apps/collections2/f/${file?.tuuid}/v/${fuuid}`}>Original</Link>
+                    </li>
                 );
             }
         }
 
-        for(let videoItem of videoItems) {
-            let selected = videoItem.fuuid_video === selectedVideo?.fuuid_video;
-            values.push((
-                <li key={videoItem.fuuid_video} data-key={videoItem.entryKey} onClick={onClickHandler}  className={'pl-2 ' + (selected?'bg-violet-500 font-bold':'')} >{videoItem.resolution}</li>
-            ));
-        }
-
+        values = values.reverse();
+        
         return values;
     }, [file, fuuid, selectedVideo]);
 
@@ -527,7 +563,7 @@ function VideoSelectionDetail(props: {file: TuuidsIdbStoreRowType | null, select
     return (
         <>
             <p className='text-slate-400'>Selected video resolution</p>
-            <ol className="cursor-pointer items-pl-2">
+            <ol className="cursor-pointer items-pl-2 max-w-48">
                 {elems}
             </ol>
         </>
