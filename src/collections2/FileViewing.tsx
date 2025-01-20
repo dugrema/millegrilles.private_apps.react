@@ -186,7 +186,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         }, null as FileVideoData | null);
         // console.debug("Selected video: %O", videos);
         setSelectedVideo(video);
-    }, [file, isVideoFile, selectedVideo, setSelectedVideo, fuuid, videoFuuid]);
+    }, [file, isVideoFile, selectedVideo, setSelectedVideo, fuuid, videoFuuid, userMaxResolution]);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -217,7 +217,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
                 }
             })
             .catch(err=>console.error("Error loading JWT", err));
-    }, [workers, ready, file, playVideo, selectedVideo, contactId, setJwt]);
+    }, [workers, ready, file, playVideo, selectedVideo, contactId, setJwt, setLoadProgress]);
 
     useEffect(()=>{
         if(!jwt || !selectedVideo) return;
@@ -521,7 +521,7 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
         values = values.reverse();
         
         return values;
-    }, [file, fuuid, selectedVideo]);
+    }, [file, fuuid, selectedVideo, contactId, onClickHandler]);
 
     let progressClassHide = useMemo(()=>{
         if(loadProgress !== null && loadProgress < 100) return '';

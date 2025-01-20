@@ -75,7 +75,7 @@ function SharedFileViewing() {
                 }
             })
             .catch(err=>console.error("Error loading file %s: %O", tuuid, err));
-    }, [workers, ready, tuuid, userId]);
+    }, [workers, ready, tuuid, userId, contactId]);
 
     return (
         <>
