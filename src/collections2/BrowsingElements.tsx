@@ -233,25 +233,31 @@ export function ButtonBar(props: ButtonBarProps) {
                     className={'varbtn ml-4 px-1 py-1 w-10 hover:bg-slate-600 active:bg-slate-500 ' + (selectionMode?'bg-violet-500':'bg-slate-700')}>
                         <img src={SelectionModeIcon} alt="Select files" title="Select files" className='w-8 inline-block'/>
                 </button>
-                <button onClick={renameHandler} disabled={!selectionMode || selectCount !== 1}
-                    className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
-                        <img src={EditIcon} alt="Rename files" title='Rename files' className='w-8 inline-block'/>
-                </button>
+                {props.disableEdit?<></>:
+                    <button onClick={renameHandler} disabled={!selectionMode || selectCount !== 1}
+                        className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
+                            <img src={EditIcon} alt="Rename files" title='Rename files' className='w-8 inline-block'/>
+                    </button>
+                }
                 <button onClick={copyHandler} disabled={!selectionMode || !selectCount}
                     className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
                         <img src={CopyIcon} alt="Copy files" title="Copy files" className='w-8 inline-block'/>
                 </button>
-                <button onClick={cutHandler} disabled={!selectionMode || !selectCount}
-                    className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
-                        <img src={CutIcon} alt="Move files" title="Move files" className='w-8 inline-block'/>
-                </button>
-                <button onClick={shareHandler} disabled={!selectionMode || !directorySelectCount || selectCount !== directorySelectCount}
-                    className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
-                        <img src={ShareIcon} alt="Share collection" title="Share collection" className='w-8 inline-block'/>
-                </button>
-                <ActionButton disabled={!selectionMode || !selectCount} onClick={deleteHandler} confirm={true} revertSuccessTimeout={2} varwidth={10}>
-                    <img src={TrashIcon} alt="Delete files" title="Delete files" className='w-8 inline-block'/>
-                </ActionButton>
+                {props.disableEdit?<></>:
+                    <>
+                        <button onClick={cutHandler} disabled={!selectionMode || !selectCount}
+                            className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
+                                <img src={CutIcon} alt="Move files" title="Move files" className='w-8 inline-block'/>
+                        </button>
+                        <button onClick={shareHandler} disabled={!selectionMode || !directorySelectCount || selectCount !== directorySelectCount}
+                            className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
+                                <img src={ShareIcon} alt="Share collection" title="Share collection" className='w-8 inline-block'/>
+                        </button>
+                        <ActionButton disabled={!selectionMode || !selectCount} onClick={deleteHandler} confirm={true} revertSuccessTimeout={2} varwidth={10}>
+                            <img src={TrashIcon} alt="Delete files" title="Delete files" className='w-8 inline-block'/>
+                        </ActionButton>
+                    </>
+                }
             </div>
             <div className='text-sm'>
                 {disableStatistics?
