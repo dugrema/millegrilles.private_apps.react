@@ -99,7 +99,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
     let ready = useConnectionStore(state=>state.filehostAuthenticated);
     let userMaxResolution = useUserBrowsingStore(state=>state.userMaxResolution);
 
-    let {videoFuuid} = useParams();
+    let {videoFuuid, contactId} = useParams();
 
     let [playVideo, setPlayVideo] = useState(false);
     let [jwt, setJwt] = useState('');
@@ -206,7 +206,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             fuuidVideo = selectedVideo.fuuid;
         }
 
-        workers.connection.getStreamingJwt(fuuidVideo, fuuidRef)
+        workers.connection.getStreamingJwt(fuuidVideo, fuuidRef, contactId)
             .then(response=>{
                 // console.debug("JWT response: ", response);
                 if(response.ok === false) throw new Error(response.err);
@@ -217,7 +217,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
                 }
             })
             .catch(err=>console.error("Error loading JWT", err));
-    }, [workers, ready, file, playVideo, selectedVideo, setJwt]);
+    }, [workers, ready, file, playVideo, selectedVideo, contactId, setJwt]);
 
     useEffect(()=>{
         if(!jwt || !selectedVideo) return;
@@ -415,6 +415,8 @@ function sortVideoEntries(a: FileVideoDataWithItemKey, b: FileVideoDataWithItemK
 function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType} & {setSelectedVideo: Dispatch<FileVideoData | null>}) {
     let {file, selectedVideo, setSelectedVideo, loadProgress} = props;
 
+    let {contactId} = useParams();
+
     let fuuid = useMemo(()=>{
         let fuuids = file?.fileData?.fuuids_versions;
         let fuuid = (fuuids&&fuuids.length>0)?fuuids[0]:null;
@@ -477,9 +479,14 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
                 streamInfo += 'S' + videoItem.subtitle_stream_idx;
             }
 
+            let url = `/apps/collections2/f/${file?.tuuid}/v/${videoItem.fuuid_video}`;
+            if(contactId) {
+                url = `/apps/collections2/c/${contactId}/f/${file?.tuuid}/v/${videoItem.fuuid_video}`;
+            }
+
             values.push((
                 <li key={videoItem.fuuid_video} data-key={videoItem.entryKey} onClick={onClickHandler} className={'pl-2 ' + (selected?'bg-violet-500 font-bold':'')} >
-                    <Link to={`/apps/collections2/f/${file?.tuuid}/v/${videoItem.fuuid_video}`}>
+                    <Link to={url}>
                         {videoItem.resolution}
                         {streamInfo?<span className='pl-2'>{streamInfo}</span>:<></>}
                     </Link>
@@ -499,9 +506,13 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
                     originalSelected = true;
                 }
                 // console.debug("Original video format %s supported (%s), selected: %s ", mimetype, support, originalSelected);
+                let url = `/apps/collections2/f/${file?.tuuid}/v/${fuuid}`;
+                if(contactId) {
+                    url = `/apps/collections2/c/${contactId}/f/${file?.tuuid}/v/${fuuid}`;
+                }
                 values.push(
                     <li key='original' data-key='original' onClick={onClickHandler} className={'pl-2 ' + (originalSelected?'bg-violet-500 font-bold':'')}>
-                        <Link to={`/apps/collections2/f/${file?.tuuid}/v/${fuuid}`}>Original</Link>
+                        <Link to={url}>Original</Link>
                     </li>
                 );
             }
