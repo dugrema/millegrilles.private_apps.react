@@ -45,7 +45,7 @@ function SharedFileBrowsing() {
 
     let onClickRowHandler = useCallback((e, tuuid, typeNode, range)=>{
         if(typeNode === 'Fichier') {
-            console.warn("TODO - browse to file");
+            navigate(`/apps/collections2/c/${contactId}/f/${tuuid}`);
         } else {
             navigate(`/apps/collections2/c/${contactId}/b/${tuuid}`);
         }

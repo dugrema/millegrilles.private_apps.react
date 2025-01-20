@@ -339,23 +339,6 @@ function Modals(props: {show: ModalEnum | null, close:()=>void}) {
     return <></>;
 }
 
-// async function updateCollection(
-//     workers: AppWorkers, 
-//     userId: string,
-//     updateBreadcrumb: (files: TuuidsBrowsingStoreRow[] | null) => void, 
-//     message: Collection2DirectoryUpdateMessage) 
-// {
-//     let tuuid = message.tuuid;
-//     let response = await workers.connection.getFilesByTuuid([tuuid]);
-//     if(response.files && response.keys) {
-//         let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys);
-//         let storeFiles = filesIdbToBrowsing(files);
-//         // updateBreadcrumb(storeFiles);
-//     } else {
-//         console.error("Error loading file/directory updates: ", response.err);
-//     }
-// }
-
 async function updateCollectionContent(
     workers: AppWorkers, 
     userId: string,

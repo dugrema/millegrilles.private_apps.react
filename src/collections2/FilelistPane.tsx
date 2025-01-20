@@ -290,13 +290,11 @@ function ThumbnailItem(props: FileItem) {
         if(value.thumbnailDownloaded) return;               // High quality thumbnail already downloaded, nothing to do
         if(!visible) return;                                // Not visible
         
-        console.debug("Tuuid %s visible %s", value.tuuid, visible);
         Promise.resolve()
             .then(async ()=>{
                 if(!workers) throw new Error('workers not initialized');
                 let tuuid = value.tuuid;
                 let file = await loadTuuid(tuuid);
-                console.debug("Loaded file %s from IDB: ", tuuid, file);
 
                 let secretKey = file?.secretKey;
                 let fileData = file?.fileData
@@ -313,9 +311,7 @@ function ThumbnailItem(props: FileItem) {
 
                     // let fuuid = fileData.fuuids_versions?fileData.fuuids_versions[0]:null;
                     if(fuuid) {
-                        console.debug("Open file", fuuid);
                         let imageBlob = await workers.directory.openFile(fuuid, secretKey, smallImageInfo);
-                        console.debug("Opened file: ", imageBlob);
                         
                         // Save high quality thumbnail to IDB
                         file.thumbnail = imageBlob;
