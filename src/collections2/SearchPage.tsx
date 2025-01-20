@@ -86,7 +86,7 @@ function SearchPage() {
 
     let onClickRow = useCallback((tuuid: string, typeNode: string)=>{
         if(typeNode === 'Fichier') {
-            console.warn("Click Fichier - todo");
+            navigate('/apps/collections2/f/' + tuuid);
         } else {
             // Browse to directory
             navigate('/apps/collections2/b/' + tuuid);
@@ -99,7 +99,7 @@ function SearchPage() {
                 <form onSubmit={submitHandler}>
                     <div className='grid grid-cols-12'>
                         <label className='col-span-2'>Search query</label>
-                        <input type='text' value={searchInput} onChange={searchInputHandler}
+                        <input type='text' value={searchInput} onChange={searchInputHandler} autoFocus
                             className='col-span-8 text-black' />
                         <ActionButton onClick={searchHandler}>Search</ActionButton>
                     </div>
@@ -127,6 +127,7 @@ async function runSearchQuery(
 {
     // Run search
     let searchResults = await workers.connection.searchFiles(query);
+    console.debug("Search results", searchResults);
 
     if(!searchResults.ok) throw new Error(`Error during sync: ${searchResults.err}`);
 
