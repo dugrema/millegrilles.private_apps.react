@@ -333,6 +333,8 @@ function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimet
     let {fuuidVideo, mimetypeVideo, thumbnailBlobUrl, jwt} = props;
     let {tuuid} = useParams();
     let userId = useUserBrowsingStore(state=>state.userId);
+    
+    let [fullscreen, setFullscreen] = useState(false);
 
     let refVideo = useRef(null as HTMLVideoElement | null);
 
@@ -356,6 +358,21 @@ function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimet
             .catch(err=>console.warn("Error removing video position", err));
     }, [tuuid, userId]);
 
+    let fullScreenChange = useCallback(()=>{
+        // Detect if there is a fullscreen element to know whether we change to or from full screen mode.
+        if(document.fullscreenElement) {
+            setFullscreen(true);
+        } else {
+            setFullscreen(false);
+        }
+    }, [setFullscreen]);
+
+    let videoClassname = useMemo(()=>{
+        // In full screen mode, the video goes in the center
+        if(fullscreen) return 'grow object-contain object-center';
+        return 'grow object-contain object-right';
+    }, [fullscreen]);
+
     useEffect(()=>{
         if(!tuuid || !userId) return;
         getCurrentVideoPosition(tuuid, userId)
@@ -372,11 +389,25 @@ function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimet
         if(refVideo.current && refVideo.current.currentTime !== undefined) {
             refVideo.current.currentTime = jumpToTimeStamp;
         }
-    }, [jumpToTimeStamp, refVideo])
+    }, [jumpToTimeStamp, refVideo]);
+
+    useEffect(()=>{
+        if(!fullScreenChange) return;
+        if(!refVideo?.current) return;
+
+        console.debug("Add event listener");
+        refVideo.current.addEventListener('fullscreenchange', fullScreenChange);
+
+        return () => {
+            if(refVideo?.current?.removeEventListener) {
+                refVideo.current.removeEventListener('fullscreenchange', fullScreenChange)
+            }
+        }
+    }, [refVideo, fullScreenChange]);
 
     return (
         <>
-            <video ref={refVideo} controls poster={thumbnailBlobUrl} className='grow object-contain object-right' autoPlay 
+            <video ref={refVideo} controls poster={thumbnailBlobUrl} className={videoClassname} autoPlay 
                 onTimeUpdate={onTimeUpdate} onEnded={onEnded}>
                 {videoSrc?
                     <source src={videoSrc} type={mimetypeVideo} />
