@@ -136,7 +136,7 @@ export function Breadcrumb(props: BreadcrumbProps) {
  * Handles the sync of files in a directory.
  * @returns 
  */
-function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
+export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
 
     let {tuuid} = props;
 
@@ -153,7 +153,7 @@ function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
     let sharedCollection = useUserBrowsingStore(state=>state.sharedCollection);
 
     useEffect(()=>{
-        if(!workers || !ready || !userId || !sharedCollection) return;
+        if(!workers || !ready || !userId || !sharedCollection || !tuuid) return;
         let tuuidValue = tuuid || null;
 
         // Signal to cancel sync

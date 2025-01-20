@@ -1,9 +1,7 @@
-import { ChangeEvent, Dispatch, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import axios from 'axios';
-import { Formatters } from "millegrilles.reactdeps.typescript";
 
-import { FileImageData, FileVideoData, getCurrentVideoPosition, loadTuuid, removeVideoPosition, setVideoPosition, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
+import { loadTuuid, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
 import useUserBrowsingStore from "./userBrowsingStore";
 import { DirectorySyncHandler } from "./UserFileBrowsing";
 import useConnectionStore from "../connectionStore";
