@@ -16,9 +16,12 @@ export type TuuidsBrowsingStoreRow = {
     thumbnail: Blob | null,
     thumbnailDownloaded: boolean,
     loadStatus: number | null,
+    path_cuuids?: string[] | null,
+    ownerUserId: string | null,
+    contactId?: string | null,
 }
 
-export type TuuidsBrowsingStoreSearchRow = TuuidsBrowsingStoreRow & {score: number};
+export type TuuidsBrowsingStoreSearchRow = TuuidsBrowsingStoreRow & {score: number, contactId?: string | null};
 
 export type Collection2SearchStore = {
     query: string,
@@ -53,8 +56,10 @@ export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsi
             mimetype: item.fileData?.mimetype,
             thumbnail: item.thumbnail,
             thumbnailDownloaded: item.thumbnailDownloaded || false,
+            ownerUserId: item.ownerUserId,
+            path_cuuids: item.path_cuuids,
         } as TuuidsBrowsingStoreRow;
-    })
+    });
 }
 
 interface UserBrowsingStoreState {

@@ -553,13 +553,13 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as any;
     };
 
-    async getCollections2SharedCollections() {
-        if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.sendRequest(
-            {}, 
-            DOMAINE_GROSFICHIERS, 'getPartagesUsager'
-        ) as any;
-    }
+    // async getCollections2SharedCollections() {
+    //     if(!this.connection) throw new Error("Connection is not initialized");
+    //     return await this.connection.sendRequest(
+    //         {}, 
+    //         DOMAINE_GROSFICHIERS, 'getPartagesUsager'
+    //     ) as any;
+    // }
 
     async getCollections2SharedContactsWithUser() {
         if(!this.connection) throw new Error("Connection is not initialized");

@@ -2,9 +2,10 @@ import axios from 'axios';
 import { expose, Remote } from 'comlink';
 import { messageStruct, encryptionMgs4, multiencoding } from 'millegrilles.cryptography';
 
-import { Collections2FileSyncRow, DecryptedSecretKey, Filehost } from './connection.worker';
+import { Collections2FileSyncRow, Collections2SharedContactsSharedCollection, DecryptedSecretKey, Filehost } from './connection.worker';
 import { AppsEncryptionWorker } from './encryption.worker';
 import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync, deleteFiles } from '../collections2/idb/collections2StoreIdb';
+import { TuuidsBrowsingStoreSearchRow } from '../collections2/userBrowsingStore';
 
 type ProcessDirectoryChunkOptions = {
     noidb?: boolean,

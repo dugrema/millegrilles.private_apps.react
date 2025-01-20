@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore, { Collection2SearchStore, filesIdbToBrowsing, TuuidsBrowsingStoreRow, TuuidsBrowsingStoreSearchRow } from "./userBrowsingStore";
-import { Collection2SearchResultsDoc } from "../workers/connection.worker";
+import { Collection2SearchResultsDoc, Collections2SharedContactsSharedCollection } from "../workers/connection.worker";
 import SearchFilelistPane from "./SearchFileListPane";
 
 
@@ -19,6 +19,7 @@ function SearchPage() {
     let searchResults = useUserBrowsingStore(state=>state.searchResults);
     let setSearchResults = useUserBrowsingStore(state=>state.setSearchResults);
     let updateSearchListing = useUserBrowsingStore(state=>state.updateSearchListing);
+    let [sharedCuuids, setSharedCuuids] = useState(null as {[tuuid: string]: Collections2SharedContactsSharedCollection} | null);
 
     let [pageLoaded, setPageLoaded] = useState(false);
     let [searchParams, setSearchParams] = useSearchParams();
@@ -41,6 +42,7 @@ function SearchPage() {
     }, [setSearchInput]);
 
     let searchHandler = useCallback(async()=>{
+        if(!sharedCuuids) throw new Error('Shares not loaded');
         setSearchResults(null);
         updateSearchListing(null);
         if(!searchInput) {
@@ -48,10 +50,10 @@ function SearchPage() {
         } else {
             if(!workers || !ready) throw new Error("workers not initialized");
             if(!userId) throw new Error("User not initialized");
-            await runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing);
+            await runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing, sharedCuuids);
             setSearchParams(params=>{params.set('search', searchInput); return params;});
         }
-    }, [workers, ready, username, userId, searchInput, setSearchResults, setSearchParams, updateSearchListing]);
+    }, [workers, ready, username, userId, searchInput, setSearchResults, setSearchParams, updateSearchListing, sharedCuuids]);
 
     let submitHandler = useCallback((e: FormEvent<HTMLFormElement>)=>{
         e.preventDefault();
@@ -60,7 +62,24 @@ function SearchPage() {
     }, [searchHandler]);
 
     useEffect(()=>{
-        if(pageLoaded || !workers || !ready || !userId) return;
+        if(!workers || !ready) return;
+        workers.connection.getCollections2SharedContactsWithUser()
+            .then(response=>{
+                if(response.ok === false) throw new Error(response.err);
+                if(response.partages) {
+                    let sharesByTuuid = response.partages.reduce((acc, item)=>{
+                        return {...acc, [item.tuuid]: item};
+                    }, {} as {[tuuid: string]: Collections2SharedContactsSharedCollection});
+                    setSharedCuuids(sharesByTuuid);
+                } else {
+                    setSharedCuuids({});
+                }
+            })
+            .catch(err=>console.error("Error loading shared directory", err));
+    }, [workers, ready, setSharedCuuids]);
+
+    useEffect(()=>{
+        if(pageLoaded || !workers || !ready || !userId || !sharedCuuids) return;
         setPageLoaded(true);
         let searchQuery = searchResults?.query;
         if(!searchInput && searchQuery) {
@@ -77,21 +96,26 @@ function SearchPage() {
             if(!workers || !ready) throw new Error("workers not initialized");
             if(!userId) throw new Error("User not initialized");
             setSearchParams(params=>{params.set('search', searchInput); return params;});
-            runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing)
+            runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing, sharedCuuids)
                 .catch(err=>{
                     console.error("Error running initial search query", err);
                 })
         }
-    }, [workers, ready, userId, searchInput, searchResults, setSearchInput, pageLoaded, setPageLoaded, query, setSearchParams, setSearchResults, updateSearchListing, username]);
+    }, [workers, ready, userId, searchInput, searchResults, setSearchInput, pageLoaded, setPageLoaded, query, setSearchParams, setSearchResults, updateSearchListing, username, sharedCuuids]);
 
     let onClickRow = useCallback((tuuid: string, typeNode: string)=>{
         if(typeNode === 'Fichier') {
-            navigate('/apps/collections2/f/' + tuuid);
+            let item = searchListing?searchListing[tuuid]:null;
+            if(item && item.contactId) {
+                navigate(`/apps/collections2/c/${item.contactId}/f/${tuuid}`);
+            } else {
+                navigate('/apps/collections2/f/' + tuuid);
+            }
         } else {
             // Browse to directory
             navigate('/apps/collections2/b/' + tuuid);
         }
-    }, [navigate]);
+    }, [navigate, searchListing]);
 
     return (
         <>
@@ -101,7 +125,7 @@ function SearchPage() {
                         <label className='col-span-2'>Search query</label>
                         <input type='text' value={searchInput} onChange={searchInputHandler} autoFocus
                             className='col-span-8 text-black' />
-                        <ActionButton onClick={searchHandler}>Search</ActionButton>
+                        <ActionButton onClick={searchHandler} revertSuccessTimeout={3}>Search</ActionButton>
                     </div>
                 </form>
             </section>
@@ -112,7 +136,7 @@ function SearchPage() {
 
             <section className='pt-3'>
                 <SearchFilelistPane files={files} onClickRow={onClickRow} sortKey='score' sortOrder={-1}/>
-                <DisplayMore />
+                <DisplayMore sharedCuuids={sharedCuuids} />
             </section>
         </>
     );
@@ -123,11 +147,11 @@ export default SearchPage;
 async function runSearchQuery(
     workers: AppWorkers, query: string, userId: string, username: string,
     setSearchResults: (searchResults: Collection2SearchStore | null) => void,
-    updateSearchListing: (files: TuuidsBrowsingStoreSearchRow[] | null) => void)
+    updateSearchListing: (files: TuuidsBrowsingStoreSearchRow[] | null) => void,
+    sharedCuuids: {[tuuid: string]: Collections2SharedContactsSharedCollection})
 {
     // Run search
     let searchResults = await workers.connection.searchFiles(query);
-    console.debug("Search results", searchResults);
 
     if(!searchResults.ok) throw new Error(`Error during sync: ${searchResults.err}`);
 
@@ -157,6 +181,22 @@ async function runSearchQuery(
         let storeFiles = filesIdbToBrowsing(files);
         let storeFilesByTuuid = storeFiles.reduce((acc, item)=>{
             acc[item.tuuid] = item;
+
+            // Check if this is a shared file
+            if(item.ownerUserId) {
+                // Shared file. Match to contactId.
+                if(item.path_cuuids) {
+                    for(let cuuid of item.path_cuuids) {
+                        let contact = sharedCuuids[cuuid];
+                        if(contact) {
+                            // Match - this is the contactId
+                            item.contactId = contact.contact_id;
+                            break;
+                        }
+                    }
+                }
+            }
+
             return acc;
         }, {} as {[tuuid: string]: TuuidsBrowsingStoreRow});
 
@@ -210,7 +250,9 @@ function SearchStatistics() {
     )
 }
 
-function DisplayMore() {
+function DisplayMore(props: {sharedCuuids: {[tuuid: string]: Collections2SharedContactsSharedCollection} | null}) {
+
+    let {sharedCuuids} = props;
 
     let searchListing = useUserBrowsingStore(state=>state.searchListing);
     let searchResults = useUserBrowsingStore(state=>state.searchResults);
@@ -230,12 +272,12 @@ function DisplayMore() {
         setNextIndex(nextIndex);
     }, [itemsLoaded, itemsAvailable, setNextIndex]);
 
-    if(itemsLoaded === itemsAvailable) return <></>;  // Nothing to do
+    if(itemsLoaded === itemsAvailable || !sharedCuuids) return <></>;  // Nothing to do
 
     return (
         <div className='pt-3 text-center'>
             <ActionButton onClick={onClickHandler}revertSuccessTimeout={2}>Display more</ActionButton>
-            <SearchSyncHandler itemsLoaded={itemsLoaded} itemsAvailable={itemsAvailable} nextIndex={nextIndex} />
+            <SearchSyncHandler itemsLoaded={itemsLoaded} itemsAvailable={itemsAvailable} nextIndex={nextIndex} sharedCuuids={sharedCuuids} />
         </div>
     )
 }
@@ -244,7 +286,12 @@ function DisplayMore() {
  * Handles the sync of files in a directory.
  * @returns 
  */
-function SearchSyncHandler(props: {itemsLoaded: number, itemsAvailable: number, nextIndex: number | null}) {
+function SearchSyncHandler(
+    props: {itemsLoaded: number, itemsAvailable: number, nextIndex: number | null,
+    sharedCuuids: {[tuuid: string]: Collections2SharedContactsSharedCollection}}) 
+{
+
+    let {sharedCuuids} = props;
 
     let {itemsLoaded, itemsAvailable, nextIndex} = props;
 
@@ -268,7 +315,7 @@ function SearchSyncHandler(props: {itemsLoaded: number, itemsAvailable: number, 
                 let cancelledSignal = () => cancelled;
                 let cancel = () => {cancelled = true};
 
-                loadTuuidsToSearch(workers, userId, tuuids, docs, cancelledSignal, updateSearchListing)
+                loadTuuidsToSearch(workers, userId, tuuids, docs, cancelledSignal, updateSearchListing, sharedCuuids);
 
                 return () => {
                     cancel();
@@ -287,7 +334,8 @@ async function loadTuuidsToSearch(
     workers: AppWorkers, userId: string, tuuids: string[],
     searchResultDocs: Collection2SearchResultsDoc[],
     cancelledSignal: ()=>boolean,
-    updateSearchListing: (files: TuuidsBrowsingStoreSearchRow[] | null) => void) 
+    updateSearchListing: (files: TuuidsBrowsingStoreSearchRow[] | null) => void,
+    sharedCuuids: {[tuuid: string]: Collections2SharedContactsSharedCollection}) 
 {
     // Load
     let response = await workers.connection.getFilesByTuuid(tuuids);
@@ -299,6 +347,22 @@ async function loadTuuidsToSearch(
     let storeFiles = filesIdbToBrowsing(files);
     let storeFilesByTuuid = storeFiles.reduce((acc, item)=>{
         acc[item.tuuid] = item;
+
+        // Check if this is a shared file
+        if(item.ownerUserId) {
+            // Shared file. Match to contactId.
+            if(item.path_cuuids) {
+                for(let cuuid of item.path_cuuids) {
+                    let contact = sharedCuuids[cuuid];
+                    if(contact) {
+                        // Match - this is the contactId
+                        item.contactId = contact.contact_id;
+                        break;
+                    }
+                }
+            }
+        }
+
         return acc;
     }, {} as {[tuuid: string]: TuuidsBrowsingStoreRow});
 
@@ -310,5 +374,6 @@ async function loadTuuidsToSearch(
             mappedFiles.push({...item, ...file});
         }
     }
+
     updateSearchListing(mappedFiles);
 }
