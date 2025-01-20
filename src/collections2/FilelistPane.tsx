@@ -270,6 +270,7 @@ function ThumbnailItem(props: FileItem) {
     let filehostReady = useConnectionStore(state=>state.filehostAuthenticated);
     let updateThumbnail = useUserBrowsingStore(state=>state.updateThumbnail);
     let updateSharedThumbnail = useUserBrowsingStore(state=>state.updateSharedThumbnail);
+    let userId = useUserBrowsingStore(state=>state.userId);
 
     let defaultIcon = useMemo(()=>getIcon(value.type_node, value.mimetype), [value]);
     let [thumbnail, setThumbnail] = useState('');
@@ -287,14 +288,17 @@ function ThumbnailItem(props: FileItem) {
 
     useEffect(()=>{
         if(!workers || !ready || !filehostReady) return;    // Not ready
+        if(!userId) return;                                 // UserId not loaded
         if(value.thumbnailDownloaded) return;               // High quality thumbnail already downloaded, nothing to do
         if(!visible) return;                                // Not visible
         
         Promise.resolve()
             .then(async ()=>{
                 if(!workers) throw new Error('workers not initialized');
+                if(!userId) throw new Error('UserId not provided');
+                
                 let tuuid = value.tuuid;
-                let file = await loadTuuid(tuuid);
+                let file = await loadTuuid(tuuid, userId);
 
                 let secretKey = file?.secretKey;
                 let fileData = file?.fileData
@@ -328,7 +332,7 @@ function ThumbnailItem(props: FileItem) {
                 }
             })
             .catch(err=>console.error("Error loading small image", err));
-    }, [workers, value, visible, ready, filehostReady, contactId, updateThumbnail, updateSharedThumbnail]);
+    }, [workers, value, visible, ready, filehostReady, contactId, userId, updateThumbnail, updateSharedThumbnail]);
 
     useEffect(()=>{
         if(!value || !value.thumbnail) return;

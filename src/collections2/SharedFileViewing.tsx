@@ -46,13 +46,13 @@ function SharedFileViewing() {
     }, [sharedWithUser, contactId, setSharedCollection, setSharedContact]);
 
     useEffect(()=>{
-        if(tuuid) {
-            loadTuuid(tuuid).then(file=>setFile(file))
+        if(tuuid && userId) {
+            loadTuuid(tuuid, userId).then(file=>setFile(file))
             .catch(err=>console.error("Error loading file", err));
         } else {
             setFile(null);
         }
-    }, [setFile, tuuid, contactId]);
+    }, [setFile, tuuid, contactId, userId]);
 
     useEffect(()=>{
         if(!workers || !ready || !userId || !tuuid || !contactId) return;

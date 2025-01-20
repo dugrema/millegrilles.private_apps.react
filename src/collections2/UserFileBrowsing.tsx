@@ -266,7 +266,7 @@ async function synchronizeDirectory(
 
         if(response.deleted_tuuids) {
             console.debug("Delete files %O", response.deleted_tuuids);
-            await workers.directory.deleteFiles(response.deleted_tuuids);
+            await workers.directory.deleteFiles(response.deleted_tuuids, userId);
             deleteFilesDirectory(response.deleted_tuuids);
         }
 
@@ -318,7 +318,7 @@ async function synchronizeDirectory(
 
     if(tuuid && lastCompleteSyncSec) {
         // Update current directory last sync information
-        await workers.directory.touchDirectorySync(tuuid, lastCompleteSyncSec);
+        await workers.directory.touchDirectorySync(tuuid, userId, lastCompleteSyncSec);
     }
 }
 
@@ -366,7 +366,7 @@ async function updateCollectionContent(
 
     if(message.retires && message.retires.length > 0) {
         let removedTuuids = message.retires;
-        await workers.directory.deleteFiles(removedTuuids);
+        await workers.directory.deleteFiles(removedTuuids, userId);
         deleteFilesDirectory(removedTuuids);
     }
 }

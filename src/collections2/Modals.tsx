@@ -217,6 +217,7 @@ export function ModalRenameFile(props: ModalInformationProps) {
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let userId = useUserBrowsingStore(state=>state.userId);
 
     let selection = useUserBrowsingStore(state=>state.selection);
     let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
@@ -237,6 +238,7 @@ export function ModalRenameFile(props: ModalInformationProps) {
 
     let actionHandler = useCallback(async (e?: MouseEvent<HTMLButtonElement>, opt?: {skipTimeout?: boolean}) => {
         if(!workers || !ready) throw new Error('workers not initialzed');
+        if(!userId) throw new Error("UserId not provided");
 
         //throw new Error('todo');
         if(newName.length === 0) throw new Error('New name is empty');
@@ -254,7 +256,7 @@ export function ModalRenameFile(props: ModalInformationProps) {
         }
 
         if(changed) {
-            let fileIdb = await loadTuuid(tuuid);
+            let fileIdb = await loadTuuid(tuuid, userId);
             if(!fileIdb || !fileIdb.secretKey || !fileIdb.decryptedMetadata) throw new Error('File detail not available locally');
             let {decryptedMetadata, secretKey, encryptedMetadata} = fileIdb;
             if(!encryptedMetadata || !encryptedMetadata.cle_id) throw new Error('Insufficient information to re-encrypt data');
@@ -279,7 +281,7 @@ export function ModalRenameFile(props: ModalInformationProps) {
         } else {
             setTimeout(()=>close(), 1_000);
         }
-    }, [workers, ready, close, selectedFile, isFile, newName, newMimetype, setError]);
+    }, [workers, ready, close, selectedFile, isFile, newName, newMimetype, userId, setError]);
     
     let submitHandler = useCallback((e: FormEvent)=>{
         e.preventDefault();

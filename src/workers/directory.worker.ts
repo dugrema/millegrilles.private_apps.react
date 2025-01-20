@@ -203,12 +203,12 @@ export class DirectoryWorker {
         return result;
     }
 
-    async touchDirectorySync(tuuid: string, lastCompleteSyncSec: number) {
-        await touchDirectorySync(tuuid, lastCompleteSyncSec);
+    async touchDirectorySync(tuuid: string, userId: string, lastCompleteSyncSec: number) {
+        await touchDirectorySync(tuuid, userId, lastCompleteSyncSec);
     }
 
-    async deleteFiles(tuuids: string[]) {
-        await deleteFiles(tuuids);
+    async deleteFiles(tuuids: string[], userId: string) {
+        await deleteFiles(tuuids, userId);
     }
 
     async setFilehostList(filehosts: Filehost[]) {

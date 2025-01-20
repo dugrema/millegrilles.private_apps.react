@@ -4,7 +4,7 @@ import { messageStruct } from 'millegrilles.cryptography'
 const DB_NAME = 'collections2';
 const STORE_TUUIDS = 'tuuids';
 const STORE_VIDEO_PLAY = 'videoPlayback';
-const DB_VERSION_CURRENT = 3;
+const DB_VERSION_CURRENT = 2;
 
 export type TuuidEncryptedMetadata = messageStruct.MessageDecryption & {
     data_chiffre: string,
@@ -133,18 +133,14 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
         // @ts-ignore Fallthrough
         case 1:
             // Create stores
-            tuuidStore = db.createObjectStore(STORE_TUUIDS, {keyPath: 'tuuid'});
+            tuuidStore = db.createObjectStore(STORE_TUUIDS, {keyPath: ['tuuid', 'user_id']});
+            videoPlayStore = db.createObjectStore(STORE_VIDEO_PLAY, {keyPath: ['tuuid', 'userId']});
 
             // Create indices
-            tuuidStore.createIndex('parent', 'parent', {unique: false, multiEntry: false});
-            // documentStore.createIndex('useridGroup', ['user_id', 'groupe_id'], {unique: false, multiEntry: false});
+            tuuidStore.createIndex('parent', ['parent', 'user_id'], {unique: false, multiEntry: false});
 
         // @ts-ignore Fallthrough
         case 2: // Most recent
-            videoPlayStore = db.createObjectStore(STORE_VIDEO_PLAY, {keyPath: ['tuuid', 'userId']});
-
-        // @ts-ignore Fallthrough
-        case 3: // Most recent
             break;
 
         default:
@@ -158,8 +154,8 @@ export async function updateFilesIdb(tuuids: TuuidsIdbStoreRowType[]) {
     const store = db.transaction(STORE_TUUIDS, 'readwrite').store;
 
     for await (const file of tuuids) {
-        const { tuuid } = file
-        const fileExisting = await store.get(tuuid);
+        const { tuuid, user_id } = file
+        const fileExisting = await store.get([tuuid, user_id]);
         if(fileExisting) {
             await store.put({...fileExisting, ...file});
         } else {
@@ -168,10 +164,10 @@ export async function updateFilesIdb(tuuids: TuuidsIdbStoreRowType[]) {
     }
 }
 
-export async function loadTuuid(tuuid: string): Promise<TuuidsIdbStoreRowType|null> {
+export async function loadTuuid(tuuid: string, userId: string): Promise<TuuidsIdbStoreRowType|null> {
     const db = await openDB();
     let store = db.transaction(STORE_TUUIDS, 'readonly').store;
-    return await store.get(tuuid);
+    return await store.get([tuuid, userId]);
 }
 
 export async function loadDirectory(userId: string, tuuid: string | null): Promise<LoadDirectoryResultType> {
@@ -179,11 +175,11 @@ export async function loadDirectory(userId: string, tuuid: string | null): Promi
     let store = db.transaction(STORE_TUUIDS, 'readonly').store;
 
     let directoryKey = tuuid || userId;
-    let directoryInfo = await store.get(directoryKey);
+    let directoryInfo = await store.get([directoryKey, userId]);
     
     store = db.transaction(STORE_TUUIDS, 'readonly').store;
     let parentIndex = store.index('parent');
-    let cursor = await parentIndex.openCursor(directoryKey);
+    let cursor = await parentIndex.openCursor([directoryKey, userId]);
     let files = [] as TuuidsIdbStoreRowType[];
     while(cursor) {
         let value = cursor.value as TuuidsIdbStoreRowType;
@@ -198,7 +194,7 @@ export async function loadDirectory(userId: string, tuuid: string | null): Promi
         let breadcrumbInner = [directoryInfo];
         store = db.transaction(STORE_TUUIDS, 'readonly').store;
         for(let cuuid of directoryInfo.path_cuuids) {
-            let dirIdb = await store.get(cuuid);
+            let dirIdb = await store.get([cuuid, userId]);
             if(!dirIdb) break;  // Incomplete breadcrumb / truncated (shared)
             breadcrumbInner.push(dirIdb);
         }
@@ -212,10 +208,10 @@ export async function loadDirectory(userId: string, tuuid: string | null): Promi
     return {directory: directoryInfo, list: files, breadcrumb};
 }
 
-export async function touchDirectorySync(tuuid: string, lastCompleteSyncSec: number) {
+export async function touchDirectorySync(tuuid: string, userId: string, lastCompleteSyncSec: number) {
     const db = await openDB();
     const store = db.transaction(STORE_TUUIDS, 'readwrite').store;
-    const fileExisting = await store.get(tuuid);
+    const fileExisting = await store.get([tuuid, userId]);
     if(!fileExisting) {
         // Not saved yet, ignore
         return;
@@ -224,11 +220,11 @@ export async function touchDirectorySync(tuuid: string, lastCompleteSyncSec: num
     await store.put(updatedFile);
 }
 
-export async function deleteFiles(tuuids: string[]) {
+export async function deleteFiles(tuuids: string[], userId: string) {
     const db = await openDB();
     const store = db.transaction(STORE_TUUIDS, 'readwrite').store;
     for(let tuuid of tuuids) {
-        await store.delete(tuuid);
+        await store.delete([tuuid, userId]);
     }
 }
 
