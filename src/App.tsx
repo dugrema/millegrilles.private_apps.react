@@ -27,13 +27,11 @@ const Collections2Configuration = React.lazy(()=>import('./collections2/Configur
 const Collections2UserFileBrowsing = React.lazy(()=>import('./collections2/UserFileBrowsing'));
 const Collections2UserFileViewing = React.lazy(()=>import('./collections2/UserFileViewing'));
 const Collections2UserDeletedFilesBrowsing = React.lazy(()=>import('./collections2/BrowsingDeleted'));
-const Collections2UserVideoViewing = React.lazy(()=>import('./collections2/UserVideoViewing'));
 const Collections2Search = React.lazy(()=>import('./collections2/SearchPage'));
 const Collections2SharedContent = React.lazy(()=>import('./collections2/SharedContent'));
 const Collections2SharedUsers = React.lazy(()=>import('./collections2/SharedUsers'));
 const Collections2SharedFileBrowsing = React.lazy(()=>import('./collections2/SharedFileBrowsing'));
 const Collections2SharedFileViewing = React.lazy(()=>import('./collections2/SharedFileViewing'));
-const Collections2SharedVideoViewing = React.lazy(()=>import('./collections2/SharedVideoViewing'));
 
 // Notepad
 const NotepadApp = React.lazy(()=>import('./notepad/AppNotepad'));
@@ -94,8 +92,6 @@ const router = createBrowserRouter([
                     { path: ":contactId/b/:tuuid", element: <Collections2SharedFileBrowsing /> },
                     { path: ":contactId/f/:tuuid", element: <Collections2SharedFileViewing /> },
                     { path: ":contactId/f/:tuuid/v/:videoFuuid", element: <Collections2SharedFileViewing /> },
-                    { path: ":contactId/v/:tuuid", element: <Collections2SharedVideoViewing /> },
-                    { path: ":contactId/v/:tuuid/:selector", element: <Collections2SharedVideoViewing /> },
                 ]
             },
         ]
