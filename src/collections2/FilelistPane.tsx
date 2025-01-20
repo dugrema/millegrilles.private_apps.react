@@ -11,6 +11,7 @@ import VideoIcon from '../resources/icons/video-file-svgrepo-com.svg';
 import useWorkers from "../workers/workers";
 import { loadTuuid, updateFilesIdb } from "./idb/collections2StoreIdb";
 import useConnectionStore from "../connectionStore";
+import { useParams } from "react-router-dom";
 
 export type FileListPaneOnClickRowType = (
     e: MouseEvent<HTMLButtonElement | HTMLDivElement>, 
@@ -262,11 +263,13 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
 function ThumbnailItem(props: FileItem) {
 
     let {value, onClick} = props;
+    let {contactId} = useParams();
     let { ref, visible } = useVisibility({});
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let filehostReady = useConnectionStore(state=>state.filehostAuthenticated);
     let updateThumbnail = useUserBrowsingStore(state=>state.updateThumbnail);
+    let updateSharedThumbnail = useUserBrowsingStore(state=>state.updateSharedThumbnail);
 
     let defaultIcon = useMemo(()=>getIcon(value.type_node, value.mimetype), [value]);
     let [thumbnail, setThumbnail] = useState('');
@@ -287,13 +290,14 @@ function ThumbnailItem(props: FileItem) {
         if(value.thumbnailDownloaded) return;               // High quality thumbnail already downloaded, nothing to do
         if(!visible) return;                                // Not visible
         
-        // console.debug("Tuuid %s visible %s", value.tuuid, visible);
+        console.debug("Tuuid %s visible %s", value.tuuid, visible);
         Promise.resolve()
             .then(async ()=>{
                 if(!workers) throw new Error('workers not initialized');
                 let tuuid = value.tuuid;
                 let file = await loadTuuid(tuuid);
-                //console.debug("Loaded file %s from IDB: ", tuuid, file);
+                console.debug("Loaded file %s from IDB: ", tuuid, file);
+
                 let secretKey = file?.secretKey;
                 let fileData = file?.fileData
                 let images = file?.fileData?.images;
@@ -309,7 +313,9 @@ function ThumbnailItem(props: FileItem) {
 
                     // let fuuid = fileData.fuuids_versions?fileData.fuuids_versions[0]:null;
                     if(fuuid) {
+                        console.debug("Open file", fuuid);
                         let imageBlob = await workers.directory.openFile(fuuid, secretKey, smallImageInfo);
+                        console.debug("Opened file: ", imageBlob);
                         
                         // Save high quality thumbnail to IDB
                         file.thumbnail = imageBlob;
@@ -317,12 +323,16 @@ function ThumbnailItem(props: FileItem) {
                         await updateFilesIdb([file]);
                         
                         // Reload on screen
-                        updateThumbnail(tuuid, imageBlob);
+                        if(!contactId) {
+                            updateThumbnail(tuuid, imageBlob);
+                        } else {
+                            updateSharedThumbnail(tuuid, imageBlob);
+                        }
                     }
                 }
             })
             .catch(err=>console.error("Error loading small image", err));
-    }, [workers, value, visible, ready, filehostReady, updateThumbnail]);
+    }, [workers, value, visible, ready, filehostReady, contactId, updateThumbnail, updateSharedThumbnail]);
 
     useEffect(()=>{
         if(!value || !value.thumbnail) return;

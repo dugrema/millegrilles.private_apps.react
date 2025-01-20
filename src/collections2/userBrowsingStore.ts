@@ -69,7 +69,11 @@ interface UserBrowsingStoreState {
     directoryStatistics: Collection2DirectoryStats[] | null,
     searchResults: Collection2SearchStore | null,
     searchListing: {[tuuid: string]: TuuidsBrowsingStoreSearchRow} | null,
-    
+
+    selectionMode: boolean,
+    selection: string[] | null,
+    selectionPosition: string | null,
+
     sharedWithUser: Collection2SharedWithUser | null,
     sharedContact: Collections2SharedContactsUser | null,
     sharedBreadcrumb: TuuidsBrowsingStoreRow[] | null,
@@ -77,10 +81,6 @@ interface UserBrowsingStoreState {
     sharedCollection: Collections2SharedContactsSharedCollection | null,
     sharedCuuid: string | null,
     sharedCurrentDirectory: {[tuuid: string]: TuuidsBrowsingStoreRow} | null,
-
-    selectionMode: boolean,
-    selection: string[] | null,
-    selectionPosition: string | null,
 
     modalNavUsername: string | null,
     modalNavBreadcrumb: TuuidsBrowsingStoreRow[] | null,
@@ -98,6 +98,11 @@ interface UserBrowsingStoreState {
     deleteFilesDirectory: (files: string[]) => void,
     setSearchResults: (searchResults: Collection2SearchStore | null) => void,
     updateSearchListing: (listing: TuuidsBrowsingStoreSearchRow[] | null) => void,
+
+    setSelectionMode: (selectionMode: boolean) => void,
+    setSelection: (selection: string[] | null) => void,
+    setSelectionPosition: (selectionPosition: string | null) => void,
+
     setSharedWithUser: (sharedWithUser: Collection2SharedWithUser | null) => void,
     setSharedContact: (sharedContact: Collections2SharedContactsUser | null) => void,
     setSharedBreadcrumb: (sharedBreadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
@@ -105,10 +110,7 @@ interface UserBrowsingStoreState {
     setSharedCollection: (sharedCollection: Collections2SharedContactsSharedCollection | null) => void,
     setSharedCuuid: (sharedCuuid: string | null) => void,
     updateSharedCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
-
-    setSelectionMode: (selectionMode: boolean) => void,
-    setSelection: (selection: string[] | null) => void,
-    setSelectionPosition: (selectionPosition: string | null) => void,
+    updateSharedThumbnail: (tuuid: string, thumbnail: Blob) => void,
 
     setModalCuuid: (modalNavCuuid: string | null) => void,
     setModalBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
@@ -130,6 +132,10 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             searchResults: null,
             searchListing: null,
             
+            selectionMode: false,
+            selection: null,
+            selectionPosition: null,
+
             sharedWithUser: null,
             sharedContact: null,
             sharedBreadcrumb: null,
@@ -137,10 +143,6 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             sharedCollection: null,
             sharedCuuid: null,
             sharedCurrentDirectory: null,
-
-            selectionMode: false,
-            selection: null,
-            selectionPosition: null,
 
             modalNavUsername: null,
             modalNavBreadcrumb: null,
@@ -232,6 +234,10 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
                 return {searchListing};
             }),
 
+            setSelectionMode: (selectionMode) => set(()=>({selectionMode, selection: null})),
+            setSelection: (selection) => set(()=>({selection})),
+            setSelectionPosition: (selectionPosition) => set(()=>({selectionPosition})),
+
             setSharedWithUser: (sharedWithUser) => set(()=>({sharedWithUser})),
             setSharedContact: (sharedContact) => set(()=>({sharedContact})),
             setSharedBreadcrumb: (sharedBreadcrumb) => set(()=>({sharedBreadcrumb})),
@@ -258,10 +264,20 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
 
                 return {sharedCurrentDirectory: currentDirectory};
             }),
-
-            setSelectionMode: (selectionMode) => set(()=>({selectionMode, selection: null})),
-            setSelection: (selection) => set(()=>({selection})),
-            setSelectionPosition: (selectionPosition) => set(()=>({selectionPosition})),
+            updateSharedThumbnail: (tuuid, thumbnail) => set((state)=>{
+                let currentDirectory = state.sharedCurrentDirectory;
+                if(currentDirectory) {
+                    currentDirectory = {...currentDirectory};  // Copy
+                    let file = currentDirectory[tuuid];
+                    if(file) {
+                        let fileCopy = {...file};
+                        fileCopy.thumbnail = thumbnail;
+                        fileCopy.thumbnailDownloaded = true;
+                        currentDirectory[tuuid] = fileCopy;
+                    }
+                }
+                return {sharedCurrentDirectory: currentDirectory};
+            }),
 
             setModalCuuid: (modalNavCuuid) => set(()=>({modalNavCuuid})),
             setModalBreadcrumb: (username, breadcrumb) => set(()=>({modalNavUsername: username, modalNavBreadcrumb: breadcrumb})),
