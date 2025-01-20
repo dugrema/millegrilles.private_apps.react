@@ -97,6 +97,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
     let {file, thumbnailBlobUrl, selectedVideo, setSelectedVideo, setLoadProgress} = props;
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.filehostAuthenticated);
+    let userMaxResolution = useUserBrowsingStore(state=>state.userMaxResolution);
 
     let {videoFuuid} = useParams();
 
@@ -154,7 +155,6 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             }
         }
 
-        let userMaxDefaultResolution = 8192;  //TODO: load user profile default
         let mimetype = file.fileData?.mimetype;
         if(fuuid && mimetype) {
             let originalResolution = null as number | null;
@@ -163,7 +163,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             } else {
                 originalResolution = file?.fileData?.width || file?.fileData?.height || null;
             }
-            if(originalResolution && originalResolution < userMaxDefaultResolution) {
+            if(originalResolution && originalResolution < userMaxResolution) {
                 // Check if the browser supports the format
                 if(supportsVideoFormat(mimetype)) {
                     // console.debug("Set original video as default");
@@ -180,7 +180,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             if(resolutionPrevious === resolutionCurrent) return previous;
             if(!resolutionPrevious) return item;
             if(!resolutionCurrent) return previous;
-            if(resolutionCurrent > userMaxDefaultResolution) return previous;
+            if(resolutionCurrent > userMaxResolution) return previous;
             if(resolutionCurrent < resolutionPrevious) return previous;
             return item;
         }, null as FileVideoData | null);

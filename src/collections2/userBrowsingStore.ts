@@ -59,6 +59,7 @@ export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsi
 
 interface UserBrowsingStoreState {
     userId: string | null,
+    userMaxResolution: number,
     currentCuuid: string | null,
     currentCuuidDeleted: string | null,
     selectedTuuids: string[] | null,
@@ -121,6 +122,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
     devtools(
         (set) => ({
             userId: null,
+            userMaxResolution: 8192,
             currentCuuid: null,
             currentCuuidDeleted: null,
             selectedTuuids: null,
