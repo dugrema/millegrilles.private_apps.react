@@ -74,6 +74,7 @@ export class DirectoryWorker {
                 tuuid: item.tuuid,
                 // user_id: item.user_id,
                 user_id: userId,  // Override user_id with provided user (e.g. for shared files)
+                ownerUserId: userId!==item.user_id?item.user_id:undefined,  // Keep owner user_id for shared files
                 type_node: item.type_node,
                 encryptedMetadata: item.metadata,
                 secretKey: null,

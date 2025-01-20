@@ -80,6 +80,7 @@ export type FileSubtitleData = {
 export type TuuidsIdbStoreRowType = {
     tuuid: string,
     user_id: string,
+    ownerUserId: string | null,  // For shared content
     type_node: string,
     encryptedMetadata?: TuuidEncryptedMetadata,
     secretKey: Uint8Array | null,
