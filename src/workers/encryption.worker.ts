@@ -2,7 +2,7 @@ import '@solana/webcrypto-ed25519-polyfill';
 import { expose } from 'comlink';
 
 import { encryption, encryptionMgs4, multiencoding, keymaster, x25519, certificates } from 'millegrilles.cryptography';
-import { deflate, inflate } from 'pako';
+import { deflate, gzip, inflate } from 'pako';
 
 export type EncryptionOptions = {
     base64?: boolean,
@@ -105,9 +105,13 @@ export class AppsEncryptionWorker {
 
         let compression = null as null | string;
         if(cleartextArray.length > 200) {
-            // Compress with zlib (deflate)
-            compression = 'deflate';
-            cleartextArray = deflate(cleartextArray);
+            // Issue with deflate, incompatible with the rust version.
+            //compression = 'deflate';
+            //cleartextArray = deflate(cleartextArray);
+
+            // Compress with gzip
+            compression = 'gz';
+            cleartextArray = gzip(cleartextArray);
         }
 
         let cipher = null;
@@ -225,8 +229,10 @@ export class AppsEncryptionWorker {
 
         let completeBuffer = encryption.concatBuffers(buffers)
 
-        if(compression === 'deflate') {
+        if(compression === 'gz' || compression === 'deflate') {
             completeBuffer = inflate(completeBuffer);
+        } else if(compression) {
+            throw new Error('Unsupported compression format: ' + compression);
         }
 
         return completeBuffer;

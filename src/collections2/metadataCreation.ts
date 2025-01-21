@@ -34,12 +34,14 @@ export async function createDirectory(workers: AppWorkers, name: string,
 export async function updateEncryptedContent(workers: AppWorkers, cleId: string, secretKey: Uint8Array, newValues: Object) {
     let entryJson = JSON.stringify(newValues);
     let encryptedValues = await workers.encryption.encryptMessageMgs4(entryJson, {key: secretKey});
+    
     let metadata = {
         data_chiffre: multiencoding.encodeBase64Nopad(encryptedValues.ciphertext),
         cle_id: cleId,
         nonce: multiencoding.encodeBase64Nopad(encryptedValues.nonce),
         format: encryptedValues.format,
         verification: encryptedValues.digest?multiencoding.hashEncode('base58btc', 'blake2b-512', encryptedValues.digest):undefined,
+        compression: encryptedValues.compression,
     } as TuuidEncryptedMetadata;
     
     return metadata;
