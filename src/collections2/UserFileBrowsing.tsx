@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { proxy } from "comlink";
 import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
@@ -17,6 +17,9 @@ function ViewUserFileBrowsing() {
 
     let [modal, setModal] = useState(null as ModalEnum | null);
 
+    let navSectionRef = useRef(null);
+
+    let userId = useUserBrowsingStore(state=>state.userId);
     let filesDict = useUserBrowsingStore(state=>state.currentDirectory);
     let cuuid = useUserBrowsingStore(state=>state.currentCuuid);
     let setCuuid = useUserBrowsingStore(state=>state.setCuuid);
@@ -104,6 +107,43 @@ function ViewUserFileBrowsing() {
         }
     }, [tuuid, cuuid, navigate, setCuuid]);
 
+    let onLoadHandler = useCallback(()=>{
+        if(cuuid && userId) {
+            let currentPosition = sessionStorage.getItem(`${cuuid}_${userId}`);
+            if(currentPosition) {
+                let positionInt = Number.parseInt(currentPosition);
+                console.debug("Reposition screen to ", positionInt);
+                // @ts-ignore
+                navSectionRef.current.scroll({top: positionInt});
+            }
+        }
+    }, [cuuid, userId, navSectionRef]);
+
+    let [positionChanged, setPositionChanged] = useState(false);
+    let onScrollHandler = useCallback((e: Event)=>setPositionChanged(true), [setPositionChanged]);
+    useEffect(()=>{
+        if(!positionChanged) return;
+        let navRef = navSectionRef;
+        let timeout = setTimeout(() => {
+            //@ts-ignore
+            let position = navRef.current.scrollTop;
+            sessionStorage.setItem(`${cuuid}_${userId}`, ''+position)
+            setPositionChanged(false);
+        }, 750);
+        return () => clearTimeout(timeout);
+    }, [navSectionRef, cuuid, userId, positionChanged, setPositionChanged]);
+
+    useEffect(()=>{
+        if(!navSectionRef.current) return;
+        let navRef = navSectionRef.current;
+        //@ts-ignore
+        navRef.addEventListener('scroll', onScrollHandler);
+        return ()=>{
+            //@ts-ignore
+            navRef.removeEventListener('scroll', onScrollHandler);
+        };
+    }, [onScrollHandler, navSectionRef]);
+
     return (
         <>
             <section className='fixed top-12'>
@@ -114,11 +154,11 @@ function ViewUserFileBrowsing() {
                 </div>
             </section>
 
-            <section className='fixed top-36 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
+            <section ref={navSectionRef} className='fixed top-36 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <FilelistPane files={files} onClickRow={onClickRow} />
             </section>
 
-            <DirectorySyncHandler tuuid={cuuid} />
+            <DirectorySyncHandler tuuid={cuuid} onLoad={onLoadHandler} />
             <Modals show={modal} close={closeModal} />
         </>
     );
@@ -130,9 +170,9 @@ export default ViewUserFileBrowsing;
  * Handles the sync of files in a directory.
  * @returns 
  */
-export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
+export function DirectorySyncHandler(props: {tuuid: string | null | undefined, onLoad?: ()=>void}) {
 
-    let {tuuid} = props;
+    let {tuuid, onLoad} = props;
 
     let workers = useWorkers();
     let username = useConnectionStore(state=>state.username);
@@ -143,6 +183,11 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) 
     let setBreadcrumb = useUserBrowsingStore(state=>state.setBreadcrumb);
     let setDirectoryStatistics = useUserBrowsingStore(state=>state.setDirectoryStatistics);
     let deleteFilesDirectory = useUserBrowsingStore(state=>state.deleteFilesDirectory);
+
+    let updateCurrentDirectoryHandler = useCallback((files: TuuidsBrowsingStoreRow[] | null)=>{
+        updateCurrentDirectory(files);
+        if(onLoad) onLoad();
+    }, [updateCurrentDirectory, onLoad]);
 
     let directoryUpdateHandler = useCallback((e: SubscriptionMessage)=>{
         console.debug("directoryUpdateHandler Event: ", e);
@@ -164,9 +209,9 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) 
             return;
         }
         let content = e.message as Collection2DirectoryContentUpdateMessage;
-        updateCollectionContent(workers, userId, updateCurrentDirectory, deleteFilesDirectory, content)
+        updateCollectionContent(workers, userId, updateCurrentDirectoryHandler, deleteFilesDirectory, content)
             .catch(err=>console.error("Error handling directory content update", err));
-    }, [workers, userId, updateCurrentDirectory, deleteFilesDirectory]);
+    }, [workers, userId, updateCurrentDirectoryHandler, deleteFilesDirectory]);
     let directoryContentUpdateProxy = useMemo(()=>proxy(directoryContentUpdateHandler), [directoryContentUpdateHandler]);
 
     useEffect(()=>{
@@ -193,7 +238,7 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) 
         .catch(err=>console.error("Error registering directory listener on %s: %O", tuuid, err));
 
         // Sync
-        synchronizeDirectory(workers, userId, username, tuuidValue, cancelledSignal, updateCurrentDirectory, setBreadcrumb, setDirectoryStatistics, deleteFilesDirectory)
+        synchronizeDirectory(workers, userId, username, tuuidValue, cancelledSignal, updateCurrentDirectoryHandler, setBreadcrumb, setDirectoryStatistics, deleteFilesDirectory)
             .catch(err=>console.error("Error loading directory: %O", err));
 
         return () => {
@@ -209,7 +254,7 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) 
             .catch(err=>console.error("Error unregistering directory listener on %s: %O", tuuid, err));
         }
     }, [workers, ready, userId, username, tuuid, 
-        setCuuid, setBreadcrumb, updateCurrentDirectory, setDirectoryStatistics, deleteFilesDirectory, 
+        setCuuid, setBreadcrumb, updateCurrentDirectoryHandler, updateCurrentDirectory, setDirectoryStatistics, deleteFilesDirectory, 
         directoryUpdateProxy, directoryContentUpdateProxy]);
 
     return <></>;
