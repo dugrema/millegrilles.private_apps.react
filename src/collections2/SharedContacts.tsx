@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 function SharedContacts() {
     return (
         <>
-            <h2 className='text-xl font-bold'>Contacts</h2>
+            <h2 className='text-xl font-bold'>Sharing with others</h2>
             <CurrentContactList />
         </>
     )
@@ -81,18 +81,18 @@ function CurrentContactList() {
 
     return (
         <>
+            <p className='pt-6 pb-2'>Current contacts</p>
+            {contactElems.length > 0?contactElems
+            :
+                <p>Your content is not shared.</p>
+            }
+
             <p className='pt-4'>Add users to share collections with here.</p>
             <div className='grid grid-cols-3'>
                 <label>User name</label>
                 <input type='text' value={username} onChange={usernameOnChange} className='text-black col-span-2'/>
             </div>
             <ActionButton onClick={addUserHandler} disabled={!ready} revertSuccessTimeout={2}>Add user</ActionButton>
-
-            <p className='pt-6 pb-2'>Current contacts</p>
-            {contactElems.length > 0?contactElems
-            :
-                <p>Your content is not shared.</p>
-            }
         </>
     );
 }

@@ -45,7 +45,7 @@ function UserList() {
         return sortedUsers.map(item=>{
             return (
                 <Link key={item.user_id} to={'/apps/collections2/c/' + item.user_id}
-                    className="px-2 block odd:bg-slate-500 even:bg-slate-400 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm select-none">
+                    className="px-2 py-2 block odd:bg-slate-500 even:bg-slate-400 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm select-none">
                         {item.nom_usager}
                 </Link>
             )
@@ -64,9 +64,9 @@ function UserList() {
 
             <div className='fixed top-20 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <section>
-                    <h1 className='pt-2 pb-2 text-xl font-bold'>Shared collections</h1>
+                    <h1 className='pt-2 pb-2 text-xl font-bold'>Users sharing collections with you</h1>
                     <div className='grid grid-cols-12 bg-slate-800 text-sm user-select-none px-1 w-full'>
-                        <div className='col-span-7 px-1'>Users sharing collections with you</div>
+                        <div className='col-span-7 px-1'>Users</div>
                     </div>
                     {userElems}
                 </section>
