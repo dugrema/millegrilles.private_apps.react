@@ -112,7 +112,6 @@ function ViewUserFileBrowsing() {
             let currentPosition = sessionStorage.getItem(`${cuuid}_${userId}`);
             if(currentPosition) {
                 let positionInt = Number.parseInt(currentPosition);
-                console.debug("Reposition screen to ", positionInt);
                 // @ts-ignore
                 navSectionRef.current.scroll({top: positionInt});
             }

@@ -1,4 +1,4 @@
-import { ChangeEvent, useCallback, useMemo, useState, FormEvent, useEffect } from "react";
+import { ChangeEvent, useCallback, useMemo, useState, FormEvent, useEffect, useRef } from "react";
 import ActionButton from "../resources/ActionButton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import useWorkers, { AppWorkers } from "../workers/workers";
@@ -12,6 +12,8 @@ function SearchPage() {
 
     let navigate = useNavigate();
     let workers = useWorkers();
+    let navSectionRef = useRef(null);
+
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let username = useConnectionStore(state=>state.username);
     let userId = useUserBrowsingStore(state=>state.userId);
@@ -45,6 +47,7 @@ function SearchPage() {
         if(!sharedCuuids) throw new Error('Shares not loaded');
         setSearchResults(null);
         updateSearchListing(null);
+        sessionStorage.removeItem(`search_${userId}`);
         if(!searchInput) {
             setSearchParams(params=>{params.delete('search'); return params;});
         } else {
@@ -81,6 +84,17 @@ function SearchPage() {
     useEffect(()=>{
         if(pageLoaded || !workers || !ready || !userId || !sharedCuuids) return;
         setPageLoaded(true);
+
+        if(searchResults) {
+            // Check if we need to put scroll back in position
+            let searchPosition = sessionStorage.getItem(`search_${userId}`);
+            if(searchPosition) {
+                let searchPositionInt = Number.parseInt(searchPosition);
+                // @ts-ignore
+                navSectionRef.current.scrollTo({top: searchPositionInt});
+            }
+        }
+
         let searchQuery = searchResults?.query;
         if(!searchInput && searchQuery) {
             // Put the search query back in the input box
@@ -101,7 +115,10 @@ function SearchPage() {
                     console.error("Error running initial search query", err);
                 })
         }
-    }, [workers, ready, userId, searchInput, searchResults, setSearchInput, pageLoaded, setPageLoaded, query, setSearchParams, setSearchResults, updateSearchListing, username, sharedCuuids]);
+    }, [
+        workers, ready, userId, searchInput, searchResults, setSearchInput, pageLoaded, setPageLoaded, 
+        query, setSearchParams, setSearchResults, updateSearchListing, username, sharedCuuids, navSectionRef,
+    ]);
 
     let onClickRow = useCallback((tuuid: string, typeNode: string)=>{
         if(typeNode === 'Fichier') {
@@ -117,6 +134,31 @@ function SearchPage() {
         }
     }, [navigate, searchListing]);
 
+    let [positionChanged, setPositionChanged] = useState(false);
+    let onScrollHandler = useCallback((e: Event)=>setPositionChanged(true), [setPositionChanged]);
+    useEffect(()=>{
+        if(!positionChanged) return;
+        let navRef = navSectionRef;
+        let timeout = setTimeout(() => {
+            //@ts-ignore
+            let position = navRef.current.scrollTop;
+            sessionStorage.setItem(`search_${userId}`, ''+position)
+            setPositionChanged(false);
+        }, 750);
+        return () => clearTimeout(timeout);
+    }, [navSectionRef, userId, positionChanged, setPositionChanged]);
+
+    useEffect(()=>{
+        if(!navSectionRef.current) return;
+        let navRef = navSectionRef.current;
+        //@ts-ignore
+        navRef.addEventListener('scroll', onScrollHandler);
+        return ()=>{
+            //@ts-ignore
+            navRef.removeEventListener('scroll', onScrollHandler);
+        };
+    }, [onScrollHandler, navSectionRef]);
+
     return (
         <>
             <section className='fixed top-12 pt-1'>
@@ -131,7 +173,7 @@ function SearchPage() {
                 <SearchStatistics />
             </section>
 
-            <section className='fixed top-32 left-0 px-2 bottom-10 overflow-y-auto w-full'>
+            <section ref={navSectionRef} className='fixed top-32 left-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <SearchFilelistPane files={files} onClickRow={onClickRow} sortKey='score' sortOrder={-1}/>
                 <DisplayMore sharedCuuids={sharedCuuids} />
             </section>
