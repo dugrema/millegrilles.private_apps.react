@@ -30,25 +30,30 @@ function CloseIcon() {
     )
 }
 
-export function ModalInformation(props: ModalInformationProps) {
+export function ModalInformation(props: ModalInformationProps & {shared?: boolean | null}) {
 
-    let {close} = props;
+    let {close, shared} = props;
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let cuuid = useUserBrowsingStore(state=>state.currentCuuid);
     let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
+    let sharedCuuid = useUserBrowsingStore(state=>state.sharedCuuid);
+    let sharedCollection = useUserBrowsingStore(state=>state.sharedCollection);
 
     let [statsSubdirectories, setStatsSubdirectories] = useState(null as Collection2DirectoryStats[] | null);
 
     useEffect(()=>{
         if(!workers || !ready) return;  // Nothing to do
+
+        if(shared) throw new Error('todo - SHARED');
+
         workers.connection.getCollection2Statistics(cuuid)
             .then(response=>{
                 setStatsSubdirectories(response.info);
             })
             .catch(err=>console.error("Error loading statistics", err));
-    }, [workers, ready, cuuid, setStatsSubdirectories]);
+    }, [workers, ready, cuuid, setStatsSubdirectories, shared, sharedCuuid, sharedCollection]);
 
     let statsValues = useMemo(()=>{
         let subFiles = 0, subDirectories = 0, totalSize = 0;
@@ -338,19 +343,25 @@ export function ModalRenameFile(props: ModalInformationProps) {
     );
 }
 
-export function ModalBrowseAction(props: ModalInformationProps & {title: string}) {
+export function ModalBrowseAction(props: ModalInformationProps & {title: string, shared?: boolean}) {
 
-    let {close, title, modalType} = props;
+    let {close, title, modalType, shared} = props;
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
     let filesDict = useUserBrowsingStore(state=>state.modalNavCurrentDirectory);
     let originCuuid = useUserBrowsingStore(state=>state.currentCuuid);
+    let originSharedCuuid = useUserBrowsingStore(state=>state.sharedCuuid);
+    let sharedCollection  = useUserBrowsingStore(state=>state.sharedCollection);
     let modalNavCuuid = useUserBrowsingStore(state=>state.modalNavCuuid);
     let setModalCuuid = useUserBrowsingStore(state=>state.setModalCuuid);
     let selection = useUserBrowsingStore(state=>state.selection);
-    let contactId = null as string | null;
+    
+    let contactId = useMemo(()=>{
+        if(!sharedCollection) return null;
+        return sharedCollection.contact_id;
+    }, [sharedCollection]);
 
     let files = useMemo(()=>{
         if(!filesDict) return null;
@@ -369,21 +380,23 @@ export function ModalBrowseAction(props: ModalInformationProps & {title: string}
     let actionHandler = useCallback(async () => {
         if(!workers || !ready) throw new Error('Workers not initialized');
         if(!selection || selection.length === 0) throw new Error('No files are selected');
-        if(!originCuuid) throw new Error('Cannot move/copy from root');
+
+        let cuuid = shared?originSharedCuuid:originCuuid;
+        if(!cuuid) throw new Error('Cannot move/copy from root');
         if(!modalNavCuuid) throw new Error("Must select a directory (root not valid)");
         
         if(modalType === ModalEnum.Copy) {
             let response = await workers.connection.copyFilesCollection2(modalNavCuuid, selection, contactId);
             if(!response.ok) throw new Error('Error copying files: ' + response.err);
         } else if(modalType === ModalEnum.Cut) {
-            let response = await workers.connection.moveFilesCollection2(originCuuid, modalNavCuuid, selection);
+            let response = await workers.connection.moveFilesCollection2(cuuid, modalNavCuuid, selection);
             if(!response.ok) throw new Error('Error moving files: ' + response.err);
         } else {
             throw new Error('Unsupported action type');
         }
 
         setTimeout(()=>close(), 1_000);
-    }, [workers, ready, close, modalNavCuuid, modalType, originCuuid, selection, contactId]);
+    }, [workers, ready, close, modalNavCuuid, modalType, originCuuid, selection, contactId, shared, originSharedCuuid]);
 
     return (
         <>

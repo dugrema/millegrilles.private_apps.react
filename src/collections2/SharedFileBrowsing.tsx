@@ -1,11 +1,12 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
-import { MouseEvent, useCallback, useEffect, useMemo } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Collection2DirectoryStats, Collections2SharedContactsSharedCollection } from "../workers/connection.worker";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { ButtonBar, ModalEnum } from "./BrowsingElements";
 import FilelistPane, { FileListPaneOnClickRowType } from "./FilelistPane";
+import { ModalBrowseAction, ModalInformation } from "./Modals";
 
 function SharedFileBrowsing() {
 
@@ -18,6 +19,15 @@ function SharedFileBrowsing() {
     let sharedWithUser = useUserBrowsingStore(state=>state.sharedWithUser);
     let currentDirectory = useUserBrowsingStore(state=>state.sharedCurrentDirectory);
 
+    // Selecting files
+    let selection = useUserBrowsingStore(state=>state.selection);
+    let setSelection = useUserBrowsingStore(state=>state.setSelection);
+    let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
+    let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
+    let setSelectionPosition = useUserBrowsingStore(state=>state.setSelectionPosition);
+
+    let [modal, setModal] = useState(null as ModalEnum | null);
+
     let cuuid = useMemo(()=>{
         if(tuuid) return tuuid;
         return sharedCollection?.tuuid;  // Root for this shared collection
@@ -28,6 +38,9 @@ function SharedFileBrowsing() {
         let filesValues = Object.values(currentDirectory);
         return filesValues;
     }, [currentDirectory]) as TuuidsBrowsingStoreRow[] | null;
+
+    let onModal = useCallback((modal: ModalEnum)=>setModal(modal), [setModal]);
+    let closeModal = useCallback(()=>setModal(null), [setModal]);
 
     useEffect(()=>{
         if(!sharedWithUser?.sharedCollections || !contactId) {
@@ -43,17 +56,51 @@ function SharedFileBrowsing() {
         }
     }, [sharedWithUser, contactId, setSharedCollection, setSharedContact]);
 
-    let onClickRowHandler = useCallback((e, tuuid, typeNode, range)=>{
-        if(typeNode === 'Fichier') {
-            navigate(`/apps/collections2/c/${contactId}/f/${tuuid}`);
-        } else {
-            navigate(`/apps/collections2/c/${contactId}/b/${tuuid}`);
+    let onClickRowHandler = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, tuuid:string, typeNode:string, range: TuuidsBrowsingStoreRow[] | null)=>{
+        let ctrl = e?.ctrlKey || false;
+        let shift = e?.shiftKey || false;
+        let effectiveSelectionMode = selectionMode;
+        if(!selectionMode && (ctrl||shift)) {
+            // Toggle selection mode
+            effectiveSelectionMode = true;
+            setSelectionMode(true);
         }
-    }, [contactId, navigate]) as FileListPaneOnClickRowType;
 
-    let onModal = useCallback((modal: ModalEnum)=>{
-        console.debug("Modal: ", modal);
-    }, []);
+        if(effectiveSelectionMode) {
+            // Selection mode
+            let selectionSet = new Set() as Set<string>;
+            if(selection) selection.forEach(item=>selectionSet.add(item));  // Copy all existing selections to Set
+
+            if(tuuid) {
+                if(shift && range) {
+                    // Range action
+                    range.forEach(item=>selectionSet.add(item.tuuid));
+                } else {
+                    // Individual action
+                    if(selectionSet.has(tuuid)) {
+                        selectionSet.delete(tuuid);
+                    } else {
+                        selectionSet.add(tuuid);
+                    }
+                }
+
+                // Save position for range selection
+                setSelectionPosition(tuuid);
+
+                // Copy set back to array, save.
+                let updatedSelection = [] as string[];
+                selectionSet.forEach(item=>updatedSelection.push(item));
+                setSelection(updatedSelection);
+            }
+        } else {
+            // Navigation mode
+            if(typeNode === 'Fichier') {
+                navigate(`/apps/collections2/c/${contactId}/f/${tuuid}`);
+            } else {
+                navigate(`/apps/collections2/c/${contactId}/b/${tuuid}`);
+            }
+        }
+    }, [contactId, selectionMode, selection, setSelectionMode, navigate, setSelection, setSelectionPosition]) as FileListPaneOnClickRowType;    
 
     return (
         <>
@@ -67,6 +114,7 @@ function SharedFileBrowsing() {
             </section>
 
             <DirectorySyncHandler tuuid={cuuid} />
+            <Modals show={modal} close={closeModal} />
         </>
     );
 }
@@ -296,4 +344,16 @@ async function synchronizeDirectory(
         // Update current directory last sync information
         await workers.directory.touchDirectorySync(tuuid, userId, lastCompleteSyncSec);
     }
+}
+
+function Modals(props: {show: ModalEnum | null, close:()=>void}) {
+
+    let {show, close} = props;
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    if(show === ModalEnum.Info) return <ModalInformation workers={workers} ready={ready} close={close} modalType={show} shared={true} />;
+    if(show === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={close} modalType={show} shared={true} title='Copy files' />;
+
+    return <></>;
 }
