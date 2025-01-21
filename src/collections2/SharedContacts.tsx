@@ -4,6 +4,7 @@ import useConnectionStore from "../connectionStore";
 import { Collection2ContactItem } from "../workers/connection.worker";
 import ActionButton from "../resources/ActionButton";
 import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
+import { useNavigate } from "react-router-dom";
 
 function SharedContacts() {
     return (
@@ -19,6 +20,8 @@ export default SharedContacts;
 function CurrentContactList() {
 
     let workers = useWorkers();
+    let navigate = useNavigate();
+
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let [username, setUsername] = useState('');
     let usernameOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setUsername(e.currentTarget.value), [setUsername]);
@@ -46,6 +49,8 @@ function CurrentContactList() {
 
     let contactDeleteHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>) => {
         if(!workers || !ready) return;
+        e.preventDefault();
+        e.stopPropagation();
         
         let contactId = e.currentTarget.value;
         console.debug("Delete contactId ", contactId);
@@ -61,12 +66,18 @@ function CurrentContactList() {
 
     }, [workers, ready, contacts, setContacts]);
 
+    let openContact = useCallback((e: MouseEvent<HTMLDivElement>)=>{
+        let value = e.currentTarget.dataset.userid;
+        console.debug("Open shared with contact: ", value);
+        navigate(`/apps/collections2/c/${value}/shares`)
+    }, [navigate]);
+
     let contactElems = useMemo(()=>{
         if(!contacts) return [];
         let contactsCopy = [...contacts];
         contactsCopy.sort(sortContacts);
-        return contactsCopy.map(item=><ContactRow key={item.contact_id} value={item} onDelete={contactDeleteHandler} />);
-    }, [contacts, contactDeleteHandler]);
+        return contactsCopy.map(item=><ContactRow key={item.contact_id} value={item} onDelete={contactDeleteHandler} onClick={openContact} />);
+    }, [contacts, contactDeleteHandler, openContact]);
 
     return (
         <>
@@ -92,17 +103,18 @@ export function sortContacts(a: Collection2ContactItem, b: Collection2ContactIte
     return a.nom_usager.localeCompare(b.nom_usager);
 }
 
-function ContactRow(props: {value: Collection2ContactItem, onDelete: (e: MouseEvent<HTMLButtonElement>)=>Promise<void>}) {
+function ContactRow(props: {value: Collection2ContactItem, onDelete: (e: MouseEvent<HTMLButtonElement>)=>Promise<void>, onClick: (e: MouseEvent<HTMLDivElement>)=>void}) {
 
-    let {value, onDelete} = props;
+    let {value, onDelete, onClick} = props;
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
     return (
-        <div className="odd:bg-slate-500 even:bg-slate-400 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm select-none">
-            <ActionButton onClick={onDelete} value={value.contact_id} revertSuccessTimeout={3} varwidth={16} confirm={true} disabled={!ready} >
-                <img src={TrashIcon} alt="Remove user" className='w-6 inline' />
-            </ActionButton>
-            <span className='pl-2'>{value.nom_usager}</span>
+        <div data-userid={value.user_id} onClick={onClick}
+            className="odd:bg-slate-500 even:bg-slate-400 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm select-none">
+                <ActionButton onClick={onDelete} value={value.contact_id} revertSuccessTimeout={3} varwidth={16} confirm={true} disabled={!ready} >
+                    <img src={TrashIcon} alt="Remove user" className='w-6 inline' />
+                </ActionButton>
+                <span className='pl-2'>{value.nom_usager}</span>
         </div>
     )
 }

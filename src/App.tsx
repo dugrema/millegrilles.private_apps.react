@@ -32,6 +32,7 @@ const Collections2SharedContent = React.lazy(()=>import('./collections2/SharedCo
 const Collections2SharedUsers = React.lazy(()=>import('./collections2/SharedUsers'));
 const Collections2SharedFileBrowsing = React.lazy(()=>import('./collections2/SharedFileBrowsing'));
 const Collections2SharedFileViewing = React.lazy(()=>import('./collections2/SharedFileViewing'));
+const Collections2SharedUserCollections = React.lazy(()=>import('./collections2/SharedUserCollections'));
 
 // Notepad
 const NotepadApp = React.lazy(()=>import('./notepad/AppNotepad'));
@@ -89,6 +90,7 @@ const router = createBrowserRouter([
                 children: [
                     { path: "", element: <Collections2SharedUsers /> },
                     { path: ":userId", element: <Collections2SharedUsers /> },
+                    { path: ":userId/shares", element: <Collections2SharedUserCollections /> },
                     { path: ":contactId/b/:tuuid", element: <Collections2SharedFileBrowsing /> },
                     { path: ":contactId/f/:tuuid", element: <Collections2SharedFileViewing /> },
                     { path: ":contactId/f/:tuuid/v/:videoFuuid", element: <Collections2SharedFileViewing /> },

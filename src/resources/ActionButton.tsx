@@ -54,6 +54,9 @@ function ActionButton(props: ActionButtonProps) {
 
     let clickHandler = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
         // Reset
+        e.stopPropagation();
+        e.preventDefault();
+        
         setSuccess(false);
         setError('');
 

@@ -134,12 +134,14 @@ function ThumbnailView(props: ViewProps) {
     );
 }
 
-function sortByName(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
+export function sortByName(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
     if(a === b) return 0;
     // NodeType first (Directory at top)
-    if(a.type_node !== b.type_node) {
+    let isFileA = a.type_node === 'Fichier';
+    let isFileB = b.type_node === 'Fichier';
+    if(isFileA !== isFileB) {
         // Fichier goes lower, Collection/Repertoire are equivalent
-        if(a.type_node === 'Fichier') return 1;
+        if(isFileA) return 1;
         else return -1;
     }
     if(a.nom === b.nom) {

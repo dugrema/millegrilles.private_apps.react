@@ -27,17 +27,25 @@ function SharedUsers() {
 
 export default SharedUsers;
 
+function sortUsers(a: Collections2SharedContactsUser, b: Collections2SharedContactsUser) {
+    if(a === b) return 0;
+    return a.nom_usager.localeCompare(b.nom_usager);
+}
+
 function UserList() {
     let sharedWithUser = useUserBrowsingStore(state=>state.sharedWithUser);
     let setSharedContact = useUserBrowsingStore(state=>state.setSharedContact);
     let userElems = useMemo(()=>{
         if(!sharedWithUser?.users) return <>Loading ...</>;
         if(sharedWithUser.users.length === 0) return <p>No collections are shared with you.</p>;
-        return sharedWithUser.users.map(item=>{
+
+        let sortedUsers = [...sharedWithUser.users];
+        sortedUsers.sort(sortUsers);
+
+        return sortedUsers.map(item=>{
             return (
-                <li key={item.user_id}>
-                    <Link to={'/apps/collections2/c/' + item.user_id}
-                        className='underline font-bold'>
+                <li key={item.user_id} className="px-2 block odd:bg-slate-500 even:bg-slate-400 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm select-none">
+                    <Link to={'/apps/collections2/c/' + item.user_id}>
                             {item.nom_usager}
                     </Link>
                 </li>
@@ -57,7 +65,11 @@ function UserList() {
 
             <div className='fixed top-20 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <section>
-                    <h1 className='pt-2 pb-2 text-xl font-bold'>Users sharing collections with you</h1>
+                    <h1 className='pt-2 pb-2 text-xl font-bold'>Shared collections</h1>
+                    <div className='grid grid-cols-12 bg-slate-800 text-sm user-select-none px-1 w-full'>
+                        <div className='col-span-7 px-1'>Users sharing collections with you</div>
+                    </div>
+
                     <ol>
                         {userElems}
                     </ol>
