@@ -69,9 +69,11 @@ function UserFileViewing() {
 
     return (
         <>
-            <Breadcrumb onClick={breacrumbOnClick} file={file} />
+            <section className='fixed top-12'>
+                <Breadcrumb onClick={breacrumbOnClick} file={file} />
+            </section>
 
-            <section>
+            <section className='fixed top-20 left-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <DetailFileViewLayout file={file} thumbnail={thumbnailBlob} />
             </section>
             

@@ -119,7 +119,7 @@ function SearchPage() {
 
     return (
         <>
-            <section className='pt-1'>
+            <section className='fixed top-12 pt-1'>
                 <form onSubmit={submitHandler}>
                     <div className='grid grid-cols-12'>
                         <label className='col-span-2'>Search query</label>
@@ -128,13 +128,10 @@ function SearchPage() {
                         <ActionButton onClick={searchHandler} revertSuccessTimeout={3}>Search</ActionButton>
                     </div>
                 </form>
-            </section>
-
-            <section>
                 <SearchStatistics />
             </section>
 
-            <section className='pt-3'>
+            <section className='fixed top-32 left-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <SearchFilelistPane files={files} onClickRow={onClickRow} sortKey='score' sortOrder={-1}/>
                 <DisplayMore sharedCuuids={sharedCuuids} />
             </section>

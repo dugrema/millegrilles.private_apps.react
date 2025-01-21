@@ -42,13 +42,14 @@ function SearchFilelistPane(props: SearchFileListPaneProps) {
 
     return (
         <>
-            <div className='grid grid-cols-12 bg-slate-800 text-sm'>
+            <div className='grid grid-cols-12 bg-slate-800 text-sm px-1 fixed w-full'>
                 <div className='col-span-6 px-1'>Name</div>
                 <p className='col-span-1 px-1'>Score</p>
                 <p className='col-span-1 px-1'>Size</p>
                 <p className='col-span-2 px-1'>Type</p>
                 <p className='col-span-2 px-1'>Date</p>
             </div>
+            <div className='pb-5'></div>
             {mappedFiles}
         </>
     );

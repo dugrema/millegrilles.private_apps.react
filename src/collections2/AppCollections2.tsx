@@ -13,7 +13,7 @@ function Collections2() {
     return (
         <div>
             <HeaderMenu title='Collections' backLink={true} />
-            <main id="main" className='fixed top-8 bottom-10 overflow-y-auto pt-4 pb-2 pl-2 pr-2 w-full'>
+            <main id="main" className='pt-4 pb-2 pl-2 pr-2 w-full'>
                 <Outlet />
             </main>
             <Footer />

@@ -51,17 +51,22 @@ function UserList() {
 
     return (
         <>
-            <section>
+            <section className='fixed top-12 pt-1'>
                 <Breadcrumb />
-                <h1 className='pt-2 pb-2 text-xl font-bold'>Users sharing collections with you</h1>
-                <ol>
-                    {userElems}
-                </ol>
             </section>
 
-            <section className='pt-6'>
-                <SharedContacts />
-            </section>
+            <div className='fixed top-20 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
+                <section>
+                    <h1 className='pt-2 pb-2 text-xl font-bold'>Users sharing collections with you</h1>
+                    <ol>
+                        {userElems}
+                    </ol>
+                </section>
+
+                <section className='pt-6'>
+                    <SharedContacts />
+                </section>
+            </div>
         </>
     )
 }
@@ -116,9 +121,11 @@ function SharedFromUser(props: {userId: string}) {
 
     return (
         <>
-            <Breadcrumb sharedContact={sharedContact} />
+            <section className='fixed top-12 pt-1'>
+                <Breadcrumb sharedContact={sharedContact} />
+            </section>
 
-            <section className='pt-3'>
+            <section className='fixed top-20 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <FilelistPane files={sharedCollections} onClickRow={onClickRowHandler} />
             </section>
         </>

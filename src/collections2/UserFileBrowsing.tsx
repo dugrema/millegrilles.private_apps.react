@@ -106,13 +106,15 @@ function ViewUserFileBrowsing() {
 
     return (
         <>
-            <Breadcrumb />
+            <section className='fixed top-12'>
+                <Breadcrumb />
 
-            <section className='pt-2'>
-                <ButtonBar onModal={onModal} />                    
+                <div className='pt-2'>
+                    <ButtonBar onModal={onModal} />                    
+                </div>
             </section>
 
-            <section className='pt-3'>
+            <section className='fixed top-36 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <FilelistPane files={files} onClickRow={onClickRow} />
             </section>
 

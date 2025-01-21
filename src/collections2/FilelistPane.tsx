@@ -105,12 +105,13 @@ function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
 
     return (
         <>
-            <div className='grid grid-cols-12 bg-slate-800 text-sm user-select-none'>
+            <div className='grid grid-cols-12 bg-slate-800 text-sm user-select-none px-1 fixed w-full'>
                 <div className='col-span-7 px-1'>Name</div>
                 {columnNameOnly?<></>:<p className='col-span-1 px-1'>Size</p>}
                 {columnNameOnly?<></>:<p className='col-span-2 px-1'>Type</p>}
                 {columnNameOnly?<></>:<p className='col-span-2 px-1'>Date</p>}
             </div>
+            <div className='pb-5'></div>
             {mappedFiles}
         </>
     );

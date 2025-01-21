@@ -79,9 +79,11 @@ function SharedFileViewing() {
 
     return (
         <>
-            <Breadcrumb contactId={contactId} file={file} />
+            <section className='fixed top-12 pt-1'>
+                <Breadcrumb contactId={contactId} file={file} />
+            </section>
 
-            <section>
+            <section className='fixed top-20 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <DetailFileViewLayout file={file} thumbnail={thumbnailBlob} />
             </section>
             

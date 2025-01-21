@@ -57,13 +57,12 @@ function SharedFileBrowsing() {
 
     return (
         <>
-            <Breadcrumb contactId={contactId} />
-
-            <section className='pt-2'>
+            <section className='fixed top-12 pt-1'>
+                <Breadcrumb contactId={contactId} />
                 <ButtonBar disableEdit={true} shared={true} onModal={onModal} />
             </section>
 
-            <section className='pt-3'>
+            <section className='fixed top-32 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <FilelistPane files={files} onClickRow={onClickRowHandler} />
             </section>
 

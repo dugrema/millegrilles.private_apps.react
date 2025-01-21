@@ -68,9 +68,11 @@ function BrowsingDeleted() {
 
     return (
         <>
-            <Breadcrumb root={{tuuid: rootTuuid, name: 'Trash'}} onClick={onClickBreadcrumb} />
+            <section className='fixed top-12 pt-1'>
+                <Breadcrumb root={{tuuid: rootTuuid, name: 'Trash'}} onClick={onClickBreadcrumb} />
+            </section>
 
-            <section className='pt-3'>
+            <section className='fixed top-20 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <FilelistPane files={files} sortKey={sortKey} sortOrder={sortOrder} dateColumn='modification' onClickRow={onClickRow} />
             </section>
 
