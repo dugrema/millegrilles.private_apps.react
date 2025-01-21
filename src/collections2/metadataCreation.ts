@@ -16,6 +16,7 @@ export async function createDirectory(workers: AppWorkers, name: string,
         nonce: multiencoding.encodeBase64Nopad(directoryMetadata.nonce),
         format: directoryMetadata.format,
         verification: directoryMetadata.digest?multiencoding.hashEncode('base58btc', 'blake2b-512', directoryMetadata.digest):undefined,
+        compression: directoryMetadata.compression,
     } as TuuidEncryptedMetadata;
 
     let command = {
