@@ -265,7 +265,7 @@ export function ModalRenameFile(props: ModalInformationProps) {
             let updatedMetadata = {...decryptedMetadata};
             updatedMetadata.nom = newName;
             let reencryptedMetadata = await updateEncryptedContent(workers, cleId, secretKey, updatedMetadata);
-            console.debug("Updated file/directory metadata: ", reencryptedMetadata);
+            console.debug("Updated file/directory metadata: %O, encrypted: %O", updatedMetadata, reencryptedMetadata);
 
             if(isFile) {
                 let result = await workers.connection.renameFileCollection2(tuuid, reencryptedMetadata, newMimetype);

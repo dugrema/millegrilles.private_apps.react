@@ -177,7 +177,8 @@ export function ButtonBar(props: ButtonBarProps) {
         if(!selection || selection.length === 0) throw new Error('Nothing selected to delete');
         let response = await workers.connection.deleteFilesCollection2(selection);
         if(!response.ok) throw new Error('Error deleting files/directories: ' + response.err);
-    }, [workers, ready, selection]);
+        setSelectionMode(false);  // Exit selection mode
+    }, [workers, ready, selection, setSelectionMode]);
 
     let directoryInfoHandler = useCallback(() => onModal(ModalEnum.Info), [onModal]);
     let createDirectoryHandler = useCallback(() => onModal(ModalEnum.NewDirectory), [onModal]);
