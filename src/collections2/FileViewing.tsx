@@ -396,12 +396,11 @@ function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimet
         if(!refVideo?.current) return;
 
         console.debug("Add event listener");
-        refVideo.current.addEventListener('fullscreenchange', fullScreenChange);
+        let currenRef = refVideo?.current;
+        currenRef.addEventListener('fullscreenchange', fullScreenChange);
 
         return () => {
-            if(refVideo?.current?.removeEventListener) {
-                refVideo.current.removeEventListener('fullscreenchange', fullScreenChange)
-            }
+            currenRef.removeEventListener('fullscreenchange', fullScreenChange);
         }
     }, [refVideo, fullScreenChange]);
 

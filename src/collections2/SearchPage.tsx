@@ -325,7 +325,7 @@ function SearchSyncHandler(
             // Empty screen
             console.debug("Empty search screen");
         }
-    }, [workers, ready, nextIndex, itemsLoaded, itemsAvailable, userId, username, searchResults, updateSearchListing]);
+    }, [workers, ready, nextIndex, itemsLoaded, itemsAvailable, userId, username, searchResults, sharedCuuids, updateSearchListing]);
 
     return <></>;
 }

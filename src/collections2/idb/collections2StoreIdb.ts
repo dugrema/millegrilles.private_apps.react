@@ -83,7 +83,8 @@ export type TuuidsIdbStoreRowType = {
     ownerUserId: string | null,  // For shared content
     type_node: string,
     encryptedMetadata?: TuuidEncryptedMetadata,
-    secretKey: Uint8Array | null,
+    secretKey: Uint8Array | null,   // Secret key for metadata (usually the same for associated files)
+    keyId: string | null,           // Key Id associated to the secretKey
     decryptedMetadata?: TuuidDecryptedMetadata,
     parent: string,  // For top level collections, this is the user_id. For all others this is the tuuid of the parent collection.
     path_cuuids?: string[] | null,
@@ -126,7 +127,7 @@ export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
 }
 
 function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
-    let tuuidStore = null, videoPlayStore = null;
+    let tuuidStore = null;
     switch(oldVersion) {
         // @ts-ignore Fallthrough
         case 0:
@@ -134,7 +135,7 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
         case 1:
             // Create stores
             tuuidStore = db.createObjectStore(STORE_TUUIDS, {keyPath: ['tuuid', 'user_id']});
-            videoPlayStore = db.createObjectStore(STORE_VIDEO_PLAY, {keyPath: ['tuuid', 'userId']});
+            db.createObjectStore(STORE_VIDEO_PLAY, {keyPath: ['tuuid', 'userId']});
 
             // Create indices
             tuuidStore.createIndex('parent', ['parent', 'user_id'], {unique: false, multiEntry: false});

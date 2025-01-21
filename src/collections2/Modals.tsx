@@ -258,9 +258,9 @@ export function ModalRenameFile(props: ModalInformationProps) {
         if(changed) {
             let fileIdb = await loadTuuid(tuuid, userId);
             if(!fileIdb || !fileIdb.secretKey || !fileIdb.decryptedMetadata) throw new Error('File detail not available locally');
-            let {decryptedMetadata, secretKey, encryptedMetadata} = fileIdb;
-            if(!encryptedMetadata || !encryptedMetadata.cle_id) throw new Error('Insufficient information to re-encrypt data');
-            let cleId = encryptedMetadata.cle_id;
+            let {decryptedMetadata, secretKey} = fileIdb;
+            let cleId = fileIdb.keyId;
+            if(!cleId) throw new Error('Insufficient information to re-encrypt data for tuuid: ' + tuuid);
 
             let updatedMetadata = {...decryptedMetadata};
             updatedMetadata.nom = newName;
@@ -383,7 +383,7 @@ export function ModalBrowseAction(props: ModalInformationProps & {title: string}
         }
 
         setTimeout(()=>close(), 1_000);
-    }, [workers, ready, close, modalNavCuuid, modalType, originCuuid, modalNavCuuid, selection, contactId]);
+    }, [workers, ready, close, modalNavCuuid, modalType, originCuuid, selection, contactId]);
 
     return (
         <>
@@ -433,7 +433,7 @@ function ContactRow(props: {contact: Collection2ContactItem, checked: boolean, o
     let onClickCheckBox = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
         // Placeholder to avoid warning - handled by the div
         e.stopPropagation();
-    }, [contact]);
+    }, []);
 
     return (
         <div onClick={onClick} data-contactid={contact.contact_id}
@@ -508,7 +508,7 @@ export function ModalShareCollection(props: ModalInformationProps) {
 
         // Success, close
         setTimeout(()=>close(), 1_000);
-    }, [workers, ready, sharedWithContactIds, initialSharedWithContactIds, close])
+    }, [workers, ready, selection, sharedWithContactIds, initialSharedWithContactIds, close])
 
     useEffect(()=>{
         if(!workers || !ready || !currentDirectory) return;
@@ -580,7 +580,7 @@ export function ModalShareCollection(props: ModalInformationProps) {
                             <p className="text-base leading-relaxed text-gray-400">
                                 You do not have any contacts. You can add contacts using the 
                                 <Link to='/apps/collections2/c' className='px-1 font-bold underline'>
-                                    Share <img src={ShareIcon} className='w-6 inline ml-1'/>
+                                    Share <img src={ShareIcon} alt="Share icon" className='w-6 inline ml-1'/>
                                 </Link> link in the menu.
                             </p>
                         }

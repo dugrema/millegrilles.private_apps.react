@@ -2,10 +2,9 @@ import axios from 'axios';
 import { expose, Remote } from 'comlink';
 import { messageStruct, encryptionMgs4, multiencoding } from 'millegrilles.cryptography';
 
-import { Collections2FileSyncRow, Collections2SharedContactsSharedCollection, DecryptedSecretKey, Filehost } from './connection.worker';
+import { Collections2FileSyncRow, DecryptedSecretKey, Filehost } from './connection.worker';
 import { AppsEncryptionWorker } from './encryption.worker';
 import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync, deleteFiles } from '../collections2/idb/collections2StoreIdb';
-import { TuuidsBrowsingStoreSearchRow } from '../collections2/userBrowsingStore';
 
 type ProcessDirectoryChunkOptions = {
     noidb?: boolean,
@@ -79,6 +78,7 @@ export class DirectoryWorker {
                 type_node: item.type_node,
                 encryptedMetadata: item.metadata,
                 secretKey: null,
+                keyId: null,
                 parent,
                 path_cuuids: item.path_cuuids,
                 fileData,
@@ -139,7 +139,9 @@ export class DirectoryWorker {
                             );
                             let decrypted = JSON.parse(new TextDecoder().decode(decryptedBytes)) as TuuidDecryptedMetadata;
                             file.decryptedMetadata = decrypted;
-                            file.secretKey = secretKeyBytes;  // Keep the key to open, download files and images, rename, etc.
+                            // Keep the key to open, download files and images, rename, etc.
+                            file.secretKey = secretKeyBytes;
+                            file.keyId = keyId;
                         } catch (err) {
                             console.error("Error decrypting %s - SKIPPING. Err:\n%O", file.tuuid, err);
                         }

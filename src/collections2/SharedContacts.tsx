@@ -59,7 +59,7 @@ function CurrentContactList() {
             setContacts(updatedContacts);
         }
 
-    }, [contacts, setContacts]);
+    }, [workers, ready, contacts, setContacts]);
 
     let contactElems = useMemo(()=>{
         if(!contacts) return [];
