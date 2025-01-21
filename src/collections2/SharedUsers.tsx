@@ -44,11 +44,10 @@ function UserList() {
 
         return sortedUsers.map(item=>{
             return (
-                <li key={item.user_id} className="px-2 block odd:bg-slate-500 even:bg-slate-400 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm select-none">
-                    <Link to={'/apps/collections2/c/' + item.user_id}>
-                            {item.nom_usager}
-                    </Link>
-                </li>
+                <Link key={item.user_id} to={'/apps/collections2/c/' + item.user_id}
+                    className="px-2 block odd:bg-slate-500 even:bg-slate-400 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm select-none">
+                        {item.nom_usager}
+                </Link>
             )
         });
     }, [sharedWithUser]);
@@ -69,10 +68,7 @@ function UserList() {
                     <div className='grid grid-cols-12 bg-slate-800 text-sm user-select-none px-1 w-full'>
                         <div className='col-span-7 px-1'>Users sharing collections with you</div>
                     </div>
-
-                    <ol>
-                        {userElems}
-                    </ol>
+                    {userElems}
                 </section>
 
                 <section className='pt-6'>
