@@ -110,7 +110,7 @@ function ContactRow(props: {value: Collection2ContactItem, onDelete: (e: MouseEv
 
     return (
         <div data-userid={value.user_id} onClick={onClick}
-            className="odd:bg-slate-500 even:bg-slate-400 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm select-none">
+            className="odd:bg-slate-500 even:bg-slate-400 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm select-none cursor-pointer">
                 <ActionButton onClick={onDelete} value={value.contact_id} revertSuccessTimeout={3} varwidth={16} confirm={true} disabled={!ready} >
                     <img src={TrashIcon} alt="Remove user" className='w-6 inline' />
                 </ActionButton>
