@@ -1,10 +1,9 @@
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useState } from "react";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Link, useParams } from "react-router-dom";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
-import { Collection2ContactItem, Collection2SharedCollection } from "../workers/connection.worker";
-import { TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
+import { Collection2SharedCollection } from "../workers/connection.worker";
 import { sortByName } from "./FilelistPane";
 import ActionButton from "../resources/ActionButton";
 

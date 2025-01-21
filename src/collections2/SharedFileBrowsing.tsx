@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Collection2DirectoryStats, Collections2SharedContactsSharedCollection } from "../workers/connection.worker";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
@@ -12,7 +12,9 @@ function SharedFileBrowsing() {
 
     let {contactId, tuuid} = useParams();
     let navigate = useNavigate();
-    
+    let navSectionRef = useRef(null);
+
+    let userId = useUserBrowsingStore(state=>state.userId);
     let setSharedCollection = useUserBrowsingStore(state=>state.setSharedCollection);
     let sharedCollection = useUserBrowsingStore(state=>state.sharedCollection);
     let setSharedContact = useUserBrowsingStore(state=>state.setSharedContact);
@@ -102,6 +104,42 @@ function SharedFileBrowsing() {
         }
     }, [contactId, selectionMode, selection, setSelectionMode, navigate, setSelection, setSelectionPosition]) as FileListPaneOnClickRowType;    
 
+    let onLoadHandler = useCallback(()=>{
+        if(cuuid && userId) {
+            let currentPosition = sessionStorage.getItem(`${cuuid}_${userId}`);
+            if(currentPosition) {
+                let positionInt = Number.parseInt(currentPosition);
+                // @ts-ignore
+                navSectionRef.current.scroll({top: positionInt});
+            }
+        }
+    }, [cuuid, userId, navSectionRef]);
+    
+    let [positionChanged, setPositionChanged] = useState(false);
+    let onScrollHandler = useCallback((e: Event)=>setPositionChanged(true), [setPositionChanged]);
+    useEffect(()=>{
+        if(!positionChanged) return;
+        let navRef = navSectionRef;
+        let timeout = setTimeout(() => {
+            //@ts-ignore
+            let position = navRef.current.scrollTop;
+            sessionStorage.setItem(`${cuuid}_${userId}`, ''+position)
+            setPositionChanged(false);
+        }, 750);
+        return () => clearTimeout(timeout);
+    }, [navSectionRef, cuuid, userId, positionChanged, setPositionChanged]);
+
+    useEffect(()=>{
+        if(!navSectionRef.current) return;
+        let navRef = navSectionRef.current;
+        //@ts-ignore
+        navRef.addEventListener('scroll', onScrollHandler);
+        return ()=>{
+            //@ts-ignore
+            navRef.removeEventListener('scroll', onScrollHandler);
+        };
+    }, [onScrollHandler, navSectionRef]);
+
     return (
         <>
             <section className='fixed top-12 pt-1'>
@@ -109,11 +147,11 @@ function SharedFileBrowsing() {
                 <ButtonBar disableEdit={true} shared={true} onModal={onModal} />
             </section>
 
-            <section className='fixed top-32 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
+            <section ref={navSectionRef} className='fixed top-32 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <FilelistPane files={files} onClickRow={onClickRowHandler} />
             </section>
 
-            <DirectorySyncHandler tuuid={cuuid} />
+            <DirectorySyncHandler tuuid={cuuid} onLoad={onLoadHandler} />
             <Modals show={modal} close={closeModal} />
         </>
     );
@@ -183,9 +221,9 @@ export function Breadcrumb(props: BreadcrumbProps) {
  * Handles the sync of files in a directory.
  * @returns 
  */
-export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) {
+export function DirectorySyncHandler(props: {tuuid: string | null | undefined, onLoad?: ()=>void}) {
 
-    let {tuuid} = props;
+    let {tuuid, onLoad} = props;
 
     let workers = useWorkers();
     let username = useConnectionStore(state=>state.username);
@@ -198,6 +236,11 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) 
     // let deleteFilesDirectory = useUserBrowsingStore(state=>state.deleteFilesDirectory);
 
     let sharedCollection = useUserBrowsingStore(state=>state.sharedCollection);
+
+    let updateCurrentDirectoryHandler = useCallback((files: TuuidsBrowsingStoreRow[] | null)=>{
+        updateCurrentDirectory(files)
+        if(onLoad) onLoad();
+    }, [onLoad, updateCurrentDirectory]);
 
     useEffect(()=>{
         if(!workers || !ready || !userId || !sharedCollection || !tuuid) return;
@@ -219,7 +262,7 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) 
 
         synchronizeDirectory(
             workers, userId, username, sharedCollection, tuuidValue, cancelledSignal, 
-            updateCurrentDirectory, setBreadcrumb, setDirectoryStatistics)
+            updateCurrentDirectoryHandler, setBreadcrumb, setDirectoryStatistics)
             .catch(err=>console.error("Error loading directory: %O", err));
 
         return () => {
@@ -230,7 +273,7 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined}) 
             //TODO
         }
     }, [workers, ready, userId, username, tuuid, sharedCollection, 
-        setSharedCuuid, setBreadcrumb, updateCurrentDirectory, setDirectoryStatistics]);
+        setSharedCuuid, setBreadcrumb, updateCurrentDirectoryHandler, updateCurrentDirectory, setDirectoryStatistics]);
 
     return <></>;
 }
