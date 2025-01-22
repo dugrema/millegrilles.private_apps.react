@@ -96,7 +96,7 @@ function MediaConversionsList() {
                                 :
                                 <></>
                             }
-                            <div className="absolute top-0 h-4 bg-violet-600 text-xs font-medium text-violet-100 text-center p-0.5 leading-none rounded-full" style={{width: progress+'%'}}>
+                            <div className="absolute top-0 h-4 bg-violet-600 text-xs font-medium text-violet-100 text-center p-0.5 leading-none rounded-full transition-all duration-500" style={{width: progress+'%'}}>
                                 {progress>30?<>{progress} %</>:''}
                             </div>
                         </div>
@@ -152,7 +152,6 @@ function SyncMediaConversions() {
     let setTuuidsToLoad = useMediaConversionStore(state=>state.setTuuidsToLoad);
     
     let conversionJobsUpdateHandler = useCallback((e: SubscriptionMessage)=>{
-        console.debug("conversionJobsUpdateHandler Event: ", e);
         if(!workers || !userId) {
             console.warn("Subscription message received when workers/userId is not initialized, ignored");
             return;
@@ -161,7 +160,6 @@ function SyncMediaConversions() {
         let action = e.routingKey.split('.').pop();
         if(action === 'transcodageProgres') {
             let content = e.message as Collection2MediaConversionUpdateMessage;
-            console.debug("Update media conversion with ", content);
             let update = {job_id: content.job_id, fuuid: content.fuuid, tuuid: content.tuuid} as ConversionJobUpdate;
             if(typeof(content.pctProgres) === 'number') update.pct_progres = content.pctProgres;
             if(content.etat === CONST_MEDIA_STATE_DONE) update.etat = EtatJobEnum.DONE;
