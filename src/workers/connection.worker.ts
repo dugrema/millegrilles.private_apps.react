@@ -234,15 +234,16 @@ export enum EtatJobEnum {
     PERSISTING,
     ERROR,
     TOO_MANY_RETRIES,
+    DONE,
 };
 
 export type Collection2ConversionJob = {
     job_id: string,
-    user_id: string,
     tuuid: string,
     fuuid: string,
-    mimetype: string | null,
-    filehost_ids: string[],
+    user_id?: string | null,
+    mimetype?: string | null,
+    filehost_ids?: string[] | null,
     pct_progres?: number | null,
     etat?: EtatJobEnum | null,
     retry?: number | null,
@@ -251,6 +252,27 @@ export type Collection2ConversionJob = {
 }
 
 export type Collection2ConversionJobsResponse = MessageResponse & {jobs?: Collection2ConversionJob[]};
+
+
+export const CONST_MEDIA_STATE_PROBE = 'probe';
+export const CONST_MEDIA_STATE_TRANSCODING = 'transcodage';
+export const CONST_MEDIA_STATE_DONE = 'termine';
+
+export type Collection2MediaConversionJobUpdate = {
+    job_id: string,
+    user_id?: string | null,
+    tuuid: string,
+    fuuid: string,
+    etat: string,
+    pctProgres?: number | null,
+    mimetype?: string | null,
+    videoCodec?: string | null,
+    videoQuality?: number | null,
+    height?: number | null,
+    resolution?: number | null,
+};
+
+export type Collection2MediaConversionUpdateMessage = (MessageResponse | messageStruct.MilleGrillesMessage) & Collection2MediaConversionJobUpdate;
 
 export class AppsConnectionWorker extends ConnectionWorker {
 
@@ -729,6 +751,37 @@ export class AppsConnectionWorker extends ConnectionWorker {
             DOMAINE_GROSFICHIERS, 'supprimerJobVideoV2'
         ) as MessageResponse;
     }
+
+    async collection2SubscribeCollectionEvents(cuuid: string | null, cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.subscribe("collection2CollectionEvents", cb, {cuuid});
+    }
+
+    async collection2UnsubscribeCollectionEvents(cuuid: string | null, cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.unsubscribe("collection2CollectionEvents", cb, {cuuid});
+    }
+
+    async collection2SubscribeCollectionContentEvents(cuuid: string | null, cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.subscribe("collection2CollectionContentEvents", cb, {cuuid});
+    }
+
+    async collection2UnsubscribeCollectionContentEvents(cuuid: string | null, cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.unsubscribe("collection2CollectionContentEvents", cb, {cuuid});
+    }
+
+    async collection2SubscribeMediaConversionEvents(cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.subscribe('collection2MediaConversionEvents', cb);
+    }
+
+    async collection2UnsubscribeMediaConversionEvents(cb: SubscriptionCallback): Promise<void> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.unsubscribe('collection2MediaConversionEvents', cb);
+    }
+
 }
 
 var worker = new AppsConnectionWorker();

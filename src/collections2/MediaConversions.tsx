@@ -1,14 +1,16 @@
 import React, { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
-import useMediaConversionStore, { ConversionJobStoreItem, FileInfoJobs } from "./mediaConversionStore";
-import { EtatJobEnum } from "../workers/connection.worker";
+import useMediaConversionStore, { ConversionJobStoreItem, ConversionJobUpdate, FileInfoJobs } from "./mediaConversionStore";
+import { Collection2MediaConversionUpdateMessage, CONST_MEDIA_STATE_DONE, CONST_MEDIA_STATE_PROBE, CONST_MEDIA_STATE_TRANSCODING, EtatJobEnum } from "../workers/connection.worker";
 import useUserBrowsingStore from "./userBrowsingStore";
 import { loadTuuid } from "./idb/collections2StoreIdb";
 
 import VideoIcon from '../resources/icons/video-file-svgrepo-com.svg';
 import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
 import ActionButton from "../resources/ActionButton";
+import { proxy } from "comlink";
+import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
 
 function MediaConversionsPage() {
 
@@ -35,6 +37,7 @@ function MediaConversionsList() {
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
     let currentJobs = useMediaConversionStore(state=>state.currentJobs);
+    let removeConversionJobs = useMediaConversionStore(state=>state.removeConversionJobs);
 
     let removeJobHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
         if(!workers || !ready || !currentJobs) throw new Error('Workers not initialized or missing context');
@@ -43,13 +46,13 @@ function MediaConversionsList() {
         if(!job) throw new Error('Unknown jobId ' + jobId);
         let response = await workers.connection.collections2RemoveConversionJob(job.tuuid, job.fuuid, jobId)
         if(response.ok === false) throw new Error(response.err);
-    }, [workers, ready, currentJobs]);
+        removeConversionJobs([jobId]);
+    }, [workers, ready, currentJobs, removeConversionJobs]);
 
     let sortedJobs = useMemo(()=>{
         if(!currentJobs) return null;
         let jobs = Object.values(currentJobs);
         jobs.sort(sortJobs)
-        console.debug("Sorted jobs", jobs);
         return jobs;
     }, [currentJobs]);
 
@@ -110,9 +113,10 @@ function MediaConversionsList() {
     return (
         <>
             <div className='grid grid-cols-12 bg-slate-800 text-sm user-select-none px-1 w-full'>
+                <p className='col-span-1'></p>
                 <p className='col-span-6 text-sm'>File name</p>
                 <p className='col-span-2 pl-2'>Parameters</p>
-                <p className='pl-2 col-span-4'>State</p>
+                <p className='pl-2 col-span-3'>State</p>
             </div>
 
             {jobsElem}
@@ -127,7 +131,6 @@ function Thumbnail(props: {value: Blob | null | undefined}) {
     let [url, setUrl] = useState('');
 
     useEffect(()=>{
-        console.debug("Thumbnail value", value);
         if(!value) return;
         let blobUrl = URL.createObjectURL(value);
         setUrl(blobUrl);
@@ -142,11 +145,39 @@ function SyncMediaConversions() {
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useUserBrowsingStore(state=>state.userId);
-    let updateConversionJobs = useMediaConversionStore(state=>state.updateConversionJobs);
+    let setConversionJobs = useMediaConversionStore(state=>state.setConversionJobs);
     let setFileInfoConversionJobs = useMediaConversionStore(state=>state.setFileInfoConversionJobs);
+    let updateConversionJob = useMediaConversionStore(state=>state.updateConversionJob);
     let tuuidsToLoad = useMediaConversionStore(state=>state.tuuidsToLoad);
     let setTuuidsToLoad = useMediaConversionStore(state=>state.setTuuidsToLoad);
     
+    let conversionJobsUpdateHandler = useCallback((e: SubscriptionMessage)=>{
+        console.debug("conversionJobsUpdateHandler Event: ", e);
+        if(!workers || !userId) {
+            console.warn("Subscription message received when workers/userId is not initialized, ignored");
+            return;
+        }
+
+        let action = e.routingKey.split('.').pop();
+        if(action === 'transcodageProgres') {
+            let content = e.message as Collection2MediaConversionUpdateMessage;
+            console.debug("Update media conversion with ", content);
+            let update = {job_id: content.job_id, fuuid: content.fuuid, tuuid: content.tuuid} as ConversionJobUpdate;
+            if(typeof(content.pctProgres) === 'number') update.pct_progres = content.pctProgres;
+            if(content.etat === CONST_MEDIA_STATE_DONE) update.etat = EtatJobEnum.DONE;
+            else if(content.etat === CONST_MEDIA_STATE_PROBE || content.etat === CONST_MEDIA_STATE_TRANSCODING) update.etat = EtatJobEnum.RUNNING;
+            else update.etat = EtatJobEnum.ERROR;
+            updateConversionJob(update);
+        } else {
+            console.warn("Unknown message action: ", action);
+        }
+
+    }, [workers, userId]);
+    let conversionJobsUpdateHandlerProxy = useMemo(()=>{
+        if(!workers || !ready) return null;
+        return proxy(conversionJobsUpdateHandler);
+    }, [workers, userId, conversionJobsUpdateHandler]);
+
     useEffect(()=>{
         if(!workers || !ready || !userId || !tuuidsToLoad) return;
         let jobs = Object.values(tuuidsToLoad)
@@ -196,28 +227,34 @@ function SyncMediaConversions() {
     }, [workers, ready, tuuidsToLoad, userId, setFileInfoConversionJobs, setTuuidsToLoad]);
 
     useEffect(()=>{
-        if(!workers || !ready) return;
+        if(!workers || !ready || !conversionJobsUpdateHandlerProxy) return;
+
+        // Capturing for inner context
+        let workersInner = workers, conversionJobsUpdateHandlerProxyInner = conversionJobsUpdateHandlerProxy;
 
         //TODO Register job listener
+        workers.connection.collection2SubscribeMediaConversionEvents(conversionJobsUpdateHandlerProxy)
+            .catch(err=>console.error("Error registering listener for media conversion events", err));
 
         workers.connection.collections2GetConversionJobs()
             .then(response=>{
-                console.debug("Response", response);
                 if(response.ok === false) throw new Error(response.err);
                 if(response.jobs) {
-                    updateConversionJobs(response.jobs);
+                    setConversionJobs(response.jobs);
                     let tuuids = new Set(response.jobs.map(item=>item.tuuid));
                     let tuuidList = Array.from(tuuids);
                     setTuuidsToLoad(tuuidList);
                 }
-                else updateConversionJobs([]);
+                else setConversionJobs([]);
             })
             .catch(err=>console.error("Error loading conversion jobs", err));
 
         return () => {
             //TODO Unregister job listener
+            workersInner.connection.collection2UnsubscribeMediaConversionEvents(conversionJobsUpdateHandlerProxyInner)
+                .catch(err=>console.error("Error unregistering listener for media conversion events", err));
         }
-    }, [workers, ready, updateConversionJobs, setTuuidsToLoad]);
+    }, [workers, ready, setConversionJobs, setTuuidsToLoad, conversionJobsUpdateHandlerProxy]);
 
     return <></>;
 }
@@ -251,5 +288,8 @@ function StateValue(props: {value: EtatJobEnum | null | undefined}) {
         case EtatJobEnum.PERSISTING: return <>Persisting</>;
         case EtatJobEnum.ERROR: return <>Error</>;
         case EtatJobEnum.TOO_MANY_RETRIES: return <>Too many retries</>;
+        case EtatJobEnum.DONE: return <>Complete</>;
+        default:
+            return <>Unknown</>;
     }
 }

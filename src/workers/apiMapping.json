@@ -102,6 +102,14 @@
                 "evenement.GrosFichiers.{USER_ID}.jobAjoutee",
                 "evenement.GrosFichiers.{USER_ID}.jobSupprimee"
             ]
+        },
+        "collection2MediaConversionEvents": {
+            "exchanges": ["2.prive"],
+            "routingKeys": [
+                "evenement.media.{USER_ID}.transcodageProgres",
+                "evenement.GrosFichiers.{USER_ID}.jobAjoutee",
+                "evenement.GrosFichiers.{USER_ID}.jobSupprime"
+            ]
         }
     }
 }

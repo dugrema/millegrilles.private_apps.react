@@ -1,15 +1,18 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { Collection2ConversionJob } from '../workers/connection.worker';
+import { Collection2ConversionJob, EtatJobEnum } from '../workers/connection.worker';
 
 export type FileInfoJobs = {tuuid: string, name?: string | null, size?: number | null, thumbnail?: Blob | null};
+export type ConversionJobUpdate = {job_id: string, tuuid: string, fuuid: string, etat?: EtatJobEnum, pct_progres?: number};
 export type ConversionJobStoreItem = Collection2ConversionJob & FileInfoJobs;
 
 interface MediaConversionStoreState {
     currentJobs: {[jobId: string]: ConversionJobStoreItem} | null,
     tuuidsToLoad: string[] | null,
     setTuuidsToLoad: (tuuids: string[] | null) => void,
-    updateConversionJobs: (jobs: ConversionJobStoreItem[] | null) => void,
+    setConversionJobs: (jobs: ConversionJobStoreItem[] | null) => void,
+    updateConversionJob: (job: ConversionJobUpdate) => void,
+    removeConversionJobs: (jobIds: string[]) => void,
     setFileInfoConversionJobs: (jobInfo: FileInfoJobs[]) => void,
 }
 
@@ -19,13 +22,14 @@ const useMediaConversionStore = create<MediaConversionStoreState>()(
             currentJobs: null,
             tuuidsToLoad: null,
             setTuuidsToLoad: (tuuids) => set(()=>({tuuidsToLoad: tuuids})),
-            updateConversionJobs: (jobs) => set((state)=>{
+            setConversionJobs: (jobs) => set((state)=>{
                 if(!jobs) {
                     // Clear
                     return {currentJobs: null};
                 }
 
                 let currentJobs = {} as {[jobId: string]: ConversionJobStoreItem};
+
                 if(state.currentJobs) {
                     // Copy existing directory
                     currentJobs = {...state.currentJobs};
@@ -55,6 +59,31 @@ const useMediaConversionStore = create<MediaConversionStoreState>()(
 
                 return {currentJobs};
             }),
+            updateConversionJob: (job) => set((state)=>{
+                let jobs = state.currentJobs;
+                let jobId = job.job_id;
+                if(!jobs) return {};
+                jobs = {...jobs};  // Copy
+                let tuuidsToLoad = [...(state.tuuidsToLoad||[])];  // Copy
+                let existingJob = jobs[jobId];
+                if(!existingJob) {
+                    tuuidsToLoad.push(job.tuuid)
+                    jobs = {...jobs, [jobId]: job};
+                    return {currentJobs: jobs, tuuidsToLoad};
+                }
+                let updatedJob = {...existingJob, ...job};  // Update as copy
+                jobs[jobId] = updatedJob;
+                return {currentJobs: jobs, tuuidsToLoad};
+            }),
+            removeConversionJobs: (jobIds: string[]) => set((state)=>{
+                let currentJobs = state.currentJobs;
+                if(!currentJobs) return {};
+                currentJobs = {...currentJobs};
+                for(let jobId of jobIds) {
+                    delete currentJobs[jobId];
+                }
+                return {currentJobs};
+            })
         }),
     )
 );
