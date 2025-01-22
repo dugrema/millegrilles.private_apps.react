@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Collection2ConversionJob } from '../workers/connection.worker';
 
-export type ConversionJobStoreItem = Collection2ConversionJob & {name?: string | null};
-export type FileInfoJobs = {tuuid: string, name?: string | null, size?: number | null};
+export type FileInfoJobs = {tuuid: string, name?: string | null, size?: number | null, thumbnail?: Blob | null};
+export type ConversionJobStoreItem = Collection2ConversionJob & FileInfoJobs;
 
 interface MediaConversionStoreState {
     currentJobs: {[jobId: string]: ConversionJobStoreItem} | null,

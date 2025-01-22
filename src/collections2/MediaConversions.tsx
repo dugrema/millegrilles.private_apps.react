@@ -1,9 +1,14 @@
-import React, { useEffect, useMemo } from "react";
+import React, { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
-import useMediaConversionStore, { ConversionJobStoreItem } from "./mediaConversionStore";
+import useMediaConversionStore, { ConversionJobStoreItem, FileInfoJobs } from "./mediaConversionStore";
 import { EtatJobEnum } from "../workers/connection.worker";
 import useUserBrowsingStore from "./userBrowsingStore";
+import { loadTuuid } from "./idb/collections2StoreIdb";
+
+import VideoIcon from '../resources/icons/video-file-svgrepo-com.svg';
+import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
+import ActionButton from "../resources/ActionButton";
 
 function MediaConversionsPage() {
 
@@ -26,12 +31,25 @@ export default MediaConversionsPage;
 
 function MediaConversionsList() {
 
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
     let currentJobs = useMediaConversionStore(state=>state.currentJobs);
+
+    let removeJobHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
+        if(!workers || !ready || !currentJobs) throw new Error('Workers not initialized or missing context');
+        let jobId = e.currentTarget.value;
+        let job = currentJobs[jobId];
+        if(!job) throw new Error('Unknown jobId ' + jobId);
+        let response = await workers.connection.collections2RemoveConversionJob(job.tuuid, job.fuuid, jobId)
+        if(response.ok === false) throw new Error(response.err);
+    }, [workers, ready, currentJobs]);
 
     let sortedJobs = useMemo(()=>{
         if(!currentJobs) return null;
         let jobs = Object.values(currentJobs);
         jobs.sort(sortJobs)
+        console.debug("Sorted jobs", jobs);
         return jobs;
     }, [currentJobs]);
 
@@ -56,27 +74,33 @@ function MediaConversionsList() {
                 progress = item.pct_progres;
             }
 
-            console.debug("Job ", item);
-
             return (
-                <React.Fragment key={item.job_id}>
-                    <p className='col-span-6 text-sm'>{item.name || item.job_id}</p>
+                <div key={item.job_id} className='grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40'>
+                    <div className='text-center'>
+                        <ActionButton onClick={removeJobHandler} value={item.job_id} varwidth={10} confirm={true}>
+                            <img src={TrashIcon} alt="Remove job" className='w-8' />
+                        </ActionButton>
+                    </div>
+                    <p className='col-span-6 text-sm pl-1'>
+                        <Thumbnail value={item.thumbnail} />
+                        <span className='pl-2'>{item.name || item.job_id}</span>
+                    </p>
                     <p className='col-span-2 pl-2'>{params}</p>
                     {progress !== null?
-                        <div className="pl-2 relative col-span-4 w-11/12 mt-1 h-4 text-xs bg-slate-200 rounded-full dark:bg-slate-700">
+                        <div className="ml-2 relative col-span-3 w-11/12 mt-1 h-4 text-xs bg-slate-200 rounded-full dark:bg-slate-700">
                             {progress<=30?
-                                <div className='w-full text-violet-800 text-xs text-center'>{progress}%</div>
+                                <div className='w-full text-violet-800 text-xs font-medium text-center'>{progress} %</div>
                                 :
                                 <></>
                             }
                             <div className="absolute top-0 h-4 bg-violet-600 text-xs font-medium text-violet-100 text-center p-0.5 leading-none rounded-full" style={{width: progress+'%'}}>
-                                {progress>30?<>{progress}%</>:''}
+                                {progress>30?<>{progress} %</>:''}
                             </div>
                         </div>
                     :
-                        <p className='pl-2 col-span-4'><StateValue value={item.etat}/></p>
+                        <p className='pl-2 col-span-3'><StateValue value={item.etat}/></p>
                     }
-                </React.Fragment>
+                </div>
             );
         });
     }, [sortedJobs]);
@@ -84,10 +108,34 @@ function MediaConversionsList() {
     if(!currentJobs) return <p>Loading ...</p>;
 
     return (
-        <div className='grid grid-cols-12'>
+        <>
+            <div className='grid grid-cols-12 bg-slate-800 text-sm user-select-none px-1 w-full'>
+                <p className='col-span-6 text-sm'>File name</p>
+                <p className='col-span-2 pl-2'>Parameters</p>
+                <p className='pl-2 col-span-4'>State</p>
+            </div>
+
             {jobsElem}
-        </div>
+        </>
     )
+}
+
+function Thumbnail(props: {value: Blob | null | undefined}) {
+
+    let {value} = props;
+
+    let [url, setUrl] = useState('');
+
+    useEffect(()=>{
+        console.debug("Thumbnail value", value);
+        if(!value) return;
+        let blobUrl = URL.createObjectURL(value);
+        setUrl(blobUrl);
+        return () => {URL.revokeObjectURL(blobUrl);}
+    }, [value, setUrl]);
+
+    if(!url) return <img src={VideoIcon} className='ml-1 w-12 h-12 my-0.5 inline-block rounded' alt='File icon' />;
+    return <img src={url} alt='File icon' className='ml-1 w-12 h-12 my-0.5 inline-block rounded' />;
 }
 
 function SyncMediaConversions() {
@@ -106,30 +154,44 @@ function SyncMediaConversions() {
 
         setTuuidsToLoad(null);  // Reset, cleanup to avoid loops
 
-        if(tuuidsToLoad.length > 0) {
-            console.debug("Load file name for tuuids", tuuidsToLoad);
-            // Capture variables for inner context
-            let workersInner = workers, userIdInner = userId;
-            workers.connection.getFilesByTuuid(tuuidsToLoad)
-                .then(async response => {
-                    if(response.ok === false) throw new Error(response.err);
-                    console.debug("Response", response);
-                    if(!response.files || !response.keys) throw new Error('No files/keys received');
-                    let files = await workersInner.directory.processDirectoryChunk(workersInner.encryption, userIdInner, response.files, response.keys);
-                    console.debug("Files", files);
-                    // Map to update job file names
-                    let filenamesMappedByTuuid = Object.values(files).map(item=>{
-                        let filename = item.decryptedMetadata?.nom || '';  // Setting '' will prevent multiple attemps to load the same file
-                        let size = item.fileData?.taille;
-                        return {tuuid: item.tuuid, name: filename, size};
-                    });
-                    console.debug("Mapped filenames", filenamesMappedByTuuid);
-                    setFileInfoConversionJobs(filenamesMappedByTuuid);
-                })
-                .catch(err=>console.error("Error loading tuuids", err));
-        } else {
-            console.debug("No file name to load for list", jobs);
-        }
+        // Capture variables for inner context
+        let workersInner = workers, userIdInner = userId, tuuidsToLoadInner = tuuidsToLoad;
+        Promise.resolve().then(async ()=>{
+            // preload using idb
+            let remainingTuuid = [] as string[];
+            let mappedFiles = [] as FileInfoJobs[];
+            for(let tuuid of tuuidsToLoadInner) {
+                let item = await loadTuuid(tuuid, userIdInner);
+                if(item) {
+                    let file = {tuuid, name: item.decryptedMetadata?.nom, size: item.fileData?.taille, thumbnail: item.thumbnail};
+                    mappedFiles.push(file);
+                } else {
+                    remainingTuuid.push(tuuid);
+                }
+            }
+            if(mappedFiles.length > 0) {
+                setFileInfoConversionJobs(mappedFiles);
+            }
+
+            if(remainingTuuid.length > 0) {
+                console.debug("Load file name for tuuids", remainingTuuid);
+                let response = await workersInner.connection.getFilesByTuuid(remainingTuuid)
+                if(response.ok === false) throw new Error(response.err);
+                console.debug("Response", response);
+                if(!response.files || !response.keys) throw new Error('No files/keys received');
+                let files = await workersInner.directory.processDirectoryChunk(workersInner.encryption, userIdInner, response.files, response.keys);
+                console.debug("Files", files);
+                // Map to update job file names
+                let filenamesMappedByTuuid = Object.values(files).map(item=>{
+                    let filename = item.decryptedMetadata?.nom || '';  // Setting '' will prevent multiple attemps to load the same file
+                    let size = item.fileData?.taille;
+                    return {tuuid: item.tuuid, name: filename, size, thumbnail: item.thumbnail};
+                });
+                console.debug("Mapped filenames", filenamesMappedByTuuid);
+                setFileInfoConversionJobs(filenamesMappedByTuuid);
+            }
+        })
+        .catch(err=>console.error("Error loading tuuids", err));
         
     }, [workers, ready, tuuidsToLoad, userId, setFileInfoConversionJobs, setTuuidsToLoad]);
 

@@ -721,6 +721,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
             DOMAINE_GROSFICHIERS, 'requeteJobsVideo'
         ) as Collection2ConversionJobsResponse;
     }
+
+    async collections2RemoveConversionJob(tuuid: string, fuuid: string, job_id: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {tuuid, fuuid, job_id}, 
+            DOMAINE_GROSFICHIERS, 'supprimerJobVideoV2'
+        ) as MessageResponse;
+    }
 }
 
 var worker = new AppsConnectionWorker();
