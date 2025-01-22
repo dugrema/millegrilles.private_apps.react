@@ -3,12 +3,13 @@ import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useMediaConversionStore, { ConversionJobStoreItem } from "./mediaConversionStore";
 import { EtatJobEnum } from "../workers/connection.worker";
+import useUserBrowsingStore from "./userBrowsingStore";
 
 function MediaConversionsPage() {
 
     return (
         <>
-            <section className='pt-12'>
+            <section className='pt-12 pb-4'>
                 <h1 className='text-xl font-bold'>Media conversions progress</h1>
             </section>
 
@@ -55,12 +56,14 @@ function MediaConversionsList() {
                 progress = item.pct_progres;
             }
 
+            console.debug("Job ", item);
+
             return (
                 <React.Fragment key={item.job_id}>
-                    <p className='col-span-5'>{item.name || item.job_id}</p>
-                    <p className='col-span-3'>{params}</p>
+                    <p className='col-span-6 text-sm'>{item.name || item.job_id}</p>
+                    <p className='col-span-2 pl-2'>{params}</p>
                     {progress !== null?
-                        <div className="relative col-span-4 w-11/12 mt-1 h-4 text-xs bg-slate-200 rounded-full dark:bg-slate-700">
+                        <div className="pl-2 relative col-span-4 w-11/12 mt-1 h-4 text-xs bg-slate-200 rounded-full dark:bg-slate-700">
                             {progress<=30?
                                 <div className='w-full text-violet-800 text-xs text-center'>{progress}%</div>
                                 :
@@ -71,7 +74,7 @@ function MediaConversionsList() {
                             </div>
                         </div>
                     :
-                        <p className='col-span-4'><StateValue value={item.etat}/></p>
+                        <p className='pl-2 col-span-4'><StateValue value={item.etat}/></p>
                     }
                 </React.Fragment>
             );
@@ -90,7 +93,45 @@ function MediaConversionsList() {
 function SyncMediaConversions() {
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let userId = useUserBrowsingStore(state=>state.userId);
     let updateConversionJobs = useMediaConversionStore(state=>state.updateConversionJobs);
+    let setFileInfoConversionJobs = useMediaConversionStore(state=>state.setFileInfoConversionJobs);
+    let tuuidsToLoad = useMediaConversionStore(state=>state.tuuidsToLoad);
+    let setTuuidsToLoad = useMediaConversionStore(state=>state.setTuuidsToLoad);
+    
+    useEffect(()=>{
+        if(!workers || !ready || !userId || !tuuidsToLoad) return;
+        let jobs = Object.values(tuuidsToLoad)
+        if(jobs.length === 0) return;
+
+        setTuuidsToLoad(null);  // Reset, cleanup to avoid loops
+
+        if(tuuidsToLoad.length > 0) {
+            console.debug("Load file name for tuuids", tuuidsToLoad);
+            // Capture variables for inner context
+            let workersInner = workers, userIdInner = userId;
+            workers.connection.getFilesByTuuid(tuuidsToLoad)
+                .then(async response => {
+                    if(response.ok === false) throw new Error(response.err);
+                    console.debug("Response", response);
+                    if(!response.files || !response.keys) throw new Error('No files/keys received');
+                    let files = await workersInner.directory.processDirectoryChunk(workersInner.encryption, userIdInner, response.files, response.keys);
+                    console.debug("Files", files);
+                    // Map to update job file names
+                    let filenamesMappedByTuuid = Object.values(files).map(item=>{
+                        let filename = item.decryptedMetadata?.nom || '';  // Setting '' will prevent multiple attemps to load the same file
+                        let size = item.fileData?.taille;
+                        return {tuuid: item.tuuid, name: filename, size};
+                    });
+                    console.debug("Mapped filenames", filenamesMappedByTuuid);
+                    setFileInfoConversionJobs(filenamesMappedByTuuid);
+                })
+                .catch(err=>console.error("Error loading tuuids", err));
+        } else {
+            console.debug("No file name to load for list", jobs);
+        }
+        
+    }, [workers, ready, tuuidsToLoad, userId, setFileInfoConversionJobs, setTuuidsToLoad]);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -101,7 +142,12 @@ function SyncMediaConversions() {
             .then(response=>{
                 console.debug("Response", response);
                 if(response.ok === false) throw new Error(response.err);
-                if(response.jobs) updateConversionJobs(response.jobs)
+                if(response.jobs) {
+                    updateConversionJobs(response.jobs);
+                    let tuuids = new Set(response.jobs.map(item=>item.tuuid));
+                    let tuuidList = Array.from(tuuids);
+                    setTuuidsToLoad(tuuidList);
+                }
                 else updateConversionJobs([]);
             })
             .catch(err=>console.error("Error loading conversion jobs", err));
@@ -109,7 +155,7 @@ function SyncMediaConversions() {
         return () => {
             //TODO Unregister job listener
         }
-    }, [workers, ready, updateConversionJobs]);
+    }, [workers, ready, updateConversionJobs, setTuuidsToLoad]);
 
     return <></>;
 }
