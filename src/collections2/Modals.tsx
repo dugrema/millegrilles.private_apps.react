@@ -56,8 +56,8 @@ export function ModalInformation(props: ModalInformationProps & {shared?: boolea
     }, [workers, ready, cuuid, setStatsSubdirectories, shared, sharedCuuid, sharedCollection]);
 
     let statsValues = useMemo(()=>{
-        let subFiles = 0, subDirectories = 0, totalSize = 0;
         if(statsSubdirectories) {
+            let subFiles = 0, subDirectories = 0, totalSize = 0;            
             for(let stat of statsSubdirectories) {
                 if(stat.type_node === 'Fichier') {
                     subFiles = stat.count;
@@ -66,9 +66,9 @@ export function ModalInformation(props: ModalInformationProps & {shared?: boolea
                     subDirectories += stat.count;
                 }
             }
+            return {subFiles, subDirectories, totalSize};
         }
-
-        return {subFiles, subDirectories, totalSize};
+        return null;
     }, [statsSubdirectories]);
 
     let statusDirectory = useMemo(()=>{
@@ -118,14 +118,20 @@ export function ModalInformation(props: ModalInformationProps & {shared?: boolea
                             Including sub-directories
                         </p>
                         <div className='grid grid-cols-3'>
-                            <div className="text-base leading-relaxed text-gray-400">Size</div>
-                            <div className='col-span-2'>
-                                <Formatters.FormatteurTaille value={statsValues.totalSize} />
-                            </div>
-                            <div className="text-base leading-relaxed text-gray-400">Files</div>
-                            <div className='col-span-2'>{statsValues.subFiles}</div>
-                            <div className="text-base leading-relaxed text-gray-400">Directories</div>
-                            <div className='col-span-2'>{statsValues.subDirectories}</div>
+                            {statsValues?
+                                <>
+                                    <div className="text-base leading-relaxed text-gray-400">Size</div>
+                                    <div className='col-span-2'>
+                                        <Formatters.FormatteurTaille value={statsValues.totalSize} />
+                                    </div>
+                                    <div className="text-base leading-relaxed text-gray-400">Files</div>
+                                    <div className='col-span-2'>{statsValues.subFiles}</div>
+                                    <div className="text-base leading-relaxed text-gray-400">Directories</div>
+                                    <div className='col-span-2'>{statsValues.subDirectories}</div>
+                                </>
+                            :
+                                <p className='pb-14'>Loading ...</p>
+                            }
                         </div>
                     </div>
                     <div className="flex items-center p-4 md:p-5 border-t rounded-b border-gray-600">
