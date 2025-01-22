@@ -16,7 +16,18 @@ export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null,
     let [selectedVideo, setSelectedVideo] = useState(null as FileVideoData | null);
     let [loadProgress, setLoadProgress] = useState(null as number | null);
 
-    if(!file || !thumbnail) return <FileViewLayout file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} />;
+    let isMedia = useMemo(()=>{
+        if(!file) return false;
+        if(thumbnail) return true;
+        let mimetype = file.fileData?.mimetype;
+        if(mimetype?.startsWith('video')) {
+            let support = supportsVideoFormat(mimetype);
+            if(support) return true;
+        }
+        return false;
+    }, [file, thumbnail]);
+
+    if(!isMedia) return <FileViewLayout file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} />;
     return <FileMediaLayout file={file} thumbnail={thumbnail} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} setLoadProgress={setLoadProgress} />;
 }
 
@@ -95,7 +106,7 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
     )
 }
 
-function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: string, setLoadProgress: Dispatch<number | null>}) {
+function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: string | null, setLoadProgress: Dispatch<number | null>}) {
     let {file, thumbnailBlobUrl, selectedVideo, setSelectedVideo, setLoadProgress} = props;
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.filehostAuthenticated);
@@ -110,6 +121,9 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         if(file?.fileData?.video) {
             // Check that there is at least 1 available video
             return Object.keys(file.fileData.video).length > 0;
+        } else {
+            let mimetype = file?.fileData?.mimetype;
+            if(mimetype && supportsVideoFormat(mimetype)) return true;
         }
         return false;
     }, [file]);
@@ -133,8 +147,22 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
 
         // Select a video
         let videos = file.fileData?.video;
-        // console.debug("Videos: ", videos);
-        if(!videos) return;
+        console.debug("Videos: ", videos);
+        let mimetype = file.fileData?.mimetype;
+        if(!videos) {
+            if(mimetype && mimetype.startsWith('video')) {
+                if(supportsVideoFormat(mimetype)) {
+                    // Use original
+                    let video = {fuuid: fuuid, mimetype: file.fileData?.mimetype} as FileVideoData;
+                    setSelectedVideo(video);
+                    return;
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
 
         if(videoFuuid) {
             // A video parameter is present. Try to match.
@@ -164,7 +192,6 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         }
         console.debug("User max resolution", userMaxResolution);
 
-        let mimetype = file.fileData?.mimetype;
         if(fuuid && mimetype) {
             let originalResolution = null as number | null;
             if(file.fileData?.width && file.fileData?.height) {
@@ -200,7 +227,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
     useEffect(()=>{
         if(!workers || !ready) return;
         if(!playVideo || !file || !selectedVideo) return;
-        // console.debug("Start loading video");
+        // console.debug("Start loading video, file: %O, selected: %O", file, selectedVideo);
 
         // Reset flags
         setVideoReady(false);
@@ -263,7 +290,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         .catch(err=>console.error("Error loading video", err));
     }, [selectedVideo, jwt, setLoadProgress, setVideoReady]);
 
-    if(file && thumbnailBlobUrl && selectedVideo && videoReady) {
+    if(file && selectedVideo && videoReady) {
         return (
             <VideoPlayer 
                 fuuidVideo={selectedVideo.fuuid_video || selectedVideo.fuuid} 
@@ -272,7 +299,16 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
                 thumbnailBlobUrl={thumbnailBlobUrl} />
         )
     }
-    return <img src={thumbnailBlobUrl} alt='Content of the file' className='grow object-contain object-right' onClick={onClickStart} />;
+    if(thumbnailBlobUrl) {
+        return <img src={thumbnailBlobUrl} alt='Content of the file' className='grow object-contain object-right' onClick={onClickStart} />;
+    } else {
+        return (
+            <button onClick={onClickStart} 
+                className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
+                    Play video
+            </button>
+        );
+    }
 }
 
 type FileViewLayoutProps = {
@@ -337,7 +373,7 @@ function VideoDuration(props: {file: TuuidsIdbStoreRowType | null}) {
     )
 }
 
-function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimetypeVideo: string, jwt: string | null}) {
+function VideoPlayer(props: {thumbnailBlobUrl: string | null, fuuidVideo: string, mimetypeVideo: string, jwt: string | null}) {
 
     let {fuuidVideo, mimetypeVideo, thumbnailBlobUrl, jwt} = props;
     let {tuuid} = useParams();
@@ -404,7 +440,6 @@ function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimet
         if(!fullScreenChange) return;
         if(!refVideo?.current) return;
 
-        console.debug("Add event listener");
         let currenRef = refVideo?.current;
         currenRef.addEventListener('fullscreenchange', fullScreenChange);
 
@@ -415,7 +450,7 @@ function VideoPlayer(props: {thumbnailBlobUrl: string, fuuidVideo: string, mimet
 
     return (
         <>
-            <video ref={refVideo} controls poster={thumbnailBlobUrl} className={videoClassname} autoPlay 
+            <video ref={refVideo} controls poster={thumbnailBlobUrl || undefined} className={videoClassname} autoPlay 
                 onTimeUpdate={onTimeUpdate} onEnded={onEnded}>
                 {videoSrc?
                     <source src={videoSrc} type={mimetypeVideo} />
@@ -463,9 +498,10 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
     }, [file]);
 
     let onClickHandler = useCallback((e: MouseEvent<HTMLLIElement>)=>{
-        let videos = file?.fileData?.video;
-        if(!videos) throw new Error('No video information to select');
         let value = e.currentTarget.dataset.key;
+        let videos = file?.fileData?.video;
+        if(value !== 'original' && !videos) throw new Error('No video information to select');
+        videos = videos || {};
         // console.debug("Selecting ", value);
         if(value) {
             let video = videos[value];
@@ -485,7 +521,12 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
 
     let elems = useMemo(()=>{
         let video = file?.fileData?.video;
-        if(!video) return <></>;
+        let mimetype = file?.fileData?.mimetype;
+        if(!video && mimetype?.startsWith('video')) {
+            video = {};  // Go ahead with empty list - we'll check if the original mimetype is supported later on.
+        }
+
+        if(!video) return [<></>];
 
         let videoItems = Object.keys(video)
         .map(key=>{
@@ -502,8 +543,6 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
             return {entryKey: key, resolution, ...videoData} as FileVideoDataWithItemKey;
         })
         .sort(sortVideoEntries);
-
-        // console.debug("Video items: ", videoItems);
 
         let values = [];
         
@@ -534,7 +573,6 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
         }
 
         // Handle original format, detect if it is supported
-        let mimetype = file?.fileData?.mimetype;
         if(fuuid && mimetype) {
             let support = supportsVideoFormat(mimetype);
             //let originalItem = { fuuid, mimetype, height, width, codec, supportMedia };
@@ -558,7 +596,7 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
         }
 
         values = values.reverse();
-        
+
         return values;
     }, [file, fuuid, selectedVideo, contactId, onClickHandler]);
 
@@ -567,7 +605,7 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
         return ' opacity-0';
     }, [loadProgress]);
 
-    if(!file?.fileData?.video) return <></>;
+    if(elems.length === 0) return <></>;
 
     return (
         <>
