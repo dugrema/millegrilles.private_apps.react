@@ -15,6 +15,8 @@ import './App.css';
 
 import Footer from './Footer';
 
+import createCollections2ReactBrowserChildren from './collections2/Collections2ReactBrowser';
+
 // AI Chat
 const AppAiChat = React.lazy(()=>import('./aichat/AppAiChat'));
 const ChatSummaryHistory = React.lazy(()=>import('./aichat/ChatSummaryHistory'));
@@ -22,17 +24,6 @@ const AiChatConversation = React.lazy(()=>import('./aichat/Conversation'));
 
 // Collections 2
 const AppCollections2 = React.lazy(()=>import('./collections2/AppCollections2'));
-const Collections2DefaultPageRedirect = React.lazy(()=>import('./collections2/DefaultRedirect'));
-const Collections2Configuration = React.lazy(()=>import('./collections2/Configuration'));
-const Collections2UserFileBrowsing = React.lazy(()=>import('./collections2/UserFileBrowsing'));
-const Collections2UserFileViewing = React.lazy(()=>import('./collections2/UserFileViewing'));
-const Collections2UserDeletedFilesBrowsing = React.lazy(()=>import('./collections2/BrowsingDeleted'));
-const Collections2Search = React.lazy(()=>import('./collections2/SearchPage'));
-const Collections2SharedContent = React.lazy(()=>import('./collections2/SharedContent'));
-const Collections2SharedUsers = React.lazy(()=>import('./collections2/SharedUsers'));
-const Collections2SharedFileBrowsing = React.lazy(()=>import('./collections2/SharedFileBrowsing'));
-const Collections2SharedFileViewing = React.lazy(()=>import('./collections2/SharedFileViewing'));
-const Collections2SharedUserCollections = React.lazy(()=>import('./collections2/SharedUserCollections'));
 
 // Notepad
 const NotepadApp = React.lazy(()=>import('./notepad/AppNotepad'));
@@ -70,33 +61,11 @@ const router = createBrowserRouter([
             { path: "/apps/aichat/conversation/:conversationId", element: <AiChatConversation /> },
         ]
   	},
-      {
+    {
 		path: "/apps/collections2",
 		element: <AppCollections2 />,
         errorElement: <ErrorPage />,
-        children: [
-            { path: "", element: <Collections2DefaultPageRedirect /> },
-            { path: "config", element: <Collections2Configuration /> },
-            { path: "b", element: <Collections2UserFileBrowsing /> },
-            { path: "b/:tuuid", element: <Collections2UserFileBrowsing /> },
-            { path: "f/:tuuid", element: <Collections2UserFileViewing /> },
-            { path: "f/:tuuid/v/:videoFuuid", element: <Collections2UserFileViewing /> },
-            { path: "d", element: <Collections2UserDeletedFilesBrowsing /> },
-            { path: "d/:tuuid", element: <Collections2UserDeletedFilesBrowsing /> },
-            { path: "s", element: <Collections2Search /> },
-            { 
-                path: "c", 
-                element: <Collections2SharedContent />,
-                children: [
-                    { path: "", element: <Collections2SharedUsers /> },
-                    { path: ":userId", element: <Collections2SharedUsers /> },
-                    { path: ":userId/shares", element: <Collections2SharedUserCollections /> },
-                    { path: ":contactId/b/:tuuid", element: <Collections2SharedFileBrowsing /> },
-                    { path: ":contactId/f/:tuuid", element: <Collections2SharedFileViewing /> },
-                    { path: ":contactId/f/:tuuid/v/:videoFuuid", element: <Collections2SharedFileViewing /> },
-                ]
-            },
-        ]
+        children: createCollections2ReactBrowserChildren(),
   	},
     {
 		path: "/apps/notepad",
