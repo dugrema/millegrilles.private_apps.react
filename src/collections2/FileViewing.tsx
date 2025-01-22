@@ -7,6 +7,8 @@ import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore from "./userBrowsingStore";
 import useWorkers from "../workers/workers";
 import { FileImageData, FileVideoData, getCurrentVideoPosition, removeVideoPosition, setVideoPosition, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
+import { CONST_VIDEO_MAX_RESOLUTION } from "./Settings";
+import { VIDEO_RESOLUTIONS } from "./picklistValues";
 
 export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
     let {file, thumbnail} = props;
@@ -97,7 +99,6 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
     let {file, thumbnailBlobUrl, selectedVideo, setSelectedVideo, setLoadProgress} = props;
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.filehostAuthenticated);
-    let userMaxResolution = useUserBrowsingStore(state=>state.userMaxResolution);
 
     let {videoFuuid, contactId} = useParams();
 
@@ -155,6 +156,14 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             }
         }
 
+        let userMaxResolution = VIDEO_RESOLUTIONS[0].value;  // Max value for default resolutions
+        let userMaxResolutionConfig = localStorage.getItem(CONST_VIDEO_MAX_RESOLUTION) as string;
+        if(userMaxResolutionConfig) {
+            let resolutionInt = Number.parseInt(userMaxResolutionConfig);
+            if(resolutionInt) userMaxResolution = resolutionInt;
+        }
+        console.debug("User max resolution", userMaxResolution);
+
         let mimetype = file.fileData?.mimetype;
         if(fuuid && mimetype) {
             let originalResolution = null as number | null;
@@ -186,7 +195,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         }, null as FileVideoData | null);
         // console.debug("Selected video: %O", videos);
         setSelectedVideo(video);
-    }, [file, isVideoFile, selectedVideo, setSelectedVideo, fuuid, videoFuuid, userMaxResolution]);
+    }, [file, isVideoFile, selectedVideo, setSelectedVideo, fuuid, videoFuuid]);
 
     useEffect(()=>{
         if(!workers || !ready) return;

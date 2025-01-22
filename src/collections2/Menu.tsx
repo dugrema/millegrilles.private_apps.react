@@ -33,7 +33,9 @@ export default function HeaderMenu(props: MenuProps) {
 
     let selectedSection = useMemo(()=>{
         let locationPath = location.pathname;
-        if(locationPath.startsWith('/apps/collections2/b')) {
+        if(locationPath.startsWith('/apps/collections2/settings')) {
+            return 'settings';
+        } else if(locationPath.startsWith('/apps/collections2/b')) {
             return 'browse';
         } else if(locationPath.startsWith('/apps/collections2/s')) {
             return 'search';
@@ -64,35 +66,31 @@ export default function HeaderMenu(props: MenuProps) {
                 </div>
                 <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='browse'?selectedClassname:unselectedClassname)}>
                     <Link to='/apps/collections2/b'>
-                        <img src={HomeIcon} alt="Browse" 
-                            className='w-7 inline-block' />
+                        <img src={HomeIcon} alt="Browse" className='w-7 inline-block' />
                     </Link>
                 </div>
                 <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='search'?selectedClassname:unselectedClassname)}>
                     <Link to='/apps/collections2/s'>
-                        <img src={SearchIcon} alt="Search" 
-                            className='w-7 inline-block' />
+                        <img src={SearchIcon} alt="Search" className='w-7 inline-block' />
                     </Link>
                 </div>
                 <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='deleted'?selectedClassname:unselectedClassname)}>
                     <Link to='/apps/collections2/d'>
-                        <img src={TrashIcon} alt="Deleted files" 
-                            className='w-7 inline-block' />
+                        <img src={TrashIcon} alt="Deleted files" className='w-7 inline-block' />
                     </Link>
                 </div>
                 <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='video'?selectedClassname:unselectedClassname)}>
-                    <img src={VideoIcon} alt="Video conversion" 
-                        className='w-7 inline-block' />
+                    <img src={VideoIcon} alt="Video conversion" className='w-7 inline-block' />
                 </div>
                 <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='share'?selectedClassname:unselectedClassname)}>
                     <Link to='/apps/collections2/c'>
-                        <img src={ShareIcon} alt="Share" 
-                            className='w-7 inline-block' />
+                        <img src={ShareIcon} alt="Share" className='w-7 inline-block' />
                     </Link>
                 </div>
                 <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='settings'?selectedClassname:unselectedClassname)}>
-                    <img src={SettingIcon} alt="Settings" 
-                        className='w-7 inline-block' />
+                    <Link to='/apps/collections2/settings'>
+                        <img src={SettingIcon} alt="Settings" className='w-7 inline-block' />
+                    </Link>
                 </div>
             </div>
             <div className='text-right text-lg font-bold underline'>

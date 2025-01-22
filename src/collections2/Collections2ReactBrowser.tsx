@@ -1,5 +1,6 @@
 import React from 'react';
 
+// Importing using React lazy to allow faster load on initial /app page access
 const Collections2DefaultPageRedirect = React.lazy(()=>import('./DefaultRedirect'));
 const Collections2Configuration = React.lazy(()=>import('./Configuration'));
 const Collections2UserFileBrowsing = React.lazy(()=>import('./UserFileBrowsing'));
@@ -11,6 +12,7 @@ const Collections2SharedUsers = React.lazy(()=>import('./SharedUsers'));
 const Collections2SharedFileBrowsing = React.lazy(()=>import('./SharedFileBrowsing'));
 const Collections2SharedFileViewing = React.lazy(()=>import('./SharedFileViewing'));
 const Collections2SharedUserCollections = React.lazy(()=>import('./SharedUserCollections'));
+const SettingsPage = React.lazy(()=>import('./Settings'));
 
 function createCollections2ReactBrowserChildren() {
     return [
@@ -35,6 +37,7 @@ function createCollections2ReactBrowserChildren() {
                 { path: ":contactId/f/:tuuid/v/:videoFuuid", element: <Collections2SharedFileViewing /> },
             ]
         },
+        { path: "settings", element: <SettingsPage /> },
     ];
 }
 
