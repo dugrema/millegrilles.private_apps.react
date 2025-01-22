@@ -25,6 +25,7 @@
         {"domain": "GrosFichiers", "action": "getPartagesContact"},
         {"domain": "GrosFichiers", "action": "getInfoStatistiques"},
         {"domain": "GrosFichiers", "action": "getJwtStreaming"},
+        {"domain": "GrosFichiers", "action": "requeteJobsVideo"},
         {"domain": "CoreTopologie", "action": "getFilehosts", "exchange": "1.public"}
     ],
     "commands": [

@@ -13,6 +13,7 @@ const Collections2SharedFileBrowsing = React.lazy(()=>import('./SharedFileBrowsi
 const Collections2SharedFileViewing = React.lazy(()=>import('./SharedFileViewing'));
 const Collections2SharedUserCollections = React.lazy(()=>import('./SharedUserCollections'));
 const SettingsPage = React.lazy(()=>import('./Settings'));
+const MediaConversionsPage = React.lazy(()=>import('./MediaConversions'));
 
 function createCollections2ReactBrowserChildren() {
     return [
@@ -24,6 +25,7 @@ function createCollections2ReactBrowserChildren() {
         { path: "f/:tuuid/v/:videoFuuid", element: <Collections2UserFileViewing /> },
         { path: "d", element: <Collections2UserDeletedFilesBrowsing /> },
         { path: "d/:tuuid", element: <Collections2UserDeletedFilesBrowsing /> },
+        { path: "conversions", element: <MediaConversionsPage /> },
         { path: "s", element: <Collections2Search /> },
         { 
             path: "c", 

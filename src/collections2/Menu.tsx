@@ -35,6 +35,8 @@ export default function HeaderMenu(props: MenuProps) {
         let locationPath = location.pathname;
         if(locationPath.startsWith('/apps/collections2/settings')) {
             return 'settings';
+        } else if(locationPath.startsWith('/apps/collections2/conversions')) {
+            return 'conversions';
         } else if(locationPath.startsWith('/apps/collections2/b')) {
             return 'browse';
         } else if(locationPath.startsWith('/apps/collections2/s')) {
@@ -79,8 +81,10 @@ export default function HeaderMenu(props: MenuProps) {
                         <img src={TrashIcon} alt="Deleted files" className='w-7 inline-block' />
                     </Link>
                 </div>
-                <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='video'?selectedClassname:unselectedClassname)}>
-                    <img src={VideoIcon} alt="Video conversion" className='w-7 inline-block' />
+                <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='conversions'?selectedClassname:unselectedClassname)}>
+                    <Link to='/apps/collections2/conversions'>
+                        <img src={VideoIcon} alt="Media conversions" className='w-7 inline-block' />
+                    </Link>
                 </div>
                 <div className={'md:inline-block px-1 transition-colors duration-300' + (selectedSection==='share'?selectedClassname:unselectedClassname)}>
                     <Link to='/apps/collections2/c'>

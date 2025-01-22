@@ -228,6 +228,30 @@ export type Collection2FilehostResponse = MessageResponse & {list?: Filehost[] |
 
 export type Collection2StreamingJwtResponse = MessageResponse & {jwt_token?: string | null};
 
+export enum EtatJobEnum {
+    PENDING = 1,
+    RUNNING,
+    PERSISTING,
+    ERROR,
+    TOO_MANY_RETRIES,
+};
+
+export type Collection2ConversionJob = {
+    job_id: string,
+    user_id: string,
+    tuuid: string,
+    fuuid: string,
+    mimetype: string | null,
+    filehost_ids: string[],
+    pct_progres?: number | null,
+    etat?: EtatJobEnum | null,
+    retry?: number | null,
+    date_maj?: number | null,
+    params?: {[key: string]: string | number | boolean},
+}
+
+export type Collection2ConversionJobsResponse = MessageResponse & {jobs?: Collection2ConversionJob[]};
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -688,6 +712,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
             {fuuid: fuuidVideo, fuuid_ref: fuuidRef, contact_id: contactId}, 
             DOMAINE_GROSFICHIERS, 'getJwtStreaming'
         ) as Collection2StreamingJwtResponse;
+    }
+
+    async collections2GetConversionJobs() {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest(
+            {}, 
+            DOMAINE_GROSFICHIERS, 'requeteJobsVideo'
+        ) as Collection2ConversionJobsResponse;
     }
 }
 
