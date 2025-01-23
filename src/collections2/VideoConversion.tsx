@@ -369,7 +369,7 @@ function ConversionList(props: {file: TuuidsIdbStoreRowType}) {
                 </div>
             )
         });
-    }, [sortedCurrentJobs]);
+    }, [sortedCurrentJobs, ready, removeJobHandler]);
 
     let sortedConversions = useMemo(()=>{
         let video = file.fileData?.video;
@@ -415,7 +415,7 @@ function ConversionList(props: {file: TuuidsIdbStoreRowType}) {
             )
         });
         return videoList;
-    }, [sortedConversions]);
+    }, [sortedConversions, ready, removeVideoHandler]);
 
     return (
         <>
