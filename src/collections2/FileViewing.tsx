@@ -227,6 +227,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             if(previous && previous.width && previous.height) resolutionPrevious = Math.min(previous.width, previous.height);
             if(item && item.width && item.height) resolutionCurrent = Math.min(item.width, item.height);
             if(resolutionPrevious === resolutionCurrent) return previous;
+            if(!supportsVideoData(item)) return previous;
             if(!resolutionPrevious) return item;
             if(!resolutionCurrent) return previous;
             if(resolutionCurrent > userMaxResolution) return previous;
@@ -475,23 +476,38 @@ function VideoPlayer(props: {thumbnailBlobUrl: string | null, fuuidVideo: string
     )
 }
 
-type FileVideoDataWithItemKey = FileVideoData & {entryKey: string, resolution: number};
+export type FileVideoDataWithItemKey = FileVideoData & {entryKey: string, resolution: number};
 
-function sortVideoEntries(a: FileVideoDataWithItemKey, b: FileVideoDataWithItemKey): number {
+export function sortVideoEntries(a: FileVideoDataWithItemKey, b: FileVideoDataWithItemKey): number {
     if(a === b) return 0;
     let resolutionA = a.resolution;
     let resolutionB = b.resolution;
     if(resolutionA === resolutionB) {
-        if(a.subtitle_stream_idx === b.subtitle_stream_idx) {
-            if(typeof(a.audio_stream_idx) !== 'number') return -1;
-            if(typeof(b.audio_stream_idx) !== 'number') return 1;
-            // Return desc sort - will place the 0 stream first
-            return b.audio_stream_idx - a.audio_stream_idx;
+        if(a.mimetype === b.mimetype) {
+            if(a.codec === b.codec) {
+                if(a.quality === b.quality) {
+                    if(a.subtitle_stream_idx === b.subtitle_stream_idx) {
+                        if(a.audio_stream_idx === b.audio_stream_idx) {
+                            return a.fuuid.localeCompare(b.fuuid);
+                        }
+                        if(typeof(a.audio_stream_idx) !== 'number') return -1;
+                        if(typeof(b.audio_stream_idx) !== 'number') return 1;
+                        return a.audio_stream_idx - b.audio_stream_idx;
+                    }
+                    if(typeof(a.subtitle_stream_idx) !== 'number') return -1;
+                    if(typeof(b.subtitle_stream_idx) !== 'number') return 1;
+                    return a.subtitle_stream_idx - b.subtitle_stream_idx;
+                }
+                if(!a.quality) return 1;
+                if(!b.quality) return -1;
+                return a.quality - b.quality;
+            }
+            if(!a.codec) return 1;
+            if(!b.codec) return -1;
+            return a.codec.localeCompare(b.codec);
+        } else {
+            return a.mimetype.localeCompare(b.mimetype);
         }
-        if(typeof(a.subtitle_stream_idx) !== 'number') return -1;
-        if(typeof(b.subtitle_stream_idx) !== 'number') return 1;
-        // Return desc sort - will place the 0 stream first
-        return b.subtitle_stream_idx - a.subtitle_stream_idx;
     };
 
     if(typeof(resolutionA) !== 'number') return 1;
@@ -575,10 +591,18 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
                 url = `/apps/collections2/c/${contactId}/f/${file?.tuuid}/v/${videoItem.fuuid_video}`;
             }
 
+            let mimetype = videoItem.mimetype;
+            if(mimetype) {
+                let supported = supportsVideoData(videoItem);
+                // console.debug("Mimetype %s codec %s supported? %O", mimetype, codec, supported);
+                if(!supported) continue;  // Not supported, skip
+            }
+
             values.push((
-                <li key={videoItem.fuuid_video} data-key={videoItem.entryKey} onClick={onClickHandler} className={'pl-2 ' + (selected?'bg-violet-500 font-bold':'')} >
+                <li key={videoItem.fuuid_video} data-key={videoItem.entryKey} onClick={onClickHandler} className={'pl-2 hover:bg-violet-500 ' + (selected?'bg-violet-800 font-bold':'')} >
                     <Link to={url}>
                         {videoItem.resolution}
+                        {videoItem.codec?<span className='pl-1'>{videoItem.codec}</span>:<></>}
                         {streamInfo?<span className='pl-2'>{streamInfo}</span>:<></>}
                     </Link>
                 </li>
@@ -601,7 +625,7 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
                     url = `/apps/collections2/c/${contactId}/f/${file?.tuuid}/v/${fuuid}`;
                 }
                 values.push(
-                    <li key='original' data-key='original' onClick={onClickHandler} className={'pl-2 ' + (originalSelected?'bg-violet-500 font-bold':'')}>
+                    <li key='original' data-key='original' onClick={onClickHandler} className={'pl-2 hover:bg-violet-500 ' + (originalSelected?'bg-violet-800 font-bold':'')}>
                         <Link to={url}>Original</Link>
                     </li>
                 );
@@ -643,4 +667,36 @@ export function supportsVideoFormat(videoType: string): CanPlayTypeResult {
     const canPlayType = video.canPlayType(videoType)
     // Returns 'probably', 'maybe', ''
     return canPlayType
+}
+
+/**
+ * 
+ * @param videoType Video type string. Example: 'video/webm; codecs="vp9, vorbis"'
+ * @returns One of: 'probably', 'maybe', ''
+ */
+export function supportsVideoData(video: FileVideoData): CanPlayTypeResult {
+    // Example: 'video/webm; codecs="vp9, vorbis"'
+
+    let mimetype = video.mimetype;
+    let codec = video.codec;
+    let supported = '' as CanPlayTypeResult;
+
+    if(codec === 'hevc') {
+        // iOS video codec name for hevc
+        codec = 'hvc1';
+    }
+    
+    // Always return true for h264 mp4s (faster, not creating a Video elem).
+    if(mimetype === 'video/mp4' && codec === 'h264') return 'probably';
+    
+    // Check in detail
+    if(codec) {
+        let videoType = `${mimetype}; codecs="${codec}"`;
+        supported = supportsVideoFormat(videoType);
+        if(supported !== 'probably') supported = '';
+    } else {
+        supported = supportsVideoFormat(mimetype);
+    }
+
+    return supported;
 }

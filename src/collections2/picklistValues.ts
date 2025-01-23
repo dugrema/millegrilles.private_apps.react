@@ -66,7 +66,7 @@ export type VideoOptionType = {
 
 export type VideoProfilesType = {[profile: string]: {[resolution: string]: VideoOptionType}};
 
-export const PROFILS_VIDEO = {
+export const VIDEO_PROFILES = {
     'vp9': {
         '360': {
             qualityVideo: 28,
