@@ -10,6 +10,7 @@ import { FileImageData, FileVideoData, getCurrentVideoPosition, removeVideoPosit
 import { CONST_VIDEO_MAX_RESOLUTION } from "./Settings";
 import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import VideoConversion from "./VideoConversion";
+import { isVideoMimetype } from "./mimetypes";
 
 export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
     let {file, thumbnail} = props;
@@ -18,13 +19,11 @@ export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null,
     let [loadProgress, setLoadProgress] = useState(null as number | null);
 
     let isMedia = useMemo(()=>{
-        if(!file) return false;
         if(thumbnail) return true;
+        if(!file) return false;
+        if(file.fileData?.video || file.fileData?.images) return true;
         let mimetype = file.fileData?.mimetype;
-        if(mimetype?.startsWith('video')) {
-            let support = supportsVideoFormat(mimetype);
-            if(support) return true;
-        }
+        if(mimetype) return isVideoMimetype(mimetype);
         return false;
     }, [file, thumbnail]);
 
@@ -43,6 +42,13 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
     let [viewConversionScreen, setViewConversionScreen] = useState(false);
     let conversionScreenOpen = useCallback(()=>setViewConversionScreen(true), [setViewConversionScreen]);
     let conversionScreenClose = useCallback(()=>setViewConversionScreen(false), [setViewConversionScreen]);
+
+    let isVideoFile = useMemo(()=>{
+        if(file?.fileData?.video) return true;
+        let mimetype = file?.fileData?.mimetype;
+        if(mimetype) return isVideoMimetype(mimetype);
+        return false;
+    }, [file]);
 
     // Load blob URL
     useEffect(()=>{
@@ -109,11 +115,15 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
                     file={file} 
                     selectedVideo={selectedVideo} 
                     setSelectedVideo={setSelectedVideo} 
-                    loadProgress={loadProgress} />
-                <button onClick={conversionScreenOpen} 
-                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
-                        Convert
-                </button>
+                    loadProgress={loadProgress} 
+                    isVideo={isVideoFile} />
+
+                {isVideoFile?
+                    <button onClick={conversionScreenOpen} 
+                        className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
+                            Convert
+                    </button>
+                :<></>}
             </div>
         </div>
     )
@@ -340,13 +350,13 @@ function FileViewLayout(props: FileViewLayoutProps) {
 
     return (
         <div className='pt-2'>
-            <FileDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} />
+            <FileDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} isVideo={false} />
         </div>
     )
 }
 
-function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType}) {
-    let {file, selectedVideo, setSelectedVideo, loadProgress} = props;
+function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, isVideo: boolean}) {
+    let {file, selectedVideo, setSelectedVideo, loadProgress, isVideo} = props;
     
     return (
         <div className='grid-cols-1'>
@@ -359,8 +369,12 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType}) 
             <p className='text-slate-400'>Type</p>
             <p>{file.fileData?.mimetype}</p>
             <ImageDimensions file={file} />
-            <VideoDuration file={file} />
-            <VideoSelectionDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} />
+            {isVideo?
+                <>
+                    <VideoDuration file={file} />
+                    <VideoSelectionDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} />
+                </>
+            :<></>}
         </div>
     );
 }
@@ -555,7 +569,7 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
             video = {};  // Go ahead with empty list - we'll check if the original mimetype is supported later on.
         }
 
-        if(!video) return [<></>];
+        if(!video) return [<div key='1'></div>];
 
         let videoItems = Object.keys(video)
         .map(key=>{
