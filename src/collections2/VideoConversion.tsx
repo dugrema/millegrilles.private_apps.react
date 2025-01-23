@@ -1,9 +1,12 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import ActionButton from "../resources/ActionButton";
-import { BITRATES_AUDIO, QUALITY_VIDEO, VIDEO_CODEC, VIDEO_PROFILES, VIDEO_RESOLUTIONS } from "./picklistValues";
-import { FileVideoData, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
+import { BITRATES_AUDIO, QUALITY_VIDEO, VIDEO_CODEC, VIDEO_MIMETYPES_BY_CODEC, VIDEO_PROFILES, VIDEO_RESOLUTIONS } from "./picklistValues";
+import { TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import { FileVideoDataWithItemKey, sortVideoEntries } from "./FileViewing";
+import useConnectionStore from "../connectionStore";
+import useWorkers from "../workers/workers";
+import { Collections2ConvertVideoCommand } from "../workers/connection.worker";
 
 function VideoConversion(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
     
@@ -36,16 +39,12 @@ function FileDetail(props: {file: TuuidsIdbStoreRowType}) {
     )
 }
 
-type AudioStreamItem = {label: string, value: number};
-type SubtitleItem = {label: string, value: number};
-
 function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
 
     let {file, close} = props;
 
-    let convertHandler = useCallback(async ()=>{
-
-    }, []);
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
     let [videoCodec, setVideoCodec] = useState('');
     let [resolution, setResolution] = useState('');
@@ -56,13 +55,71 @@ function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
     let [audioBitrate, setAudioBitrate] = useState('');
     let [audioStream, setAudioStream] = useState('');
     let [fileResolution, setFileResolution] = useState(null as number | null);
-
+    
     let videoCodecOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setVideoCodec(e.currentTarget.value), [setVideoCodec]);
     let resolutionOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setResolution(e.currentTarget.value), [setResolution]);
     let qualityOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setQuality(e.currentTarget.value), [setQuality]);
     let subtitlesOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setSubtitles(e.currentTarget.value), [setSubtitles]);
     let audioBitrateOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setAudioBitrate(e.currentTarget.value), [setAudioBitrate]);
     let audioStreamOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setAudioStream(e.currentTarget.value), [setAudioStream]);
+
+    let convertHandler = useCallback(async ()=>{
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!file) throw new Error('file not provided');
+
+        let fuuids = file.fileData?.fuuids_versions;
+        let fuuid = '';
+        if(fuuids && fuuids.length > 0) fuuid = fuuids[0];  // Most recent version
+        else throw new Error('No fuuid found in file');
+
+        let mimetype = VIDEO_MIMETYPES_BY_CODEC[videoCodec];
+        if(!mimetype) throw new Error('No mimetype mapping found for codec ' + videoCodec);
+
+        let resolutionInt = null, qualityInt = null, audioBitrateInt = null, audioStreamInt = null, subtitlesInt = null;
+        console.debug("Resolution: ", resolution);
+        if(resolution) {
+            resolutionInt = Number.parseInt(resolution);
+        } else {
+            // Original resolution
+            let width = file.fileData?.width;
+            let height = file.fileData?.height;
+            resolutionInt = width || height;
+            if(width && height) {
+                resolutionInt = Math.min(width, height);
+            }
+        }
+        if(quality) qualityInt = Number.parseInt(quality);
+        if(audioBitrate) audioBitrateInt = Number.parseInt(audioBitrate);
+        if(audioStream) audioStreamInt = Number.parseInt(audioStream);
+        if(subtitles) subtitlesInt = Number.parseInt(subtitles);
+
+        let command = {
+            tuuid: file.tuuid,
+            fuuid,
+            mimetype,
+            codecVideo: videoCodec,
+            codecAudio: audioCodec,
+            resolutionVideo: resolutionInt,
+            qualityVideo: qualityInt,
+            bitrateVideo: null,
+            bitrateAudio: audioBitrateInt,
+            preset,
+            audio_stream_idx: audioStreamInt,
+            subtitle_stream_idx: subtitlesInt,
+        } as Collections2ConvertVideoCommand;
+
+        console.debug("Command", command);
+
+        let response = await workers.connection.collections2convertVideo(command)
+        // console.debug("Video conversion response", response);
+        if(response.ok === false) throw new Error(response.err);
+        if(!response.job_id) throw new Error('New job id not received');
+
+        // Add content to list of in progress videos
+        let jobId = response.job_id;
+        console.debug("Add jobId to list", jobId);
+
+    }, [workers, ready, file, videoCodec, resolution, quality, subtitles, preset, audioCodec, audioBitrate, audioStream, fileResolution]);
 
     let [videoCodecs, videoResolutions, videoQuality, audioBitrates] = useMemo(()=>{
         let videoCodecs = VIDEO_CODEC.map(item=>(<option key={item.value} value={item.value}>{item.label}</option>));
@@ -135,7 +192,7 @@ function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
                 <select id='resolution-select' value={resolution} onChange={resolutionOnChange}
                     className='col-span-2 bg-slate-600 text-slate-300 cursor-pointer rounded-md mb-1'>
                         {videoResolutions}
-                        <option>Original</option>
+                        <option value=''>Original</option>
                 </select>
                 <label htmlFor='quality-select' className='text-slate-400'>Quality</label>
                 <select id='quality-select' value={quality} onChange={qualityOnChange}
@@ -180,7 +237,7 @@ function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
 
             {/* Buttons */}
             <div className='text-center w-full col-span-2 pt-4'>
-                <ActionButton onClick={convertHandler} revertSuccessTimeout={3} mainButton={true}>Convert</ActionButton>
+                <ActionButton onClick={convertHandler} disabled={!ready} revertSuccessTimeout={3} mainButton={true}>Convert</ActionButton>
                 <button onClick={close}
                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
                     Back

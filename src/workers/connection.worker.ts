@@ -253,7 +253,6 @@ export type Collection2ConversionJob = {
 
 export type Collection2ConversionJobsResponse = MessageResponse & {jobs?: Collection2ConversionJob[]};
 
-
 export const CONST_MEDIA_STATE_PROBE = 'probe';
 export const CONST_MEDIA_STATE_TRANSCODING = 'transcodage';
 export const CONST_MEDIA_STATE_DONE = 'termine';
@@ -273,6 +272,23 @@ export type Collection2MediaConversionJobUpdate = {
 };
 
 export type Collection2MediaConversionUpdateMessage = (MessageResponse | messageStruct.MilleGrillesMessage) & Collection2MediaConversionJobUpdate;
+
+export type Collections2ConvertVideoCommand = {
+    tuuid: string,
+    fuuid: string,
+    mimetype: string,
+    codecVideo: string,
+    codecAudio: string,
+    resolutionVideo: number,
+    qualityVideo?: number | null,
+    bitrateVideo?: number | null,
+    bitrateAudio: number,
+    preset?: string | null,
+    audio_stream_idx?: number | null,
+    subtitle_stream_idx?: number | null,
+};
+
+export type Collections2ConvertVideoResponse = MessageResponse & {job_id?: string};
 
 export class AppsConnectionWorker extends ConnectionWorker {
 
@@ -750,6 +766,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
             {tuuid, fuuid, job_id}, 
             DOMAINE_GROSFICHIERS, 'supprimerJobVideoV2'
         ) as MessageResponse;
+    }
+
+    async collections2convertVideo(command: Collections2ConvertVideoCommand) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            command, 
+            DOMAINE_GROSFICHIERS, 'transcoderVideo'
+        ) as Collections2ConvertVideoResponse;
     }
 
     async collection2SubscribeCollectionEvents(cuuid: string | null, cb: SubscriptionCallback): Promise<void> {

@@ -64,6 +64,12 @@ export type VideoOptionType = {
     fallback?: boolean,
 };
 
+export const VIDEO_MIMETYPES_BY_CODEC = {
+    'vp9': 'video/webm',
+    'hevc': 'video/mp4',
+    'h264': 'video/mp4',
+} as {[codec: string]: string};
+
 export type VideoProfilesType = {[profile: string]: {[resolution: string]: VideoOptionType}};
 
 export const VIDEO_PROFILES = {
