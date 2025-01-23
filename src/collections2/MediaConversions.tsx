@@ -120,7 +120,7 @@ function MediaConversionsList() {
                 </div>
             );
         });
-    }, [sortedJobs]);
+    }, [sortedJobs, openFileHandler, removeJobHandler]);
 
     if(!currentJobs) return <p>Loading ...</p>;
 
@@ -209,12 +209,12 @@ export function SyncMediaConversions() {
             console.warn("Unknown message action: ", action);
         }
 
-    }, [workers, userId]);
+    }, [workers, userId, updateConversionJob]);
 
     let conversionJobsUpdateHandlerProxy = useMemo(()=>{
         if(!workers || !ready) return null;
         return proxy(conversionJobsUpdateHandler);
-    }, [workers, userId, conversionJobsUpdateHandler]);
+    }, [workers, ready, conversionJobsUpdateHandler]);
 
     useEffect(()=>{
         if(!workers || !ready || !userId || !tuuidsToLoad) return;
@@ -243,20 +243,20 @@ export function SyncMediaConversions() {
             }
 
             if(remainingTuuid.length > 0) {
-                console.debug("Load file name for tuuids", remainingTuuid);
+                // console.debug("Load file name for tuuids", remainingTuuid);
                 let response = await workersInner.connection.getFilesByTuuid(remainingTuuid)
                 if(response.ok === false) throw new Error(response.err);
-                console.debug("Response", response);
+                // console.debug("Response", response);
                 if(!response.files || !response.keys) throw new Error('No files/keys received');
                 let files = await workersInner.directory.processDirectoryChunk(workersInner.encryption, userIdInner, response.files, response.keys);
-                console.debug("Files", files);
+                // console.debug("Files", files);
                 // Map to update job file names
                 let filenamesMappedByTuuid = Object.values(files).map(item=>{
                     let filename = item.decryptedMetadata?.nom || '';  // Setting '' will prevent multiple attemps to load the same file
                     let size = item.fileData?.taille;
                     return {tuuid: item.tuuid, name: filename, size, thumbnail: item.thumbnail};
                 });
-                console.debug("Mapped filenames", filenamesMappedByTuuid);
+                // console.debug("Mapped filenames", filenamesMappedByTuuid);
                 setFileInfoConversionJobs(filenamesMappedByTuuid);
             }
         })
@@ -284,7 +284,7 @@ export function SyncMediaConversions() {
     useEffect(()=>{
         if(!workers || !ready || !reloadToggle) return;
         setReloadToggle(false);  // Got triggered, prevent new execution until the proper time
-        console.debug("Reload media list");
+        // console.debug("Reload media list");
         workers.connection.collections2GetConversionJobs()
             .then(response=>{
                 if(response.ok === false) throw new Error(response.err);
@@ -297,7 +297,7 @@ export function SyncMediaConversions() {
                 else setConversionJobs([]);
             })
             .catch(err=>console.error("Error loading conversion jobs", err));
-    }, [workers, ready, reloadToggle, setReloadToggle]);
+    }, [workers, ready, reloadToggle, setReloadToggle, setConversionJobs, setTuuidsToLoad]);
 
     return <></>;
 }

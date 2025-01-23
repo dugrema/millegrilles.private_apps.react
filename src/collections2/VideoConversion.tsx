@@ -79,7 +79,6 @@ function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
         if(!mimetype) throw new Error('No mimetype mapping found for codec ' + videoCodec);
 
         let resolutionInt = null, qualityInt = null, audioBitrateInt = null, audioStreamInt = null, subtitlesInt = null;
-        console.debug("Resolution: ", resolution);
         if(resolution) {
             resolutionInt = Number.parseInt(resolution);
         } else {
@@ -111,8 +110,6 @@ function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
             subtitle_stream_idx: subtitlesInt,
         } as Collections2ConvertVideoCommand;
 
-        console.debug("Command", command);
-
         let response = await workers.connection.collections2convertVideo(command)
         // console.debug("Video conversion response", response);
         if(response.ok === false) throw new Error(response.err);
@@ -122,7 +119,7 @@ function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
         let jobId = response.job_id;
         console.debug("Add jobId to list", jobId);
 
-    }, [workers, ready, file, videoCodec, resolution, quality, subtitles, preset, audioCodec, audioBitrate, audioStream, fileResolution]);
+    }, [workers, ready, file, videoCodec, resolution, quality, subtitles, preset, audioCodec, audioBitrate, audioStream]);
 
     let [videoCodecs, videoResolutions, videoQuality, audioBitrates] = useMemo(()=>{
         let videoCodecs = VIDEO_CODEC.map(item=>(<option key={item.value} value={item.value}>{item.label}</option>));
@@ -143,7 +140,6 @@ function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
 
     let [audioStreamList, subtitleList] = useMemo(()=>{
         if(!file) return [null];
-        console.debug("Load file values", file);
         let fileData = file.fileData;
         let audioStreamList = fileData?.audio?.map((item, idx)=>{
             let value = item.language || item.title || ''+idx;
@@ -172,7 +168,6 @@ function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
         // Put video codec defaults in
         let profile = VIDEO_PROFILES[videoCodec].default;
         if(profile) {
-            console.debug("Set defaults for profile %s: %O", videoCodec, profile);
             setQuality(''+profile.qualityVideo);
             setPreset(profile.preset);
             setAudioCodec(profile.codecAudio);
@@ -377,7 +372,7 @@ function ConversionList(props: {file: TuuidsIdbStoreRowType}) {
             )
         });
         return videoList;
-    }, [sortedConversions, currentJobs]);
+    }, [sortedConversions]);
 
     return (
         <>

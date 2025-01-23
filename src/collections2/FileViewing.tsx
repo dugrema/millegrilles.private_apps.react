@@ -160,7 +160,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
 
         // Select a video
         let videos = file.fileData?.video;
-        console.debug("Videos: ", videos);
+        // console.debug("Videos: ", videos);
         let mimetype = file.fileData?.mimetype;
         if(!videos) {
             if(mimetype && mimetype.startsWith('video')) {
@@ -203,7 +203,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             let resolutionInt = Number.parseInt(userMaxResolutionConfig);
             if(resolutionInt) userMaxResolution = resolutionInt;
         }
-        console.debug("User max resolution", userMaxResolution);
+        // console.debug("User max resolution", userMaxResolution);
 
         if(fuuid && mimetype) {
             let originalResolution = null as number | null;
