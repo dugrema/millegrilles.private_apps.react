@@ -324,7 +324,10 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         )
     }
     if(thumbnailBlobUrl) {
-        return <img src={thumbnailBlobUrl} alt='Content of the file' className='grow object-contain object-right' onClick={onClickStart} />;
+        return (
+            <img src={thumbnailBlobUrl} onClick={onClickStart} alt='Content of the file'
+                className='grow object-contain object-right bg-slate-100 bg-opacity-70' />
+        );
     } else {
         return (
             <button onClick={onClickStart} 
