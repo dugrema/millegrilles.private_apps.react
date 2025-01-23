@@ -6,7 +6,9 @@ import { Formatters } from "millegrilles.reactdeps.typescript";
 import { FileVideoDataWithItemKey, sortVideoEntries } from "./FileViewing";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
-import { Collections2ConvertVideoCommand } from "../workers/connection.worker";
+import { Collections2ConvertVideoCommand, EtatJobEnum } from "../workers/connection.worker";
+import { sortJobs, SyncMediaConversions } from "./MediaConversions";
+import useMediaConversionStore from "./mediaConversionStore";
 
 function VideoConversion(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
     
@@ -18,6 +20,7 @@ function VideoConversion(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) 
             <FileDetail file={file} />
             <ConversionForm file={file} close={close} />
             <ConversionList file={file} />
+            <SyncMediaConversions />
         </>
     );
 
@@ -276,6 +279,65 @@ function ConversionList(props: {file: TuuidsIdbStoreRowType}) {
 
     let {file} = props;
 
+    let currentJobs = useMediaConversionStore(state=>state.currentJobs);
+
+    let sortedCurrentJobs = useMemo(()=>{
+        if(!currentJobs) return null;
+        let jobs = Object.values(currentJobs).filter(item=>item.tuuid === file.tuuid);
+        jobs.sort(sortJobs)
+        return jobs;
+    }, [file, currentJobs]);
+
+    let mappedJobs = useMemo(()=>{
+        if(!sortedCurrentJobs) return <></>;
+        return sortedCurrentJobs.map(item=>{
+
+            let jobState = 'Error';
+            if(item.etat === EtatJobEnum.PENDING) jobState = 'Pending';
+            else if(item.etat === EtatJobEnum.RUNNING) jobState = 'Running';
+            else if(item.etat === EtatJobEnum.DONE) jobState = 'Complete';
+
+            let mimetype = 'video/mp4', codec = 'h264', quality = '28', resolution = 270;
+            let params = item.params;
+            if(params) {
+                if(params.mimetype) mimetype = params.mimetype as string;
+                if(params.codecVideo) codec = params.codecVideo as string;
+                if(params.qualityVideo) quality = params.qualityVideo as string;
+                if(params.resolutionVideo) resolution = params.resolutionVideo as number;
+            } else {
+                // User defaults (already set)
+            }
+
+            let pctProgress = null as number | null;
+            if(item.etat === EtatJobEnum.RUNNING && typeof(item.pct_progres) === 'number') {
+                pctProgress = item.pct_progres;
+            }
+
+            return (
+                <div key={item.job_id} className='grid grid-cols-12 px-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm'>
+                    <p className='col-span-2'>{mimetype}</p>
+                    <p>{codec}</p>
+                    <p>{quality}</p>
+                    <p>{resolution}p</p>
+                    {pctProgress !== null?
+                            <div className="ml-2 relative col-span-3 w-11/12 mt-1 h-4 text-xs bg-slate-200 rounded-full dark:bg-slate-700">
+                                {pctProgress<=30?
+                                    <div className='w-full text-violet-800 text-xs font-medium text-center'>{pctProgress} %</div>
+                                    :
+                                    <></>
+                                }
+                                <div className="absolute top-0 h-4 bg-violet-600 text-xs font-medium text-violet-100 text-center p-0.5 leading-none rounded-full transition-all duration-500" style={{width: pctProgress+'%'}}>
+                                    {pctProgress>30?<>{pctProgress} %</>:''}
+                                </div>
+                            </div>
+                        :
+                            <p className='col-span-5'>{jobState}</p>
+                    }
+                </div>
+            )
+        });
+    }, [sortedCurrentJobs]);
+
     let sortedConversions = useMemo(()=>{
         let video = file.fileData?.video;
         if(video) {
@@ -301,7 +363,7 @@ function ConversionList(props: {file: TuuidsIdbStoreRowType}) {
         if(!sortedConversions) return null;
         let videoList = sortedConversions.map(item=>{
             return (
-                <div className='grid grid-cols-12 px-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm'>
+                <div key={item.cle_conversion} className='grid grid-cols-12 px-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm'>
                     <p className='col-span-2'>{item.mimetype}</p>
                     <p>{item.codec}</p>
                     <p>{item.quality}</p>
@@ -315,7 +377,7 @@ function ConversionList(props: {file: TuuidsIdbStoreRowType}) {
             )
         });
         return videoList;
-    }, [sortedConversions]);
+    }, [sortedConversions, currentJobs]);
 
     return (
         <>
@@ -324,6 +386,7 @@ function ConversionList(props: {file: TuuidsIdbStoreRowType}) {
                 <div>
                     <p>Resolution</p>
                 </div>
+                {mappedJobs}
                 {mappedExistingConversions}
             </div>
         </>

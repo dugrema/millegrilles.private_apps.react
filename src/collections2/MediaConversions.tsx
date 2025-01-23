@@ -162,7 +162,7 @@ function Thumbnail(props: {value: Blob | null | undefined}) {
     return <img src={url} alt='File icon' className='ml-1 w-12 h-12 my-0.5 inline-block rounded' />;
 }
 
-function SyncMediaConversions() {
+export function SyncMediaConversions() {
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useUserBrowsingStore(state=>state.userId);
@@ -302,7 +302,7 @@ function SyncMediaConversions() {
     return <></>;
 }
 
-function sortJobs(a: ConversionJobStoreItem, b: ConversionJobStoreItem): number {
+export function sortJobs(a: ConversionJobStoreItem, b: ConversionJobStoreItem): number {
     if(a === b) return 0;
     if(a.etat === b.etat) {
         if(a.name === b.name) {
