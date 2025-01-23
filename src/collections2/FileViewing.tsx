@@ -9,6 +9,7 @@ import useWorkers from "../workers/workers";
 import { FileImageData, FileVideoData, getCurrentVideoPosition, removeVideoPosition, setVideoPosition, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
 import { CONST_VIDEO_MAX_RESOLUTION } from "./Settings";
 import { VIDEO_RESOLUTIONS } from "./picklistValues";
+import VideoConversion from "./VideoConversion";
 
 export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
     let {file, thumbnail} = props;
@@ -39,6 +40,9 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
 
     let [blobUrl, setBlobUrl] = useState('');
     let [fullSizeBlobUrl, setFullSizeBlobUrl] = useState('');
+    let [viewConversionScreen, setViewConversionScreen] = useState(false);
+    let conversionScreenOpen = useCallback(()=>setViewConversionScreen(true), [setViewConversionScreen]);
+    let conversionScreenClose = useCallback(()=>setViewConversionScreen(false), [setViewConversionScreen]);
 
     // Load blob URL
     useEffect(()=>{
@@ -93,6 +97,7 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
     }, [fullSizeBlobUrl]);
 
     if(!file) return <></>;
+    if(viewConversionScreen) return <VideoConversion file={file} close={conversionScreenClose} />;
 
     return (
         <div className='grid grid-cols-3 pt-2'>
@@ -100,7 +105,15 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
                 <MediaContentDisplay file={file} thumbnailBlobUrl={fullSizeBlobUrl || blobUrl} selectedVideo={selectedVideo} loadProgress={loadProgress} setSelectedVideo={setSelectedVideo} setLoadProgress={setLoadProgress} />
             </div>
             <div>
-                <FileDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} />
+                <FileDetail 
+                    file={file} 
+                    selectedVideo={selectedVideo} 
+                    setSelectedVideo={setSelectedVideo} 
+                    loadProgress={loadProgress} />
+                <button onClick={conversionScreenOpen} 
+                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
+                        Convert
+                </button>
             </div>
         </div>
     )
@@ -609,7 +622,7 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
 
     return (
         <>
-            <p className='text-slate-400'>Selected video resolution</p>
+            <p className='pt-4 text-slate-400'>Selected video resolution</p>
             <ol className="cursor-pointer items-pl-2 max-w-48">
                 {elems}
             </ol>
