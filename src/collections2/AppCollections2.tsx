@@ -61,24 +61,32 @@ function FilehostManager() {
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let filehostAuthenticated = useConnectionStore(state=>state.filehostAuthenticated);
     let setFilehostAuthenticated = useConnectionStore(state=>state.setFilehostAuthenticated);
 
+    // Connect to filehost. This resets on first successful connection to a longer check interval.
     useEffect(()=>{
         if(!workers || !ready) return;
 
-        maintainFilehosts(workers, setFilehostAuthenticated)
-            .catch(err=>console.error("Error during filehost initialization", err));
+        if(!filehostAuthenticated) {
+            // Initial connection attempt
+            maintainFilehosts(workers, setFilehostAuthenticated)
+                .catch(err=>console.error("Error during filehost initialization", err));
+        }
+
+        // Retry every 15 seconds if not authenticated. Reauth every 10 minutes if ok.
+        let intervalMillisecs = filehostAuthenticated?600_000:15_000;
 
         let interval = setInterval(()=>{
             if(!workers) throw new Error('workers not initialized');
             maintainFilehosts(workers, setFilehostAuthenticated)
                 .catch(err=>console.error("Error during filehost maintenance", err));
-        }, 180_000);
+        }, intervalMillisecs);
 
         return () => {
             clearInterval(interval);
         }
-    }, [workers, ready, setFilehostAuthenticated]);
+    }, [workers, ready, filehostAuthenticated, setFilehostAuthenticated]);
 
     return <></>;
 }

@@ -25,11 +25,13 @@ export default function HeaderMenu(props: MenuProps) {
     let location = useLocation();
 
     let connectionReady = useConnectionStore(state=>state.connectionAuthenticated);
+    let filehostAuthenticated = useConnectionStore(state=>state.filehostAuthenticated);
 
     let cssDisconnected = useMemo(()=>{
-        if(connectionReady) return '';
-        return ' bg-red-500';
-    }, [connectionReady]);
+        if(!connectionReady) return ' bg-red-500';
+        if(!filehostAuthenticated) return ' bg-amber-700'
+        return '';
+    }, [connectionReady, filehostAuthenticated]);
 
     let selectedSection = useMemo(()=>{
         let locationPath = location.pathname;
