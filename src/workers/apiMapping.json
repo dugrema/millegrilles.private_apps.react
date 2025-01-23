@@ -58,7 +58,8 @@
         {"domain": "GrosFichiers", "action": "deplacerFichiersCollection"},
         {"domain": "GrosFichiers", "action": "ajouterFichiersCollection"},
         {"domain": "GrosFichiers", "action": "supprimerJobVideoV2"},
-        {"domain": "GrosFichiers", "action": "transcoderVideo"}
+        {"domain": "GrosFichiers", "action": "transcoderVideo"},
+        {"domain": "GrosFichiers", "action": "supprimerVideo"}
     ],
     "subscriptions": {
         "userDeviceEvents": {

@@ -776,6 +776,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as Collections2ConvertVideoResponse;
     }
 
+    async collections2RemoveVideo(fuuid_video: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            {fuuid_video}, 
+            DOMAINE_GROSFICHIERS, 'supprimerVideo'
+        ) as Collections2ConvertVideoResponse;
+    }
+
     async collection2SubscribeCollectionEvents(cuuid: string | null, cb: SubscriptionCallback): Promise<void> {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.subscribe("collection2CollectionEvents", cb, {cuuid});

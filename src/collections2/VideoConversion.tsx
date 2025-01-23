@@ -1,4 +1,4 @@
-import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import ActionButton from "../resources/ActionButton";
 import { BITRATES_AUDIO, QUALITY_VIDEO, VIDEO_CODEC, VIDEO_MIMETYPES_BY_CODEC, VIDEO_PROFILES, VIDEO_RESOLUTIONS } from "./picklistValues";
 import { TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
@@ -9,6 +9,8 @@ import useWorkers from "../workers/workers";
 import { Collections2ConvertVideoCommand, EtatJobEnum } from "../workers/connection.worker";
 import { sortJobs, SyncMediaConversions } from "./MediaConversions";
 import useMediaConversionStore, { ConversionJobStoreItem } from "./mediaConversionStore";
+
+import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
 
 function VideoConversion(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
     
@@ -269,42 +271,50 @@ function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
     );
 }
 
-// function sortConversions(a: FileVideoData, b: FileVideoData): number {
-//     if(a === b) return 0;
-//     if(a.resolution === b.resolution) {
-//         if(a.mimetype === b.mimetype) {
-//             if(a.codec === b.codec) {
-//                 if(a.quality === b.quality) {
-//                     return a.fuuid.localeCompare(b.fuuid);
-//                 }
-//                 if(!a.quality) return 1;
-//                 if(!b.quality) return -1;
-//                 return a.quality - b.quality;
-//             }
-//             if(!a.codec) return 1;
-//             if(!b.codec) return -1;
-//             return a.codec.localeCompare(b.codec);
-//         } else {
-//             return a.mimetype.localeCompare(b.mimetype);
-//         }
-//     }
-//     if(!a.resolution) return 1;
-//     if(!b.resolution) return -1;
-//     return a.resolution - b.resolution;
-// }
-
 function ConversionList(props: {file: TuuidsIdbStoreRowType}) {
 
     let {file} = props;
 
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
     let currentJobs = useMediaConversionStore(state=>state.currentJobs);
+    let removeConversionJobs = useMediaConversionStore(state=>state.removeConversionJobs);
 
     let sortedCurrentJobs = useMemo(()=>{
         if(!currentJobs) return null;
         let jobs = Object.values(currentJobs).filter(item=>item.tuuid === file.tuuid);
         jobs.sort(sortJobs)
+        jobs = jobs.reverse();
         return jobs;
     }, [file, currentJobs]);
+
+    let removeJobHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>) => {
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!file) throw new Error('No file information');
+        let jobId = e.currentTarget.value;
+        console.debug("Remove job id", jobId);
+        let tuuid = file.tuuid;
+        let fuuids = file.fileData?.fuuids_versions;
+        let fuuid = null as string | null;
+        if(fuuids && fuuids.length > 0) fuuid = fuuids[0];
+        if(!fuuid) throw new Error('no fuuid for file');
+        let response = await workers.connection.collections2RemoveConversionJob(tuuid, fuuid, jobId);
+        if(response.ok === false) throw new Error(response.err);
+
+        setTimeout(()=>removeConversionJobs([jobId]), 500);  // Error on cancel, wait 500ms to remove job
+
+    }, [workers, ready, file, removeConversionJobs]);
+
+    let removeVideoHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>) => {
+        if(!workers || !ready) throw new Error('workers not initialized');
+        let videoFuuid = e.currentTarget.value;
+        console.debug("Remove video fuuid", videoFuuid);
+        let response = await workers.connection.collections2RemoveVideo(videoFuuid);
+        console.debug("Response delete video", response);
+        if(response.ok === false) throw new Error(response.err);
+
+    }, [workers, ready]);
 
     let mappedJobs = useMemo(()=>{
         if(!sortedCurrentJobs) return <></>;
@@ -349,8 +359,13 @@ function ConversionList(props: {file: TuuidsIdbStoreRowType}) {
                                 </div>
                             </div>
                         :
-                            <p className='col-span-5'>{jobState}</p>
+                            <p className='col-span-3'>{jobState}</p>
                     }
+                    <div>
+                        <ActionButton onClick={removeJobHandler} varwidth={10} confirm={true} value={item.job_id} disabled={!ready}>
+                            <img src={TrashIcon} alt='Remove job' className='w-6 inline' />
+                        </ActionButton>
+                    </div>
                 </div>
             )
         });
@@ -386,11 +401,16 @@ function ConversionList(props: {file: TuuidsIdbStoreRowType}) {
                     <p>{item.codec}</p>
                     <p>{item.quality}</p>
                     <p>{item.width} x {item.height}</p>
-                    <p>
+                    <p className='col-span-2'>
                         {typeof(item.audio_stream_idx)==='number'?<span className="pr-1">Audio {item.audio_stream_idx}</span>:<></>}
                         {typeof(item.subtitle_stream_idx)==='number'?<span className="pr-1">Sub {item.subtitle_stream_idx}</span>:<></>}
                     </p>
                     <Formatters.FormatteurTaille value={item.taille_fichier}/>
+                    <div>
+                        <ActionButton onClick={removeVideoHandler} varwidth={10} confirm={true} value={item.fuuid_video} disabled={!ready}>
+                            <img src={TrashIcon} alt='Remove job' className='w-6 inline' />
+                        </ActionButton>
+                    </div>
                 </div>
             )
         });
