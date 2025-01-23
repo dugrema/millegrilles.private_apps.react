@@ -268,9 +268,7 @@ export class DirectoryWorker {
         if(!url) throw new Error('No URL is available for the selected filehost');
 
         // console.debug("Log into filehost ", filehost);
-
-        let authUrl = new URL(url + '/authenticate')
-        // authUrl.pathname = authUrl.pathname.replaceAll('//', '/');
+        let authUrl = new URL(`https://${url.hostname}:${url.port}/filehost/authenticate`);
 
         // console.debug('Authenticate url: %s, Signed message: %O', authUrl.href, authenticationMessage);
         try {
@@ -283,7 +281,8 @@ export class DirectoryWorker {
 
             // console.debug("Authentication response: ", response)
             if(!response.data.ok) {
-                throw new Error("Authentication error");
+                console.error("Authentication data response: ", response.data);
+                throw new Error("Authentication error: " + response.data.err);
             }
 
             filehost.authenticated = true;
