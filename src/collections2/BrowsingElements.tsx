@@ -277,6 +277,8 @@ function DirectoryInformation(props: {shared?: boolean}) {
     let {shared} = props;
     let browseStatistics = useUserBrowsingStore(state=>state.directoryStatistics);
     let sharedStatistics = useUserBrowsingStore(state=>state.sharedDirectoryStatistics);
+    let selection = useUserBrowsingStore(state=>state.selection);
+    let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
 
     let statistics = useMemo(()=>{
         if(shared) return sharedStatistics;
@@ -296,6 +298,13 @@ function DirectoryInformation(props: {shared?: boolean}) {
         return [fileInfo, dirInfo, totalTuuids];
     }, [statistics]);
 
+    let selectionElem = useMemo(()=>{
+        if(!selectionMode) return <></>;
+        if(!selection || selection.length === 0) return <p>No items selected</p>;
+        if(selection.length === 1) return <p>1 item selected</p>;
+        return <p>{selection.length} items selected</p>;
+    }, [selectionMode, selection]);
+
     if(!statistics) {
         if(statistics === false) return <></>
         return (<p>Loading ...</p>);
@@ -310,6 +319,7 @@ function DirectoryInformation(props: {shared?: boolean}) {
                     <p>No files</p>
                 }
                 <p>{dirInfo?.count?dirInfo.count:'No'} directories</p>
+                {selectionElem}
             </div>
             <LoadingStatus />
         </div>

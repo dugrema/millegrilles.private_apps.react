@@ -147,7 +147,7 @@ function SharedFileBrowsing() {
                 <ButtonBar disableEdit={true} shared={true} onModal={onModal} />
             </section>
 
-            <section ref={navSectionRef} className='fixed top-32 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
+            <section ref={navSectionRef} className='fixed top-36 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <FilelistPane files={files} onClickRow={onClickRowHandler} />
             </section>
 
