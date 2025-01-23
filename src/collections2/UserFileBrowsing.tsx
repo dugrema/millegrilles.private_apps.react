@@ -189,7 +189,6 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined, o
     }, [updateCurrentDirectory, onLoad]);
 
     let directoryUpdateHandler = useCallback((e: SubscriptionMessage)=>{
-        console.debug("directoryUpdateHandler Event: ", e);
         if(!workers || !userId) {
             console.warn("Subscription message received when workers/userId is not initialized, ignored");
             return;
@@ -202,7 +201,6 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined, o
     let directoryUpdateProxy = useMemo(()=>proxy(directoryUpdateHandler), [directoryUpdateHandler]);
 
     let directoryContentUpdateHandler = useCallback((e: SubscriptionMessage)=>{
-        console.debug("directoryContentUpdateHandler Event: ", e);
         if(!workers || !userId) {
             console.warn("Subscription message received when workers/userId is not initialized, ignored");
             return;
@@ -292,7 +290,10 @@ async function synchronizeDirectory(
     let skip = 0;
     let lastCompleteSyncSec = null as number | null;
     while(!complete) {
-        if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 1`)
+        if(cancelledSignal()) {
+            console.debug(`Sync of ${tuuid} has been cancelled - 1`);
+            return;
+        }
         // console.debug("Sync tuuid %s skip %d", tuuid, skip);
         let response = await workers.connection.syncDirectory(tuuid, skip, syncDate);
 
@@ -315,7 +316,7 @@ async function synchronizeDirectory(
         }
 
         if(response.deleted_tuuids) {
-            console.debug("Delete files %O", response.deleted_tuuids);
+            // console.debug("Delete files %O", response.deleted_tuuids);
             await workers.directory.deleteFiles(response.deleted_tuuids, userId);
             deleteFilesDirectory(response.deleted_tuuids);
         }
@@ -353,7 +354,10 @@ async function synchronizeDirectory(
             // Process and save to IDB
             let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys);
 
-            if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 2`)
+            if(cancelledSignal()) {
+                console.debug(`Sync of ${tuuid} has been cancelled - 2`);
+                return;
+            }
             // Save files in store
             let storeFiles = filesIdbToBrowsing(files);
             updateCurrentDirectory(storeFiles);

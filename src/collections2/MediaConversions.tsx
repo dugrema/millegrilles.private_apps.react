@@ -21,9 +21,7 @@ function MediaConversionsPage() {
                 <h1 className='text-xl font-bold'>Media conversions progress</h1>
             </section>
 
-            <section>
-                <MediaConversionsList />
-            </section>
+            <section><MediaConversionsList /></section>
 
             <SyncMediaConversions />
         </>

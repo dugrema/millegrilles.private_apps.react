@@ -8,7 +8,7 @@ import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
 import { Collections2ConvertVideoCommand, EtatJobEnum } from "../workers/connection.worker";
 import { sortJobs, SyncMediaConversions } from "./MediaConversions";
-import useMediaConversionStore from "./mediaConversionStore";
+import useMediaConversionStore, { ConversionJobStoreItem } from "./mediaConversionStore";
 
 function VideoConversion(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
     
@@ -48,6 +48,7 @@ function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let setConversionJobs = useMediaConversionStore(state=>state.setConversionJobs)
 
     let [videoCodec, setVideoCodec] = useState('');
     let [resolution, setResolution] = useState('');
@@ -119,7 +120,29 @@ function ConversionForm(props: {file: TuuidsIdbStoreRowType, close: ()=>void}) {
         let jobId = response.job_id;
         console.debug("Add jobId to list", jobId);
 
-    }, [workers, ready, file, videoCodec, resolution, quality, subtitles, preset, audioCodec, audioBitrate, audioStream]);
+        let params = {
+            mimetype,
+            codecVideo: videoCodec,
+            codecAudio: audioCodec,
+            resolutionVideo: resolutionInt,
+            qualityVideo: qualityInt,
+            bitrateAudio: audioBitrateInt,
+            preset,
+            audio_stream_idx: audioStreamInt,
+            subtitle_stream_idx: subtitlesInt,
+        };
+
+        let jobInfo = {
+            job_id: jobId,
+            tuuid: file.tuuid,
+            fuuid: fuuid,
+            mimetype,
+            etat: EtatJobEnum.PENDING,
+            params,
+        } as ConversionJobStoreItem;
+        setConversionJobs([jobInfo]);
+
+    }, [workers, ready, file, videoCodec, resolution, quality, subtitles, preset, audioCodec, audioBitrate, audioStream, setConversionJobs]);
 
     let [videoCodecs, videoResolutions, videoQuality, audioBitrates] = useMemo(()=>{
         let videoCodecs = VIDEO_CODEC.map(item=>(<option key={item.value} value={item.value}>{item.label}</option>));
