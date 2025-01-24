@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import useConnectionStore from "../connectionStore";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
-import { Breadcrumb } from "./BrowsingElements";
+import { Breadcrumb, ModalEnum } from "./BrowsingElements";
 import FilelistPane, { FileListPaneOnClickRowType } from "./FilelistPane";
 
+import CopyIcon from '../resources/icons/copy-svgrepo-com.svg';
+import RecycleIcon from '../resources/icons/undo-svgrepo-com.svg';
+import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
+
 function BrowsingDeleted() {
+
+    let [modal, setModal] = useState(null as ModalEnum | null);
+    let onModal = useCallback((modal: ModalEnum)=>setModal(modal), [setModal]);
+    let closeModal = useCallback(()=>setModal(null), [setModal]);
 
     let [breadcrumbTuuids, setBreadcrumbTuuids] = useState(null as string[] | null);
     let [tuuid, rootTuuid] = useMemo(()=>{
@@ -17,7 +25,15 @@ function BrowsingDeleted() {
 
     let filesDict = useUserBrowsingStore(state=>state.currentDirectory);
 
+    // Selecting files
+    let selection = useUserBrowsingStore(state=>state.selection);
+    let setSelection = useUserBrowsingStore(state=>state.setSelection);
+    let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
+    let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
+    let setSelectionPosition = useUserBrowsingStore(state=>state.setSelectionPosition);
+
     let files = useMemo(()=>{
+        console.debug("Files dict", filesDict);
         if(!filesDict) return null;
         let filesValues = Object.values(filesDict);
 
@@ -45,21 +61,60 @@ function BrowsingDeleted() {
 
     }, [breadcrumbTuuids, setBreadcrumbTuuids]);
 
-    let onClickRow = useCallback((e, tuuid, typeNode, range)=>{
-        if(typeNode === 'Fichier') {
-            throw new Error('todo')
-        } else {
+    let onClickRow = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, tuuid:string, typeNode:string, range: TuuidsBrowsingStoreRow[] | null)=>{
+        let ctrl = e?.ctrlKey || false;
+        let shift = e?.shiftKey || false;
+        let effectiveSelectionMode = selectionMode;
+        if(!selectionMode && (ctrl||shift)) {
+            // Toggle selection mode
+            effectiveSelectionMode = true;
+            setSelectionMode(true);
+        }
+
+        if(effectiveSelectionMode) {
+            // Selection mode
+            let selectionSet = new Set() as Set<string>;
+            if(selection) selection.forEach(item=>selectionSet.add(item));  // Copy all existing selections to Set
+
             if(tuuid) {
-                if(!breadcrumbTuuids) {
-                    setBreadcrumbTuuids([tuuid]);
+                if(shift && range) {
+                    // Range action
+                    range.forEach(item=>selectionSet.add(item.tuuid));
                 } else {
-                    setBreadcrumbTuuids([...breadcrumbTuuids, tuuid]);
+                    // Individual action
+                    if(selectionSet.has(tuuid)) {
+                        selectionSet.delete(tuuid);
+                    } else {
+                        selectionSet.add(tuuid);
+                    }
                 }
+
+                // Save position for range selection
+                setSelectionPosition(tuuid);
+
+                // Copy set back to array, save.
+                let updatedSelection = [] as string[];
+                selectionSet.forEach(item=>updatedSelection.push(item));
+                setSelection(updatedSelection);
+            }
+        } else {
+            // Navigation mode
+            if(typeNode === 'Fichier') {
+                throw new Error('todo');
+                // navigate('/apps/collections2/f/' + tuuid);
             } else {
-                setBreadcrumbTuuids(null);
+                if(tuuid) {
+                    if(!breadcrumbTuuids) {
+                        setBreadcrumbTuuids([tuuid]);
+                    } else {
+                        setBreadcrumbTuuids([...breadcrumbTuuids, tuuid]);
+                    }
+                } else {
+                    setBreadcrumbTuuids(null);
+                }
             }
         }
-    }, [breadcrumbTuuids, setBreadcrumbTuuids]) as FileListPaneOnClickRowType;
+    }, [selectionMode, selection, setSelectionMode, setSelection, setSelectionPosition]);
 
     let [sortKey, sortOrder] = useMemo(()=>{
         if(!tuuid) return ['modification', -1];
@@ -68,11 +123,15 @@ function BrowsingDeleted() {
 
     return (
         <>
-            <section className='fixed top-12 pt-1'>
+            <section className='fixed top-12'>
                 <Breadcrumb root={{tuuid: rootTuuid, name: 'Trash'}} onClick={onClickBreadcrumb} />
+
+                <div className='pt-2'>
+                    <ButtonBar onModal={onModal} />                    
+                </div>
             </section>
 
-            <section className='fixed top-20 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
+            <section className='fixed top-32 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <FilelistPane files={files} sortKey={sortKey} sortOrder={sortOrder} dateColumn='modification' onClickRow={onClickRow} />
             </section>
 
@@ -91,7 +150,7 @@ function DirectorySyncHandler(props: {tuuid?: string | null | undefined}) {
     let username = useConnectionStore(state=>state.username);
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useUserBrowsingStore(state=>state.userId);
-    let updateCurrentDirectory = useUserBrowsingStore(state=>state.updateCurrentDirectory);
+    let updateCurrentDirectory = useUserBrowsingStore(state=>state.updateCurrentDirectoryDeleted);
     let setCuuid = useUserBrowsingStore(state=>state.setCuuidDeleted);
     let setBreadcrumb = useUserBrowsingStore(state=>state.setBreadcrumb);
     let setDirectoryStatistics = useUserBrowsingStore(state=>state.setDirectoryStatistics);
@@ -143,10 +202,10 @@ async function synchronizeDirectory(
     let skip = 0;
     while(!complete) {
         if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 1`)
-        // console.debug("Sync tuuid %s skip %d", tuuid, skip);
+        console.debug("Sync tuuid %s skip %d", tuuid, skip);
         let response = await workers.connection.syncDeletedFiles(skip, tuuid);
 
-        // // console.debug("Directory loaded: %O", response);
+        console.debug("Directory loaded: %O", response);
         if(!response.ok) throw new Error(`Error during sync: ${response.err}`);
         complete = response.complete;
         
@@ -182,10 +241,12 @@ async function synchronizeDirectory(
 
             // Process and save to IDB
             let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys, {noidb: true});
+            console.debug("Decrypted files", files);
 
             if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 2`)
             // Save files in store
             let storeFiles = filesIdbToBrowsing(files);
+            console.debug("Store files", storeFiles);
             updateCurrentDirectory(storeFiles);
         } else if(response.keys) {
             console.warn("Keys received with no files");
@@ -195,4 +256,61 @@ async function synchronizeDirectory(
         }
 
     }
+}
+
+type ButtonBarProps = {
+    onModal: (modalName: ModalEnum) => void,
+}
+
+export function ButtonBar(props: ButtonBarProps) {
+
+    let {onModal} = props;
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
+    let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
+    let selection = useUserBrowsingStore(state=>state.selection);
+
+    let selectCount = useMemo(()=>{
+        if(!selection) return null;
+        return selection.length;
+    }, [selection]);
+
+    let toggleSelectionMode = useCallback(()=>{
+        setSelectionMode(!selectionMode);
+    }, [selectionMode, setSelectionMode]);
+
+    let recycleHandler = useCallback(async () => {
+        if(!workers || !ready) throw new Error('Workers not initialized');
+        if(!selection || selection.length === 0) throw new Error('Nothing selected to delete');
+        let response = await workers.connection.collection2RecycleItems(selection);
+        if(!response.ok) throw new Error('Error deleting files/directories: ' + response.err);
+        setSelectionMode(false);  // Exit selection mode
+    }, [workers, ready, selection, setSelectionMode]);
+
+    let copyHandler = useCallback(()=>onModal(ModalEnum.Copy), [onModal]);
+
+    return (
+        <div className='grid grid-cols-2 md:grid-cols-3 pt-1'>
+            <div className='col-span-2'>
+                <button onClick={toggleSelectionMode}
+                    className={'varbtn px-1 py-1 w-10 hover:bg-slate-600 active:bg-slate-500 ' + (selectionMode?'bg-violet-500':'bg-slate-700')}>
+                        <img src={SelectionModeIcon} alt="Select files" title="Select files" className='w-8 inline-block'/>
+                </button>
+                <button onClick={recycleHandler} disabled={!selectionMode || !selectCount}
+                    className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
+                        <img src={RecycleIcon} alt="Recycle files" title="Recycle files" className='w-8 inline-block'/>
+                </button>
+                <button onClick={copyHandler} disabled={!selectionMode || !selectCount}
+                    className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
+                        <img src={CopyIcon} alt="Copy files" title="Copy files" className='w-8 inline-block'/>
+                </button>
+            </div>
+            <div className='text-sm'>
+                <p>TODO</p>
+            </div>
+        </div>        
+    );
 }

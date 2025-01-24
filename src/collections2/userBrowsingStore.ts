@@ -97,6 +97,7 @@ interface UserBrowsingStoreState {
     setCuuidDeleted: (cuuid: string | null) => void,
     setUserId: (userId: string) => void,
     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
+    updateCurrentDirectoryDeleted: (files: TuuidsBrowsingStoreRow[] | null) => void,
     setBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
     setViewMode: (viewMode: ViewMode) => void,
     setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
@@ -180,6 +181,35 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
                         if(file.parentCuuid !== cuuid) continue;  // Directory changed
                     } else {
                         if(file.parentCuuid) continue;  // Directory changed to root
+                    }
+                    let tuuid = file.tuuid;
+                    currentDirectory[tuuid] = file;
+                }
+
+                return {currentDirectory};
+            }),
+
+            updateCurrentDirectoryDeleted: (files) => set((state)=>{
+                console.debug("Update current directory with deleted files", files);
+                if(!files) {
+                    // Clear
+                    return {currentDirectory: null};
+                }
+
+                let currentDirectory = {} as {[tuuid: string]: TuuidsBrowsingStoreRow};
+                if(state.currentDirectory) {
+                    // Copy existing directory
+                    currentDirectory = {...state.currentDirectory};
+                }
+
+                // Add and replace existing files
+                let cuuid = state.currentCuuid;
+                for(let file of files) {
+                    // Ensure the file is for the correct directory (e.g. not a late event)
+                    if(cuuid) {
+                        if(file.parentCuuid !== cuuid) continue;  // Directory changed
+                    } else {
+                        //if(file.parentCuuid) continue;  // Directory changed to root
                     }
                     let tuuid = file.tuuid;
                     currentDirectory[tuuid] = file;

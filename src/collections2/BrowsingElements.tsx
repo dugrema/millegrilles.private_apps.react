@@ -129,7 +129,7 @@ type ButtonBarProps = {
     disableEdit?: boolean,
     shared?: boolean,
     onModal: (modalName: ModalEnum) => void,
-}
+};
 
 export function ButtonBar(props: ButtonBarProps) {
 
