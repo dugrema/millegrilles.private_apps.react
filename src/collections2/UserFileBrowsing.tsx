@@ -214,7 +214,7 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined, o
     useEffect(()=>{
         if(!workers || !ready || !userId) return;
         let tuuidValue = tuuid || null;
-        let listenerParam = tuuidValue || userId;
+        let listenerParam = tuuidValue || userId;  // On root, the listener parameter is the userId
 
         // Signal to cancel sync
         let cancelled = false;

@@ -165,7 +165,6 @@ export function ModalNewDirectory(props: ModalInformationProps) {
         setError(false);
 
         let result = await createDirectory(workers, directoryName, cuuid);
-        console.debug("Result", result);
         let response = await workers.connection.addDirectoryCollection2(result.command, result.key);
         if(!response.ok) throw new Error("Error creating new directory: " + response.err);
 
