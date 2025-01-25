@@ -324,9 +324,10 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         )
     }
     if(thumbnailBlobUrl) {
+        // className='grow object-contain bg-slate-100 bg-opacity-70'  // TODO - for transparency
         return (
             <img src={thumbnailBlobUrl} onClick={onClickStart} alt='Content of the file'
-                className='grow object-contain object-right bg-slate-100 bg-opacity-70' />
+                className='grow object-contain object-right' />
         );
     } else {
         return (
