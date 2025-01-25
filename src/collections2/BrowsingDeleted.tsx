@@ -275,6 +275,7 @@ export function ButtonBar(props: ButtonBarProps) {
     let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
     let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
     let selection = useUserBrowsingStore(state=>state.selection);
+    let deleteFilesDirectory = useUserBrowsingStore(state=>state.deleteFilesDirectory);
 
     let selectCount = useMemo(()=>{
         if(!selection) return null;
@@ -291,7 +292,10 @@ export function ButtonBar(props: ButtonBarProps) {
         let response = await workers.connection.collection2RecycleItems(selection);
         if(!response.ok) throw new Error('Error deleting files/directories: ' + response.err);
         setSelectionMode(false);  // Exit selection mode
-    }, [workers, ready, selection, setSelectionMode]);
+
+        // Remove recycled items from list
+        deleteFilesDirectory(selection);
+    }, [workers, ready, selection, setSelectionMode, deleteFilesDirectory]);
 
     let copyHandler = useCallback(()=>onModal(ModalEnum.Copy), [onModal]);
 
