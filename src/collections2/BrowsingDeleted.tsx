@@ -9,8 +9,11 @@ import CopyIcon from '../resources/icons/copy-svgrepo-com.svg';
 import RecycleIcon from '../resources/icons/undo-svgrepo-com.svg';
 import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
 import ActionButton from "../resources/ActionButton";
+import { useNavigate } from "react-router-dom";
 
 function BrowsingDeleted() {
+
+    let navigate = useNavigate();
 
     let [modal, setModal] = useState(null as ModalEnum | null);
     let onModal = useCallback((modal: ModalEnum)=>setModal(modal), [setModal]);
@@ -101,8 +104,7 @@ function BrowsingDeleted() {
         } else {
             // Navigation mode
             if(typeNode === 'Fichier') {
-                throw new Error('todo');
-                // navigate('/apps/collections2/f/' + tuuid);
+                navigate('/apps/collections2/f/' + tuuid);
             } else {
                 if(tuuid) {
                     if(!breadcrumbTuuids) {
@@ -115,7 +117,7 @@ function BrowsingDeleted() {
                 }
             }
         }
-    }, [selectionMode, selection, setSelectionMode, setSelection, setSelectionPosition]);
+    }, [navigate, selectionMode, selection, setSelectionMode, setSelection, setSelectionPosition]);
 
     let [sortKey, sortOrder] = useMemo(()=>{
         if(!tuuid) return ['modification', -1];
@@ -301,7 +303,7 @@ export function ButtonBar(props: ButtonBarProps) {
                         <img src={SelectionModeIcon} alt="Select files" title="Select files" className='w-8 inline-block'/>
                 </button>
                 <ActionButton onClick={recycleHandler} disabled={!selectionMode || !selectCount} confirm={true} revertSuccessTimeout={2} varwidth={10}>
-                        <img src={RecycleIcon} alt="Recycle files" title="Recycle files" className='w-8 inline-block'/>
+                    <img src={RecycleIcon} alt="Recycle files" title="Recycle files" className='w-8 inline-block'/>
                 </ActionButton>
                 <button onClick={copyHandler} disabled={!selectionMode || !selectCount}
                     className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
