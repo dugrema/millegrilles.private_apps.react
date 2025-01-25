@@ -38,7 +38,7 @@ function BrowsingDeleted() {
     let setSelectionPosition = useUserBrowsingStore(state=>state.setSelectionPosition);
 
     let files = useMemo(()=>{
-        console.debug("Files dict", filesDict);
+        // console.debug("Files dict", filesDict);
         if(!filesDict) return null;
         let filesValues = Object.values(filesDict);
 
@@ -209,10 +209,10 @@ async function synchronizeDirectory(
     let skip = 0;
     while(!complete) {
         if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 1`)
-        console.debug("Sync tuuid %s skip %d", tuuid, skip);
+        // console.debug("Sync tuuid %s skip %d", tuuid, skip);
         let response = await workers.connection.syncDeletedFiles(skip, tuuid);
 
-        console.debug("Directory loaded: %O", response);
+        // console.debug("Directory loaded: %O", response);
         if(!response.ok) throw new Error(`Error during sync: ${response.err}`);
         complete = response.complete;
         
@@ -246,14 +246,20 @@ async function synchronizeDirectory(
         if(response.files) { 
             skip += response.files.length; 
 
+            let responseFiles = response.files;
+            if(tuuid) {
+                // Filter out directly deleted files from subfolder (supprime === true && supprime_indirect === false)
+                responseFiles = responseFiles.filter(item=>item.supprime_indirect);
+            }
+
             // Process and save to IDB
-            let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys, {noidb: true});
-            console.debug("Decrypted files", files);
+            let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, responseFiles, response.keys, {noidb: true});
+            // console.debug("Decrypted files", files);
 
             if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 2`)
             // Save files in store
             let storeFiles = filesIdbToBrowsing(files);
-            console.debug("Store files", storeFiles);
+            // console.debug("Store files", storeFiles);
             updateCurrentDirectory(storeFiles);
         } else if(response.keys) {
             console.warn("Keys received with no files");
