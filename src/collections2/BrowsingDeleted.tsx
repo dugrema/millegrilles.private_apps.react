@@ -133,7 +133,7 @@ function BrowsingDeleted() {
                 <Breadcrumb root={{tuuid: rootTuuid, name: 'Trash'}} onClick={onClickBreadcrumb} />
 
                 <div className='pt-2'>
-                    <ButtonBar onModal={onModal} />                    
+                    <ButtonBar onModal={onModal} inSubdirectory={!!tuuid} />                    
                 </div>
             </section>
 
@@ -273,11 +273,12 @@ async function synchronizeDirectory(
 
 type ButtonBarProps = {
     onModal: (modalName: ModalEnum) => void,
+    inSubdirectory: boolean,
 }
 
 export function ButtonBar(props: ButtonBarProps) {
 
-    let {onModal} = props;
+    let {onModal, inSubdirectory} = props;
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
@@ -316,7 +317,7 @@ export function ButtonBar(props: ButtonBarProps) {
                     className={'varbtn px-1 py-1 w-10 hover:bg-slate-600 active:bg-slate-500 ' + (selectionMode?'bg-violet-500':'bg-slate-700')}>
                         <img src={SelectionModeIcon} alt="Select files" title="Select files" className='w-8 inline-block'/>
                 </button>
-                <ActionButton onClick={recycleHandler} disabled={!selectionMode || !selectCount} confirm={true} revertSuccessTimeout={2} varwidth={10}>
+                <ActionButton onClick={recycleHandler} disabled={!selectionMode || !selectCount || inSubdirectory} confirm={true} revertSuccessTimeout={2} varwidth={10}>
                     <img src={RecycleIcon} alt="Recycle files" title="Recycle files" className='w-8 inline-block'/>
                 </ActionButton>
                 <button onClick={copyHandler} disabled={!selectionMode || !selectCount}
