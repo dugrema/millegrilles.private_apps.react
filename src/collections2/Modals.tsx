@@ -349,9 +349,9 @@ export function ModalRenameFile(props: ModalInformationProps) {
     );
 }
 
-export function ModalBrowseAction(props: ModalInformationProps & {title: string, shared?: boolean}) {
+export function ModalBrowseAction(props: ModalInformationProps & {title: string, shared?: boolean, includeDeleted?: boolean}) {
 
-    let {close, title, modalType, shared} = props;
+    let {close, title, modalType, shared, includeDeleted} = props;
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
@@ -388,13 +388,18 @@ export function ModalBrowseAction(props: ModalInformationProps & {title: string,
         if(!selection || selection.length === 0) throw new Error('No files are selected');
 
         let cuuid = shared?originSharedCuuid:originCuuid;
-        if(!cuuid) throw new Error('Cannot move/copy from root');
+        if(!cuuid && !includeDeleted) throw new Error('Cannot move/copy from root');
         if(!modalNavCuuid) throw new Error("Must select a directory (root not valid)");
         
         if(modalType === ModalEnum.Copy) {
-            let response = await workers.connection.copyFilesCollection2(modalNavCuuid, selection, contactId);
+            let opts = {
+                contactId: contactId || undefined, 
+                includeDeleted: includeDeleted || undefined,
+            };
+            let response = await workers.connection.copyFilesCollection2(modalNavCuuid, selection, opts);
             if(!response.ok) throw new Error('Error copying files: ' + response.err);
         } else if(modalType === ModalEnum.Cut) {
+            if(!cuuid) throw new Error('Cannot move/copy from root');
             let response = await workers.connection.moveFilesCollection2(cuuid, modalNavCuuid, selection);
             if(!response.ok) throw new Error('Error moving files: ' + response.err);
         } else {
@@ -402,7 +407,7 @@ export function ModalBrowseAction(props: ModalInformationProps & {title: string,
         }
 
         setTimeout(()=>close(), 1_000);
-    }, [workers, ready, close, modalNavCuuid, modalType, originCuuid, selection, contactId, shared, originSharedCuuid]);
+    }, [workers, ready, close, modalNavCuuid, modalType, originCuuid, selection, contactId, shared, originSharedCuuid, includeDeleted]);
 
     return (
         <>

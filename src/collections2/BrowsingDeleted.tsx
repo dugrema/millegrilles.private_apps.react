@@ -3,13 +3,14 @@ import useConnectionStore from "../connectionStore";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Breadcrumb, ModalEnum } from "./BrowsingElements";
-import FilelistPane, { FileListPaneOnClickRowType } from "./FilelistPane";
+import FilelistPane, { FileListPaneOnClickRowType, sortByName } from "./FilelistPane";
 
 import CopyIcon from '../resources/icons/copy-svgrepo-com.svg';
 import RecycleIcon from '../resources/icons/undo-svgrepo-com.svg';
 import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
 import ActionButton from "../resources/ActionButton";
 import { useNavigate } from "react-router-dom";
+import { ModalBrowseAction } from "./Modals";
 
 function BrowsingDeleted() {
 
@@ -40,6 +41,8 @@ function BrowsingDeleted() {
         console.debug("Files dict", filesDict);
         if(!filesDict) return null;
         let filesValues = Object.values(filesDict);
+
+        // filesValues.sort(sortByName);
 
         return filesValues;
     }, [filesDict]) as TuuidsBrowsingStoreRow[] | null;
@@ -120,8 +123,8 @@ function BrowsingDeleted() {
     }, [navigate, selectionMode, selection, setSelectionMode, setSelection, setSelectionPosition]);
 
     let [sortKey, sortOrder] = useMemo(()=>{
-        if(!tuuid) return ['modification', -1];
-        return ['nom', 1];
+        if(!tuuid) return ['modificationDesc', 1];
+        return ['name', 1];
     }, [tuuid]);
 
     return (
@@ -139,6 +142,7 @@ function BrowsingDeleted() {
             </section>
 
             <DirectorySyncHandler tuuid={tuuid} />
+            <Modals show={modal} close={closeModal} />
         </>
     );
 }
@@ -319,4 +323,15 @@ export function ButtonBar(props: ButtonBarProps) {
             </div>
         </div>        
     );
+}
+
+function Modals(props: {show: ModalEnum | null, close:()=>void}) {
+
+    let {show, close} = props;
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    if(show === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={close} modalType={show} title='Copy files' includeDeleted={true} />;
+
+    return <></>;
 }

@@ -290,6 +290,13 @@ export type Collections2ConvertVideoCommand = {
 
 export type Collections2ConvertVideoResponse = MessageResponse & {job_id?: string};
 
+export type Collection2CopyFilesCommand = {
+    cuuid: string, 
+    inclure_tuuids: string[], 
+    contact_id?: string | null,
+    include_deleted?: boolean,
+};
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -720,12 +727,12 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as MessageResponse;
     }
 
-    async copyFilesCollection2(destinationCuuid: string, tuuids: string[], contactId?: string | null) {
+    async copyFilesCollection2(destinationCuuid: string, tuuids: string[], opts?: {contactId?: string, includeDeleted?: boolean}) {
         if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.sendCommand(
-            {cuuid: destinationCuuid, inclure_tuuids: tuuids, contact_id: contactId}, 
-            DOMAINE_GROSFICHIERS, 'ajouterFichiersCollection'
-        ) as MessageResponse;
+        let command = {cuuid: destinationCuuid, inclure_tuuids: tuuids} as Collection2CopyFilesCommand;
+        if(opts?.contactId) command.contact_id = opts.contactId;
+        if(opts?.includeDeleted) command.include_deleted = true;
+        return await this.connection.sendCommand(command, DOMAINE_GROSFICHIERS, 'ajouterFichiersCollection') as MessageResponse;
     }
 
     async moveFilesCollection2(originCuuid: string, destinationCuuid: string, tuuids: string[]) {

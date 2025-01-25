@@ -44,6 +44,8 @@ function FilelistPane(props: FileListPaneProps) {
             sortedFiles.sort(sortByName)
         } else if(sortKey === 'modification') {
             sortedFiles.sort(sortByModification);
+        } else if(sortKey === 'modification-desc') {
+            sortedFiles.sort(sortByModificationDesc);
         } else if(sortKey === 'size') {
             sortedFiles.sort(sortBySize);
         }
@@ -158,9 +160,23 @@ export function sortByName(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow)
 function sortByModification(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
     if(a === b) return 0;
     if(a.modification === b.modification) {
-        return a.tuuid.localeCompare(b.tuuid);
+        if(a.nom === b.nom) {
+            return a.tuuid.localeCompare(b.tuuid);
+        }
+        return a.nom.localeCompare(b.nom);
     }
     return a.modification - b.modification
+}
+
+function sortByModificationDesc(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
+    if(a === b) return 0;
+    if(a.modification === b.modification) {
+        if(a.nom === b.nom) {
+            return a.tuuid.localeCompare(b.tuuid);
+        }
+        return a.nom.localeCompare(b.nom);
+    }
+    return b.modification - a.modification
 }
 
 function sortBySize(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
