@@ -105,13 +105,18 @@ function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
 
     return (
         <>
-            <div className='grid grid-cols-12 bg-slate-800 text-sm user-select-none px-1 fixed w-full'>
-                <div className='col-span-7 px-1'>Name</div>
-                {columnNameOnly?<></>:<p className='col-span-1 px-1'>Size</p>}
-                {columnNameOnly?<></>:<p className='col-span-2 px-1'>Type</p>}
-                {columnNameOnly?<></>:<p className='col-span-2 px-1'>Date</p>}
+            {/* Fixed header */}
+            <div className='fixed w-full pr-4'>
+                <div className='grid grid-cols-12 bg-slate-800 text-sm select-none mx-2 px-1'>
+                    <div className='col-span-7 px-1'>Name</div>
+                    {columnNameOnly?<></>:<p className='col-span-1 px-1'>Size</p>}
+                    {columnNameOnly?<></>:<p className='col-span-2 px-1'>Type</p>}
+                    {columnNameOnly?<></>:<p className='col-span-2 px-1'>Date</p>}
+                </div>
             </div>
+            {/* Padding to push content below header */}
             <div className='pb-5'></div>
+            {/* Content */}
             {mappedFiles}
         </>
     );
@@ -226,12 +231,12 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
         if(selectionMode) {
             // Disable text select (copy/paste)
             if(selection?.includes(value.tuuid)) {
-                return 'grid grid-cols-12 odd:bg-violet-600 even:bg-violet-500 hover:bg-violet-800 odd:bg-opacity-70 even:bg-opacity-70 text-sm cursor-pointer select-none';
+                return 'grid grid-cols-12 mx-2 odd:bg-violet-600 even:bg-violet-500 hover:bg-violet-800 odd:bg-opacity-70 even:bg-opacity-70 text-sm cursor-pointer select-none';
             }
-            return 'grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer select-none';
+            return 'grid grid-cols-12 mx-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer select-none';
         }
         // Allow text select
-        return 'grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer';
+        return 'grid grid-cols-12 mx-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer';
     }, [value, selection, selectionMode]);
 
     return (

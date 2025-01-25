@@ -52,7 +52,7 @@ export default function HeaderMenu(props: MenuProps) {
     }, [location]);
 
     return (
-        <header className={'fixed pl-2 pr-2 pt-2 top-0 transition grid grid-cols-2 md:grid-cols-4 w-full' + cssDisconnected}>
+        <header className={'fixed pl-2 pr-6 pt-2 top-0 transition grid grid-cols-2 md:grid-cols-4 w-full' + cssDisconnected}>
             <div className='text-lg font-bold underline'>
                 {props.backLink?
                     <Link to='/apps'>{props.title}</Link>
