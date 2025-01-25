@@ -41,6 +41,8 @@ export class DirectoryWorker {
             }
         }
 
+        let deletedFiles = new Set();
+
         // Map files to IDB format
         let mappedFiles = files.map(item=>{
             // Set the parent for the IDB directory index. When shared, set no parent if not in a path (do not index to root).
@@ -48,6 +50,8 @@ export class DirectoryWorker {
             if(!opts?.shared) {
                 parent = parent || userId;
             }
+
+            if(item.supprime || item.supprime_indirect) deletedFiles.add(item.tuuid);
 
             let fileData = {
                 fuuids_versions: item.fuuids_versions,
@@ -194,7 +198,8 @@ export class DirectoryWorker {
         }
 
         if(!opts?.noidb) {
-            await updateFilesIdb(mappedFiles);
+            let nonDeletedFiles = mappedFiles.filter(item=>!deletedFiles.has(item.tuuid));
+            await updateFilesIdb(nonDeletedFiles);
         }
 
         return mappedFiles;

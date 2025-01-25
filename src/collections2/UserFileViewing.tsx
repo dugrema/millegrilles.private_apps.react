@@ -38,7 +38,7 @@ function UserFileViewing() {
     useEffect(()=>{
         if(tuuid && userId) {
             loadTuuid(tuuid, userId).then(file=>setFile(file))
-            .catch(err=>console.error("Error loading file", err));
+                .catch(err=>console.error("Error loading file", err));
         } else {
             setFile(null);
         }
