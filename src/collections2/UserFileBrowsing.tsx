@@ -214,6 +214,7 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined, o
     useEffect(()=>{
         if(!workers || !ready || !userId) return;
         let tuuidValue = tuuid || null;
+        let listenerParam = tuuidValue || userId;
 
         // Signal to cancel sync
         let cancelled = false;
@@ -231,10 +232,10 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined, o
             if(!workers) throw new Error("workers not initialized");
             // await workers.connection.subscribe("collection2CollectionEvents", directoryUpdateProxy, {cuuid: tuuid});
             // await workers.connection.subscribe("collection2CollectionContentEvents", directoryContentUpdateProxy, {cuuid: tuuid});
-            await workers.connection.collection2SubscribeCollectionEvents(tuuidValue, directoryUpdateProxy);
-            await workers.connection.collection2SubscribeCollectionContentEvents(tuuidValue, directoryContentUpdateProxy);
+            await workers.connection.collection2SubscribeCollectionEvents(listenerParam, directoryUpdateProxy);
+            await workers.connection.collection2SubscribeCollectionContentEvents(listenerParam, directoryContentUpdateProxy);
         })
-        .catch(err=>console.error("Error registering directory listener on %s: %O", tuuidValue, err));
+        .catch(err=>console.error("Error registering directory listener on %s: %O", listenerParam, err));
 
         // Sync
         synchronizeDirectory(workers, userId, username, tuuidValue, cancelledSignal, updateCurrentDirectoryHandler, setBreadcrumb, setDirectoryStatistics, deleteFilesDirectory)
@@ -249,8 +250,8 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined, o
                 if(!workers) throw new Error("workers not initialized");
                 // await workers.connection.unsubscribe("collection2CollectionEvents", directoryUpdateProxy, {cuuid: tuuid});
                 // await workers.connection.unsubscribe("collection2CollectionContentEvents", directoryContentUpdateProxy, {cuuid: tuuid});
-                await workers.connection.collection2UnsubscribeCollectionEvents(tuuidValue, directoryUpdateProxy);
-                await workers.connection.collection2UnsubscribeCollectionContentEvents(tuuidValue, directoryContentUpdateProxy);
+                await workers.connection.collection2UnsubscribeCollectionEvents(listenerParam, directoryUpdateProxy);
+                await workers.connection.collection2UnsubscribeCollectionContentEvents(listenerParam, directoryContentUpdateProxy);
             })
             .catch(err=>console.error("Error unregistering directory listener on %s: %O", tuuid, err));
         }
