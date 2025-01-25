@@ -3,7 +3,7 @@ import useConnectionStore from "../connectionStore";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Breadcrumb, ModalEnum } from "./BrowsingElements";
-import FilelistPane, { FileListPaneOnClickRowType, sortByName } from "./FilelistPane";
+import FilelistPane from "./FilelistPane";
 
 import CopyIcon from '../resources/icons/copy-svgrepo-com.svg';
 import RecycleIcon from '../resources/icons/undo-svgrepo-com.svg';
@@ -120,7 +120,7 @@ function BrowsingDeleted() {
                 }
             }
         }
-    }, [navigate, selectionMode, selection, setSelectionMode, setSelection, setSelectionPosition]);
+    }, [navigate, selectionMode, selection, breadcrumbTuuids, setSelectionMode, setSelection, setSelectionPosition]);
 
     let [sortKey, sortOrder] = useMemo(()=>{
         if(!tuuid) return ['modificationDesc', 1];
