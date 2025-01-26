@@ -140,15 +140,16 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
     let [jwt, setJwt] = useState('');
     let [videoReady, setVideoReady] = useState(false);
 
-    let isVideoFile = useMemo(()=>{
+    let [isVideoFile, isPdf] = useMemo(()=>{
+        let mimetype = file?.fileData?.mimetype;
         if(file?.fileData?.video) {
             // Check that there is at least 1 available video
-            return Object.keys(file.fileData.video).length > 0;
-        } else {
-            let mimetype = file?.fileData?.mimetype;
-            if(mimetype && supportsVideoFormat(mimetype)) return true;
+            return [Object.keys(file.fileData.video).length > 0, false];
+        } else if(mimetype) {
+            if(supportsVideoFormat(mimetype)) return [true, false];
+            else if(mimetype === 'application/pdf') return [false, true];
         }
-        return false;
+        return [false, false];
     }, [file]);
 
     let fuuid = useMemo(()=>{
@@ -324,10 +325,11 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         )
     }
     if(thumbnailBlobUrl) {
-        // className='grow object-contain bg-slate-100 bg-opacity-70'  // TODO - for transparency
+        let className = 'grow object-contain object-right';
+        if(isPdf) className = 'grow object-contain bg-slate-100 bg-opacity-70';  // for transparency
         return (
             <img src={thumbnailBlobUrl} onClick={onClickStart} alt='Content of the file'
-                className='grow object-contain object-right' />
+                className={className} />
         );
     } else {
         return (
