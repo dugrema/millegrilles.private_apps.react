@@ -213,6 +213,7 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
     let {value, dateColumn, onClick, columnNameOnly} = props;
     let selection = useUserBrowsingStore(state=>state.selection);
     let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
+    let { ref, visible } = useVisibility({});
 
     // let navigate = useNavigate();
 
@@ -230,6 +231,7 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
 
     useEffect(()=>{
         if(!value || !value.thumbnail) return;
+        if(!visible) return;
 
         let objectUrl = URL.createObjectURL(value.thumbnail);
         setThumbnail(objectUrl);
@@ -239,7 +241,7 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
             setThumbnail('');
             URL.revokeObjectURL(objectUrl);
         }
-    }, [value]);
+    }, [value, visible]);
 
     let defaultIcon = useMemo(()=>getIcon(value.type_node, value.mimetype), [value]);
 
@@ -258,7 +260,7 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
     return (
         <div key={value.tuuid} onClick={onclickHandler}
             className={selectionCss}>
-            <div className='col-span-7 px-1'>
+            <div ref={ref} className='col-span-7 px-1'>
                 {thumbnail?
                     <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
                 :
@@ -374,7 +376,9 @@ function ThumbnailItem(props: FileItem) {
     return (
         <button ref={ref} className="inline-block m-1 border relative" onClick={onclickHandler} value={value.tuuid}>
             <p className='text-sm break-all font-bold absolute align-center bottom-0 bg-slate-800 w-full bg-opacity-70 px-1 pb-1'>{value.nom}</p>
-            <img src={imgSrc} alt={'File ' + value.nom} width={200} height={200} className='opacity-100' />
+            <div className='w-40 sm:w-full object-cover'>
+                <img src={imgSrc} alt={'File ' + value.nom} width={200} height={200} className='opacity-100' />
+            </div>
         </button>
     );
 }
