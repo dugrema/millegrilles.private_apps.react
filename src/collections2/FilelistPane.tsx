@@ -251,16 +251,16 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
             if(selection?.includes(value.tuuid)) {
                 return 'grid grid-cols-12 mx-2 odd:bg-violet-600 even:bg-violet-500 hover:bg-violet-800 odd:bg-opacity-70 even:bg-opacity-70 text-sm cursor-pointer select-none';
             }
-            return 'grid grid-cols-12 mx-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer select-none';
+            return 'grid grid-cols-6 md:grid-cols-12 mx-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer select-none';
         }
         // Allow text select
-        return 'grid grid-cols-12 mx-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer';
+        return 'grid grid-cols-6 md:grid-cols-12 mx-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer';
     }, [value, selection, selectionMode]);
 
     return (
         <div key={value.tuuid} onClick={onclickHandler}
             className={selectionCss}>
-            <div ref={ref} className='col-span-7 px-1'>
+            <div ref={ref} className='col-span-7 px-1 truncate'>
                 {thumbnail?
                     <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
                 :
@@ -273,11 +273,11 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
                 <></>
                 :
                 <>
-                    <p className='col-span-1 px-1'>
+                    <p className='col-span-1 px-1 text-xs lg:text-sm'>
                         <Formatters.FormatteurTaille value={value.taille || undefined} />
                     </p>
-                    <p className='col-span-2 px-1'>{value.mimetype}</p>
-                    <p className='col-span-2 px-1'>
+                    <p className='col-span-2 px-1 text-xs text-xs lg:text-sm truncate'>{value.mimetype}</p>
+                    <p className='col-span-3 text-right md:col-span-2 md:text-left px-1 text-xs lg:text-sm'>
                         <Formatters.FormatterDate value={dateValue || undefined} />
                     </p>
                 </>

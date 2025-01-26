@@ -68,21 +68,21 @@ export function Breadcrumb(props: BreadcrumbProps) {
             .map((item, idx)=>{
             if(idx === lastIdx) {
                 return (
-                    <li key={item.tuuid} className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 font-bold pr-2'>
+                    <div key={item.tuuid} className='inline pl-1 md:pl-2 text-sm bg-slate-700 bg-opacity-50 font-bold pr-2'>
                         {item.nom}
-                    </li>
+                    </div>
                 )
             } else {
                 return (
-                    <li key={item.tuuid} className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-                        {onClick?
-                            <p onClick={onClickHandler} data-tuuid={item.tuuid}>{item.nom}</p>
-                        :
-                            <Link to={'/apps/collections2/b/' + item.tuuid}>{item.nom}</Link>
-                        }
-                        
-                        <span className="pointer-events-none ml-2 text-slate-800">/</span>
-                    </li>
+                    <div key={item.tuuid} 
+                        className='inline cursor-pointer pl-1 md:pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
+                            {onClick?
+                                <p onClick={onClickHandler} data-tuuid={item.tuuid}>{item.nom}</p>
+                            :
+                                <Link to={'/apps/collections2/b/' + item.tuuid}>{item.nom}</Link>
+                            }
+                            <span className="pointer-events-none ml-2 text-slate-800">/</span>
+                    </div>
                 )
             }
         })
@@ -91,25 +91,23 @@ export function Breadcrumb(props: BreadcrumbProps) {
     if(!root && !username) return <p>Loading ...</p>;
 
     return (
-        <nav aria-label='breadcrumb' className='w-max'>
-            <ol className='flex w-full flex-wrap items-center'>
-                {breadcrumb?
-                    <li className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-                        {onClick?
-                            <p onClick={onClickHandler}>{root?.name || username}</p>
-                        :
-                            <Link to={root?.path || '/apps/collections2/b/root'}>{root?.name || username}</Link>
-                        }
-                        
-                        <span className="pointer-events-none ml-2 text-slate-400 font-bold">&gt;</span>
-                    </li>
-                :
-                    <li className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 pr-2'>
-                        {root?.name || username}
-                    </li>
-                }
-                {breadcrumbMapped}
-            </ol>
+        <nav aria-label='breadcrumb' className='w-screen leading-3 pr-2 line-clamp-2'>
+            {breadcrumb?
+                <div className='inline cursor-pointer items-center pl-1 md:pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
+                    {onClick?
+                        <p onClick={onClickHandler}>{root?.name || username}</p>
+                    :
+                        <Link to={root?.path || '/apps/collections2/b/root'}>{root?.name || username}</Link>
+                    }
+                    
+                    <span className="pointer-events-none ml-2 text-slate-400 font-bold">&gt;</span>
+                </div>
+            :
+                <div className='inline p-1 md:p-2 text-sm bg-slate-700 bg-opacity-50'>
+                    {root?.name || username}
+                </div>
+            }
+            {breadcrumbMapped}
         </nav>
     );
 }
@@ -189,8 +187,8 @@ export function ButtonBar(props: ButtonBarProps) {
     let shareHandler = useCallback(()=>onModal(ModalEnum.Share), [onModal]);
 
     return (
-        <div className='grid grid-cols-2 md:grid-cols-3 pt-1'>
-            <div className='col-span-2'>
+        <div className='grid grid-cols-4 pt-1'>
+            <div className='col-span-3'>
                 <button onClick={directoryInfoHandler}
                     className={'varbtn px-2 mr-2 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'}>
                         <img src={InfoIcon} alt='Info' className='w-6 inline-block' />
@@ -224,7 +222,7 @@ export function ButtonBar(props: ButtonBarProps) {
                         </button>
 
                         <button onClick={importZipHandler} disabled={true}
-                            className={'varbtn px-2 mr-0 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'}>
+                            className={'varbtn hidden lg:inline px-2 mr-0 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'}>
                                 <span>+ ZIP</span>
                         </button>
                     </>

@@ -145,9 +145,8 @@ function ViewUserFileBrowsing() {
 
     return (
         <>
-            <section className='fixed top-12'>
+            <section className='fixed top-10 md:top-12'>
                 <Breadcrumb />
-
                 <div className='pt-2 hidden md:block'>
                     <ButtonBar onModal={onModal} />                    
                 </div>
