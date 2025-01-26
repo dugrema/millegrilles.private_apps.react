@@ -73,8 +73,11 @@ interface UserBrowsingStoreState {
     breadcrumb: TuuidsBrowsingStoreRow[] | null,
     viewMode: ViewMode,
     directoryStatistics: Collection2DirectoryStats[] | null,
-    searchResults: Collection2SearchStore | null,
-    searchListing: {[tuuid: string]: TuuidsBrowsingStoreSearchRow} | null,
+    
+    // Search
+    searchResults: Collection2SearchStore | null,  // Complete set on results that can be displayed
+    searchResultsPosition: number,  // Current position of the displayed search results in searchListing. Required because there can be duplicated results due to shared files.
+    searchListing: {[tuuid: string]: TuuidsBrowsingStoreSearchRow} | null,  // Currently loaded search results
 
     selectionMode: boolean,
     selection: string[] | null,
@@ -103,7 +106,9 @@ interface UserBrowsingStoreState {
     setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
     updateThumbnail: (tuuid: string, thumbnail: Blob) => void,
     deleteFilesDirectory: (files: string[]) => void,
+    
     setSearchResults: (searchResults: Collection2SearchStore | null) => void,
+    setSearchResultsPosition: (searchResultsPosition: number) => void,
     updateSearchListing: (listing: TuuidsBrowsingStoreSearchRow[] | null) => void,
 
     setSelectionMode: (selectionMode: boolean) => void,
@@ -137,7 +142,9 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             breadcrumb: null,
             viewMode: ViewMode.List,
             directoryStatistics: null,
+
             searchResults: null,
+            searchResultsPosition: 0,
             searchListing: null,
             
             selectionMode: false,
@@ -249,6 +256,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             }),
 
             setSearchResults: (searchResults) => set(()=>({searchResults})),
+            setSearchResultsPosition: (searchResultsPosition) => set(()=>({searchResultsPosition})),
 
             updateSearchListing: (listing) => set((state)=>{
                 if(!listing) {
@@ -256,6 +264,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
                     return {searchListing: null};
                 }
 
+               
                 let searchListing = {} as {[tuuid: string]: TuuidsBrowsingStoreSearchRow};
                 if(state.searchListing) {
                     // Copy existing directory

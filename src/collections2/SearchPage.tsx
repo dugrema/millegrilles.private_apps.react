@@ -20,6 +20,7 @@ function SearchPage() {
     let searchListing = useUserBrowsingStore(state=>state.searchListing);
     let searchResults = useUserBrowsingStore(state=>state.searchResults);
     let setSearchResults = useUserBrowsingStore(state=>state.setSearchResults);
+    let setSearchResultsPosition = useUserBrowsingStore(state=>state.setSearchResultsPosition);
     let updateSearchListing = useUserBrowsingStore(state=>state.updateSearchListing);
     let [sharedCuuids, setSharedCuuids] = useState(null as {[tuuid: string]: Collections2SharedContactsSharedCollection} | null);
 
@@ -45,24 +46,28 @@ function SearchPage() {
 
     let searchHandler = useCallback(async()=>{
         if(!sharedCuuids) throw new Error('Shares not loaded');
+        
+        // Reset search variables
+        setSearchResultsPosition(0);
         setSearchResults(null);
         updateSearchListing(null);
         sessionStorage.removeItem(`search_${userId}`);
+        
         if(!searchInput) {
             setSearchParams(params=>{params.delete('search'); return params;});
         } else {
             if(!workers || !ready) throw new Error("workers not initialized");
             if(!userId) throw new Error("User not initialized");
-            await runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing, sharedCuuids);
+            await runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing, sharedCuuids, setSearchResultsPosition);
             setSearchParams(params=>{params.set('search', searchInput); return params;});
         }
-    }, [workers, ready, username, userId, searchInput, setSearchResults, setSearchParams, updateSearchListing, sharedCuuids]);
+    }, [workers, ready, username, userId, searchInput, setSearchResults, setSearchParams, updateSearchListing, sharedCuuids, setSearchResultsPosition]);
 
     let submitHandler = useCallback((e: FormEvent<HTMLFormElement>)=>{
         e.preventDefault();
         e.stopPropagation();
         searchHandler();
-    }, [searchHandler]);
+    }, [searchHandler, setSearchResultsPosition]);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -110,7 +115,7 @@ function SearchPage() {
             if(!workers || !ready) throw new Error("workers not initialized");
             if(!userId) throw new Error("User not initialized");
             setSearchParams(params=>{params.set('search', searchInput); return params;});
-            runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing, sharedCuuids)
+            runSearchQuery(workers, searchInput, userId, username, setSearchResults, updateSearchListing, sharedCuuids, setSearchResultsPosition)
                 .catch(err=>{
                     console.error("Error running initial search query", err);
                 })
@@ -118,6 +123,7 @@ function SearchPage() {
     }, [
         workers, ready, userId, searchInput, searchResults, setSearchInput, pageLoaded, setPageLoaded, 
         query, setSearchParams, setSearchResults, updateSearchListing, username, sharedCuuids, navSectionRef,
+        setSearchResultsPosition,
     ]);
 
     let onClickRow = useCallback((tuuid: string, typeNode: string)=>{
@@ -187,7 +193,8 @@ async function runSearchQuery(
     workers: AppWorkers, query: string, userId: string, username: string,
     setSearchResults: (searchResults: Collection2SearchStore | null) => void,
     updateSearchListing: (files: TuuidsBrowsingStoreSearchRow[] | null) => void,
-    sharedCuuids: {[tuuid: string]: Collections2SharedContactsSharedCollection})
+    sharedCuuids: {[tuuid: string]: Collections2SharedContactsSharedCollection},
+    setSearchResultsPosition: (position: number)=>void)
 {
     // Run search
     let searchResults = await workers.connection.searchFiles(query);
@@ -213,6 +220,8 @@ async function runSearchQuery(
 
     let sortedFiles = null as TuuidsBrowsingStoreSearchRow[] | null;
     if(searchResults.files) { 
+        setSearchResultsPosition(searchResults.files.length);
+
         // Process and save to IDB
         let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, searchResults.files, searchResults.keys);
 
@@ -295,6 +304,7 @@ function DisplayMore(props: {sharedCuuids: {[tuuid: string]: Collections2SharedC
 
     let searchListing = useUserBrowsingStore(state=>state.searchListing);
     let searchResults = useUserBrowsingStore(state=>state.searchResults);
+    let searchResultsPosition = useUserBrowsingStore(state=>state.searchResultsPosition);
 
     let [nextIndex, setNextIndex] = useState(null as number | null);
 
@@ -307,16 +317,16 @@ function DisplayMore(props: {sharedCuuids: {[tuuid: string]: Collections2SharedC
 
     let onClickHandler = useCallback(async () => {
         // Load all remaining items
-        let nextIndex = Math.min(itemsLoaded + 40, itemsAvailable);
+        let nextIndex = Math.min(searchResultsPosition + 40, itemsAvailable);
         setNextIndex(nextIndex);
-    }, [itemsLoaded, itemsAvailable, setNextIndex]);
+    }, [itemsLoaded, itemsAvailable, setNextIndex, searchResultsPosition]);
 
-    if(itemsLoaded === itemsAvailable || !sharedCuuids) return <></>;  // Nothing to do
+    if(searchResultsPosition === itemsAvailable || !sharedCuuids) return <></>;  // Nothing to do
 
     return (
         <div className='pt-3 text-center'>
             <ActionButton onClick={onClickHandler}revertSuccessTimeout={2}>Display more</ActionButton>
-            <SearchSyncHandler itemsLoaded={itemsLoaded} itemsAvailable={itemsAvailable} nextIndex={nextIndex} sharedCuuids={sharedCuuids} />
+            <SearchSyncHandler itemsAvailable={itemsAvailable} nextIndex={nextIndex} sharedCuuids={sharedCuuids} />
         </div>
     )
 }
@@ -326,13 +336,13 @@ function DisplayMore(props: {sharedCuuids: {[tuuid: string]: Collections2SharedC
  * @returns 
  */
 function SearchSyncHandler(
-    props: {itemsLoaded: number, itemsAvailable: number, nextIndex: number | null,
+    props: {/*itemsLoaded: number,*/ itemsAvailable: number, nextIndex: number | null,
     sharedCuuids: {[tuuid: string]: Collections2SharedContactsSharedCollection}}) 
 {
 
     let {sharedCuuids} = props;
 
-    let {itemsLoaded, itemsAvailable, nextIndex} = props;
+    let {/*itemsLoaded,*/ itemsAvailable, nextIndex} = props;
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
@@ -340,14 +350,23 @@ function SearchSyncHandler(
     let userId = useUserBrowsingStore(state=>state.userId);
     let searchResults = useUserBrowsingStore(state=>state.searchResults);
     let updateSearchListing = useUserBrowsingStore(state=>state.updateSearchListing);
+    let searchResultsPosition = useUserBrowsingStore(state=>state.searchResultsPosition);
+    let setSearchResultsPosition = useUserBrowsingStore(state=>state.setSearchResultsPosition);
 
     useEffect(()=>{
         if(!workers || !ready || !userId || !searchResults) return;
-        if(nextIndex && itemsLoaded < nextIndex) {
-            let start = itemsLoaded, end = nextIndex;
+        
+        if(nextIndex) setSearchResultsPosition(nextIndex);  // Ensure index is updated
+        
+        if(nextIndex && searchResultsPosition < nextIndex) {
+            let start = searchResultsPosition, end = nextIndex;
             let docs = searchResults?.searchResults?.search_results?.docs;
+
+            // console.debug("Update search results from %s to %s: %O ", start, end, docs)
+
             if(docs) {
                 let tuuids = docs.slice(start, end).map(item=>item.id);
+                // console.debug("Updated result with tuuids", tuuids);
 
                 // Signal to cancel sync
                 let cancelled = false;
@@ -362,9 +381,9 @@ function SearchSyncHandler(
             }
         } else {
             // Empty screen
-            console.debug("Empty search screen");
+            //console.debug("Empty search screen");
         }
-    }, [workers, ready, nextIndex, itemsLoaded, itemsAvailable, userId, username, searchResults, sharedCuuids, updateSearchListing]);
+    }, [workers, ready, nextIndex, searchResultsPosition, itemsAvailable, userId, username, searchResults, sharedCuuids, updateSearchListing, setSearchResultsPosition]);
 
     return <></>;
 }
@@ -378,7 +397,10 @@ async function loadTuuidsToSearch(
 {
     // Load
     let response = await workers.connection.getFilesByTuuid(tuuids);
-    if(cancelledSignal()) return;  // Stop, search has changed
+    // console.debug("Tuuids %O loaded\n%O", tuuids, response);
+    
+    //TODO - Fix cancel, always getting triggered on nextIndex change
+    // if(cancelledSignal()) return;  // Stop, search has changed
 
     let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files || [], response.keys);
 
@@ -413,6 +435,8 @@ async function loadTuuidsToSearch(
             mappedFiles.push({...item, ...file});
         }
     }
+
+    // console.debug("Add mapped files: ", mappedFiles);
 
     updateSearchListing(mappedFiles);
 }
