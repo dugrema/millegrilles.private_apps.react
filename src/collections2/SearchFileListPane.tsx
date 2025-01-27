@@ -131,7 +131,7 @@ function FileRow(props: {value: TuuidsBrowsingStoreSearchRow, dateColumn?: strin
     return (
         <div key={value.tuuid} onClick={onclickHandler}
             className='grid grid-cols-8 md:grid-cols-12 py-1 md:py-0 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer'>
-            <div className='col-span-8 md:col-span-6 px-1'>
+            <div className='col-span-8 md:col-span-6 px-1 truncate'>
                 {thumbnail?
                     <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
                 :
