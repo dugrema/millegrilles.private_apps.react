@@ -80,7 +80,7 @@ function Cleanup() {
 
     return (
         <div className='pt-4'>
-            <p>Cleanup history - removes all downloaded files and decrypted content from MilleGrilles. Keeps configuration.</p>
+            <p>Cleanup history - removes all downloaded files and decrypted content from Collections2. Keeps configuration.</p>
             {typeof(storageUsage) === 'number'?
                 <p>Current estimated usage for MilleGrilles: <Formatters.FormatteurTaille value={storageUsage} /></p>
             :<></>}
