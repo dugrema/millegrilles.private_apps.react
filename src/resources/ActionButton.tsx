@@ -13,11 +13,12 @@ type ActionButtonProps = {
     revertSuccessTimeout?: number | undefined,  // Seconds to revert back if success
     confirm?: boolean,
     varwidth?: number,
+    className?: string | null,  // Override of the base 'btn' and 'varbtn' settings from index.css
 };
 
 function ActionButton(props: ActionButtonProps) {
 
-    let { onClick, disabled, mainButton, forceErrorStatus, name, value, revertSuccessTimeout, confirm, varwidth } = props;
+    let { onClick, disabled, mainButton, forceErrorStatus, name, value, revertSuccessTimeout, confirm, varwidth, className } = props;
 
     let [success, setSuccess] = useState(false);
     let [waiting, setWaiting] = useState(false);
@@ -26,7 +27,12 @@ function ActionButton(props: ActionButtonProps) {
 
     let [buttonClassName, Icon] = useMemo(()=>{
         let btnClass = 'btn ';
-        if(varwidth) btnClass = 'varbtn w-' + varwidth;
+        if(className) {
+            // Override
+            btnClass = className + ' ';
+        } else if(varwidth) {
+            btnClass = 'varbtn w-' + varwidth;
+        }
 
         if(error || forceErrorStatus) return [
             `${btnClass} inline-block text-center bg-red-700 hover:bg-red-600 active:bg-red-500 disabled:bg-red-800`, 
@@ -50,7 +56,7 @@ function ActionButton(props: ActionButtonProps) {
             `${btnClass} inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800`, 
             waiting?<IconCompactDiscSvg className='w-6 fill-slate-500 inline animate-spin' />:null
         ];
-    }, [error, forceErrorStatus, confirming, success, mainButton, waiting, varwidth]);
+    }, [error, forceErrorStatus, confirming, success, mainButton, waiting, varwidth, className]);
 
     let clickHandler = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
         // Reset

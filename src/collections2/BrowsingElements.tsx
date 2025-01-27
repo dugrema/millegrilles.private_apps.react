@@ -122,7 +122,7 @@ export enum ModalEnum {
     Rename
 };
 
-type ButtonBarProps = {
+export type ButtonBarProps = {
     disableStatistics?: boolean,
     disableEdit?: boolean,
     shared?: boolean,
