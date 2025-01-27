@@ -106,24 +106,23 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
     if(viewConversionScreen) return <VideoConversion file={file} close={conversionScreenClose} />;
 
     return (
-        <div className='grid grid-cols-3 pt-2'>
-            <div className='flex grow col-span-2 pr-4 max-h-screen pb-32'>
+        <div className='grid grid-cols-1 md:grid-cols-3 pt-2 px-2'>
+            <div className='flex grow col-span-2 pr-4 max-h-screen md:pb-32 px-1'>
                 <MediaContentDisplay file={file} thumbnailBlobUrl={fullSizeBlobUrl || blobUrl} selectedVideo={selectedVideo} loadProgress={loadProgress} setSelectedVideo={setSelectedVideo} setLoadProgress={setLoadProgress} />
             </div>
-            <div>
-                <FileDetail 
-                    file={file} 
-                    selectedVideo={selectedVideo} 
-                    setSelectedVideo={setSelectedVideo} 
-                    loadProgress={loadProgress} 
-                    isVideo={isVideoFile} />
-
+            <div className='px-1 md:px-0 pt-2'>
                 {isVideoFile?
                     <button onClick={conversionScreenOpen} 
                         className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
                             Convert
                     </button>
                 :<></>}
+                <FileDetail 
+                    file={file} 
+                    selectedVideo={selectedVideo} 
+                    setSelectedVideo={setSelectedVideo} 
+                    loadProgress={loadProgress} 
+                    isVideo={isVideoFile} />
             </div>
         </div>
     )
@@ -325,7 +324,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         )
     }
     if(thumbnailBlobUrl) {
-        let className = 'grow object-contain object-right';
+        let className = 'grow object-contain object-center md:object-right';
         if(isPdf) className = 'grow object-contain bg-slate-100 bg-opacity-70';  // for transparency
         return (
             <img src={thumbnailBlobUrl} onClick={onClickStart} alt='Content of the file'
@@ -365,22 +364,22 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
     let {file, selectedVideo, setSelectedVideo, loadProgress, isVideo} = props;
     
     return (
-        <div className='grid-cols-1'>
-            <p className='text-slate-400'>File name</p>
-            <p>{file.decryptedMetadata?.nom}</p>
-            <p className='text-slate-400'>File size</p>
-            <p><Formatters.FormatteurTaille value={file.fileData?.taille} /></p>
-            <p className='text-slate-400'>File date</p>
-            <p><Formatters.FormatterDate value={file.decryptedMetadata?.dateFichier || file.date_creation} /></p>
-            <p className='text-slate-400'>Type</p>
-            <p>{file.fileData?.mimetype}</p>
-            <ImageDimensions file={file} />
+        <div className='grid grid-cols-6 md:grid-cols-1'>
             {isVideo?
                 <>
                     <VideoDuration file={file} />
                     <VideoSelectionDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} />
                 </>
             :<></>}
+            <p className='col-span-6 text-slate-400'>File name</p>
+            <p className='col-span-6'>{file.decryptedMetadata?.nom}</p>
+            <p className='col-span-2 text-slate-400'>File size</p>
+            <p className='col-span-4'><Formatters.FormatteurTaille value={file.fileData?.taille} /></p>
+            <p className='col-span-2 text-slate-400'>File date</p>
+            <p className='col-span-4'><Formatters.FormatterDate value={file.decryptedMetadata?.dateFichier || file.date_creation} /></p>
+            <p className='col-span-2 text-slate-400'>Type</p>
+            <p className='col-span-4'>{file.fileData?.mimetype}</p>
+            <ImageDimensions file={file} />
         </div>
     );
 }
@@ -390,8 +389,8 @@ function ImageDimensions(props: {file: TuuidsIdbStoreRowType | null}) {
     if(!file?.fileData?.height || !file?.fileData?.width) return <></>;
     return (
         <>
-            <p className='text-slate-400'>Dimension</p>
-            <p>{file.fileData.width} x {file.fileData.height}</p>
+            <p className='col-span-2 text-slate-400'>Dimension</p>
+            <p className='col-span-4'>{file.fileData.width} x {file.fileData.height}</p>
         </>
     )
 }
@@ -401,8 +400,8 @@ function VideoDuration(props: {file: TuuidsIdbStoreRowType | null}) {
     if(!file?.fileData?.duration) return <></>;
     return (
         <>
-            <p className='text-slate-400'>Duration</p>
-            <Formatters.FormatterDuree value={file.fileData.duration} />
+            <p className='col-span-2 text-slate-400'>Duration</p>
+            <p className='col-span-4'><Formatters.FormatterDuree value={file.fileData.duration} /></p>
         </>
     )
 }
@@ -666,12 +665,12 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
 
     return (
         <>
-            <p className='pt-4 text-slate-400'>Selected video resolution</p>
-            <ol className="cursor-pointer items-pl-2 max-w-48">
+            <p className='col-span-6 pt-4 text-slate-400'>Selected video resolution</p>
+            <ol className="col-span-6 cursor-pointer items-pl-2 max-w-48">
                 {elems}
             </ol>
-            <p className={'text-slate-400 duration-700 transition-all' + progressClassHide}>Loading progress</p>
-            <p className={'duration-500 transition-all' + progressClassHide}>{loadProgress}%</p>
+            <p className={'col-span-4 text-slate-400 duration-700 transition-all' + progressClassHide}>Loading progress</p>
+            <p className={'col-span-2 duration-500 transition-all' + progressClassHide}>{loadProgress}%</p>
         </>
     )
 }

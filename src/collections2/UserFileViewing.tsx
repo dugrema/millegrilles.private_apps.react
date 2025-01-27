@@ -69,11 +69,11 @@ function UserFileViewing() {
 
     return (
         <>
-            <section className='fixed top-12'>
+            <section className='fixed top-10 md:top-12'>
                 <Breadcrumb onClick={breacrumbOnClick} file={file} />
             </section>
 
-            <section className='fixed top-20 left-0 px-2 bottom-10 overflow-y-auto w-full'>
+            <section className='fixed top-20 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <DetailFileViewLayout file={file} thumbnail={thumbnailBlob} />
             </section>
             
@@ -110,29 +110,29 @@ function Breadcrumb(props: BreadcrumbProps) {
 
         let mappedDirectories = breadcrumbMapped.map(item=>{
             return (
-                <li key={item.tuuid} className='flex cursor-pointer items-center pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
-                    {onClick?
-                        <p onClick={onClickHandler} data-tuuid={item.tuuid}>{item.nom}</p>
-                    :
-                        <Link to={'/apps/collections2/b/' + item.tuuid}>{item.nom}</Link>
-                    }
-                    
-                    <span className="pointer-events-none ml-2 text-slate-800">/</span>
-                </li>
+                <div key={item.tuuid} 
+                    className='inline cursor-pointer pl-1 md:pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
+                        {onClick?
+                            <p className='inline' onClick={onClickHandler} data-tuuid={item.tuuid}>{item.nom}</p>
+                        :
+                            <Link to={'/apps/collections2/b/' + item.tuuid}>{item.nom}</Link>
+                        }
+                        <span className="pointer-events-none ml-2 text-slate-800">/</span>
+                </div>
             )
         });
 
         let rootUser = (
-            <li key='root' className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50'>
+            <div key='root' className='inline cursor-pointer pl-1 md:pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
                 <Link to={'/apps/collections2/b/root'}>{username}</Link>
-                <span className="pointer-events-none ml-2 text-slate-400 font-bold">&gt;</span>
-            </li>
+                <span className="pointer-events-none  ml-2 text-slate-400 font-bold">&gt;</span>
+            </div>
         )
 
         let fileElem =(
-            <li key={file.tuuid} className='flex items-center pl-2 text-sm bg-slate-700 bg-opacity-50 font-bold pr-2'>
+            <div key={file.tuuid} className='inline items-center pl-2 text-sm bg-slate-700 bg-opacity-50 font-bold pr-2'>
                 {file.decryptedMetadata?.nom}
-            </li>
+            </div>
         );
 
         return [rootUser, ...mappedDirectories, fileElem];
@@ -141,10 +141,8 @@ function Breadcrumb(props: BreadcrumbProps) {
     if(!breadcrumbMapped) return <p>Loading ...</p>;
 
     return (
-        <nav aria-label='breadcrumb' className='w-max'>
-            <ol className='flex w-full flex-wrap items-center'>
-                {breadcrumbMapped}
-            </ol>
+        <nav aria-label='breadcrumb' className='w-screen leading-3 pr-2 line-clamp-2'>
+            {breadcrumbMapped}
         </nav>
     );
 }
