@@ -4,9 +4,9 @@ import { MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "r
 import { Collection2DirectoryStats, Collections2SharedContactsSharedCollection } from "../workers/connection.worker";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
-import { ButtonBar, ModalEnum } from "./BrowsingElements";
+import { ButtonBar } from "./BrowsingElements";
 import FilelistPane, { FileListPaneOnClickRowType } from "./FilelistPane";
-import { ModalBrowseAction, ModalInformation, Modals } from "./Modals";
+import { Modals } from "./Modals";
 
 function SharedFileBrowsing() {
 
@@ -28,8 +28,6 @@ function SharedFileBrowsing() {
     let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
     let setSelectionPosition = useUserBrowsingStore(state=>state.setSelectionPosition);
 
-    let [modal, setModal] = useState(null as ModalEnum | null);
-
     let cuuid = useMemo(()=>{
         if(tuuid) return tuuid;
         return sharedCollection?.tuuid;  // Root for this shared collection
@@ -40,9 +38,6 @@ function SharedFileBrowsing() {
         let filesValues = Object.values(currentDirectory);
         return filesValues;
     }, [currentDirectory]) as TuuidsBrowsingStoreRow[] | null;
-
-    let onModal = useCallback((modal: ModalEnum)=>setModal(modal), [setModal]);
-    let closeModal = useCallback(()=>setModal(null), [setModal]);
 
     useEffect(()=>{
         if(!sharedWithUser?.sharedCollections || !contactId) {
@@ -142,12 +137,14 @@ function SharedFileBrowsing() {
 
     return (
         <>
-            <section className='fixed top-12 pt-1'>
+            <section className='fixed top-10 md:top-12'>
                 <Breadcrumb contactId={contactId} />
-                <ButtonBar disableEdit={true} shared={true} />
+                <div className='pt-2 hidden md:block'>
+                    <ButtonBar disableEdit={true} shared={true} />
+                </div>
             </section>
 
-            <section ref={navSectionRef} className='fixed top-36 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
+            <section ref={navSectionRef} className='fixed top-20 md:top-36 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <FilelistPane files={files} onClickRow={onClickRowHandler} />
             </section>
 

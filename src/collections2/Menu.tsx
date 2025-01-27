@@ -53,6 +53,14 @@ export default function HeaderMenu(props: MenuProps) {
         setSelectionMode(!selectionMode);
     }, [selectionMode, setSelectionMode]);
     
+    let disableEdit = useMemo(()=>{
+        let locationPath = location.pathname;
+        if(locationPath.startsWith('/apps/collections2/b')) {
+            return false;
+        }
+        return true;
+    }, [location]);
+
     let cssDisconnected = useMemo(()=>{
         if(!connectionReady) return ' bg-red-500';
         if(!filehostAuthenticated) return ' bg-amber-700'
@@ -103,7 +111,7 @@ export default function HeaderMenu(props: MenuProps) {
 
                     {/* Selection buttons for mobile mode. Always hide when >=md. */}
                     <div className={'inline md:hidden'}>
-                        <ButtonBarMobile disableStatistics={true} />
+                        <ButtonBarMobile disableEdit={disableEdit} />
                     </div>
 
                     {/* Regular menu items - need to hide in mobile mode during selection. */}
@@ -181,7 +189,7 @@ export default function HeaderMenu(props: MenuProps) {
                     </div>
 
                     {/* Button bar */}
-                    <div className='py-3'><SubmenuButtonBar close={toggleSubmenu} /></div>
+                    <div className='py-3'><SubmenuButtonBar disableEdit={disableEdit} close={toggleSubmenu} /></div>
                     
                     {/* Additional links */}
                     <Link to='/apps/collections2/settings' className='block py-3' onClick={toggleSubmenu}>
@@ -200,9 +208,9 @@ export default function HeaderMenu(props: MenuProps) {
     )
 }
 
-function ButtonBarMobile(props: ButtonBarProps) {
-    
-    let {shared} = props;
+function ButtonBarMobile(props: {disableEdit: boolean}) {
+
+    let {disableEdit} = props;
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
@@ -245,7 +253,7 @@ function ButtonBarMobile(props: ButtonBarProps) {
 
     return (
         <div className='inline pl-8'>
-            {props.disableEdit?<></>:
+            {disableEdit?<></>:
                 <button onClick={renameHandler} disabled={!selectionMode || selectCount !== 1}
                     className='px-2 mx-1 transition ease-in-out disabled:bg-slate-900 disabled:text-slate-600 cursor-pointer rounded-t-md bg-slate-700 disabled:bg-slate-900'>
                         <img src={EditIcon} alt="Rename files" title='Rename files' className='w-5 h-5 inline-block'/>
@@ -255,7 +263,7 @@ function ButtonBarMobile(props: ButtonBarProps) {
                 className='px-2 mx-1 transition ease-in-out disabled:bg-slate-900 disabled:text-slate-600 cursor-pointer rounded-t-md bg-slate-700 disabled:bg-slate-900'>
                     <img src={CopyIcon} alt="Copy files" title="Copy files" className='w-5 inline-block'/>
             </button>
-            {props.disableEdit?<></>:
+            {disableEdit?<></>:
                 <>
                     <button onClick={cutHandler} disabled={!selectionMode || !selectCount}
                         className='px-2 mx-1 transition ease-in-out disabled:bg-slate-900 disabled:text-slate-600 cursor-pointer rounded-t-md bg-slate-700 disabled:bg-slate-900'>
@@ -276,14 +284,14 @@ function ButtonBarMobile(props: ButtonBarProps) {
 }
 
 type SubmenuButtonBarProps = {
+    disableEdit: boolean,
     close: () => void,
 }
 
 function SubmenuButtonBar(props: SubmenuButtonBarProps) {
 
-    let {close} = props;
+    let {disableEdit, close} = props;
 
-    let disableEdit = false;
     let viewMode = useUserBrowsingStore(state=>state.viewMode);
     let setViewMode = useUserBrowsingStore(state=>state.setViewMode);
 
@@ -346,6 +354,3 @@ function SubmenuButtonBar(props: SubmenuButtonBarProps) {
         </>
     )
 }
-
-
-// disabled:ring-offset-0 disabled:ring-0 hover:ring-offset-1 hover:ring-1

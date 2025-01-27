@@ -3,13 +3,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { proxy } from "comlink";
 import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
 
-import { Breadcrumb, ButtonBar, ModalEnum } from "./BrowsingElements";
+import { Breadcrumb, ButtonBar } from "./BrowsingElements";
 import FilelistPane from "./FilelistPane";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Collection2DirectoryContentUpdateMessage, Collection2DirectoryStats, Collection2DirectoryUpdateMessage } from "../workers/connection.worker";
-import { ModalInformation, ModalNewDirectory, ModalBrowseAction, ModalShareCollection, ModalImportZip, ModalRenameFile, Modals } from './Modals';
+import { Modals } from './Modals';
 
 function ViewUserFileBrowsing() {
 
