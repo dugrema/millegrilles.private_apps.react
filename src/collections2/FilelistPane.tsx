@@ -249,7 +249,7 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
         if(selectionMode) {
             // Disable text select (copy/paste)
             if(selection?.includes(value.tuuid)) {
-                return 'grid grid-cols-12 mx-2 odd:bg-violet-600 even:bg-violet-500 hover:bg-violet-800 odd:bg-opacity-70 even:bg-opacity-70 text-sm cursor-pointer select-none';
+                return 'grid grid-cols-6 md:grid-cols-12 mx-2 odd:bg-violet-600 even:bg-violet-500 hover:bg-violet-800 odd:bg-opacity-70 even:bg-opacity-70 text-sm cursor-pointer select-none';
             }
             return 'grid grid-cols-6 md:grid-cols-12 mx-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer select-none';
         }
@@ -258,8 +258,7 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
     }, [value, selection, selectionMode]);
 
     return (
-        <div key={value.tuuid} onClick={onclickHandler}
-            className={selectionCss}>
+        <div key={value.tuuid} onClick={onclickHandler} className={selectionCss}>
             <div ref={ref} className='col-span-7 px-1 truncate'>
                 {thumbnail?
                     <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
