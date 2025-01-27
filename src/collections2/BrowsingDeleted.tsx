@@ -10,7 +10,7 @@ import RecycleIcon from '../resources/icons/undo-svgrepo-com.svg';
 import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
 import ActionButton from "../resources/ActionButton";
 import { useNavigate } from "react-router-dom";
-import { ModalBrowseAction } from "./Modals";
+import { ModalBrowseAction, Modals } from "./Modals";
 
 function BrowsingDeleted() {
 
@@ -142,7 +142,7 @@ function BrowsingDeleted() {
             </section>
 
             <DirectorySyncHandler tuuid={tuuid} />
-            <Modals show={modal} close={closeModal} />
+            <Modals includeDeleted={true} />
         </>
     );
 }
@@ -332,13 +332,13 @@ export function ButtonBar(props: ButtonBarProps) {
     );
 }
 
-function Modals(props: {show: ModalEnum | null, close:()=>void}) {
+// function Modals(props: {show: ModalEnum | null, close:()=>void}) {
 
-    let {show, close} = props;
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+//     let {show, close} = props;
+//     let workers = useWorkers();
+//     let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
-    if(show === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={close} modalType={show} title='Copy files' includeDeleted={true} />;
+//     if(show === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={close} modalType={show} title='Copy files' includeDeleted={true} />;
 
-    return <></>;
-}
+//     return <></>;
+// }

@@ -30,6 +30,40 @@ function CloseIcon() {
     )
 }
 
+export type ModalProps = {
+    shared?: boolean | null, 
+    includeDeleted?: boolean | null,
+}
+
+/**
+ * 
+ * @returns Handler for all supported modals. 
+ */
+export function Modals(props: ModalProps) {
+
+    let {shared, includeDeleted} = props;
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    let modal = useUserBrowsingStore(state=>state.modal);
+    let setModal = useUserBrowsingStore(state=>state.setModal);
+    let closeModal = useCallback(()=>setModal(null), [setModal]);
+
+    // Modals with file browsing
+    if(modal === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={closeModal} modalType={modal} title='Copy files' shared={shared} />;
+    if(modal === ModalEnum.Cut) return <ModalBrowseAction workers={workers} ready={ready} close={closeModal} modalType={modal} title='Move files' shared={shared} includeDeleted={includeDeleted} />;
+
+    // Other actions
+    if(modal === ModalEnum.Info) return <ModalInformation workers={workers} ready={ready} close={closeModal} modalType={modal} shared={shared} />;
+    if(modal === ModalEnum.NewDirectory) return <ModalNewDirectory workers={workers} ready={ready} close={closeModal} modalType={modal} />;
+    if(modal === ModalEnum.Share) return <ModalShareCollection workers={workers} ready={ready} modalType={modal} close={closeModal} />;
+    if(modal === ModalEnum.ImportZip) return <ModalImportZip workers={workers} ready={ready} modalType={modal} close={closeModal} />;
+    if(modal === ModalEnum.Rename) return <ModalRenameFile workers={workers} ready={ready} modalType={modal} close={closeModal} />;
+
+    return <></>;
+}
+
 export function ModalInformation(props: ModalInformationProps & {shared?: boolean | null}) {
 
     let {close, shared} = props;
@@ -348,7 +382,7 @@ export function ModalRenameFile(props: ModalInformationProps) {
     );
 }
 
-export function ModalBrowseAction(props: ModalInformationProps & {title: string, shared?: boolean, includeDeleted?: boolean}) {
+export function ModalBrowseAction(props: ModalInformationProps & {title: string, shared?: boolean | null, includeDeleted?: boolean | null}) {
 
     let {close, title, modalType, shared, includeDeleted} = props;
 

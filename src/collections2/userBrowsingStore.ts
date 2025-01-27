@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { TuuidsIdbStoreRowType } from './idb/collections2StoreIdb';
 import { Collection2DirectoryStats, Collections2SearchResults, Collections2SharedContactsSharedCollection, Collections2SharedContactsUser } from '../workers/connection.worker';
+import { ModalEnum } from './BrowsingElements';
 // import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType } from './idb/notepadStoreIdb';
 
 export type TuuidsBrowsingStoreRow = {
@@ -65,13 +66,18 @@ export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsi
 interface UserBrowsingStoreState {
     userId: string | null,
     userMaxResolution: number,
+
+    // High-level nav
+    modal: ModalEnum | null,
+    viewMode: ViewMode,
+
+    // Browsing
     currentCuuid: string | null,
     currentCuuidDeleted: string | null,
     selectedTuuids: string[] | null,
     currentDirectory: {[tuuid: string]: TuuidsBrowsingStoreRow} | null,
     usernameBreadcrumb: string | null,
     breadcrumb: TuuidsBrowsingStoreRow[] | null,
-    viewMode: ViewMode,
     directoryStatistics: Collection2DirectoryStats[] | null,
     
     // Search
@@ -79,6 +85,7 @@ interface UserBrowsingStoreState {
     searchResultsPosition: number,  // Current position of the displayed search results in searchListing. Required because there can be duplicated results due to shared files.
     searchListing: {[tuuid: string]: TuuidsBrowsingStoreSearchRow} | null,  // Currently loaded search results
 
+    // Selection
     selectionMode: boolean,
     selection: string[] | null,
     selectionPosition: string | null,
@@ -99,10 +106,13 @@ interface UserBrowsingStoreState {
     setCuuid: (cuuid: string | null) => void,
     setCuuidDeleted: (cuuid: string | null) => void,
     setUserId: (userId: string) => void,
+
+    setViewMode: (viewMode: ViewMode) => void,
+    setModal: (modal: ModalEnum | null) => void,
+
     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
     updateCurrentDirectoryDeleted: (files: TuuidsBrowsingStoreRow[] | null) => void,
     setBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
-    setViewMode: (viewMode: ViewMode) => void,
     setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
     updateThumbnail: (tuuid: string, thumbnail: Blob) => void,
     deleteFilesDirectory: (files: string[]) => void,
@@ -134,13 +144,16 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
         (set) => ({
             userId: null,
             userMaxResolution: 8192,
+
+            modal: null,
+            viewMode: ViewMode.List,
+
             currentCuuid: null,
             currentCuuidDeleted: null,
             selectedTuuids: null,
             currentDirectory: null,
             usernameBreadcrumb: null,
             breadcrumb: null,
-            viewMode: ViewMode.List,
             directoryStatistics: null,
 
             searchResults: null,
@@ -167,6 +180,8 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             setCuuid: (cuuid) => set(()=>({currentCuuid: cuuid, selection: null, selectionMode: false})),
             setCuuidDeleted: (cuuid) => set(()=>({currentCuuidDeleted: cuuid})),
             setUserId: (userId) => set(()=>({userId})),
+            setViewMode: (viewMode) => set(()=>({viewMode})),
+            setModal: (modal) => set(()=>({modal})),
 
             updateCurrentDirectory: (files) => set((state)=>{
                 if(!files) {
@@ -226,7 +241,6 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             }),
 
             setBreadcrumb: (username, breadcrumb) => set(()=>({usernameBreadcrumb: username, breadcrumb})),
-            setViewMode: (viewMode) => set(()=>({viewMode})),
             setDirectoryStatistics: (directoryStatistics) => set(()=>({directoryStatistics})),
             updateThumbnail: (tuuid, thumbnail) => set((state)=>{
                 let currentDirectory = state.currentDirectory;

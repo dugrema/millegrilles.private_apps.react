@@ -6,7 +6,7 @@ import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { ButtonBar, ModalEnum } from "./BrowsingElements";
 import FilelistPane, { FileListPaneOnClickRowType } from "./FilelistPane";
-import { ModalBrowseAction, ModalInformation } from "./Modals";
+import { ModalBrowseAction, ModalInformation, Modals } from "./Modals";
 
 function SharedFileBrowsing() {
 
@@ -144,7 +144,7 @@ function SharedFileBrowsing() {
         <>
             <section className='fixed top-12 pt-1'>
                 <Breadcrumb contactId={contactId} />
-                <ButtonBar disableEdit={true} shared={true} onModal={onModal} />
+                <ButtonBar disableEdit={true} shared={true} />
             </section>
 
             <section ref={navSectionRef} className='fixed top-36 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
@@ -152,7 +152,7 @@ function SharedFileBrowsing() {
             </section>
 
             <DirectorySyncHandler tuuid={cuuid} onLoad={onLoadHandler} />
-            <Modals show={modal} close={closeModal} />
+            <Modals shared={true} />
         </>
     );
 }
@@ -389,14 +389,14 @@ async function synchronizeDirectory(
     }
 }
 
-function Modals(props: {show: ModalEnum | null, close:()=>void}) {
+// function Modals(props: {show: ModalEnum | null, close:()=>void}) {
 
-    let {show, close} = props;
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+//     let {show, close} = props;
+//     let workers = useWorkers();
+//     let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
-    if(show === ModalEnum.Info) return <ModalInformation workers={workers} ready={ready} close={close} modalType={show} shared={true} />;
-    if(show === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={close} modalType={show} shared={true} title='Copy files' />;
+//     if(show === ModalEnum.Info) return <ModalInformation workers={workers} ready={ready} close={close} modalType={show} shared={true} />;
+//     if(show === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={close} modalType={show} shared={true} title='Copy files' />;
 
-    return <></>;
-}
+//     return <></>;
+// }

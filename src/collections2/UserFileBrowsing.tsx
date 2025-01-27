@@ -9,20 +9,21 @@ import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
 import { Collection2DirectoryContentUpdateMessage, Collection2DirectoryStats, Collection2DirectoryUpdateMessage } from "../workers/connection.worker";
-import { ModalInformation, ModalNewDirectory, ModalBrowseAction, ModalShareCollection, ModalImportZip, ModalRenameFile } from './Modals';
+import { ModalInformation, ModalNewDirectory, ModalBrowseAction, ModalShareCollection, ModalImportZip, ModalRenameFile, Modals } from './Modals';
 
 function ViewUserFileBrowsing() {
 
     let { tuuid } = useParams();
 
-    let [modal, setModal] = useState(null as ModalEnum | null);
-
+    // let [modal, setModal] = useState(null as ModalEnum | null);
+    
     let navSectionRef = useRef(null);
 
     let userId = useUserBrowsingStore(state=>state.userId);
     let filesDict = useUserBrowsingStore(state=>state.currentDirectory);
     let cuuid = useUserBrowsingStore(state=>state.currentCuuid);
     let setCuuid = useUserBrowsingStore(state=>state.setCuuid);
+    let setModal = useUserBrowsingStore(state=>state.setModal);
     let navigate = useNavigate();
 
     // Selecting files
@@ -38,9 +39,6 @@ function ViewUserFileBrowsing() {
 
         return filesValues;
     }, [filesDict]) as TuuidsBrowsingStoreRow[] | null;
-
-    let onModal = useCallback((modal: ModalEnum)=>setModal(modal), [setModal]);
-    let closeModal = useCallback(()=>setModal(null), [setModal]);
 
     let onClickRow = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, tuuid:string, typeNode:string, range: TuuidsBrowsingStoreRow[] | null)=>{
         let ctrl = e?.ctrlKey || false;
@@ -143,12 +141,17 @@ function ViewUserFileBrowsing() {
         };
     }, [onScrollHandler, navSectionRef]);
 
+    // Nav cleanup on open
+    useEffect(()=>{
+        setModal(null);
+    }, [setModal]);
+
     return (
         <>
             <section className='fixed top-10 md:top-12'>
                 <Breadcrumb />
                 <div className='pt-2 hidden md:block'>
-                    <ButtonBar onModal={onModal} />                    
+                    <ButtonBar />
                 </div>
             </section>
 
@@ -157,7 +160,7 @@ function ViewUserFileBrowsing() {
             </section>
 
             <DirectorySyncHandler tuuid={cuuid} onLoad={onLoadHandler} />
-            <Modals show={modal} close={closeModal} />
+            <Modals />
         </>
     );
 }
@@ -374,23 +377,6 @@ async function synchronizeDirectory(
         // Update current directory last sync information
         await workers.directory.touchDirectorySync(tuuid, userId, lastCompleteSyncSec);
     }
-}
-
-function Modals(props: {show: ModalEnum | null, close:()=>void}) {
-
-    let {show, close} = props;
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-
-    if(show === ModalEnum.Info) return <ModalInformation workers={workers} ready={ready} close={close} modalType={show} />;
-    if(show === ModalEnum.NewDirectory) return <ModalNewDirectory workers={workers} ready={ready} close={close} modalType={show} />;
-    if(show === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={close} modalType={show} title='Copy files' />;
-    if(show === ModalEnum.Cut) return <ModalBrowseAction workers={workers} ready={ready} close={close} modalType={show} title='Move files' />;
-    if(show === ModalEnum.Share) return <ModalShareCollection workers={workers} ready={ready} modalType={show} close={close} />;
-    if(show === ModalEnum.ImportZip) return <ModalImportZip workers={workers} ready={ready} modalType={show} close={close} />;
-    if(show === ModalEnum.Rename) return <ModalRenameFile workers={workers} ready={ready} modalType={show} close={close} />;
-
-    return <></>;
 }
 
 async function updateCollectionContent(

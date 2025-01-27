@@ -126,12 +126,12 @@ export type ButtonBarProps = {
     disableStatistics?: boolean,
     disableEdit?: boolean,
     shared?: boolean,
-    onModal: (modalName: ModalEnum) => void,
+    // onModal: (modalName: ModalEnum) => void,
 };
 
 export function ButtonBar(props: ButtonBarProps) {
 
-    let {disableStatistics, shared, onModal} = props;
+    let {disableStatistics, shared} = props;
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
@@ -142,6 +142,8 @@ export function ButtonBar(props: ButtonBarProps) {
     let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
     let selection = useUserBrowsingStore(state=>state.selection);
     let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
+    let setModal = useUserBrowsingStore(state=>state.setModal);
+    let onModal = useCallback((modal: ModalEnum)=>setModal(modal), [setModal]);
 
     let [selectCount, directorySelectCount] = useMemo(()=>{
         if(!selection) return [0, 0];
