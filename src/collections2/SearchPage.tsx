@@ -167,13 +167,14 @@ function SearchPage() {
 
     return (
         <>
-            <section className='fixed top-12 pt-1'>
+            <section className='fixed left-0 top-12 pt-1 px-2 w-full'>
                 <form onSubmit={submitHandler}>
-                    <div className='grid grid-cols-12'>
-                        <label className='col-span-2'>Search query</label>
+                    <div className='grid grid-cols-6 sm:grid-cols-12'>
                         <input type='text' value={searchInput} onChange={searchInputHandler} autoFocus
-                            className='col-span-8 text-black' />
-                        <ActionButton onClick={searchHandler} revertSuccessTimeout={3}>Search</ActionButton>
+                            className='col-span-4 sm:col-span-10 md:col-span-11 text-black h-6 text-slate-100 bg-slate-500' />
+                        <ActionButton onClick={searchHandler} revertSuccessTimeout={3} className='ml-1 text-center col-span-2 md:col-span-1' mainButton={true}>
+                            Search
+                        </ActionButton>
                     </div>
                 </form>
                 <SearchStatistics />
@@ -290,7 +291,7 @@ function SearchStatistics() {
     }
 
     return (
-        <p className='pt-2'>
+        <p className='pt-2 text-sm'>
             <span className='pr-2'>Found {numberFound} files and directories. </span>
             <span className='pr-1'>{dirInfo?dirInfo:'No'} directories and</span>
             <span>{fileInfo?fileInfo:'No'} files are available to display.</span>

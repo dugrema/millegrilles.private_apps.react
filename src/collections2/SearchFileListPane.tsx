@@ -43,7 +43,7 @@ function SearchFilelistPane(props: SearchFileListPaneProps) {
     return (
         <>
             <div className='fixed w-full pr-4'>
-                <div className='grid grid-cols-12 bg-slate-800 text-sm px-1'>
+                <div className='grid grid-cols-6 md:grid-cols-12 bg-slate-800 text-sm px-1'>
                     <div className='col-span-6 px-1'>Name</div>
                     <p className='col-span-1 px-1'>Score</p>
                     <p className='col-span-1 px-1'>Size</p>
@@ -51,7 +51,7 @@ function SearchFilelistPane(props: SearchFileListPaneProps) {
                     <p className='col-span-2 px-1'>Date</p>
                 </div>
             </div>
-            <div className='pb-5'></div>
+            <div className='pb-10 md:pb-5'></div>
             {mappedFiles}
         </>
     );
@@ -130,8 +130,8 @@ function FileRow(props: {value: TuuidsBrowsingStoreSearchRow, dateColumn?: strin
 
     return (
         <div key={value.tuuid} onClick={onclickHandler}
-            className='grid grid-cols-12 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer'>
-            <div className='col-span-6 px-1'>
+            className='grid grid-cols-8 md:grid-cols-12 py-1 md:py-0 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer'>
+            <div className='col-span-8 md:col-span-6 px-1'>
                 {thumbnail?
                     <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
                 :
@@ -140,14 +140,14 @@ function FileRow(props: {value: TuuidsBrowsingStoreSearchRow, dateColumn?: strin
                 
                 <span className='pl-3'>{value.nom}</span>
             </div>
-            <p className='col-span-1 px-1'>
+            <p className='col-span-1 px-1 text-sm md:text-base'>
                 <Formatters.FormatteurNombre value={value.score || undefined} precision={3} />
             </p>
-            <p className='col-span-1 px-1'>
+            <p className='col-span-2 md:col-span-1 px-1 text-xs lg:text-base'>
                 <Formatters.FormatteurTaille value={value.taille || undefined} />
             </p>
-            <p className='col-span-2 px-1'>{value.mimetype}</p>
-            <p className='col-span-2 px-1'>
+            <p className='col-span-2 px-1 text-xs lg:text-base'>{value.mimetype}</p>
+            <p className='col-span-3 md:col-span-2 px-1 text-xs lg:text-base'>
                 <Formatters.FormatterDate value={dateValue || undefined} />
             </p>
         </div>
