@@ -246,3 +246,14 @@ export async function getCurrentVideoPosition(tuuid: string, userId: string): Pr
     const store = db.transaction(STORE_VIDEO_PLAY, 'readonly').store;
     return await store.get([tuuid, userId]);
 }
+
+/** Clears all stores. */
+export async function cleanup() {
+    const db = await openDB();
+
+    let storeTuuids = db.transaction(STORE_TUUIDS, 'readwrite').store;
+    await storeTuuids.clear();
+
+    let storeVideo = db.transaction(STORE_VIDEO_PLAY, 'readwrite').store;
+    await storeVideo.clear();
+}

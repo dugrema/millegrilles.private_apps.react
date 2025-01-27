@@ -1,6 +1,8 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import ActionButton from "../resources/ActionButton";
+import { cleanup } from "./idb/collections2StoreIdb";
+import { Formatters } from "millegrilles.reactdeps.typescript";
 
 function SettingsPage() {
     return (
@@ -11,6 +13,11 @@ function SettingsPage() {
 
             <section>
                 <ResolutionSettings />
+            </section>
+
+            <section>
+                <h2 className='text-xl font-bold pt-6'>Maintenance actions</h2>
+                <Cleanup />
             </section>
         </>
     )
@@ -51,4 +58,38 @@ function ResolutionSettings() {
             <ActionButton onClick={actionHandler} revertSuccessTimeout={3}>Change</ActionButton>
         </div>
     )
+}
+
+function Cleanup() {
+
+    let [storageUsage, setStorageUsage] = useState(null as number | null);
+
+    let cleanupHandler = useCallback(async ()=>{
+        await cleanup();
+    }, [setStorageUsage]);
+
+    useEffect(()=>{
+        loadEstimate(setStorageUsage).catch(err=>console.error("Error loading storage usage", err));
+        let interval = setInterval(()=>{
+            loadEstimate(setStorageUsage).catch(err=>console.error("Error loading storage usage", err));
+        }, 3_000);
+        return () => {
+            clearInterval(interval);
+        }
+    }, []);
+
+    return (
+        <div className='pt-4'>
+            <p>Cleanup history - removes all downloaded files and decrypted content from MilleGrilles. Keeps configuration.</p>
+            {typeof(storageUsage) === 'number'?
+                <p>Current estimated usage for MilleGrilles: <Formatters.FormatteurTaille value={storageUsage} /></p>
+            :<></>}
+            <ActionButton onClick={cleanupHandler}>Cleanup</ActionButton>
+        </div>
+    );
+}
+
+async function loadEstimate(setStorageUsage: (usage: number | null)=>void) {
+    let estimate = await navigator.storage.estimate();
+    setStorageUsage(estimate.usage || null);
 }
