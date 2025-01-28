@@ -3,6 +3,8 @@ import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import ActionButton from "../resources/ActionButton";
 import { cleanup } from "./idb/collections2StoreIdb";
 import { Formatters } from "millegrilles.reactdeps.typescript";
+import useWorkers from "../workers/workers";
+import useConnectionStore from "../connectionStore";
 
 function SettingsPage() {
     return (
@@ -18,6 +20,11 @@ function SettingsPage() {
             <section>
                 <h2 className='text-xl font-bold pt-6'>Maintenance actions</h2>
                 <Cleanup />
+            </section>
+
+            <section>
+                <h2 className='text-xl font-bold pt-6'>Test area</h2>
+                <TestArea />
             </section>
         </>
     )
@@ -92,4 +99,26 @@ function Cleanup() {
 async function loadEstimate(setStorageUsage: (usage: number | null)=>void) {
     let estimate = await navigator.storage.estimate();
     setStorageUsage(estimate.usage || null);
+}
+
+/** Used to test features. */
+function TestArea() {
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    let downloadWorkerCallback = useCallback(async () => {
+        if(!workers || !ready) throw new Error('workers not initialized');
+        
+        console.debug("test download");
+        let response = await workers?.download.getActiveDownloads();
+        console.debug("Download worker response", response);
+    }, [workers, ready])
+
+    return (
+        <>
+            <p>Download worker presence</p>
+            <ActionButton onClick={downloadWorkerCallback}>Download test</ActionButton>
+        </>
+    )
 }
