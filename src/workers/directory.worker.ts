@@ -11,8 +11,8 @@ type ProcessDirectoryChunkOptions = {
     shared?: boolean,
 };
 
-type FilehostDirType = Filehost & {
-    url?: URL | null,
+export type FilehostDirType = Filehost & {
+    url?: string | null,
     jwt?: string | null,
     authenticated?: boolean | null,
     lastPing?: number | null,
@@ -28,6 +28,10 @@ export class DirectoryWorker {
     constructor() {
         this.filehosts = null;
         this.selectedFilehost = null;
+    }
+
+    async getSelectedFilehost(): Promise<FilehostDirType | null> {
+        return this.selectedFilehost;
     }
 
     async processDirectoryChunk(encryption: Remote<AppsEncryptionWorker>, userId: string, files: Collections2FileSyncRow[], 
@@ -238,7 +242,7 @@ export class DirectoryWorker {
             // console.debug("Local filehost is available, using by default");
 
             let url = new URL(localUrl + 'filehost');
-            let localFilehost = {filehost_id: 'LOCAL', url} as FilehostDirType;
+            let localFilehost = {filehost_id: 'LOCAL', url: url.href} as FilehostDirType;
             this.selectedFilehost = localFilehost;
 
             return;
@@ -278,8 +282,9 @@ export class DirectoryWorker {
     async authenticateFilehost(authenticationMessage: messageStruct.MilleGrillesMessage) {
         let filehost = this.selectedFilehost;
         if(!filehost) throw new Error('No filehost has been selected');
-        let url = filehost.url;
-        if(!url) throw new Error('No URL is available for the selected filehost');
+        let urlString = filehost.url;
+        if(!urlString) throw new Error('No URL is available for the selected filehost');
+        let url = new URL(urlString);
 
         // console.debug("Log into filehost ", filehost);
         let authUrl = new URL(`https://${url.hostname}:${url.port}/filehost/authenticate`);

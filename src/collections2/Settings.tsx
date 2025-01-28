@@ -1,7 +1,7 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import ActionButton from "../resources/ActionButton";
-import { cleanup } from "./idb/collections2StoreIdb";
+import { cleanup, testBounds } from "./idb/collections2StoreIdb";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
@@ -113,6 +113,8 @@ function TestArea() {
         console.debug("test download");
         let response = await workers?.download.getActiveDownloads();
         console.debug("Download worker response", response);
+
+        await testBounds('zSEfXUA2auCgqVJ1Lrxv9yF9vgq9se7CDGhMdFNynV43EAitCuZuAXMsyCNz75uiKG3ibgrvkdLP4WHtjAxrmZMtM6k4Ji')
     }, [workers, ready])
 
     return (

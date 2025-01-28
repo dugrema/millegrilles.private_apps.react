@@ -1,5 +1,6 @@
 import { IDBPDatabase, openDB as openDbIdb } from 'idb';
 import { messageStruct } from 'millegrilles.cryptography'
+import { DownloadJobType } from '../../workers/download.worker';
 
 const DB_NAME = 'collections2';
 const STORE_TUUIDS = 'tuuids';
@@ -190,7 +191,6 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
             // Create indices
             downloadStore.createIndex('tuuid', ['tuuid', 'userId'], {unique: false, multiEntry: false});
             downloadStore.createIndex('state', ['userId', 'state', 'processDate'], {unique: false, multiEntry: false});
-            downloadPartsStore.createIndex('fuuid', ['fuuid', 'position'], {unique: true, multiEntry: false});
 
         // @ts-ignore Fallthrough
         case 3: // Most recent
@@ -299,6 +299,48 @@ export async function getCurrentVideoPosition(tuuid: string, userId: string): Pr
     return await store.get([tuuid, userId]);
 }
 
+export async function addDownload(download: DownloadIdbType) {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
+    let existing = await store.get([download.fuuid, download.userId]);
+    if(existing) {
+        console.debug("Download already exists - restart if blocked");
+
+        return;
+    } else {
+        await store.put(download);  // Add to store
+    }
+}
+
+export async function removeDownload(fuuid: string, userId: string) {
+    const db = await openDB();
+    const storeParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
+    storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
+    const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
+    await store.delete([fuuid, userId]);
+}
+
+export async function getNextDownloadJob(userId: string): Promise<DownloadJobType | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
+
+    // Get next jobs with initial state
+    let stateIndex = store.index('state');
+    let job = await stateIndex.getAll(
+        IDBKeyRange.bound([userId, DownloadStateEnum.INITIAL, 0], [userId, DownloadStateEnum.INITIAL, Number.MAX_SAFE_INTEGER]), 
+        1);
+
+    if(job.length === 0) return null;
+    return job[0] as DownloadJobType;
+}
+
+export async function testBounds(fuuid: string) {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
+    let items = await store.getAll(IDBKeyRange.bound([fuuid, ''], [fuuid, '~']));  // Using ~ as end bound (after z, userId is base58btc)
+    console.debug("Fuuid %s\nItem value", fuuid, items);
+}
+
 /** Clears all stores. */
 export async function cleanup() {
     const db = await openDB();
@@ -308,4 +350,10 @@ export async function cleanup() {
 
     let storeVideo = db.transaction(STORE_VIDEO_PLAY, 'readwrite').store;
     await storeVideo.clear();
+
+    let storeDownloads = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
+    await storeDownloads.clear();
+
+    let storeDownloadParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
+    await storeDownloadParts.clear();
 }

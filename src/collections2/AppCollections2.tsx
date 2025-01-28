@@ -112,6 +112,11 @@ async function maintainFilehosts(workers: AppWorkers, setFilehostAuthenticated: 
             await workers.directory.authenticateFilehost(authMessage);
 
             setFilehostAuthenticated(true);
+
+            // Transfer selected filehost to transfer workers
+            let selectedFilehost = await workers.directory.getSelectedFilehost()
+            workers.download.setFilehost(selectedFilehost);
+
         } else {
             console.warn("No filehost available on this system");
             setFilehostAuthenticated(false);

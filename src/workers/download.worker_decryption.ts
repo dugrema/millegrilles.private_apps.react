@@ -6,6 +6,10 @@ export class DownloadDecryptionWorker {
         return 'hello';
     }
 
+    async cancelJobIf(fuuid: string, userId: string) {
+        console.warn("TODO");
+    }
+
 }
 
 var worker = new DownloadDecryptionWorker();
