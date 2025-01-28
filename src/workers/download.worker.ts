@@ -23,7 +23,11 @@ export class AppsDownloadWorker {
         this.decryptionWorker = null;
         this.filehost = null;
         this.intervalMaintenance = null;
-        this.downloadStateCallbackProxy = proxy(this.downloadCallback);
+
+        let cb = async (uuid: string, userId: string, position: number, done: boolean) => {
+            await this.downloadCallback(uuid, userId, position, done)
+        }
+        this.downloadStateCallbackProxy = proxy(cb);
     }
 
     async setup() {
@@ -95,17 +99,19 @@ export class AppsDownloadWorker {
         }
 
         // Downloads
-        if(this.downloadWorker && await this.downloadWorker.isBusy() === false) {
-            let job = await getNextDownloadJob(this.currentUserId);
-            if(job) {
-                // Generate download url
-                let url = filehostUrl;
-                if(!url.endsWith('/')) url += '/';
-                url += 'files/' + job.fuuid;
-                
-                let downloadJob = {...job, url};
-                console.debug("Add download job", downloadJob);
-                await this.downloadWorker.addJob(downloadJob);
+        if(this.downloadWorker) {
+            if(await this.downloadWorker.isBusy() === false) {
+                let job = await getNextDownloadJob(this.currentUserId);
+                if(job) {
+                    // Generate download url
+                    let url = filehostUrl;
+                    if(!url.endsWith('/')) url += '/';
+                    url += 'files/' + job.fuuid;
+                    
+                    let downloadJob = {...job, url};
+                    console.debug("Add download job", downloadJob);
+                    await this.downloadWorker.addJob(downloadJob);
+                }
             }
         } else {
             console.warn("Download worker not wired");

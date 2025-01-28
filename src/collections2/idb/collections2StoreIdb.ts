@@ -334,6 +334,26 @@ export async function getNextDownloadJob(userId: string): Promise<DownloadJobTyp
     return job[0] as DownloadJobType;
 }
 
+export async function updateDownloadJobState(fuuid: string, userId: string, state: DownloadStateEnum, opts?: {position?: number}) {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
+    let job = await store.get([fuuid, userId]) as DownloadIdbType | null;
+    if(!job) throw new Error(`Download job fuuid:${fuuid} userId:${userId} not found`);
+
+    // Update job content
+    job.state = state;
+    if(opts?.position) job.position = opts.position;
+
+    // Save
+    await store.put(job);
+}
+
+export async function saveDownloadPart(fuuid: string, position: number, part: Blob) {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
+    await store.put({fuuid, position, content: part});
+}
+
 export async function testBounds(fuuid: string) {
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
