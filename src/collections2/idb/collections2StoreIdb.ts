@@ -6,7 +6,7 @@ const DB_NAME = 'collections2';
 const STORE_TUUIDS = 'tuuids';
 const STORE_VIDEO_PLAY = 'videoPlayback';
 const STORE_DOWNLOADS = 'downloads';
-const STORE_DOWNLOAD_PARTS = 'downloadParts';
+export const STORE_DOWNLOAD_PARTS = 'downloadParts';
 const DB_VERSION_CURRENT = 3;
 
 export type TuuidEncryptedMetadata = messageStruct.MessageDecryption & {
@@ -299,6 +299,13 @@ export async function getCurrentVideoPosition(tuuid: string, userId: string): Pr
     return await store.get([tuuid, userId]);
 }
 
+export async function getDownloadContent(fuuid: string, userId: string): Promise<Blob | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
+    let value = await store.get([fuuid, userId]) as DownloadJobType;
+    return value?.content;
+}
+
 export async function addDownload(download: DownloadIdbType) {
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
@@ -334,6 +341,20 @@ export async function getNextDownloadJob(userId: string): Promise<DownloadJobTyp
     return job[0] as DownloadJobType;
 }
 
+export async function getNextDecryptionJob(userId: string): Promise<DownloadJobType | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
+
+    // Get next jobs with initial state
+    let stateIndex = store.index('state');
+    let job = await stateIndex.getAll(
+        IDBKeyRange.bound([userId, DownloadStateEnum.ENCRYPTED, 0], [userId, DownloadStateEnum.ENCRYPTED, Number.MAX_SAFE_INTEGER]), 
+        1);
+
+    if(job.length === 0) return null;
+    return job[0] as DownloadJobType;
+}
+
 export async function updateDownloadJobState(fuuid: string, userId: string, state: DownloadStateEnum, opts?: {position?: number}) {
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
@@ -352,6 +373,29 @@ export async function saveDownloadPart(fuuid: string, position: number, part: Bl
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
     await store.put({fuuid, position, content: part});
+}
+
+export async function saveDecryptedBlob(fuuid: string, decryptedBlob: Blob) {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
+    let cursor = await store.openCursor(IDBKeyRange.bound([fuuid, ''], [fuuid, '~']));
+
+    // Save the decrypted file to all download jobs matching the fuuid
+    while(cursor) {
+        let value = cursor.value as DownloadIdbType;
+        
+        // Update the record
+        value.content = decryptedBlob;
+        value.secretKey = null;  // Erase key
+        value.state = DownloadStateEnum.DONE;
+        await cursor.update(value);  // Replace value
+        
+        cursor = await cursor.continue();
+    }
+
+    // Clear the stored parts
+    const storeParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
+    await storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
 }
 
 export async function testBounds(fuuid: string) {

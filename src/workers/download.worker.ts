@@ -3,7 +3,7 @@ import { expose, Remote, wrap, proxy } from 'comlink';
 
 import { DownloadThreadWorker, DownloadWorkerCallbackType } from './download.worker_thread';
 import { DownloadDecryptionWorker } from './download.worker_decryption';
-import { addDownload, DownloadIdbType, FileVideoData, getNextDownloadJob, removeDownload } from '../collections2/idb/collections2StoreIdb';
+import { addDownload, DownloadIdbType, FileVideoData, getDownloadContent, getNextDecryptionJob, getNextDownloadJob, removeDownload } from '../collections2/idb/collections2StoreIdb';
 import { createDownloadEntryFromFile, createDownloadEntryFromVideo } from '../collections2/transferUtils';
 import { FilehostDirType } from './directory.worker';
 
@@ -117,18 +117,38 @@ export class AppsDownloadWorker {
             console.warn("Download worker not wired");
         }
 
+        // Decryption
+        if(this.decryptionWorker) {
+            if(await this.decryptionWorker.isBusy() === false) {
+                let job = await getNextDecryptionJob(this.currentUserId);
+                if(job) {
+                    await this.decryptionWorker.decryptContent(job);
+                }
+            }
+        } else {
+            console.warn("Download decryption worker not wired");
+        }
+
         // Uploads
 
     }
 
-    async addDownloadFromFile(tuuid: string, userId: string) {
+    async addDownloadFromFile(tuuid: string, userId: string): Promise<Blob | null> {
         let entry = await createDownloadEntryFromFile(tuuid, userId);
         console.debug("New download entry", entry);
+
+        let content = await getDownloadContent(entry.fuuid, userId);
+        if(content) {
+            // Download already completed, return the file
+            return content;
+        }
 
         // Add to IDB
         await addDownload(entry);
 
         await this.triggerJobs();
+
+        return null;
     }
 
     async addDownloadFromVideo(tuuid: string, userId: string, video: FileVideoData) {
