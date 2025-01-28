@@ -54,6 +54,7 @@ export async function initWorkers(callback: (params: ConnectionCallbackParameter
     await connection.initialize(serverUrl.href, ca, callback, {reconnectionDelay: 7500});
     await encryption.initialize(ca);
     await encryption.setEncryptionKeys(chiffrage);
+    await download.setup()
 
     workers = {connection, encryption, directory, download};
 

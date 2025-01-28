@@ -7,6 +7,7 @@ import { ConnectionCallbackParameters } from "millegrilles.reactdeps.typescript"
 import useWorkers, { AppWorkers, initWorkers, InitWorkersResult } from "./workers";
 import useConnectionStore from "../connectionStore";
 import { userStoreIdb, CommonTypes } from 'millegrilles.reactdeps.typescript';
+import useUserBrowsingStore from "../collections2/userBrowsingStore";
 
 /**
  * Initializes the Web Workers and a few other elements to connect to the back-end.
@@ -127,6 +128,7 @@ function MaintainConnection() {
     let connectionReady = useConnectionStore((state) => state.connectionReady);
     let connectionAuthenticated = useConnectionStore((state) => state.connectionAuthenticated);
     let username = useConnectionStore((state) => state.username);
+    let userId = useUserBrowsingStore((state) => state.userId);
 
     let [reconnection, setReconnection] = useState(false);
 
@@ -149,6 +151,12 @@ function MaintainConnection() {
         }, 30_000);
         return () => clearInterval(maintenanceInterval);
     }, [workersReady, workers]);
+
+    // Change userId in shared workers
+    useEffect(()=>{
+        if(!workersReady) return;
+        workers?.download.changeUser(userId);
+    }, [workers, workersReady, userId]);
 
     // Reconnect authentication handler
     useEffect(()=>{

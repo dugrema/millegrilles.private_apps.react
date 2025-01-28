@@ -72,6 +72,8 @@ export class DirectoryWorker {
                 fileData.video = version.video;
                 fileData.audio = version.audio;
                 fileData.subtitles = version.subtitles;
+                fileData.nonce = version.nonce;
+                fileData.format = version.format;
             }
 
             let mappedFile = {
@@ -149,6 +151,13 @@ export class DirectoryWorker {
                         } catch (err) {
                             console.error("Error decrypting %s - SKIPPING. Err:\n%O", file.tuuid, err);
                         }
+
+                        if(file.fileData && key.nonce) {
+                            // Legacy - transfer the header/nonce from the key to the fileData structure when present
+                            file.fileData.nonce = key.nonce;
+                            file.fileData.format = key.format;
+                        }
+
                     } else {
                         console.warn("File tuuid:%s, cleId:%s not provided", file.tuuid, keyId)
                     }

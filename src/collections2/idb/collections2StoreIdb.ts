@@ -4,7 +4,9 @@ import { messageStruct } from 'millegrilles.cryptography'
 const DB_NAME = 'collections2';
 const STORE_TUUIDS = 'tuuids';
 const STORE_VIDEO_PLAY = 'videoPlayback';
-const DB_VERSION_CURRENT = 2;
+const STORE_DOWNLOADS = 'downloads';
+const STORE_DOWNLOAD_PARTS = 'downloadParts';
+const DB_VERSION_CURRENT = 3;
 
 export type TuuidEncryptedMetadata = messageStruct.MessageDecryption & {
     data_chiffre: string,
@@ -23,6 +25,8 @@ export type FileData = {
     supprime_indirect: boolean,
     taille?: number,
     visites?: {[instanceId: string]: number},
+    format?: string | null,
+    nonce?: string | null,
     height?: number,
     width?: number,
     anime?: boolean,
@@ -108,6 +112,44 @@ export type VideoPlaybackRowType = {
     position: number | null,
 }
 
+export type DownloadIdbType = {
+    fuuid: string,   // primary key 1
+    userId: string,  // primary key 2
+    tuuid: string,   // Indexed by [tuuid, userId]
+
+    // Download information
+    processDate: number,            // Time added/errored in millisecs.
+    state: DownloadStateEnum,       // Indexed by [userId, state, processDate].
+    position: number,               // Download position of the chunk currently being download or start for the next chunk if download not in progress.
+    size: number | null,            // Encrypted file size
+    visits: {[instanceId: string]: number},  // Known filehosts with the file
+
+    // Decryption information
+    secretKey: Uint8Array | null,   // Encryption key. Removed once download completes.
+    format: string,                 // Encryption format
+    nonce?: Uint8Array | null,      // Encryption nonce/header
+
+    // Content
+    filename: string,
+    mimetype: string,
+    content: Blob | null,           // Decrypted content
+};
+
+export type DownloadIdbParts = {
+    fuuid: string,
+    position: number,
+    content: Blob,
+};
+
+export enum DownloadStateEnum {
+    INITIAL = 1,
+    PAUSED,
+    DOWNLOADING,
+    ENCRYPTED,
+    DONE,
+    ERROR,
+}
+
 export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
     if(upgrade) {
         return openDbIdb(DB_NAME, DB_VERSION_CURRENT, {
@@ -127,7 +169,7 @@ export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
 }
 
 function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
-    let tuuidStore = null;
+    let tuuidStore = null, downloadStore = null, downloadPartsStore = null;
     switch(oldVersion) {
         // @ts-ignore Fallthrough
         case 0:
@@ -141,7 +183,17 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
             tuuidStore.createIndex('parent', ['parent', 'user_id'], {unique: false, multiEntry: false});
 
         // @ts-ignore Fallthrough
-        case 2: // Most recent
+        case 2:
+            downloadStore = db.createObjectStore(STORE_DOWNLOADS, {keyPath: ['fuuid', 'userId']});
+            downloadPartsStore = db.createObjectStore(STORE_DOWNLOAD_PARTS, {keyPath: ['fuuid', 'position']});
+
+            // Create indices
+            downloadStore.createIndex('tuuid', ['tuuid', 'userId'], {unique: false, multiEntry: false});
+            downloadStore.createIndex('state', ['userId', 'state', 'processDate'], {unique: false, multiEntry: false});
+            downloadPartsStore.createIndex('fuuid', ['fuuid', 'position'], {unique: true, multiEntry: false});
+
+        // @ts-ignore Fallthrough
+        case 3: // Most recent
             break;
 
         default:

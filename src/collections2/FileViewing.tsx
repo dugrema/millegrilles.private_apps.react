@@ -11,6 +11,8 @@ import { CONST_VIDEO_MAX_RESOLUTION } from "./Settings";
 import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import VideoConversion from "./VideoConversion";
 import { isVideoMimetype } from "./mimetypes";
+import ActionButton from "../resources/ActionButton";
+import { createDownloadEntryFromFile } from "./transferUtils";
 
 export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
     let {file, thumbnail} = props;
@@ -363,6 +365,17 @@ function FileViewLayout(props: FileViewLayoutProps) {
 function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, isVideo: boolean}) {
     let {file, selectedVideo, setSelectedVideo, loadProgress, isVideo} = props;
     
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let userId = useUserBrowsingStore(state=>state.userId);
+
+    let downloadHandler = useCallback(async () => {
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!userId) throw new Error('UserId not provided');
+        let tuuid = file.tuuid;
+        await workers.download.addDownloadFromFile(tuuid, userId);
+    }, [workers, ready, file, userId]);
+
     return (
         <div className='grid grid-cols-6 md:grid-cols-1'>
             {isVideo?
@@ -380,6 +393,9 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
             <p className='col-span-2 text-slate-400'>Type</p>
             <p className='col-span-4'>{file.fileData?.mimetype}</p>
             <ImageDimensions file={file} />
+            <ActionButton onClick={downloadHandler} revertSuccessTimeout={3}>
+                Download
+            </ActionButton>
         </div>
     );
 }
