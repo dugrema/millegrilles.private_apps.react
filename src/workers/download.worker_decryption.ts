@@ -3,11 +3,19 @@ import { DownloadJobType } from './download.worker';
 import { encryptionMgs4 } from 'millegrilles.cryptography';
 import { DownloadIdbParts, openDB, saveDecryptedBlob, STORE_DOWNLOAD_PARTS } from '../collections2/idb/collections2StoreIdb';
 
+export type DecryptionWorkerCallbackType = (fuuid: string, userId: string, done: boolean)=>Promise<void>;
+
 export class DownloadDecryptionWorker {
+    callback: DecryptionWorkerCallbackType | null
     currentJob: DownloadJobType | null
 
     constructor() {
+        this.callback = null;
         this.currentJob = null;
+    }
+
+    async setup(callback: DecryptionWorkerCallbackType) {
+        this.callback = callback;
     }
 
     async cancelJobIf(fuuid: string, userId: string) {
@@ -25,6 +33,9 @@ export class DownloadDecryptionWorker {
         }
         if(!downloadJob.secretKey) throw new Error('Secret key not provided');
         if(!downloadJob.nonce) throw new Error('Decryption information (nonce) is missing');
+
+        let callback = this.callback;
+        if(!callback) throw new Error('Callback not wired');
 
         this.currentJob = downloadJob;
 
@@ -84,6 +95,7 @@ export class DownloadDecryptionWorker {
             await saveDecryptedBlob(fuuid, decryptedFileBlob);
         } finally {
             this.currentJob = null;
+            await callback(downloadJob.fuuid, downloadJob.userId, true);
         }
     }
 

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { expose, Remote, wrap, proxy } from 'comlink';
 
 import { DownloadThreadWorker, DownloadWorkerCallbackType } from './download.worker_thread';
-import { DownloadDecryptionWorker } from './download.worker_decryption';
+import { DecryptionWorkerCallbackType, DownloadDecryptionWorker } from './download.worker_decryption';
 import { addDownload, DownloadIdbType, FileVideoData, getDownloadContent, getNextDecryptionJob, getNextDownloadJob, removeDownload } from '../collections2/idb/collections2StoreIdb';
 import { createDownloadEntryFromFile, createDownloadEntryFromVideo } from '../collections2/transferUtils';
 import { FilehostDirType } from './directory.worker';
@@ -15,6 +15,7 @@ export class AppsDownloadWorker {
     filehost: FilehostDirType | null
     intervalMaintenance: ReturnType<typeof setInterval> | null
     downloadStateCallbackProxy: DownloadWorkerCallbackType
+    decryptionStateCallbackProxy: DecryptionWorkerCallbackType
 
     constructor() {
         this.currentUserId = null;
@@ -24,10 +25,15 @@ export class AppsDownloadWorker {
         this.filehost = null;
         this.intervalMaintenance = null;
 
-        let cb = async (uuid: string, userId: string, position: number, done: boolean) => {
-            await this.downloadCallback(uuid, userId, position, done)
+        let downloadCb = async (uuid: string, userId: string, position: number, done: boolean) => {
+            await this.downloadCallback(uuid, userId, position, done);
         }
-        this.downloadStateCallbackProxy = proxy(cb);
+        this.downloadStateCallbackProxy = proxy(downloadCb);
+
+        let decryptionCb = async (uuid: string, userId: string, done: boolean) => {
+            await this.decryptionCallback(uuid, userId, done);
+        }
+        this.decryptionStateCallbackProxy = proxy(decryptionCb);
     }
 
     async setup() {
@@ -40,6 +46,7 @@ export class AppsDownloadWorker {
         if(!this.decryptionWorker) {
             let decryptionWorker = new Worker(new URL('./download.worker_decryption.ts', import.meta.url));
             this.decryptionWorker = wrap(decryptionWorker);
+            this.decryptionWorker.setup(this.decryptionStateCallbackProxy);
         }
         if(!this.intervalMaintenance) {
             this.intervalMaintenance = setInterval(()=>this.maintain(), 20_000);
@@ -54,6 +61,14 @@ export class AppsDownloadWorker {
         }
     }
 
+    async decryptionCallback(fuuid: string, userId: string, done: boolean) {
+        console.debug("Download worker callback fuuid: %s, userId: %s, done: %O", fuuid, userId, done);
+        if(done) {
+            // Start next download job (if any).
+            await this.triggerJobs();
+        }
+    }
+    
     // async stopWorker() {
     //     let interval = this.intervalMaintenance;
     //     this.intervalMaintenance = null;
