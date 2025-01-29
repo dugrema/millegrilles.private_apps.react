@@ -1,10 +1,15 @@
 import { expose } from 'comlink';
 import { DownloadJobType } from './download.worker';
-import { DownloadIdbParts, DownloadStateEnum, saveDownloadPart, updateDownloadJobState } from '../collections2/idb/collections2StoreIdb';
-import axios from 'axios';
+import { DownloadStateEnum, saveDownloadPart, updateDownloadJobState } from '../collections2/idb/collections2StoreIdb';
 import { getIterableStream } from '../collections2/transferUtils';
 
-export type DownloadWorkerCallbackType = (fuuid: string, userId: string, done: boolean, percentProgress?: number | null)=>Promise<void>;
+export type DownloadWorkerCallbackType = (
+    fuuid: string, 
+    userId: string, 
+    done: boolean, 
+    position?: number | null,
+    size?: number | null
+) => Promise<void>;
 
 export class DownloadThreadWorker {
     callback: DownloadWorkerCallbackType | null
@@ -50,7 +55,7 @@ export class DownloadThreadWorker {
         
         let url = currentJob.url;
 
-        let position = 0;
+        let positionOuter = 0;
         try {
             // Check stored download parts to find the resume position (if any)
             //TODO
@@ -72,21 +77,20 @@ export class DownloadThreadWorker {
 
             let currentJobLocal = currentJob;
             let statusCallback = (position: number, totalSize: number | null) => {
+                positionOuter = position;
                 if(!totalSize) totalSize = currentJobLocal.size;
                 console.debug("Download position for file %s: %d / %d", currentJobLocal.fuuid, position, totalSize);
                 if(callback && totalSize) {
-                    let percentProgress = Math.floor(position / totalSize * 100);
-                    // console.debug("Download progress: %d%%", percentProgress);
-                    callback(currentJobLocal.fuuid, currentJobLocal.userId, false, percentProgress);
+                    callback(currentJobLocal.fuuid, currentJobLocal.userId, false, position, totalSize);
                 }
             }
 
             // console.debug("Content length: %d", contentLength);
-            await streamResponse(currentJob, response, position, statusCallback);
+            await streamResponse(currentJob, response, positionOuter, statusCallback);
 
             // Done downloading - mark state for decryption
-            await updateDownloadJobState(currentJob.fuuid, currentJob.userId, DownloadStateEnum.ENCRYPTED, {position});
-            await callback(currentJob.fuuid, currentJob.userId, true, 100);
+            await updateDownloadJobState(currentJob.fuuid, currentJob.userId, DownloadStateEnum.ENCRYPTED, {position: positionOuter});
+            await callback(currentJob.fuuid, currentJob.userId, true, positionOuter, positionOuter);
         } catch(err) {
             console.error("Download job error: ", err);
             await updateDownloadJobState(currentJob.fuuid, currentJob.userId, DownloadStateEnum.ERROR);

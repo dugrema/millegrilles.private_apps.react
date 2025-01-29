@@ -29,13 +29,13 @@ export class AppsDownloadWorker {
         this.filehost = null;
         this.intervalMaintenance = null;
 
-        let downloadCb = async (uuid: string, userId: string, done: boolean, percentProgress?: number | null) => {
-            await this.downloadCallback(uuid, userId, done, percentProgress);
+        let downloadCb = async (uuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) => {
+            await this.downloadCallback(uuid, userId, done, position, size);
         }
         this.downloadStateCallbackProxy = proxy(downloadCb);
 
-        let decryptionCb = async (uuid: string, userId: string, done: boolean, progress?: number | null) => {
-            await this.decryptionCallback(uuid, userId, done, progress);
+        let decryptionCb = async (uuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) => {
+            await this.decryptionCallback(uuid, userId, done, position, size);
         }
         this.decryptionStateCallbackProxy = proxy(decryptionCb);
 
@@ -61,16 +61,16 @@ export class AppsDownloadWorker {
         }
     }
 
-    async downloadCallback(fuuid: string, userId: string, done: boolean, percentProgress?: number | null) {
-        console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, progress: %d%%", fuuid, userId, done, percentProgress);
+    async downloadCallback(fuuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) {
+        console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
         if(done) {
             // Start next download job (if any).
             await this.triggerJobs();
         }
     }
 
-    async decryptionCallback(fuuid: string, userId: string, done: boolean, progress?: number | null) {
-        console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, progress: %d%%", fuuid, userId, done, progress);
+    async decryptionCallback(fuuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) {
+        console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
         if(done) {
             // Start next download job (if any).
             await this.triggerJobs();

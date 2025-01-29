@@ -4,7 +4,13 @@ import { encryptionMgs4 } from 'millegrilles.cryptography';
 import { DownloadIdbParts, openDB, saveDecryptedBlob, saveDecryptionError, STORE_DOWNLOAD_PARTS } from '../collections2/idb/collections2StoreIdb';
 import { getIterableStream } from '../collections2/transferUtils';
 
-export type DecryptionWorkerCallbackType = (fuuid: string, userId: string, done: boolean, percentProgress?: number | null)=>Promise<void>;
+export type DecryptionWorkerCallbackType = (
+    fuuid: string, 
+    userId: string, 
+    done: boolean, 
+    position?: number | null, 
+    size?: number | null
+) => Promise<void>;
 
 const CONST_CHUNK_SOFT_LIMIT = 1024 * 1024;
 
@@ -47,9 +53,7 @@ export class DownloadDecryptionWorker {
         let interval = setInterval(()=>{
             console.debug("Decrypt position %d/%d", decryptedPosition, downloadJob.size);
             if(callback && downloadJob.size) {
-                let percentProgress = Math.floor(decryptedPosition / downloadJob.size * 100);
-                // console.debug("Decryption progress: %d%%", percentProgress);
-                callback(downloadJob.fuuid, downloadJob.userId, false, percentProgress);
+                callback(downloadJob.fuuid, downloadJob.userId, false, decryptedPosition, downloadJob.size);
             }
         }, 750);
 
@@ -118,7 +122,7 @@ export class DownloadDecryptionWorker {
             // console.debug("Save all decrypted parts to IDB");
             let decryptedFileBlob = new Blob(blobs, {type: downloadJob.mimetype});
             await saveDecryptedBlob(fuuid, decryptedFileBlob);
-            callback(downloadJob.fuuid, downloadJob.userId, true, 100);
+            callback(downloadJob.fuuid, downloadJob.userId, true, downloadJob.size, downloadJob.size);
         } catch(err) {
             await saveDecryptionError(fuuid);
             await callback(downloadJob.fuuid, downloadJob.userId, true);
