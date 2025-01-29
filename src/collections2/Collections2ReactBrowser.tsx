@@ -14,6 +14,10 @@ const Collections2SharedFileViewing = React.lazy(()=>import('./SharedFileViewing
 const Collections2SharedUserCollections = React.lazy(()=>import('./SharedUserCollections'));
 const SettingsPage = React.lazy(()=>import('./Settings'));
 const MediaConversionsPage = React.lazy(()=>import('./MediaConversions'));
+const Transfers = React.lazy(()=>import('./Transfers'));
+const TransfersSummary = React.lazy(()=>import('./TransfersSummary'));
+const TransfersDownloads = React.lazy(()=>import('./TransfersDownloads'));
+const TransfersUploads = React.lazy(()=>import('./TransfersUploads'));
 
 function createCollections2ReactBrowserChildren() {
     return [
@@ -37,6 +41,13 @@ function createCollections2ReactBrowserChildren() {
                 { path: ":contactId/b/:tuuid", element: <Collections2SharedFileBrowsing /> },
                 { path: ":contactId/f/:tuuid", element: <Collections2SharedFileViewing /> },
                 { path: ":contactId/f/:tuuid/v/:videoFuuid", element: <Collections2SharedFileViewing /> },
+            ]
+        },
+        { path: "transfers", element: <Transfers />,
+            children: [
+                { path: "", element: <TransfersSummary /> },
+                { path: "downloads", element: <TransfersDownloads /> },
+                { path: "uploads", element: <TransfersUploads /> },
             ]
         },
         { path: "settings", element: <SettingsPage /> },

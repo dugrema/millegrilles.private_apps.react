@@ -75,6 +75,8 @@ export default function HeaderMenu(props: MenuProps) {
             return 'settings';
         } else if(locationPath.startsWith('/apps/collections2/conversions')) {
             return 'conversions';
+        } else if(locationPath.startsWith('/apps/collections2/transfers')) {
+            return 'transfers';
         } else if(locationPath.startsWith('/apps/collections2/b')) {
             return 'browse';
         } else if(locationPath.startsWith('/apps/collections2/s')) {
@@ -116,12 +118,14 @@ export default function HeaderMenu(props: MenuProps) {
 
                     {/* Regular menu items - need to hide in mobile mode during selection. */}
                     <div className={'inline ' + (selectionMode?'hidden md:inline':'')}>
-                        <div className={'hidden lg:inline-block px-1 w-25 transition-colors duration-300' + (selectedSection==='transfer'?selectedClassname:unselectedClassname)}>
-                            <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />
-                            <p className='inline-block text-sm'>100%</p>
-                            <span className='pl-1'>/</span>
-                            <img src={DownloadIcon} alt='Download' className='w-7 inline-block' />
-                            <p className='inline-block text-sm'>100%</p>
+                        <div className={'hidden lg:inline-block px-1 w-40 transition-colors duration-300' + (selectedSection==='transfers'?selectedClassname:unselectedClassname)}>
+                            <Link to='/apps/collections2/transfers'>
+                                <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />
+                                <p className='inline-block text-sm w-10'>100%</p>
+                                <span className='pl-1'>/</span>
+                                <img src={DownloadIcon} alt='Download' className='w-7 inline-block' />
+                                <p className='inline-block text-sm w-10'>100%</p>
+                            </Link>
                         </div>
                         <div className={'inline-block px-1 sm:px-2 transition-colors duration-300' + (selectedSection==='browse'?selectedClassname:unselectedClassname)}>
                             <Link to='/apps/collections2/b'>
@@ -148,7 +152,7 @@ export default function HeaderMenu(props: MenuProps) {
                                 <img src={ShareIcon} alt="Share" className='w-7 inline-block' />
                             </Link>
                         </div>
-                        <div className={'inline-block hidden md:inline px-1 sm:px-2 transition-colors duration-300' + (selectedSection==='settings'?selectedClassname:unselectedClassname)}>
+                        <div className={'inline-block hidden md:inline-block px-1 sm:px-2 transition-colors duration-300' + (selectedSection==='settings'?selectedClassname:unselectedClassname)}>
                             <Link to='/apps/collections2/settings'>
                                 <img src={SettingIcon} alt="Settings" className='w-7 inline-block' />
                             </Link>
