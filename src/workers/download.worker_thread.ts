@@ -69,7 +69,6 @@ export class DownloadThreadWorker {
             }
 
             // Start downloading
-            callback(currentJob.fuuid, currentJob.userId, false, 0);
             // console.debug("Getting URL", url);
             let response = await fetch(url, {
                 // signal, 
@@ -93,7 +92,7 @@ export class DownloadThreadWorker {
             let statusCallback = (position: number, totalSize: number | null) => {
                 positionOuter = position;
                 if(!totalSize) totalSize = currentJobLocal.size;
-                console.debug("Download position for file %s: %d / %d", currentJobLocal.fuuid, position, totalSize);
+                // console.debug("Download position for file %s: %d / %d", currentJobLocal.fuuid, position, totalSize);
                 if(callback && totalSize) {
                     callback(currentJobLocal.fuuid, currentJobLocal.userId, false, position, totalSize);
                 }
@@ -143,6 +142,9 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
 
     let position = initialPosition;
 
+    // Initial feedback
+    statusCallback(position, contentLength);
+    // Regular feedback
     let interval = setInterval(()=>statusCallback(position, contentLength), 750);
     
     try {

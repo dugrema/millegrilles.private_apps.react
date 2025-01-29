@@ -12,19 +12,29 @@ export enum TransferActivity {
     ERROR=3
 };
 
-export type TransferProgress = {[fuuid: string]: {state: DownloadStateEnum, transferPercent: number}};
+export enum WorkerType {
+    DOWNLOAD = 1,
+    DECRYPTION,
+}
+
+export type TransferProgress = {workerType: WorkerType, fuuid: string, state: DownloadStateEnum, position: number, totalSize: number};
 
 /** Used to update the download state from the worker. */
 export type DownloadStateUpdateType = {
     activity?: TransferActivity | null,     // Overall download state.
     transferPercent?: number | null,        // Overall progress of downloads. Excludes Paused and also Done since before last reset/100%.
-    activeTransfers?: TransferProgress,     // State of transfers in workers (download, decryption).
+    activeTransfers?: TransferProgress[],   // State of transfers in workers (download, decryption).
     listChanged?: boolean,                  // Transfers added/removed.
 };
 
 interface TransferStoreState {
+    // Overall activity, used for transfer items in menu
     downloadActivity: TransferActivity,
     downloadTransferPercent: number | null,
+
+    // Current processes in workers
+    downloadProgress: TransferProgress[],
+
     updateDownloadState: (state: DownloadStateUpdateType) => void,
 }
 
@@ -33,11 +43,20 @@ const useTransferStore = create<TransferStoreState>()(
         (set) => ({
             downloadActivity: TransferActivity.IDLE,
             downloadTransferPercent: null,
+            downloadProgress: [],
 
-            updateDownloadState: (state) => {
+            updateDownloadState: (updatedState) => set((state)=>{
                 console.debug("Received download state update", state);
-                set({});
-            },
+
+                let values = {} as TransferStoreState;
+
+                // Updates
+                if(updatedState.activeTransfers) {
+                    values.downloadProgress = updatedState.activeTransfers;
+                }
+
+                return values;
+            }),
 
             // setConversionJobs: (jobs) => set((state)=>{
             //     if(!jobs) {

@@ -2,10 +2,10 @@ import { expose, Remote, wrap, proxy } from 'comlink';
 
 import { DownloadThreadWorker, DownloadWorkerCallbackType } from './download.worker_thread';
 import { DecryptionWorkerCallbackType, DownloadDecryptionWorker } from './download.worker_decryption';
-import { addDownload, DownloadIdbType, FileVideoData, getDownloadContent, getNextDecryptionJob, getNextDownloadJob, removeDownload, restartNextJobInError } from '../collections2/idb/collections2StoreIdb';
+import { addDownload, DownloadIdbType, DownloadStateEnum, FileVideoData, getDownloadContent, getNextDecryptionJob, getNextDownloadJob, removeDownload, restartNextJobInError } from '../collections2/idb/collections2StoreIdb';
 import { createDownloadEntryFromFile, createDownloadEntryFromVideo } from '../collections2/transferUtils';
 import { FilehostDirType } from './directory.worker';
-import { DownloadStateUpdateType } from '../collections2/transferStore';
+import { DownloadStateUpdateType, TransferProgress, WorkerType } from '../collections2/transferStore';
 
 export type DownloadStateCallback = (state: DownloadStateUpdateType)=>void;
 
@@ -19,6 +19,8 @@ export class AppsDownloadWorker {
     downloadStateCallbackProxy: DownloadWorkerCallbackType
     decryptionStateCallbackProxy: DecryptionWorkerCallbackType
     stateCallback: DownloadStateCallback | null
+    downloadStatus: TransferProgress | null
+    decryptionStatus: TransferProgress | null
 
     constructor() {
         this.currentUserId = null;
@@ -39,6 +41,8 @@ export class AppsDownloadWorker {
         this.decryptionStateCallbackProxy = proxy(decryptionCb);
 
         this.stateCallback = null;
+        this.downloadStatus = null;
+        this.decryptionStatus = null;
     }
 
     async setup(stateCallback: DownloadStateCallback) {
@@ -63,16 +67,26 @@ export class AppsDownloadWorker {
     async downloadCallback(fuuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) {
         console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
         if(done) {
-            // Start next download job (if any).
+            // Start next download job (if any). Also does a produceState()
             await this.triggerJobs();
+            this.downloadStatus = null;
+        } else {
+            let download = {workerType: WorkerType.DOWNLOAD, fuuid, state: DownloadStateEnum.DOWNLOADING, position, totalSize: size} as TransferProgress;
+            this.downloadStatus = download;
+            await this.produceState();
         }
     }
 
     async decryptionCallback(fuuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) {
-        console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
+        console.debug("Decryption worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
         if(done) {
-            // Start next download job (if any).
+            // Start next download job (if any). Also does a produceState()
             await this.triggerJobs();
+            this.decryptionStatus = null;
+        } else {
+            let decryption = {workerType: WorkerType.DECRYPTION, fuuid, state: DownloadStateEnum.ENCRYPTED, position, totalSize: size} as TransferProgress;
+            this.decryptionStatus = decryption;
+            await this.produceState();
         }
     }
     
@@ -214,7 +228,10 @@ export class AppsDownloadWorker {
             console.warn("Download state callback not initialized");
             return;
         }
-        this.stateCallback({transferPercent: 100});
+        let stateList = [] as TransferProgress[];
+        if(this.downloadStatus) stateList.push(this.downloadStatus);
+        if(this.decryptionStatus) stateList.push(this.decryptionStatus);
+        this.stateCallback({activeTransfers: stateList});
     }
 
     maintain() {
