@@ -1,9 +1,12 @@
 import { expose } from 'comlink';
 import { DownloadJobType } from './download.worker';
 import { encryptionMgs4 } from 'millegrilles.cryptography';
-import { DownloadIdbParts, openDB, saveDecryptedBlob, STORE_DOWNLOAD_PARTS } from '../collections2/idb/collections2StoreIdb';
+import { DownloadIdbParts, openDB, saveDecryptedBlob, saveDecryptionError, STORE_DOWNLOAD_PARTS } from '../collections2/idb/collections2StoreIdb';
+import { getIterableStream } from '../collections2/transferUtils';
 
 export type DecryptionWorkerCallbackType = (fuuid: string, userId: string, done: boolean)=>Promise<void>;
+
+const CONST_CHUNK_SOFT_LIMIT = 1024 * 1024;
 
 export class DownloadDecryptionWorker {
     callback: DecryptionWorkerCallbackType | null
@@ -38,6 +41,7 @@ export class DownloadDecryptionWorker {
         if(!callback) throw new Error('Callback not wired');
 
         this.currentJob = downloadJob;
+        let fuuid = downloadJob.fuuid;
 
         try {
             // Decrypt file
@@ -48,34 +52,44 @@ export class DownloadDecryptionWorker {
             // Open a cursor and iterate through all parts in order
             const db = await openDB();
             let store = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
-            let fuuid = downloadJob.fuuid;
 
             let part = await store.get([fuuid, 0]) as DownloadIdbParts;
             
-            let blobs = [] as Blob[];  // Save all chunks in blobs, they will get concatenated at finalize.
-
+            let blobs = [] as Blob[];
             let position = 0;
             while(part) {
-                console.debug("Decrypt ", part);
+                // console.debug("Decrypt ", part);
                 let content = part.content;
 
                 // Open reader for blob, iterate through content.
                 // @ts-ignore
-                let readableStream = content.stream() as ReadableStream;
-                let reader = readableStream.getReader();
+                let stream = getIterableStream(content.stream());
+
+                // Buffer with chunks and blobs.
+                let chunks = [] as Uint8Array[];
+                let chunkSize = 0;
                 let partBlobs = [] as Blob[];
-                while(true) {
-                    let {done, value} = await reader.read();
-                    if(done) break;
-                    if(value && value.length > 0) {
-                        let output = await decipher.update(value);
-                        if(output && output.length > 0) {
-                            let blob = new Blob([output]);
-                            partBlobs.push(blob);
-                        }
+                for await (const chunk of stream) {
+                    let output = await decipher.update(chunk);
+                    if(output && output.length > 0) {
+                        chunkSize += output.length;
+                        chunks.push(output);
+                    }
+                    if(chunkSize > CONST_CHUNK_SOFT_LIMIT) {
+                        // Offload chunks to blob
+                        partBlobs.push(new Blob(chunks));
+                        // Reset chunks
+                        chunkSize = 0;
+                        chunks = [];
                     }
                 }
-                console.debug("Save %d chunks as decrypted part", partBlobs.length);
+    
+                if(chunks.length > 0) {
+                    // Last chunk
+                    partBlobs.push(new Blob(chunks));
+                }
+    
+                // console.debug("Save %d chunks as decrypted part", partBlobs.length);
                 // Concatenate all blobs into one larger part blob
                 blobs.push(new Blob(partBlobs));
         
@@ -90,9 +104,12 @@ export class DownloadDecryptionWorker {
             if(finalize) blobs.push(new Blob([finalize]));
 
             // Save all decrypted parts into a single blob
-            console.debug("Save all decrypted parts to IDB");
+            // console.debug("Save all decrypted parts to IDB");
             let decryptedFileBlob = new Blob(blobs, {type: downloadJob.mimetype});
             await saveDecryptedBlob(fuuid, decryptedFileBlob);
+        } catch(err) {
+            await saveDecryptionError(fuuid);
+            throw err
         } finally {
             this.currentJob = null;
             await callback(downloadJob.fuuid, downloadJob.userId, true);

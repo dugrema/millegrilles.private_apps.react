@@ -110,3 +110,25 @@ export async function createDownloadEntryFromVideo(tuuid: string, userId: string
 
     return entry;
 }
+
+// const generateStream = async (): Promise<AsyncIterable<string>> => {
+//     const response = await fetch(
+//       'http://localhost:5000/api/stream/dummy?chunks_amount=50',
+//       {
+//         method: 'GET',
+//       }
+//     )
+//     if (response.status !== 200) throw new Error(response.status.toString())
+//     if (!response.body) throw new Error('Response body does not exist')
+//     return getIterableStream(response.body)
+// }
+
+// https://stackoverflow.com/questions/51859873/using-axios-to-return-stream-from-express-app-the-provided-value-stream-is/77107457#77107457
+export async function* getIterableStream(body: ReadableStream<Uint8Array>): AsyncIterable<Uint8Array> {
+    const reader = body.getReader();
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        yield value;
+    }
+}

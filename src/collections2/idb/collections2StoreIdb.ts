@@ -398,6 +398,28 @@ export async function saveDecryptedBlob(fuuid: string, decryptedBlob: Blob) {
     await storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
 }
 
+export async function saveDecryptionError(fuuid: string,) {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
+    let cursor = await store.openCursor(IDBKeyRange.bound([fuuid, ''], [fuuid, '~']));
+
+    // Save the decrypted file to all download jobs matching the fuuid
+    while(cursor) {
+        let value = cursor.value as DownloadIdbType;
+        
+        // Update the record
+        value.secretKey = null;  // Erase key
+        value.state = DownloadStateEnum.ERROR;
+        await cursor.update(value);  // Replace value
+        
+        cursor = await cursor.continue();
+    }
+
+    // Clear the stored parts
+    const storeParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
+    await storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
+}
+
 export async function testBounds(fuuid: string) {
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;

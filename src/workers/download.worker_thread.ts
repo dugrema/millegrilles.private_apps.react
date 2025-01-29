@@ -2,6 +2,7 @@ import { expose } from 'comlink';
 import { DownloadJobType } from './download.worker';
 import { DownloadIdbParts, DownloadStateEnum, saveDownloadPart, updateDownloadJobState } from '../collections2/idb/collections2StoreIdb';
 import axios from 'axios';
+import { getIterableStream } from '../collections2/transferUtils';
 
 export type DownloadWorkerCallbackType = (fuuid: string, userId: string, position: number, done: boolean)=>Promise<void>;
 
@@ -47,25 +48,17 @@ export class DownloadThreadWorker {
         if(!currentJob) return;  // Nothing to do
         if(!callback) throw new Error('Callback not wired');
         
-        let fuuid = currentJob.fuuid;
         let url = currentJob.url;
 
         let position = 0;
         try {
             // Check stored download parts to find the resume position (if any)
             //TODO
+            // position = ...found position...
 
             // Start downloading
             callback(currentJob.fuuid, currentJob.userId, position, false);
-            console.debug("Getting URL", url);
-            // let response = await axios({method: 'GET', url, responseType: 'blob', withCredentials: true});
-            // console.debug("Response file: ", response);
-            // let encryptedBlob = response.data as Blob;
-            // // Save encrypted content to IDB
-            // await saveDownloadPart(fuuid, 0, encryptedBlob);
-            // position = encryptedBlob.size;
-
-            // let response = await axios({method: 'GET', url, responseType: 'stream', withCredentials: true});
+            // console.debug("Getting URL", url);
             let response = await fetch(url, {
                 // signal, 
                 cache: 'no-store', keepalive: false, credentials: "include",
@@ -76,13 +69,8 @@ export class DownloadThreadWorker {
             } else if(response.status !== 200) {
                 throw new Error(`Invalid HTTP response status: ${response.status}`);
             }
-            let contentLength = currentJob.size;  // This is the decrypted size. Good approximation but not always exact for the download.
-            let contentLengthString = response.headers.get('Content-Length');
-            if(typeof(contentLengthString) === 'string') {
-                contentLength = Number.parseInt(contentLengthString);  // This is the exact encrypted file size.
-            }
-            console.debug("Content length: %d", contentLength);
-            await streamResponse(currentJob, response);
+            // console.debug("Content length: %d", contentLength);
+            await streamResponse(currentJob, response, position);
 
             // Done downloading - mark state for decryption
             await updateDownloadJobState(currentJob.fuuid, currentJob.userId, DownloadStateEnum.ENCRYPTED, {position});
@@ -99,9 +87,9 @@ export class DownloadThreadWorker {
 }
 
 const CONST_SIZE_1MB = 1024 * 1024;
+const CONST_SIZE_1GB = 1024 * 1024 * 1024;
 // Soft limits for chunks and blobs (will get exceeded).
-const CHUNK_SOFT_LIMIT = 1024 * 256;
-const PART_SOFT_LIMIT = CONST_SIZE_1MB * 1;
+const CHUNK_SOFT_LIMIT = 1024 * 256;            // Soft limit for chunks in memory
 
 /**
  * Stream the response to the Download parts table. 
@@ -109,18 +97,28 @@ const PART_SOFT_LIMIT = CONST_SIZE_1MB * 1;
  * @param job 
  * @param response 
  */
-async function streamResponse(job: DownloadJobType, response: Response) {
+async function streamResponse(job: DownloadJobType, response: Response, initialPosition: number) {
     if(!response.body) throw new Error('No body to stream');
     let stream = getIterableStream(response.body);
     
-    let position = 0;
+    let contentLength = job.size;  // This is the decrypted size. Good approximation but not always exact for the download.
+    let contentLengthString = response.headers.get('Content-Length');
+    if(typeof(contentLengthString) === 'string') {
+        contentLength = Number.parseInt(contentLengthString);  // This is the exact encrypted file size.
+    }
+
+    // Determine size of parts - dynamic, depends on file size
+    let softPartSize = suggestPartSize(contentLength);
+    // console.debug("File size: %d, Part size: %d", contentLength, softPartSize);
+
+    let position = initialPosition;
     
     let chunks = [] as Uint8Array[];
     let chunksSize = 0;
 
-    let blobPosition = 0;
-    let blobs = [] as Blob[];
-    let blobsSize = 0;
+    let blobPosition = position;    // Position for the next part
+    let blobs = [] as Blob[];       // List of blobs to include in the current part
+    let blobsSize = 0;              // Current part size
     for await (const chunk of stream) {
         position += chunk.length;
         chunksSize += chunk.length;
@@ -138,14 +136,14 @@ async function streamResponse(job: DownloadJobType, response: Response) {
             chunks = [];
         }
 
-        if(blobsSize > PART_SOFT_LIMIT) {
+        if(blobsSize > softPartSize) {
             // Save to file parts
             let partBlob = new Blob(blobs);  // Concatenate all blobs into one part
             await saveDownloadPart(job.fuuid, blobPosition, partBlob);
 
             // Reset blobs
             let blobSize = partBlob.size;
-            console.debug("Parts blob %d", blobSize);
+            // console.debug("Parts blob %d", blobSize);
             blobPosition += blobSize;   // Increment start position for next blob
             blobsSize = 0;
             blobs = [];
@@ -164,25 +162,20 @@ async function streamResponse(job: DownloadJobType, response: Response) {
     }
 }
 
-// const generateStream = async (): Promise<AsyncIterable<string>> => {
-//     const response = await fetch(
-//       'http://localhost:5000/api/stream/dummy?chunks_amount=50',
-//       {
-//         method: 'GET',
-//       }
-//     )
-//     if (response.status !== 200) throw new Error(response.status.toString())
-//     if (!response.body) throw new Error('Response body does not exist')
-//     return getIterableStream(response.body)
-// }
+function suggestPartSize(fileSize: number | null) {
+    if(!fileSize) {
+        // Unknown file size. Default to 1MB parts.
+        return CONST_SIZE_1MB;
+    }
 
-// https://stackoverflow.com/questions/51859873/using-axios-to-return-stream-from-express-app-the-provided-value-stream-is/77107457#77107457
-async function* getIterableStream(body: ReadableStream<Uint8Array>): AsyncIterable<Uint8Array> {
-    const reader = body.getReader();
-    while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        yield value;
+    if(fileSize < 100 * CONST_SIZE_1MB) {       // 100MB
+        return CONST_SIZE_1MB;
+    } else if(fileSize < 10 * CONST_SIZE_1GB){  // 10GB
+        // Recommend parts of 1% of the file size. Gives good granularity for resuming.
+        return Math.floor(fileSize / 100);
+    } else {                                    // >10GB
+        // For anything over 10 GB, clamp to 100MB per part
+        return 100 * CONST_SIZE_1MB;
     }
 }
 
