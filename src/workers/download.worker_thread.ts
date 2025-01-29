@@ -1,6 +1,6 @@
 import { expose } from 'comlink';
 import { DownloadJobType } from './download.worker';
-import { DownloadStateEnum, saveDownloadPart, updateDownloadJobState } from '../collections2/idb/collections2StoreIdb';
+import { DownloadStateEnum, findDownloadPosition, removeDownloadParts, saveDownloadPart, updateDownloadJobState } from '../collections2/idb/collections2StoreIdb';
 import { getIterableStream } from '../collections2/transferUtils';
 
 export type DownloadWorkerCallbackType = (
@@ -56,21 +56,35 @@ export class DownloadThreadWorker {
         let url = currentJob.url;
 
         let positionOuter = 0;
+        let headerContentRange = null as string | null;
+        let headers = {} as {[key: string]: string};
         try {
             // Check stored download parts to find the resume position (if any)
-            //TODO
-            // position = ...found position...
+            let resumePosition = await findDownloadPosition(currentJob.fuuid);
+            if(resumePosition) {
+                positionOuter = resumePosition;
+                // Add header to request file position from server
+                headerContentRange = `bytes=${resumePosition}-`
+                headers['Range'] = headerContentRange;
+            }
 
             // Start downloading
             callback(currentJob.fuuid, currentJob.userId, false, 0);
             // console.debug("Getting URL", url);
             let response = await fetch(url, {
                 // signal, 
-                cache: 'no-store', keepalive: false, credentials: "include",
-                // headers: {'Range': headerContentRange, 'X-Token-Jwt': jwt}
+                cache: 'no-store', keepalive: false, credentials: "include", headers,
             });
             if(response.status === 206) {
-                throw new Error('todo');
+                // Resuming
+                console.debug("Resuming download of fuuid:%s from position", currentJob.fuuid, positionOuter);
+            } else if(response.status === 200) {
+                if(positionOuter > 0) {
+                    // No resuming possible
+                    positionOuter = 0;
+                    // Clear already downloaded parts
+                    await removeDownloadParts(currentJob.fuuid);
+                }
             } else if(response.status !== 200) {
                 throw new Error(`Invalid HTTP response status: ${response.status}`);
             }

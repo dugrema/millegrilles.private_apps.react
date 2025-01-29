@@ -1,7 +1,7 @@
 import { expose } from 'comlink';
 import { DownloadJobType } from './download.worker';
 import { encryptionMgs4 } from 'millegrilles.cryptography';
-import { DownloadIdbParts, openDB, saveDecryptedBlob, saveDecryptionError, STORE_DOWNLOAD_PARTS } from '../collections2/idb/collections2StoreIdb';
+import { DownloadIdbParts, DownloadIdbType, openDB, saveDecryptedBlob, saveDecryptionError, STORE_DOWNLOAD_PARTS } from '../collections2/idb/collections2StoreIdb';
 import { getIterableStream } from '../collections2/transferUtils';
 
 export type DecryptionWorkerCallbackType = (
@@ -16,7 +16,7 @@ const CONST_CHUNK_SOFT_LIMIT = 1024 * 1024;
 
 export class DownloadDecryptionWorker {
     callback: DecryptionWorkerCallbackType | null
-    currentJob: DownloadJobType | null
+    currentJob: DownloadIdbType | null
 
     constructor() {
         this.callback = null;
@@ -35,7 +35,7 @@ export class DownloadDecryptionWorker {
         return !!this.currentJob;
     }
 
-    async decryptContent(downloadJob: DownloadJobType) {
+    async decryptContent(downloadJob: DownloadIdbType) {
         if(this.currentJob) throw new Error('Busy');
         if(downloadJob.format !== 'mgs4') {
             throw new Error('Unsupported encryption format: ' + downloadJob.format);

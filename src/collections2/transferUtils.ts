@@ -46,6 +46,7 @@ export async function createDownloadEntryFromFile(tuuid: string, userId: string)
         position: 0,
         size: fileSize,
         visits,
+        retry: 0,
 
         // Decryption information
         secretKey, format, nonce,
@@ -98,6 +99,7 @@ export async function createDownloadEntryFromVideo(tuuid: string, userId: string
         position: 0,
         size: fileSize,
         visits,
+        retry: 0,
 
         // Decryption information
         secretKey, format, nonce,

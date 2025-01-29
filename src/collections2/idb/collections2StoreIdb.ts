@@ -124,6 +124,7 @@ export type DownloadIdbType = {
     position: number,               // Download position of the chunk currently being download or start for the next chunk if download not in progress.
     size: number | null,            // Encrypted file size
     visits: {[instanceId: string]: number},  // Known filehosts with the file
+    retry: number,
 
     // Decryption information
     secretKey: Uint8Array | null,   // Encryption key. Removed once download completes.
@@ -320,14 +321,19 @@ export async function addDownload(download: DownloadIdbType) {
 }
 
 export async function removeDownload(fuuid: string, userId: string) {
+    await removeDownloadParts(fuuid);
     const db = await openDB();
-    const storeParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
-    storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
     await store.delete([fuuid, userId]);
 }
 
-export async function getNextDownloadJob(userId: string): Promise<DownloadJobType | null> {
+export async function removeDownloadParts(fuuid: string) {
+    const db = await openDB();
+    const storeParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
+    storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
+}
+
+export async function getNextDownloadJob(userId: string): Promise<DownloadIdbType | null> {
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
 
@@ -341,7 +347,38 @@ export async function getNextDownloadJob(userId: string): Promise<DownloadJobTyp
     return job[0] as DownloadJobType;
 }
 
-export async function getNextDecryptionJob(userId: string): Promise<DownloadJobType | null> {
+/**
+ * Looks for a job in Error state that can be restarted.
+ * @param userId 
+ * @returns 
+ */
+export async function restartNextJobInError(userId: string): Promise<DownloadIdbType | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
+
+    // Get next jobs with initial state
+    let stateIndex = store.index('state');
+    let cursor = await stateIndex.openCursor(
+        IDBKeyRange.bound([userId, DownloadStateEnum.ERROR, 0], [userId, DownloadStateEnum.ERROR, Number.MAX_SAFE_INTEGER]));
+
+    while(cursor) {
+        let job = cursor.value as DownloadIdbType;
+        // Ignore jobs with too many retries
+        if(job.retry <= 3) {
+            // Increment job retry count and start date
+            job.state = DownloadStateEnum.INITIAL;
+            job.retry += 1;
+            job.processDate = new Date().getTime();  // Changing processDate puts the job at the end of the index. Allows rotating through errors.
+            await cursor.update(job);
+            return job;
+        }
+        cursor = await cursor.continue();
+    }
+
+    return null;
+}
+
+export async function getNextDecryptionJob(userId: string): Promise<DownloadIdbType | null> {
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
 
@@ -352,7 +389,7 @@ export async function getNextDecryptionJob(userId: string): Promise<DownloadJobT
         1);
 
     if(job.length === 0) return null;
-    return job[0] as DownloadJobType;
+    return job[0] as DownloadIdbType;
 }
 
 export async function updateDownloadJobState(fuuid: string, userId: string, state: DownloadStateEnum, opts?: {position?: number}) {
@@ -418,6 +455,26 @@ export async function saveDecryptionError(fuuid: string,) {
     // Clear the stored parts
     const storeParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
     await storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
+}
+
+/**
+ * Returns the current max position of the parts in the store for a file.
+ * @param fuuid File parts to look for.
+ */
+export async function findDownloadPosition(fuuid: string): Promise<number | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOAD_PARTS, 'readonly').store;
+
+    // Open the index in reverse. We want the last value (it is sorted by position).
+    // Ignore the position 0 (open: true).
+    let cursor = await store.openCursor(IDBKeyRange.lowerBound([fuuid, 0], true), 'prev');
+    let lastValue = cursor?.value as DownloadIdbParts;
+
+    if(!lastValue) return null;
+
+    let position = lastValue.position;
+    let size = lastValue.content.size;
+    return position + size;
 }
 
 export async function testBounds(fuuid: string) {

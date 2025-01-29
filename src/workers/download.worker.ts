@@ -1,9 +1,8 @@
-import axios from 'axios';
 import { expose, Remote, wrap, proxy } from 'comlink';
 
 import { DownloadThreadWorker, DownloadWorkerCallbackType } from './download.worker_thread';
 import { DecryptionWorkerCallbackType, DownloadDecryptionWorker } from './download.worker_decryption';
-import { addDownload, DownloadIdbType, FileVideoData, getDownloadContent, getNextDecryptionJob, getNextDownloadJob, removeDownload } from '../collections2/idb/collections2StoreIdb';
+import { addDownload, DownloadIdbType, FileVideoData, getDownloadContent, getNextDecryptionJob, getNextDownloadJob, removeDownload, restartNextJobInError } from '../collections2/idb/collections2StoreIdb';
 import { createDownloadEntryFromFile, createDownloadEntryFromVideo } from '../collections2/transferUtils';
 import { FilehostDirType } from './directory.worker';
 import { DownloadStateUpdateType } from '../collections2/transferStore';
@@ -125,6 +124,10 @@ export class AppsDownloadWorker {
         if(this.downloadWorker) {
             if(await this.downloadWorker.isBusy() === false) {
                 let job = await getNextDownloadJob(this.currentUserId);
+                if(!job) {
+                    // Check if we can resume a download in Error state
+                    job = await restartNextJobInError(this.currentUserId);
+                }
                 if(job) {
                     // Generate download url
                     let url = filehostUrl;
