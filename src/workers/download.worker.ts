@@ -47,7 +47,7 @@ export class AppsDownloadWorker {
 
     async setup(stateCallback: DownloadStateCallback) {
         this.stateCallbacks.push(stateCallback);
-        console.debug("Callback count: ", this.stateCallbacks.length);
+        // console.debug("Callback count: ", this.stateCallbacks.length);
 
         // This is a shared worker. Only create instances if not already done.
         if(!this.downloadWorker) {
@@ -185,6 +185,8 @@ export class AppsDownloadWorker {
     }
 
     async addDownloadFromFile(tuuid: string, userId: string): Promise<Blob | null> {
+        if(!this.downloadWorker || !this.decryptionWorker) throw new Error('Dedicated workers not initialized');
+        
         let entry = await createDownloadEntryFromFile(tuuid, userId);
         console.debug("New download entry", entry);
 

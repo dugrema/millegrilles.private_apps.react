@@ -66,7 +66,11 @@ export async function initWorkers(
     await connection.initialize(serverUrl.href, ca, callback, {reconnectionDelay: 7500});
     await encryption.initialize(ca);
     await encryption.setEncryptionKeys(chiffrage);
-    await download.setup(downloadStateCallback)
+    try {
+        await download.setup(downloadStateCallback);
+    } catch(err) {
+        console.error("Error wiring download callback", err);
+    }
 
     workers = {connection, encryption, directory, download};
 
