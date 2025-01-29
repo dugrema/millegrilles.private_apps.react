@@ -6,8 +6,7 @@ import { ConnectionCallbackParameters } from 'millegrilles.reactdeps.typescript'
 import { AppsConnectionWorker } from "./connection.worker";
 import { AppsEncryptionWorker } from './encryption.worker';
 import { DirectoryWorker } from './directory.worker';
-import { AppsDownloadWorker } from './download.worker';
-import { DownloadStateUpdateType } from "../collections2/transferStore";
+import { AppsDownloadWorker, DownloadStateCallback } from './download.worker';
 
 export type AppWorkers = {
     connection: Remote<AppsConnectionWorker>,
@@ -35,6 +34,7 @@ export type InitWorkersResult = {
 
 export async function initWorkers(
     callback: (params: ConnectionCallbackParameters) => void,
+    downloadStateCallback: DownloadStateCallback,
 ): Promise<InitWorkersResult> {
 
     let {idmg, ca, chiffrage} = await loadFiche();
@@ -51,12 +51,12 @@ export async function initWorkers(
     let download = null as Remote<AppsDownloadWorker> | null;
     if(!!window.SharedWorker) {
         // Use shared workers.
-        let downloadWorker = new SharedWorker(new URL('./download.worker.ts', import.meta.url));
+        let downloadWorker = new SharedWorker(new URL('./download.shared.ts', import.meta.url));
         download = wrap(downloadWorker.port, downloadWorker) as Remote<AppsDownloadWorker>;
     } else {
         // Use a dedicated worker. 
         // Will cause unpredictable behaviour between tabs for certain functionality, especially file uploads/downloads.
-        let downloadWorker = new Worker(new URL('./download.worker.ts', import.meta.url));
+        let downloadWorker = new Worker(new URL('./download.dedicated.ts', import.meta.url));
         download = wrap(downloadWorker) as Remote<AppsDownloadWorker>;
     }
 
@@ -66,12 +66,9 @@ export async function initWorkers(
     await connection.initialize(serverUrl.href, ca, callback, {reconnectionDelay: 7500});
     await encryption.initialize(ca);
     await encryption.setEncryptionKeys(chiffrage);
-    // await download.setup(downloadStateCallback)
+    await download.setup(downloadStateCallback)
 
     workers = {connection, encryption, directory, download};
-
-    // Start Shared workers
-    //downloadWorker.port.start();
 
     return {idmg, ca, chiffrage, workers};
 }

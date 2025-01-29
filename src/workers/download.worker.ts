@@ -1,4 +1,4 @@
-import { expose, Remote, wrap, proxy } from 'comlink';
+import { Remote, wrap, proxy } from 'comlink';
 
 import { DownloadThreadWorker, DownloadWorkerCallbackType } from './download.worker_thread';
 import { DecryptionWorkerCallbackType, DownloadDecryptionWorker } from './download.worker_decryption';
@@ -189,6 +189,7 @@ export class AppsDownloadWorker {
         console.debug("New download entry", entry);
 
         let content = await getDownloadContent(entry.fuuid, userId);
+        console.debug("Existing download content", content);
         if(content) {
             // Download already completed, return the file
             return content;
@@ -276,15 +277,3 @@ export class AppsDownloadWorker {
 export type DownloadJobType = DownloadIdbType & {
     url: string,
 };
-
-var worker = new AppsDownloadWorker();
-
-// Test if the browser supports web workers.
-if(!!window.SharedWorker) {
-    // Expose as a shared worker
-    // @ts-ignore
-    onconnect = (e) => expose(worker, e.ports[0]);
-} else {
-    // Expose as a dedicated web worker
-    expose(worker);
-}
