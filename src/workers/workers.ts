@@ -35,7 +35,6 @@ export type InitWorkersResult = {
 
 export async function initWorkers(
     callback: (params: ConnectionCallbackParameters) => void,
-    downloadStateCallback: (state: DownloadStateUpdateType) => Promise<void>,
 ): Promise<InitWorkersResult> {
 
     let {idmg, ca, chiffrage} = await loadFiche();
@@ -49,8 +48,17 @@ export async function initWorkers(
     let directoryWorker = new Worker(new URL('./directory.worker.ts', import.meta.url));
     let directory = wrap(directoryWorker) as Remote<DirectoryWorker>;
 
-    let downloadWorker = new SharedWorker(new URL('./download.worker.ts', import.meta.url));
-    let download = wrap(downloadWorker.port, downloadWorker) as Remote<AppsDownloadWorker>;
+    let download = null as Remote<AppsDownloadWorker> | null;
+    if(!!window.SharedWorker) {
+        // Use shared workers.
+        let downloadWorker = new SharedWorker(new URL('./download.worker.ts', import.meta.url));
+        download = wrap(downloadWorker.port, downloadWorker) as Remote<AppsDownloadWorker>;
+    } else {
+        // Use a dedicated worker. 
+        // Will cause unpredictable behaviour between tabs for certain functionality, especially file uploads/downloads.
+        let downloadWorker = new Worker(new URL('./download.worker.ts', import.meta.url));
+        download = wrap(downloadWorker) as Remote<AppsDownloadWorker>;
+    }
 
     // Set-up the workers
     let serverUrl = new URL(window.location.href);
@@ -58,7 +66,7 @@ export async function initWorkers(
     await connection.initialize(serverUrl.href, ca, callback, {reconnectionDelay: 7500});
     await encryption.initialize(ca);
     await encryption.setEncryptionKeys(chiffrage);
-    await download.setup(downloadStateCallback)
+    // await download.setup(downloadStateCallback)
 
     workers = {connection, encryption, directory, download};
 

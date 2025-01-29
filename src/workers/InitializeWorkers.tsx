@@ -33,9 +33,6 @@ function InitializeWorkers() {
         (state) => state.setConnectionReady
     );
 
-    // Transfers
-    let updateDownloadState = useTransferStore(state=>state.updateDownloadState);
-
     let connectionCallback = useMemo(() => {
         return proxy((params: ConnectionCallbackParameters) => {
             // console.debug("Connection callback : %O", params);
@@ -53,10 +50,6 @@ function InitializeWorkers() {
             }
         });
     }, [setConnectionReady, setConnectionAuthenticated, setUserSessionActive]);
-
-    let downloadStateUpdateCallback = useMemo(()=>{
-        return proxy(async (state: DownloadStateUpdateType)=>updateDownloadState(state));
-    }, [updateDownloadState])
 
     // Load the workers with a useMemo that returns a Promise. Allows throwing the promise
     // and catching it with the <React.Suspense> element in index.tsx.
@@ -83,7 +76,7 @@ function InitializeWorkers() {
                 setUserSessionActive(userStatus === 200);
                 if(username) setUsername(username);
 
-                let result = await initWorkers(connectionCallback, downloadStateUpdateCallback) as InitWorkersResult;
+                let result = await initWorkers(connectionCallback) as InitWorkersResult;
                 // Success.
                 setFiche(result.idmg, result.ca, result.chiffrage);
                 // Set the worker state to ready, allows the remainder of the application to load.
@@ -121,7 +114,6 @@ function InitializeWorkers() {
             setUserSessionActive,
             setUsername,
             connectionCallback,
-            downloadStateUpdateCallback,
     ]);
 
     if (workerLoadingPromise && !workersReady) throw workerLoadingPromise;
@@ -146,9 +138,9 @@ function MaintainConnection() {
   
         // Start the connection.
         workers.connection.connect()
-        .catch((err) => {
-            console.error("Connection error", err);
-        });
+            .catch((err) => {
+                console.error("Connection error", err);
+            });
 
     }, [workers]);
 
@@ -194,6 +186,23 @@ function MaintainConnection() {
             setReconnection(true);
         }
     }, [connectionReady, connectionAuthenticated, setReconnection])
+
+    // Transfers
+    let updateDownloadState = useTransferStore(state=>state.updateDownloadState);
+    let downloadStateUpdateCallback = useMemo(()=>{
+        return proxy(async (state: DownloadStateUpdateType)=>updateDownloadState(state));
+    }, [updateDownloadState]);
+
+    // Cleanup of shared workers
+    useEffect(()=>{
+        if(!workers) return;
+        workers.download.setup(downloadStateUpdateCallback);
+        //TODO - figure out a way to unregister callback from shared service
+        // return () => {
+        //     console.debug("Unregistering");
+        //     workers?.download.unregister(downloadStateUpdateCallback);
+        // }
+    }, [workers, downloadStateUpdateCallback]);
 
     return <></>
 }

@@ -7,7 +7,7 @@ import { createDownloadEntryFromFile, createDownloadEntryFromVideo } from '../co
 import { FilehostDirType } from './directory.worker';
 import { DownloadStateUpdateType, TransferProgress, WorkerType } from '../collections2/transferStore';
 
-export type DownloadStateCallback = (state: DownloadStateUpdateType)=>void;
+export type DownloadStateCallback = (state: DownloadStateUpdateType)=>Promise<void>;
 
 export class AppsDownloadWorker {
     currentUserId: string | null
@@ -18,7 +18,7 @@ export class AppsDownloadWorker {
     intervalMaintenance: ReturnType<typeof setInterval> | null
     downloadStateCallbackProxy: DownloadWorkerCallbackType
     decryptionStateCallbackProxy: DecryptionWorkerCallbackType
-    stateCallback: DownloadStateCallback | null
+    stateCallbacks: DownloadStateCallback[]
     downloadStatus: TransferProgress | null
     decryptionStatus: TransferProgress | null
 
@@ -40,13 +40,14 @@ export class AppsDownloadWorker {
         }
         this.decryptionStateCallbackProxy = proxy(decryptionCb);
 
-        this.stateCallback = null;
+        this.stateCallbacks = [];
         this.downloadStatus = null;
         this.decryptionStatus = null;
     }
 
     async setup(stateCallback: DownloadStateCallback) {
-        this.stateCallback = stateCallback;
+        this.stateCallbacks.push(stateCallback);
+        console.debug("Callback count: ", this.stateCallbacks.length);
 
         // This is a shared worker. Only create instances if not already done.
         if(!this.downloadWorker) {
@@ -62,6 +63,11 @@ export class AppsDownloadWorker {
         if(!this.intervalMaintenance) {
             this.intervalMaintenance = setInterval(()=>this.maintain(), 20_000);
         }
+    }
+
+    async unregister(stateCallback: DownloadStateCallback) {
+        console.debug("unregister ", stateCallback);
+        //TODO
     }
 
     async downloadCallback(fuuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) {
@@ -226,20 +232,43 @@ export class AppsDownloadWorker {
     }
 
     async produceState() {
-        if(!this.stateCallback) {
+        if(this.stateCallbacks.length === 0) {
             console.warn("Download state callback not initialized");
             return;
         }
         let stateList = [] as TransferProgress[];
         if(this.downloadStatus) stateList.push(this.downloadStatus);
         if(this.decryptionStatus) stateList.push(this.decryptionStatus);
-        this.stateCallback({activeTransfers: stateList});
+        for (let cb of this.stateCallbacks) {
+            cb({activeTransfers: stateList});
+        }
     }
 
     maintain() {
         console.debug("Run maintenance");
         this.triggerJobs()
             .catch(err=>console.error("Error triggering jobs", err));
+        this.maintainCallbacks()
+            .catch(err=>console.error("Error maintaining callbacks", err));
+    }
+
+    // HACK: Remove callbacks that no longer respond
+    // TODO: Find way to unregister the callbacks directly, or at least a proper test.
+    async maintainCallbacks() {
+        // console.debug("Callback check, count %d", this.stateCallbacks.length);
+        let list = [] as DownloadStateCallback[];
+        for await(let cb of this.stateCallbacks) {
+            // console.debug("Callback found");
+            await new Promise(async (resolve) => {
+                setTimeout(resolve, 100);
+                cb({}).then(()=>{
+                    list.push(cb);  // Keep
+                    resolve(null);
+                })
+            });
+        }
+        this.stateCallbacks = list;  // Update liste to keep
+        // console.debug("Callback check, count after %d", this.stateCallbacks.length);
     }
 
 }
@@ -249,6 +278,13 @@ export type DownloadJobType = DownloadIdbType & {
 };
 
 var worker = new AppsDownloadWorker();
-// Expose as a shared worker
-// @ts-ignore
-onconnect = (e) => expose(worker, e.ports[0]);
+
+// Test if the browser supports web workers.
+if(!!window.SharedWorker) {
+    // Expose as a shared worker
+    // @ts-ignore
+    onconnect = (e) => expose(worker, e.ports[0]);
+} else {
+    // Expose as a dedicated web worker
+    expose(worker);
+}
