@@ -68,8 +68,8 @@ export class AppsDownloadWorker {
         console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
-            await this.triggerJobs();
             this.downloadStatus = null;
+            await this.triggerJobs();
         } else {
             let download = {workerType: WorkerType.DOWNLOAD, fuuid, state: DownloadStateEnum.DOWNLOADING, position, totalSize: size} as TransferProgress;
             this.downloadStatus = download;
@@ -81,8 +81,8 @@ export class AppsDownloadWorker {
         console.debug("Decryption worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
-            await this.triggerJobs();
             this.decryptionStatus = null;
+            await this.triggerJobs();
         } else {
             let decryption = {workerType: WorkerType.DECRYPTION, fuuid, state: DownloadStateEnum.ENCRYPTED, position, totalSize: size} as TransferProgress;
             this.decryptionStatus = decryption;
@@ -136,8 +136,10 @@ export class AppsDownloadWorker {
 
         // Downloads
         if(this.downloadWorker) {
+            console.debug("Trigger job downloadWorker check");
             if(await this.downloadWorker.isBusy() === false) {
                 let job = await getNextDownloadJob(this.currentUserId);
+                console.debug("Trigger job downloadWorker next", job);
                 if(!job) {
                     // Check if we can resume a download in Error state
                     job = await restartNextJobInError(this.currentUserId);

@@ -103,6 +103,7 @@ export class DownloadThreadWorker {
 
             // Done downloading - mark state for decryption
             await updateDownloadJobState(currentJob.fuuid, currentJob.userId, DownloadStateEnum.ENCRYPTED, {position: positionOuter});
+            this.currentJob = null;  // Remove job before callback - allows chaining to next job
             await callback(currentJob.fuuid, currentJob.userId, true, positionOuter, positionOuter);
         } catch(err) {
             console.error("Download job error: ", err);

@@ -41,7 +41,6 @@ function WorkerActivity() {
     let downloadProgress = useTransferStore(state=>state.downloadProgress);
 
     let [downloadPercent, decryptionPercent] = useMemo(()=>{
-        console.debug("downloadProgress", downloadProgress);
         if(!downloadProgress) return [null, null];
 
         let downloadPercent = null as number | null;
@@ -95,7 +94,7 @@ function OngoingTransfers() {
 
     return (
         <section>
-            <h2 className='font-bold pt-4 pb-2'>Ongoing transfers</h2>
+            <h2 className='font-bold pt-4 pb-2'>Transfer queue</h2>
             {mappedTransfers}
         </section>
     );

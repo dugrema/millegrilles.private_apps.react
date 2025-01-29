@@ -55,7 +55,7 @@ function InitializeWorkers() {
     }, [setConnectionReady, setConnectionAuthenticated, setUserSessionActive]);
 
     let downloadStateUpdateCallback = useMemo(()=>{
-        return proxy((state: DownloadStateUpdateType)=>updateDownloadState(state));
+        return proxy(async (state: DownloadStateUpdateType)=>updateDownloadState(state));
     }, [updateDownloadState])
 
     // Load the workers with a useMemo that returns a Promise. Allows throwing the promise

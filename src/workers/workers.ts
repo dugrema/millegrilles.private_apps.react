@@ -35,7 +35,7 @@ export type InitWorkersResult = {
 
 export async function initWorkers(
     callback: (params: ConnectionCallbackParameters) => void,
-    downloadStateCallback: (state: DownloadStateUpdateType) => void,
+    downloadStateCallback: (state: DownloadStateUpdateType) => Promise<void>,
 ): Promise<InitWorkersResult> {
 
     let {idmg, ca, chiffrage} = await loadFiche();
