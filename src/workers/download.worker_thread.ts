@@ -4,7 +4,7 @@ import { DownloadIdbParts, DownloadStateEnum, saveDownloadPart, updateDownloadJo
 import axios from 'axios';
 import { getIterableStream } from '../collections2/transferUtils';
 
-export type DownloadWorkerCallbackType = (fuuid: string, userId: string, position: number, done: boolean)=>Promise<void>;
+export type DownloadWorkerCallbackType = (fuuid: string, userId: string, done: boolean, percentProgress?: number | null)=>Promise<void>;
 
 export class DownloadThreadWorker {
     callback: DownloadWorkerCallbackType | null
@@ -57,7 +57,7 @@ export class DownloadThreadWorker {
             // position = ...found position...
 
             // Start downloading
-            callback(currentJob.fuuid, currentJob.userId, position, false);
+            callback(currentJob.fuuid, currentJob.userId, false, 0);
             // console.debug("Getting URL", url);
             let response = await fetch(url, {
                 // signal, 
@@ -69,16 +69,28 @@ export class DownloadThreadWorker {
             } else if(response.status !== 200) {
                 throw new Error(`Invalid HTTP response status: ${response.status}`);
             }
+
+            let currentJobLocal = currentJob;
+            let statusCallback = (position: number, totalSize: number | null) => {
+                if(!totalSize) totalSize = currentJobLocal.size;
+                console.debug("Download position for file %s: %d / %d", currentJobLocal.fuuid, position, totalSize);
+                if(callback && totalSize) {
+                    let percentProgress = Math.floor(position / totalSize * 100);
+                    // console.debug("Download progress: %d%%", percentProgress);
+                    callback(currentJobLocal.fuuid, currentJobLocal.userId, false, percentProgress);
+                }
+            }
+
             // console.debug("Content length: %d", contentLength);
-            await streamResponse(currentJob, response, position);
+            await streamResponse(currentJob, response, position, statusCallback);
 
             // Done downloading - mark state for decryption
             await updateDownloadJobState(currentJob.fuuid, currentJob.userId, DownloadStateEnum.ENCRYPTED, {position});
-            await callback(currentJob.fuuid, currentJob.userId, position, true);
+            await callback(currentJob.fuuid, currentJob.userId, true, 100);
         } catch(err) {
             console.error("Download job error: ", err);
             await updateDownloadJobState(currentJob.fuuid, currentJob.userId, DownloadStateEnum.ERROR);
-            await callback(currentJob.fuuid, currentJob.userId, position, true);
+            await callback(currentJob.fuuid, currentJob.userId, true);
         } finally {
             this.currentJob = null;
         }
@@ -97,7 +109,7 @@ const CHUNK_SOFT_LIMIT = 1024 * 256;            // Soft limit for chunks in memo
  * @param job 
  * @param response 
  */
-async function streamResponse(job: DownloadJobType, response: Response, initialPosition: number) {
+async function streamResponse(job: DownloadJobType, response: Response, initialPosition: number, statusCallback: (position: number, totalSize: number | null)=>void) {
     if(!response.body) throw new Error('No body to stream');
     let stream = getIterableStream(response.body);
     
@@ -112,53 +124,62 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
     // console.debug("File size: %d, Part size: %d", contentLength, softPartSize);
 
     let position = initialPosition;
+
+    let interval = setInterval(()=>statusCallback(position, contentLength), 750);
     
-    let chunks = [] as Uint8Array[];
-    let chunksSize = 0;
+    try {
+        let chunks = [] as Uint8Array[];
+        let chunksSize = 0;
 
-    let blobPosition = position;    // Position for the next part
-    let blobs = [] as Blob[];       // List of blobs to include in the current part
-    let blobsSize = 0;              // Current part size
-    for await (const chunk of stream) {
-        position += chunk.length;
-        chunksSize += chunk.length;
-        
-        chunks.push(chunk);
+        let blobPosition = position;    // Position for the next part
+        let blobs = [] as Blob[];       // List of blobs to include in the current part
+        let blobsSize = 0;              // Current part size
+        for await (const chunk of stream) {
+            position += chunk.length;
+            chunksSize += chunk.length;
+            
+            chunks.push(chunk);
 
-        if(chunksSize > CHUNK_SOFT_LIMIT) {
-            // Concatenate into blob (gives a chance to offload memory)
-            let blob = new Blob(chunks);
-            blobs.push(blob);
-            blobsSize += blob.size;
+            if(chunksSize > CHUNK_SOFT_LIMIT) {
+                // Concatenate into blob (gives a chance to offload memory)
+                let blob = new Blob(chunks);
+                blobs.push(blob);
+                blobsSize += blob.size;
 
-            // Reset chunks
-            chunksSize = 0;
-            chunks = [];
+                // Reset chunks
+                chunksSize = 0;
+                chunks = [];
+            }
+
+            if(blobsSize > softPartSize) {
+                // Save to file parts
+                let partBlob = new Blob(blobs);  // Concatenate all blobs into one part
+                await saveDownloadPart(job.fuuid, blobPosition, partBlob);
+
+                // Reset blobs
+                let blobSize = partBlob.size;
+                // console.debug("Parts blob %d", blobSize);
+                blobPosition += blobSize;   // Increment start position for next blob
+                blobsSize = 0;
+                blobs = [];
+            }
         }
 
-        if(blobsSize > softPartSize) {
-            // Save to file parts
-            let partBlob = new Blob(blobs);  // Concatenate all blobs into one part
+        if(chunks.length > 0) {
+            // Final blob
+            blobs.push(new Blob(chunks));
+        }
+
+        if(blobs.length > 0) {
+            // Save final part
+            let partBlob = new Blob(blobs);
             await saveDownloadPart(job.fuuid, blobPosition, partBlob);
-
-            // Reset blobs
-            let blobSize = partBlob.size;
-            // console.debug("Parts blob %d", blobSize);
-            blobPosition += blobSize;   // Increment start position for next blob
-            blobsSize = 0;
-            blobs = [];
         }
-    }
 
-    if(chunks.length > 0) {
-        // Final blob
-        blobs.push(new Blob(chunks));
-    }
-
-    if(blobs.length > 0) {
-        // Save final part
-        let partBlob = new Blob(blobs);
-        await saveDownloadPart(job.fuuid, blobPosition, partBlob);
+        // Done
+        statusCallback(position, contentLength);
+    } finally {
+        clearInterval(interval);
     }
 }
 

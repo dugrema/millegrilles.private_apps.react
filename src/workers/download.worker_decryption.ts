@@ -4,7 +4,7 @@ import { encryptionMgs4 } from 'millegrilles.cryptography';
 import { DownloadIdbParts, openDB, saveDecryptedBlob, saveDecryptionError, STORE_DOWNLOAD_PARTS } from '../collections2/idb/collections2StoreIdb';
 import { getIterableStream } from '../collections2/transferUtils';
 
-export type DecryptionWorkerCallbackType = (fuuid: string, userId: string, done: boolean)=>Promise<void>;
+export type DecryptionWorkerCallbackType = (fuuid: string, userId: string, done: boolean, percentProgress?: number | null)=>Promise<void>;
 
 const CONST_CHUNK_SOFT_LIMIT = 1024 * 1024;
 
@@ -43,6 +43,16 @@ export class DownloadDecryptionWorker {
         this.currentJob = downloadJob;
         let fuuid = downloadJob.fuuid;
 
+        let decryptedPosition = 0;
+        let interval = setInterval(()=>{
+            console.debug("Decrypt position %d/%d", decryptedPosition, downloadJob.size);
+            if(callback && downloadJob.size) {
+                let percentProgress = Math.floor(decryptedPosition / downloadJob.size * 100);
+                // console.debug("Decryption progress: %d%%", percentProgress);
+                callback(downloadJob.fuuid, downloadJob.userId, false, percentProgress);
+            }
+        }, 750);
+
         try {
             // Decrypt file
             let secretKey = downloadJob.secretKey;
@@ -72,6 +82,7 @@ export class DownloadDecryptionWorker {
                 for await (const chunk of stream) {
                     let output = await decipher.update(chunk);
                     if(output && output.length > 0) {
+                        decryptedPosition += output.length;  // Use decrypted position
                         chunkSize += output.length;
                         chunks.push(output);
                     }
@@ -107,12 +118,14 @@ export class DownloadDecryptionWorker {
             // console.debug("Save all decrypted parts to IDB");
             let decryptedFileBlob = new Blob(blobs, {type: downloadJob.mimetype});
             await saveDecryptedBlob(fuuid, decryptedFileBlob);
+            callback(downloadJob.fuuid, downloadJob.userId, true, 100);
         } catch(err) {
             await saveDecryptionError(fuuid);
+            await callback(downloadJob.fuuid, downloadJob.userId, true);
             throw err
         } finally {
+            clearInterval(interval);
             this.currentJob = null;
-            await callback(downloadJob.fuuid, downloadJob.userId, true);
         }
     }
 

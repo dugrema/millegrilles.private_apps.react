@@ -29,13 +29,13 @@ export class AppsDownloadWorker {
         this.filehost = null;
         this.intervalMaintenance = null;
 
-        let downloadCb = async (uuid: string, userId: string, position: number, done: boolean) => {
-            await this.downloadCallback(uuid, userId, position, done);
+        let downloadCb = async (uuid: string, userId: string, done: boolean, percentProgress?: number | null) => {
+            await this.downloadCallback(uuid, userId, done, percentProgress);
         }
         this.downloadStateCallbackProxy = proxy(downloadCb);
 
-        let decryptionCb = async (uuid: string, userId: string, done: boolean) => {
-            await this.decryptionCallback(uuid, userId, done);
+        let decryptionCb = async (uuid: string, userId: string, done: boolean, progress?: number | null) => {
+            await this.decryptionCallback(uuid, userId, done, progress);
         }
         this.decryptionStateCallbackProxy = proxy(decryptionCb);
 
@@ -61,16 +61,16 @@ export class AppsDownloadWorker {
         }
     }
 
-    async downloadCallback(fuuid: string, userId: string, position: number, done: boolean) {
-        console.debug("Download worker callback fuuid: %s, userId: %s, position: %d, done: %O", fuuid, userId, position, done);
+    async downloadCallback(fuuid: string, userId: string, done: boolean, percentProgress?: number | null) {
+        console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, progress: %d%%", fuuid, userId, done, percentProgress);
         if(done) {
             // Start next download job (if any).
             await this.triggerJobs();
         }
     }
 
-    async decryptionCallback(fuuid: string, userId: string, done: boolean) {
-        console.debug("Download worker callback fuuid: %s, userId: %s, done: %O", fuuid, userId, done);
+    async decryptionCallback(fuuid: string, userId: string, done: boolean, progress?: number | null) {
+        console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, progress: %d%%", fuuid, userId, done, progress);
         if(done) {
             // Start next download job (if any).
             await this.triggerJobs();
