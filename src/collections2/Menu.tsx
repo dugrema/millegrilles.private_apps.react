@@ -194,7 +194,18 @@ export default function HeaderMenu(props: MenuProps) {
 
                     {/* Button bar */}
                     <div className='py-3'><SubmenuButtonBar disableEdit={disableEdit} close={toggleSubmenu} /></div>
-                    
+
+                    {/* Transfers */}
+                    <div className='py-3 px-1 w-40 transition-colors duration-300'>
+                        <Link to='/apps/collections2/transfers' onClick={toggleSubmenu}>
+                            <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />
+                            <p className='inline-block text-sm w-10'>100%</p>
+                            <span className='pl-1'>/</span>
+                            <img src={DownloadIcon} alt='Download' className='w-7 inline-block' />
+                            <p className='inline-block text-sm w-10'>100%</p>
+                        </Link>
+                    </div>
+
                     {/* Additional links */}
                     <Link to='/apps/collections2/settings' className='block py-3' onClick={toggleSubmenu}>
                         <img src={SettingIcon} alt="Settings" className='w-7 inline-block' />

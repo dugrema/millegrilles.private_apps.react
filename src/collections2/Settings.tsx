@@ -62,7 +62,7 @@ function ResolutionSettings() {
                 className='text-black bg-slate-300'>
                     {optionsElem}
             </select>
-            <ActionButton onClick={actionHandler} revertSuccessTimeout={3}>Change</ActionButton>
+            <div><ActionButton onClick={actionHandler} revertSuccessTimeout={3}>Change</ActionButton></div>
         </div>
     )
 }
@@ -87,9 +87,12 @@ function Cleanup() {
 
     return (
         <div className='pt-4'>
-            <p>Cleanup history - removes all downloaded files and decrypted content from Collections2. Keeps configuration.</p>
+            <p>Cleanup history - removes all downloaded files and decrypted content from Collections2. Maintains configuration.</p>
             {typeof(storageUsage) === 'number'?
-                <p>Current estimated usage for MilleGrilles: <Formatters.FormatteurTaille value={storageUsage} /></p>
+                <>
+                    <p className='pt-2'>Current estimated usage for MilleGrilles:</p>
+                    <p className='font-bold'><Formatters.FormatteurTaille value={storageUsage} /></p>
+                </>
             :<></>}
             <ActionButton onClick={cleanupHandler}>Cleanup</ActionButton>
         </div>
