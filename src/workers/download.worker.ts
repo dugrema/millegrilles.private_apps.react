@@ -6,6 +6,9 @@ import { DecryptionWorkerCallbackType, DownloadDecryptionWorker } from './downlo
 import { addDownload, DownloadIdbType, FileVideoData, getDownloadContent, getNextDecryptionJob, getNextDownloadJob, removeDownload } from '../collections2/idb/collections2StoreIdb';
 import { createDownloadEntryFromFile, createDownloadEntryFromVideo } from '../collections2/transferUtils';
 import { FilehostDirType } from './directory.worker';
+import { DownloadStateUpdateType } from '../collections2/transferStore';
+
+export type DownloadStateCallback = (state: DownloadStateUpdateType)=>void;
 
 export class AppsDownloadWorker {
     currentUserId: string | null
@@ -16,6 +19,7 @@ export class AppsDownloadWorker {
     intervalMaintenance: ReturnType<typeof setInterval> | null
     downloadStateCallbackProxy: DownloadWorkerCallbackType
     decryptionStateCallbackProxy: DecryptionWorkerCallbackType
+    stateCallback: DownloadStateCallback | null
 
     constructor() {
         this.currentUserId = null;
@@ -34,9 +38,13 @@ export class AppsDownloadWorker {
             await this.decryptionCallback(uuid, userId, done);
         }
         this.decryptionStateCallbackProxy = proxy(decryptionCb);
+
+        this.stateCallback = null;
     }
 
-    async setup() {
+    async setup(stateCallback: DownloadStateCallback) {
+        this.stateCallback = stateCallback;
+
         // This is a shared worker. Only create instances if not already done.
         if(!this.downloadWorker) {
             let downloadThreadWorker = new Worker(new URL('./download.worker_thread.ts', import.meta.url));
@@ -146,6 +154,9 @@ export class AppsDownloadWorker {
 
         // Uploads
 
+
+        // Update state
+        await this.produceState();
     }
 
     async addDownloadFromFile(tuuid: string, userId: string): Promise<Blob | null> {
@@ -193,6 +204,14 @@ export class AppsDownloadWorker {
 
     async getActiveDownloads() {
         return this.count++;
+    }
+
+    async produceState() {
+        if(!this.stateCallback) {
+            console.warn("Download state callback not initialized");
+            return;
+        }
+        this.stateCallback({transferPercent: 100});
     }
 
     maintain() {

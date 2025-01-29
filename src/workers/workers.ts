@@ -7,6 +7,7 @@ import { AppsConnectionWorker } from "./connection.worker";
 import { AppsEncryptionWorker } from './encryption.worker';
 import { DirectoryWorker } from './directory.worker';
 import { AppsDownloadWorker } from './download.worker';
+import { DownloadStateUpdateType } from "../collections2/transferStore";
 
 export type AppWorkers = {
     connection: Remote<AppsConnectionWorker>,
@@ -32,7 +33,10 @@ export type InitWorkersResult = {
     workers: AppWorkers,
 }
 
-export async function initWorkers(callback: (params: ConnectionCallbackParameters) => void): Promise<InitWorkersResult> {
+export async function initWorkers(
+    callback: (params: ConnectionCallbackParameters) => void,
+    downloadStateCallback: (state: DownloadStateUpdateType) => void,
+): Promise<InitWorkersResult> {
 
     let {idmg, ca, chiffrage} = await loadFiche();
 
@@ -54,7 +58,7 @@ export async function initWorkers(callback: (params: ConnectionCallbackParameter
     await connection.initialize(serverUrl.href, ca, callback, {reconnectionDelay: 7500});
     await encryption.initialize(ca);
     await encryption.setEncryptionKeys(chiffrage);
-    await download.setup()
+    await download.setup(downloadStateCallback)
 
     workers = {connection, encryption, directory, download};
 

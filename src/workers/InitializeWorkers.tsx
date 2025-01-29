@@ -8,6 +8,7 @@ import useWorkers, { AppWorkers, initWorkers, InitWorkersResult } from "./worker
 import useConnectionStore from "../connectionStore";
 import { userStoreIdb, CommonTypes } from 'millegrilles.reactdeps.typescript';
 import useUserBrowsingStore from "../collections2/userBrowsingStore";
+import useTransferStore, { DownloadStateUpdateType } from "../collections2/transferStore";
 
 /**
  * Initializes the Web Workers and a few other elements to connect to the back-end.
@@ -32,6 +33,9 @@ function InitializeWorkers() {
         (state) => state.setConnectionReady
     );
 
+    // Transfers
+    let updateDownloadState = useTransferStore(state=>state.updateDownloadState);
+
     let connectionCallback = useMemo(() => {
         return proxy((params: ConnectionCallbackParameters) => {
             // console.debug("Connection callback : %O", params);
@@ -49,6 +53,10 @@ function InitializeWorkers() {
             }
         });
     }, [setConnectionReady, setConnectionAuthenticated, setUserSessionActive]);
+
+    let downloadStateUpdateCallback = useMemo(()=>{
+        return proxy((state: DownloadStateUpdateType)=>updateDownloadState(state));
+    }, [updateDownloadState])
 
     // Load the workers with a useMemo that returns a Promise. Allows throwing the promise
     // and catching it with the <React.Suspense> element in index.tsx.
@@ -75,7 +83,7 @@ function InitializeWorkers() {
                 setUserSessionActive(userStatus === 200);
                 if(username) setUsername(username);
 
-                let result = await initWorkers(connectionCallback) as InitWorkersResult;
+                let result = await initWorkers(connectionCallback, downloadStateUpdateCallback) as InitWorkersResult;
                 // Success.
                 setFiche(result.idmg, result.ca, result.chiffrage);
                 // Set the worker state to ready, allows the remainder of the application to load.
@@ -113,6 +121,7 @@ function InitializeWorkers() {
             setUserSessionActive,
             setUsername,
             connectionCallback,
+            downloadStateUpdateCallback,
     ]);
 
     if (workerLoadingPromise && !workersReady) throw workerLoadingPromise;
