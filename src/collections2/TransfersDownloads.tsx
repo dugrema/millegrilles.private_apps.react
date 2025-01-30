@@ -7,11 +7,12 @@ import { Formatters } from "millegrilles.reactdeps.typescript";
 import useUserBrowsingStore from "./userBrowsingStore";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
+import { downloadFile } from "./transferUtils";
 
 import DownloadIcon from '../resources/icons/download-svgrepo-com.svg';
 import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
-import { DownloadJobType } from "../workers/download.worker";
-import { downloadFile } from "./transferUtils";
+import ForwardIcon from '../resources/icons/forward-svgrepo-com.svg';
+import PauseIcon from '../resources/icons/pause-svgrepo-com.svg';
 
 function TransfersDownloads() {
 
@@ -112,22 +113,46 @@ const CONST_ONGOING_STATES = [
 ]
 
 function OngoingTransfers() {
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    let userId = useUserBrowsingStore(state=>state.userId);
     let downloadJobs = useTransferStore(state=>state.downloadJobs);
 
-    let mappedTransfers = useMemo(()=>{
+    let pauseHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
+
+    }, []);
+
+    let resumeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
+
+    }, []);
+
+    let removeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!userId) throw new Error('UserId not provided');
         
+        let fuuid = e.currentTarget.value;
+
+        // Stop/cancel the file if it is being processing in the download or decryption workers.
+        await workers.download.cancelDownload(fuuid, userId);
+
+        // Remove the job and any download parts from IDB.
+        console.debug("Remove download job for fuuid:%s", fuuid)
+        await removeUserDownloads(userId, {fuuid});
+        
+        // Signal that the download job content has changed to all tabs.
+        await workers.download.triggerListChanged();
+    }, [workers, ready, userId]);
+
+    let mappedTransfers = useMemo(()=>{
         let jobs = downloadJobs?.filter(item=>CONST_ONGOING_STATES.includes(item.state));
         if(!jobs) return [];
 
         jobs.sort(sortJobs);
-        return jobs.map(item=>{
-            return (
-                <div key={item.fuuid} className='grid grid-cols-6'>
-                    <p className='col-span-3'>{item.filename}</p>
-                    <Formatters.FormatteurTaille value={item.size || undefined} />
-                </div>
-            )
-        });
+        return jobs.map(item=>(
+            <JobRow key={item.fuuid} value={item} onRemove={removeHandler} onPause={pauseHandler} onResume={resumeHandler} />
+        ));
     }, [downloadJobs]);
 
     if(mappedTransfers.length === 0) return <></>;
@@ -153,7 +178,6 @@ function CompletedTransfers() {
         let fuuid = e.currentTarget.value;
         let job = downloadJobs?.filter(item=>item.fuuid===fuuid).pop();
         if(!job) throw new Error('No job matches the file');
-        let filename = job.filename;
         let content = await getDownloadContent(fuuid, userId)
         if(!content) throw new Error(`Download content for ${fuuid} not found`);
         downloadFile(job.filename, content);
@@ -214,22 +238,38 @@ function ProgressBar(props: {value: number | null}) {
 
 type JobRowProps = {
     value: DownloadJobStoreType, 
-    onDownload: (e: MouseEvent<HTMLButtonElement>)=>Promise<void>,
     onRemove: (e: MouseEvent<HTMLButtonElement>)=>Promise<void>,
+    onDownload?: (e: MouseEvent<HTMLButtonElement>)=>Promise<void>,
+    onPause?: (e: MouseEvent<HTMLButtonElement>)=>Promise<void>,
+    onResume?: (e: MouseEvent<HTMLButtonElement>)=>Promise<void>,
 };
+
+const CONST_RESUME_STATE_CANDIDATES = [DownloadStateEnum.PAUSED, DownloadStateEnum.ERROR];
 
 function JobRow(props: JobRowProps) {
 
-    let {value, onDownload, onRemove} = props;
+    let {value, onDownload, onRemove, onPause, onResume} = props;
 
     return (
         <div key={value.fuuid} className='grid grid-cols-6'>
             <Link to={`/apps/collections2/f/${value.tuuid}`} className='col-span-3'>{value.filename}</Link>
             <Formatters.FormatteurTaille value={value.size || undefined} />
             <div>
-                <ActionButton onClick={onDownload} value={value.fuuid} varwidth={10} revertSuccessTimeout={3}>
-                    <img src={DownloadIcon} alt='Download file' className='h-6 pl-1' />
-                </ActionButton>
+                {onDownload?
+                    <ActionButton onClick={onDownload} value={value.fuuid} varwidth={10} revertSuccessTimeout={3}>
+                        <img src={DownloadIcon} alt='Download file' className='h-6 pl-1' />
+                    </ActionButton>
+                :<></>}
+                {onPause?
+                    <ActionButton onClick={onPause} value={value.fuuid} varwidth={10} revertSuccessTimeout={3} disabled={value.state === DownloadStateEnum.PAUSED}>
+                        <img src={PauseIcon} alt='Pause file download' className='h-6 pl-1' />
+                    </ActionButton>
+                :<></>}
+                {onResume?
+                    <ActionButton onClick={onResume} value={value.fuuid} varwidth={10} revertSuccessTimeout={3} disabled={!CONST_RESUME_STATE_CANDIDATES.includes(value.state)}>
+                        <img src={ForwardIcon} alt='Resume file processing' className='h-6 pl-1' />
+                    </ActionButton>
+                :<></>}
                 <ActionButton onClick={onRemove} value={value.fuuid} varwidth={10}>
                     <img src={TrashIcon} alt='Remove download' className='h-6 pl-1' />
                 </ActionButton>
