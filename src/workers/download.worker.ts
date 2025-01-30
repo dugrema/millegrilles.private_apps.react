@@ -21,6 +21,7 @@ export class AppsDownloadWorker {
     stateCallbacks: DownloadStateCallback[]
     downloadStatus: TransferProgress | null
     decryptionStatus: TransferProgress | null
+    listChanged: boolean
 
     constructor() {
         this.currentUserId = null;
@@ -43,6 +44,7 @@ export class AppsDownloadWorker {
         this.stateCallbacks = [];
         this.downloadStatus = null;
         this.decryptionStatus = null;
+        this.listChanged = true;
     }
 
     async setup(stateCallback: DownloadStateCallback) {
@@ -75,6 +77,7 @@ export class AppsDownloadWorker {
         if(done) {
             // Start next download job (if any). Also does a produceState()
             this.downloadStatus = null;
+            this.listChanged = true;
             await this.triggerJobs();
         } else {
             let download = {workerType: WorkerType.DOWNLOAD, fuuid, state: DownloadStateEnum.DOWNLOADING, position, totalSize: size} as TransferProgress;
@@ -88,6 +91,7 @@ export class AppsDownloadWorker {
         if(done) {
             // Start next download job (if any). Also does a produceState()
             this.decryptionStatus = null;
+            this.listChanged = true;
             await this.triggerJobs();
         } else {
             let decryption = {workerType: WorkerType.DECRYPTION, fuuid, state: DownloadStateEnum.ENCRYPTED, position, totalSize: size} as TransferProgress;
@@ -200,6 +204,7 @@ export class AppsDownloadWorker {
         // Add to IDB
         await addDownload(entry);
 
+        this.listChanged = true;
         await this.triggerJobs();
 
         return null;
@@ -211,7 +216,8 @@ export class AppsDownloadWorker {
 
         // Add to IDB
         await addDownload(entry);
-
+        
+        this.listChanged = true;
         await this.triggerJobs();
     }
 
@@ -242,8 +248,14 @@ export class AppsDownloadWorker {
         let stateList = [] as TransferProgress[];
         if(this.downloadStatus) stateList.push(this.downloadStatus);
         if(this.decryptionStatus) stateList.push(this.decryptionStatus);
+        let update = {activeTransfers: stateList} as DownloadStateUpdateType;
+
+        // Reset listChanged
+        if(this.listChanged) update.listChanged = true;
+        this.listChanged = false;
+        
         for (let cb of this.stateCallbacks) {
-            cb({activeTransfers: stateList});
+            cb(update);
         }
     }
 

@@ -27,6 +27,21 @@ export type DownloadStateUpdateType = {
     listChanged?: boolean,                  // Transfers added/removed.
 };
 
+export type DownloadJobStoreType = {
+    fuuid: string,
+    tuuid: string,
+
+    // Download information
+    processDate: number,            // Time added/errored in millisecs.
+    state: DownloadStateEnum,       // Indexed by [userId, state, processDate].
+    size: number | null,            // Encrypted file size
+    retry: number,
+
+    // Content
+    filename: string,
+    mimetype: string,
+};
+
 interface TransferStoreState {
     // Overall activity, used for transfer items in menu
     downloadActivity: TransferActivity,
@@ -34,8 +49,12 @@ interface TransferStoreState {
 
     // Current processes in workers
     downloadProgress: TransferProgress[],
+    downloadJobs: DownloadJobStoreType[] | null,
+    jobsDirty: boolean,
 
     updateDownloadState: (state: DownloadStateUpdateType) => void,
+    setDownloadJobs: (downloadJobs: DownloadJobStoreType[] | null) => void,
+    setJobsDirty: (jobsDirty: boolean) => void,
 }
 
 const useTransferStore = create<TransferStoreState>()(
@@ -44,6 +63,8 @@ const useTransferStore = create<TransferStoreState>()(
             downloadActivity: TransferActivity.IDLE,
             downloadTransferPercent: null,
             downloadProgress: [],
+            downloadJobs: null,
+            jobsDirty: true,
 
             updateDownloadState: (updatedState) => set((state)=>{
                 console.debug("Received download state update", state);
@@ -54,9 +75,15 @@ const useTransferStore = create<TransferStoreState>()(
                 if(updatedState.activeTransfers) {
                     values.downloadProgress = updatedState.activeTransfers;
                 }
+                if(updatedState.listChanged) {
+                    values.jobsDirty = true;
+                }
 
                 return values;
             }),
+
+            setDownloadJobs: (downloadJobs) => set(()=>({downloadJobs})),
+            setJobsDirty: (jobsDirty) => set(()=>({jobsDirty})),
 
             // setConversionJobs: (jobs) => set((state)=>{
             //     if(!jobs) {

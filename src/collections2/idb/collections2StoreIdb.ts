@@ -477,6 +477,15 @@ export async function findDownloadPosition(fuuid: string): Promise<number | null
     return position + size;
 }
 
+export async function getDownloadJobs(userId: string): Promise<DownloadJobType[]> {
+    const db = await openDB();
+    let store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
+    let stateIndex = store.index('state');
+    let jobs = await stateIndex.getAll(
+        IDBKeyRange.bound([userId, DownloadStateEnum.INITIAL, 0], [userId, DownloadStateEnum.ERROR, Number.MAX_SAFE_INTEGER]))  as DownloadJobType[];
+    return jobs;
+}
+
 export async function testBounds(fuuid: string) {
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;

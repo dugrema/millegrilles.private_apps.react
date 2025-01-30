@@ -1,7 +1,9 @@
 import { useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import ActionButton from "../resources/ActionButton";
-import useTransferStore, { WorkerType } from "./transferStore";
+import useTransferStore, { DownloadJobStoreType, WorkerType } from "./transferStore";
+import { DownloadStateEnum } from "./idb/collections2StoreIdb";
+import { Formatters } from "millegrilles.reactdeps.typescript";
 
 function TransfersDownloads() {
 
@@ -85,10 +87,31 @@ function WorkerActivity() {
     )
 }
 
+const CONST_ONGOING_STATES = [
+    DownloadStateEnum.INITIAL,
+    DownloadStateEnum.DOWNLOADING,
+    DownloadStateEnum.ERROR,
+    DownloadStateEnum.ENCRYPTED,
+]
+
 function OngoingTransfers() {
+    let downloadJobs = useTransferStore(state=>state.downloadJobs);
+
     let mappedTransfers = useMemo(()=>{
-        return [<div key='1'>T1</div>];
-    }, []);
+        
+        let jobs = downloadJobs?.filter(item=>CONST_ONGOING_STATES.includes(item.state));
+        if(!jobs) return [];
+
+        jobs.sort(sortJobs);
+        return jobs.map(item=>{
+            return (
+                <div key={item.fuuid} className='grid grid-cols-6'>
+                    <p className='col-span-3'>{item.filename}</p>
+                    <Formatters.FormatteurTaille value={item.size || undefined} />
+                </div>
+            )
+        });
+    }, [downloadJobs]);
 
     if(mappedTransfers.length === 0) return <></>;
 
@@ -101,9 +124,24 @@ function OngoingTransfers() {
 }
 
 function CompletedTransfers() {
+
+    let downloadJobs = useTransferStore(state=>state.downloadJobs);
+
     let mappedTransfers = useMemo(()=>{
-        return [<div key='1'>T1</div>];
-    }, []);
+        let completedJobs = downloadJobs?.filter(item=>item.state === DownloadStateEnum.DONE);
+        if(!completedJobs) return [];
+
+        completedJobs.sort(sortJobs);
+
+        return completedJobs.map(item=>{
+            return (
+                <div key={item.fuuid} className='grid grid-cols-6'>
+                    <p className='col-span-3'>{item.filename}</p>
+                    <Formatters.FormatteurTaille value={item.size || undefined} />
+                </div>
+            )
+        });
+    }, [downloadJobs]);
 
     if(mappedTransfers.length === 0) return <></>;
 
@@ -133,4 +171,18 @@ function ProgressBar(props: {value: number | null}) {
             </div>
         </div>            
     )
+}
+
+function sortJobs(a: DownloadJobStoreType, b: DownloadJobStoreType) {
+    if(a === b) return 0;
+    if(a.state === b.state) {
+        if(a.processDate === b.processDate) {
+            if(a.filename === b.filename) {
+                return a.fuuid.localeCompare(b.fuuid);
+            }
+            return a.filename.localeCompare(b.filename);
+        }
+        return a.processDate - b.processDate;
+    }
+    return a.state - b.state;
 }
