@@ -482,7 +482,7 @@ export async function getDownloadJobs(userId: string): Promise<DownloadJobType[]
     let store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
     let stateIndex = store.index('state');
     let jobs = await stateIndex.getAll(
-        IDBKeyRange.bound([userId, DownloadStateEnum.INITIAL, 0], [userId, DownloadStateEnum.ERROR, Number.MAX_SAFE_INTEGER]))  as DownloadJobType[];
+        IDBKeyRange.bound([userId, DownloadStateEnum.INITIAL, 0], [userId, DownloadStateEnum.ERROR, Number.MAX_SAFE_INTEGER])) as DownloadJobType[];
     return jobs;
 }
 
@@ -491,6 +491,64 @@ export async function testBounds(fuuid: string) {
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
     let items = await store.getAll(IDBKeyRange.bound([fuuid, ''], [fuuid, '~']));  // Using ~ as end bound (after z, userId is base58btc)
     console.debug("Fuuid %s\nItem value", fuuid, items);
+}
+
+export async function removeUserDownloads(userId: string, opts?: {state?: DownloadStateEnum, fuuid?: string}) {
+    const db = await openDB();
+
+    let fuuids = new Set();
+
+    let storeDownloads = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
+
+    if(opts?.fuuid) {
+        let fuuid = opts.fuuid;
+        // Need to cleanup the downloaded file parts table.
+        fuuids.add(fuuid);
+        await storeDownloads.delete([fuuid, userId]);
+    } else {
+        // Go through all downloads for the user.
+        let state = opts?.state || DownloadStateEnum.DONE;  // Default is to remove completed jobs
+        let stateIndex = storeDownloads.index('state');
+        let cursorUserJobs = await stateIndex.openCursor(
+            IDBKeyRange.bound([userId, state, 0], [userId, state, Number.MAX_SAFE_INTEGER]));
+        
+        while(cursorUserJobs) {
+            let value = cursorUserJobs.value as DownloadIdbType;
+            
+            if(state !== DownloadStateEnum.DONE) {
+                // Need to cleanup the downloaded file parts table.
+                fuuids.add(value.fuuid);
+            }
+            
+            await cursorUserJobs.delete();  // Remove the download entry
+            cursorUserJobs = await cursorUserJobs.continue();
+        }
+    }
+
+    if(fuuids.size > 0) {
+        // Go through all download jobs to ensure no other user is downloading the fuuid
+        let otherStoreDownloads = db.transaction(STORE_DOWNLOADS, 'readonly').store;
+        let cursorOtherJobs = await otherStoreDownloads.openCursor();
+        while (cursorOtherJobs) {
+            let value = cursorOtherJobs.value as DownloadIdbType;
+            if(value.userId !== userId) {
+                // The file is also used by another user's download jobs.
+                // Ensure that fuuid is not removed from list.
+                fuuids.delete(value.fuuid);
+            }
+            cursorOtherJobs = await cursorOtherJobs.continue();
+        }
+
+        let storeDownloadParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
+        let cursorParts = await storeDownloadParts.openCursor();
+        while(cursorParts) {
+            let value = cursorParts.value as DownloadIdbParts;
+            if(fuuids.has(value.fuuid)) {
+                await cursorParts.delete();  // Remove this part
+            }
+            cursorParts = await cursorParts.continue();
+        }
+    }
 }
 
 /** Clears all stores. */

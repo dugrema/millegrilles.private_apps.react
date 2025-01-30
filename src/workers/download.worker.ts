@@ -286,6 +286,12 @@ export class AppsDownloadWorker {
         // console.debug("Callback check, count after %d", this.stateCallbacks.length);
     }
 
+    /** Allows any process to use the shared worker to trigger a list reload. */
+    async triggerListChanged() {
+        this.listChanged = true;
+        await this.produceState();
+    }
+
 }
 
 export type DownloadJobType = DownloadIdbType & {

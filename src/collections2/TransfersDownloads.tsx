@@ -1,17 +1,29 @@
-import { useCallback, useMemo } from "react";
+import { MouseEvent, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import ActionButton from "../resources/ActionButton";
 import useTransferStore, { DownloadJobStoreType, WorkerType } from "./transferStore";
-import { DownloadStateEnum } from "./idb/collections2StoreIdb";
+import { DownloadStateEnum, removeUserDownloads } from "./idb/collections2StoreIdb";
 import { Formatters } from "millegrilles.reactdeps.typescript";
+import useUserBrowsingStore from "./userBrowsingStore";
+import useConnectionStore from "../connectionStore";
+import useWorkers from "../workers/workers";
 
 function TransfersDownloads() {
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    let userId = useUserBrowsingStore(state=>state.userId);
 
     let completedTransfersPresent = true;
 
     let removeCompletedHandler = useCallback(async ()=>{
-        throw new Error('todo');
-    }, []);
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!userId) throw new Error('User Id not provided');
+        await removeUserDownloads(userId);
+        // Signal that the download job content has changed to all tabs.
+        await workers.download.triggerListChanged();
+    }, [workers, ready, userId]);
 
     return (
         <>
@@ -125,7 +137,23 @@ function OngoingTransfers() {
 
 function CompletedTransfers() {
 
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    let userId = useUserBrowsingStore(state=>state.userId);
     let downloadJobs = useTransferStore(state=>state.downloadJobs);
+
+    let removeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!userId) throw new Error('UserId not provided');
+        
+        let fuuid = e.currentTarget.value;
+        console.debug("Remove download job for fuuid:%s", fuuid)
+        await removeUserDownloads(userId, {fuuid});
+        
+        // Signal that the download job content has changed to all tabs.
+        await workers.download.triggerListChanged();
+    }, [workers, ready, userId]);
 
     let mappedTransfers = useMemo(()=>{
         let completedJobs = downloadJobs?.filter(item=>item.state === DownloadStateEnum.DONE);
@@ -138,6 +166,9 @@ function CompletedTransfers() {
                 <div key={item.fuuid} className='grid grid-cols-6'>
                     <p className='col-span-3'>{item.filename}</p>
                     <Formatters.FormatteurTaille value={item.size || undefined} />
+                    <div>
+                        <ActionButton onClick={removeHandler} value={item.fuuid}>X</ActionButton>
+                    </div>
                 </div>
             )
         });
