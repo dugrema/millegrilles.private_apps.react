@@ -2,11 +2,16 @@ import { MouseEvent, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import ActionButton from "../resources/ActionButton";
 import useTransferStore, { DownloadJobStoreType, WorkerType } from "./transferStore";
-import { DownloadStateEnum, removeUserDownloads } from "./idb/collections2StoreIdb";
+import { DownloadStateEnum, getDownloadContent, removeUserDownloads } from "./idb/collections2StoreIdb";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import useUserBrowsingStore from "./userBrowsingStore";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
+
+import DownloadIcon from '../resources/icons/download-svgrepo-com.svg';
+import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
+import { DownloadJobType } from "../workers/download.worker";
+import { downloadFile } from "./transferUtils";
 
 function TransfersDownloads() {
 
@@ -143,6 +148,17 @@ function CompletedTransfers() {
     let userId = useUserBrowsingStore(state=>state.userId);
     let downloadJobs = useTransferStore(state=>state.downloadJobs);
 
+    let downloadHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>) => {
+        if(!userId) throw new Error('UserId not provided');
+        let fuuid = e.currentTarget.value;
+        let job = downloadJobs?.filter(item=>item.fuuid===fuuid).pop();
+        if(!job) throw new Error('No job matches the file');
+        let filename = job.filename;
+        let content = await getDownloadContent(fuuid, userId)
+        if(!content) throw new Error(`Download content for ${fuuid} not found`);
+        downloadFile(job.filename, content);
+    }, [downloadJobs, userId]);
+
     let removeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!userId) throw new Error('UserId not provided');
@@ -161,17 +177,9 @@ function CompletedTransfers() {
 
         completedJobs.sort(sortJobs);
 
-        return completedJobs.map(item=>{
-            return (
-                <div key={item.fuuid} className='grid grid-cols-6'>
-                    <p className='col-span-3'>{item.filename}</p>
-                    <Formatters.FormatteurTaille value={item.size || undefined} />
-                    <div>
-                        <ActionButton onClick={removeHandler} value={item.fuuid}>X</ActionButton>
-                    </div>
-                </div>
-            )
-        });
+        return completedJobs.map(item=>(
+            <JobRow key={item.fuuid} value={item} onDownload={downloadHandler} onRemove={removeHandler} />
+        ));
     }, [downloadJobs]);
 
     if(mappedTransfers.length === 0) return <></>;
@@ -201,6 +209,32 @@ function ProgressBar(props: {value: number | null}) {
                 {value>30?<>{value} %</>:''}
             </div>
         </div>            
+    )
+}
+
+type JobRowProps = {
+    value: DownloadJobStoreType, 
+    onDownload: (e: MouseEvent<HTMLButtonElement>)=>Promise<void>,
+    onRemove: (e: MouseEvent<HTMLButtonElement>)=>Promise<void>,
+};
+
+function JobRow(props: JobRowProps) {
+
+    let {value, onDownload, onRemove} = props;
+
+    return (
+        <div key={value.fuuid} className='grid grid-cols-6'>
+            <Link to={`/apps/collections2/f/${value.tuuid}`} className='col-span-3'>{value.filename}</Link>
+            <Formatters.FormatteurTaille value={value.size || undefined} />
+            <div>
+                <ActionButton onClick={onDownload} value={value.fuuid} varwidth={10} revertSuccessTimeout={3}>
+                    <img src={DownloadIcon} alt='Download file' className='h-6 pl-1' />
+                </ActionButton>
+                <ActionButton onClick={onRemove} value={value.fuuid} varwidth={10}>
+                    <img src={TrashIcon} alt='Remove download' className='h-6 pl-1' />
+                </ActionButton>
+            </div>
+        </div>
     )
 }
 

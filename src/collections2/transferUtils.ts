@@ -134,3 +134,16 @@ export async function* getIterableStream(body: ReadableStream<Uint8Array>): Asyn
         yield value;
     }
 }
+
+export function downloadFile(filename: string, content: Blob) {
+    // File received already, download it now.
+    // console.debug("Download handler, content received ", content);
+    // const filename = file.decryptedMetadata?.nom || `${file.tuuid}.obj`;
+    let objectUrl = window.URL.createObjectURL(content);
+    let a = document.createElement('a');
+    a.href = objectUrl;
+    if (filename) a.download = filename;
+    a.target = '_blank';
+    a.click();
+    URL.revokeObjectURL(objectUrl);
+}

@@ -12,6 +12,7 @@ import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import VideoConversion from "./VideoConversion";
 import { isVideoMimetype } from "./mimetypes";
 import ActionButton from "../resources/ActionButton";
+import { downloadFile } from "./transferUtils";
 
 export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
     let {file, thumbnail} = props;
@@ -374,16 +375,18 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
         let tuuid = file.tuuid;
         let content = await workers.download.addDownloadFromFile(tuuid, userId);
         if(content) {
-            // File received already, download it now.
-            console.debug("Download handler, content received ", content);
-            const filename = file.decryptedMetadata?.nom || `${file.tuuid}.obj`;
-            let objectUrl = window.URL.createObjectURL(content);
-            let a = document.createElement('a');
-            a.href = objectUrl;
-            if (filename) a.download = filename;
-            a.target = '_blank';
-            a.click();
-            URL.revokeObjectURL(objectUrl)
+            let filename = file.decryptedMetadata?.nom || `${file.tuuid}.obj`;
+            downloadFile(filename, content);
+            // // File received already, download it now.
+            // console.debug("Download handler, content received ", content);
+            // const filename = file.decryptedMetadata?.nom || `${file.tuuid}.obj`;
+            // let objectUrl = window.URL.createObjectURL(content);
+            // let a = document.createElement('a');
+            // a.href = objectUrl;
+            // if (filename) a.download = filename;
+            // a.target = '_blank';
+            // a.click();
+            // URL.revokeObjectURL(objectUrl)
         }
     }, [workers, ready, file, userId]);
 
