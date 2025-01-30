@@ -313,11 +313,16 @@ export async function addDownload(download: DownloadIdbType) {
     let existing = await store.get([download.fuuid, download.userId]);
     if(existing) {
         console.debug("Download already exists - restart if blocked");
-
         return;
     } else {
         await store.put(download);  // Add to store
     }
+}
+
+export async function getDownloadJob(userId: string, fuuid: string) {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
+    return await store.get([fuuid, userId]);
 }
 
 export async function removeDownload(fuuid: string, userId: string) {

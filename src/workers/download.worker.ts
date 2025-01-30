@@ -22,6 +22,7 @@ export class AppsDownloadWorker {
     downloadStatus: TransferProgress | null
     decryptionStatus: TransferProgress | null
     listChanged: boolean
+    fuuidsReady: string[] | null    // List of files for which the download just completed
 
     constructor() {
         this.currentUserId = null;
@@ -45,6 +46,7 @@ export class AppsDownloadWorker {
         this.downloadStatus = null;
         this.decryptionStatus = null;
         this.listChanged = true;
+        this.fuuidsReady = null;
     }
 
     async setup(stateCallback: DownloadStateCallback) {
@@ -92,6 +94,11 @@ export class AppsDownloadWorker {
             // Start next download job (if any). Also does a produceState()
             this.decryptionStatus = null;
             this.listChanged = true;
+            
+            // Add fuuid to list of new files that are ready
+            if(this.fuuidsReady) this.fuuidsReady.push(fuuid);
+            else this.fuuidsReady = [fuuid];
+            
             await this.triggerJobs();
         } else {
             let decryption = {workerType: WorkerType.DECRYPTION, fuuid, state: DownloadStateEnum.ENCRYPTED, position, totalSize: size} as TransferProgress;
@@ -290,6 +297,13 @@ export class AppsDownloadWorker {
     async triggerListChanged() {
         this.listChanged = true;
         await this.produceState();
+    }
+
+    /** Consume the list of fuuids that are ready to be automatically downloaded. */
+    async getFuuidsReady() {
+        let fuuidsReady = this.fuuidsReady;
+        this.fuuidsReady = null;
+        return fuuidsReady;
     }
 
 }

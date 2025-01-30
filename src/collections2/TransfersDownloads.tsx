@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useMemo } from "react";
+import { MouseEvent, useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import ActionButton from "../resources/ActionButton";
 import useTransferStore, { DownloadJobStoreType, WorkerType } from "./transferStore";
@@ -23,12 +23,20 @@ function TransfersDownloads() {
 
     let completedTransfersPresent = true;
 
+    let [allPaused, setAllPaused] = useState(false);
+
     let removeCompletedHandler = useCallback(async ()=>{
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!userId) throw new Error('User Id not provided');
         await removeUserDownloads(userId);
         // Signal that the download job content has changed to all tabs.
         await workers.download.triggerListChanged();
+    }, [workers, ready, userId]);
+
+    let pauseAllDownloads = useCallback(async ()=>{
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!userId) throw new Error('User Id not provided');
+        throw new Error('Todo');
     }, [workers, ready, userId]);
 
     return (
@@ -39,6 +47,9 @@ function TransfersDownloads() {
                 <div>
                     <ActionButton onClick={removeCompletedHandler} mainButton={true} disabled={!completedTransfersPresent} revertSuccessTimeout={3}>
                         Remove completed
+                    </ActionButton>
+                    <ActionButton onClick={pauseAllDownloads} revertSuccessTimeout={3}>
+                        Pause all
                     </ActionButton>
                     <Link to={'/apps/collections2/transfers'}
                         className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
@@ -121,12 +132,16 @@ function OngoingTransfers() {
     let downloadJobs = useTransferStore(state=>state.downloadJobs);
 
     let pauseHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
-
-    }, []);
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!userId) throw new Error('UserId not provided');
+        throw new Error('todo');
+    }, [workers, ready, userId]);
 
     let resumeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
-
-    }, []);
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!userId) throw new Error('UserId not provided');
+        throw new Error('todo');
+    }, [workers, ready, userId]);
 
     let removeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
         if(!workers || !ready) throw new Error('workers not initialized');

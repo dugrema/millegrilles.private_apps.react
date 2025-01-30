@@ -6,8 +6,10 @@ import useUserBrowsingStore from "./userBrowsingStore";
 import { useEffect } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
-import { openDB } from "./idb/collections2StoreIdb";
+import { getDownloadJob, getDownloadJobs, openDB } from "./idb/collections2StoreIdb";
 import { messageStruct } from "millegrilles.cryptography";
+import useTransferStore, { DownloadJobStoreType } from "./transferStore";
+import { downloadFile } from "./transferUtils";
 
 function Collections2() {
     return (
@@ -19,6 +21,7 @@ function Collections2() {
             <Footer />
             <InitializeStore />
             <FilehostManager />
+            <TransferStoreSync />
         </div>
     );
 }
@@ -125,4 +128,70 @@ async function maintainFilehosts(workers: AppWorkers, setFilehostAuthenticated: 
         setFilehostAuthenticated(false);
         throw err;
     }
+}
+
+/** Maintains the list of transfers. Contents is used in the transfer screen and for the transfer menu. */
+function TransferStoreSync() {
+    return (
+        <>
+            <SyncDownloads />
+        </>
+    )
+}
+
+function SyncDownloads() {
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    
+    let userId = useUserBrowsingStore(state=>state.userId);
+    let setDownloadJobs = useTransferStore(state=>state.setDownloadJobs);
+    let jobsDirty = useTransferStore(state=>state.jobsDirty);
+    let setJobsDirty = useTransferStore(state=>state.setJobsDirty);
+
+    useEffect(()=>{
+        if(!userId) return;
+        if(!jobsDirty) return;
+        setJobsDirty(false);  // Avoid loop
+
+        getDownloadJobs(userId)
+            .then(jobs=>{
+                console.debug("Download jobs", jobs);
+                let mappedJobs = jobs.map(item=>{
+                    return {
+                        fuuid: item.fuuid,
+                        tuuid: item.tuuid,
+                        processDate: item.processDate,
+                        state: item.state,
+                        size: item.size,
+                        retry: item.retry,
+                        filename: item.filename,
+                        mimetype: item.mimetype,
+                    } as DownloadJobStoreType;
+                });
+                setDownloadJobs(mappedJobs);
+            })
+            .catch(err=>console.error("Error loading download jobs", err))
+
+    }, [userId, setDownloadJobs, jobsDirty, setJobsDirty]);
+
+    useEffect(()=>{
+        if(!workers || !ready || !userId || !jobsDirty) return;  // Nothing to do
+        workers.download.getFuuidsReady()
+            .then( async fuuidsReady => {
+                if(!fuuidsReady || !userId) return;  // Nothing to do
+                for(let fuuid of fuuidsReady) {
+                    console.debug("Trigger download of ", fuuid);
+                    let job = await getDownloadJob(userId, fuuid);
+                    if(job) {
+                        downloadFile(job.filename, job.content);
+                    } else {
+                        console.warn("No job found to download fuuid:%s", fuuid);
+                    }
+                }
+            })
+            .catch(err=>console.error("Error getting fuuids to download", err));
+    }, [workers, ready, jobsDirty, userId]);
+
+    return <></>;
 }
