@@ -26,9 +26,10 @@ import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
 
 
 import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
-import { ButtonBarProps, ModalEnum } from './BrowsingElements';
+import { ModalEnum } from './BrowsingElements';
 import ActionButton from '../resources/ActionButton';
 import useWorkers from '../workers/workers';
+import useTransferStore, { TransferActivity } from './transferStore';
 
 type MenuProps = {
     title: string,
@@ -119,13 +120,13 @@ export default function HeaderMenu(props: MenuProps) {
                     {/* Regular menu items - need to hide in mobile mode during selection. */}
                     <div className={'inline ' + (selectionMode?'hidden md:inline':'')}>
                         <div className={'hidden lg:inline-block px-1 w-40 transition-colors duration-300' + (selectedSection==='transfers'?selectedClassname:unselectedClassname)}>
-                            <Link to='/apps/collections2/transfers'>
-                                <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />
+                            <Link to='/apps/collections2/transfers'><TransferTickers /></Link>
+                                {/* <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />
                                 <p className='inline-block text-sm w-10'>100%</p>
                                 <span className='pl-1'>/</span>
                                 <img src={DownloadIcon} alt='Download' className='w-7 inline-block' />
-                                <p className='inline-block text-sm w-10'>100%</p>
-                            </Link>
+                                <p className='inline-block text-sm w-10'>100%</p> */}
+                            {/* </Link> */}
                         </div>
                         <div className={'inline-block px-1 sm:px-2 transition-colors duration-300' + (selectedSection==='browse'?selectedClassname:unselectedClassname)}>
                             <Link to='/apps/collections2/b'>
@@ -219,6 +220,32 @@ export default function HeaderMenu(props: MenuProps) {
                     </p>
                 </div>
             :<></>}
+        </>
+    )
+}
+
+function TransferTickers() {
+
+    let downloadActivity = useTransferStore(state=>state.downloadActivity);
+    let downloadTransferPercent = useTransferStore(state=>state.downloadTransferPercent);
+
+    let [downloadClassName, downloadLabel] = useMemo(()=>{
+        let downloadClassName = '', downloadLabel = <>-</>;
+        if(downloadActivity === TransferActivity.ERROR) downloadClassName = 'bg-red-600';
+        else if(downloadActivity === TransferActivity.RUNNING) downloadClassName = 'bg-green-600';
+        
+        if(typeof(downloadTransferPercent) === 'number') downloadLabel = <>{`${downloadTransferPercent}%`}</>;
+
+        return [downloadActivity, downloadLabel];
+    }, [downloadActivity, downloadTransferPercent]);
+
+    return (
+        <>
+            <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />
+            <p className='inline-block text-sm w-10'>100%</p>
+            <span className='pl-1'>/</span>
+            <img src={DownloadIcon} alt='Download' className={'w-7 inline-block ' + downloadClassName} />
+            <p className='inline-block text-sm w-10'>{downloadLabel}</p>
         </>
     )
 }

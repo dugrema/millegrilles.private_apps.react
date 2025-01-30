@@ -47,11 +47,19 @@ interface TransferStoreState {
     downloadActivity: TransferActivity,
     downloadTransferPercent: number | null,
 
+    // Data used to prepare the total on screen
+    // downloadStartReference: number | null,  // Start of the download period. Files older that this do not get included in the totals.
+    // downloadTotalSize: number | null,       // Size to use for calculating 100% of the download completed
+    // downloadCompletedSize: number | null,   // Current sum of the completed files to use in the download progress.
+    // downloadPosition: number | null,        // Position of the current download worker files
+    // decryptionPosition: number | null,      // Position of the current decryption worker files
+
     // Current processes in workers
     downloadProgress: TransferProgress[],
     downloadJobs: DownloadJobStoreType[] | null,
     jobsDirty: boolean,
 
+    setDownloadTicker: (downloadActivity: TransferActivity, downloadTransferPercent: number | null) => void,
     updateDownloadState: (state: DownloadStateUpdateType) => void,
     setDownloadJobs: (downloadJobs: DownloadJobStoreType[] | null) => void,
     setJobsDirty: (jobsDirty: boolean) => void,
@@ -66,6 +74,7 @@ const useTransferStore = create<TransferStoreState>()(
             downloadJobs: null,
             jobsDirty: true,
 
+            setDownloadTicker: (downloadActivity, downloadTransferPercent) => set(()=>({downloadActivity, downloadTransferPercent})), 
             updateDownloadState: (updatedState) => set((state)=>{
                 console.debug("Received download state update", state);
 

@@ -149,6 +149,8 @@ function SyncDownloads() {
     let jobsDirty = useTransferStore(state=>state.jobsDirty);
     let setJobsDirty = useTransferStore(state=>state.setJobsDirty);
 
+    let setDownloadTicker = useTransferStore(state=>state.setDownloadTicker);
+
     useEffect(()=>{
         if(!userId) return;
         if(!jobsDirty) return;
