@@ -1,7 +1,7 @@
 import { Remote, wrap, proxy } from 'comlink';
 
-import { DownloadThreadWorker, DownloadWorkerCallbackType } from './download.worker_thread';
-import { DecryptionWorkerCallbackType, DownloadDecryptionWorker } from './download.worker_decryption';
+import { DownloadThreadWorker, DownloadWorkerCallbackType } from './download.thread';
+import { DecryptionWorkerCallbackType, DownloadDecryptionWorker } from './download.decryption';
 import { addDownload, DownloadIdbType, DownloadStateEnum, FileVideoData, getDownloadContent, getNextDecryptionJob, getNextDownloadJob, removeDownload, restartNextJobInError } from '../collections2/idb/collections2StoreIdb';
 import { createDownloadEntryFromFile, createDownloadEntryFromVideo } from '../collections2/transferUtils';
 import { FilehostDirType } from './directory.worker';
@@ -12,8 +12,8 @@ export type DownloadStateCallback = (state: DownloadStateUpdateType)=>Promise<vo
 export class AppsDownloadWorker {
     currentUserId: string | null
     count: number
-    downloadWorker: Remote<DownloadThreadWorker> | null
-    decryptionWorker: Remote<DownloadDecryptionWorker> | null
+    downloadWorker: Remote<DownloadThreadWorker> | DownloadThreadWorker | null
+    decryptionWorker: Remote<DownloadDecryptionWorker> | DownloadDecryptionWorker | null
     filehost: FilehostDirType | null
     intervalMaintenance: ReturnType<typeof setInterval> | null
     downloadStateCallbackProxy: DownloadWorkerCallbackType
@@ -55,15 +55,30 @@ export class AppsDownloadWorker {
 
         // This is a shared worker. Only create instances if not already done.
         if(!this.downloadWorker) {
-            let downloadThreadWorker = new Worker(new URL('./download.worker_thread.ts', import.meta.url));
-            this.downloadWorker = wrap(downloadThreadWorker);
+            try {
+                let downloadThreadWorker = new Worker(new URL('./download.worker_thread.ts', import.meta.url));
+                this.downloadWorker = wrap(downloadThreadWorker);
+            } catch(err) {
+                // Support using class directly if starting a Dedicated Worker from another worker fails (e.g. on iOS).
+                console.warn("Error starting a Dedicated WebWorker, using direct instanciation", err);
+                let {DownloadThreadWorker}  = await import('./download.thread');
+                this.downloadWorker = new DownloadThreadWorker();
+            }
             this.downloadWorker.setup(this.downloadStateCallbackProxy);
         }
         if(!this.decryptionWorker) {
-            let decryptionWorker = new Worker(new URL('./download.worker_decryption.ts', import.meta.url));
-            this.decryptionWorker = wrap(decryptionWorker);
+            try {
+                let decryptionWorker = new Worker(new URL('./download.worker_decryption.ts', import.meta.url));
+                this.decryptionWorker = wrap(decryptionWorker);
+            } catch(err) {
+                // Support using class directly if starting a Dedicated Worker from another worker fails (e.g. on iOS).
+                console.warn("Error starting a Dedicated WebWorker, using direct instanciation", err);
+                let {DownloadDecryptionWorker}  = await import('./download.decryption');
+                this.decryptionWorker = new DownloadDecryptionWorker();
+            }
             this.decryptionWorker.setup(this.decryptionStateCallbackProxy);
         }
+
         if(!this.intervalMaintenance) {
             this.intervalMaintenance = setInterval(()=>this.maintain(), 20_000);
         }
