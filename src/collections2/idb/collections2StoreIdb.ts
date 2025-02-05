@@ -160,22 +160,24 @@ export type UploadIdbType = {
     commandId: string,              // Message id of the Add command. Acts as unique primary key for the upload.
     userId: string,
 
+    // Commands to upload with the file
+    command: messageStruct.MilleGrillesMessage,     // File add command
+    keyCommand: messageStruct.MilleGrillesMessage,  // Key add command
+    
     // Upload information, index [userId, state, processDate].
     state: UploadStateEnum,
     processDate: number,            // Time added/errored in millisecs.
     retry: number,
 
+    // Decrypted metadata for reference on screen
+    filename: string,
+    mimetype: string,
+    cuuid: string,                  // Directory where the file is being uploaded
+    destinationPath: string,        // Directory path where the file is being uploaded for reference.
+    
     // Encrypted file information
     fuuid: string | null,           // Unique file id, null while file is being encrypted.
     size: number | null,            // Encrypted file size
-
-    // Commands to upload with the file
-    command: messageStruct.MilleGrillesMessage,     // File add command
-    keyCommand: messageStruct.MilleGrillesMessage,  // Key add command
-   
-    // Content
-    filename: string,
-    mimetype: string,
 };
 
 export type UploadIdbParts = {

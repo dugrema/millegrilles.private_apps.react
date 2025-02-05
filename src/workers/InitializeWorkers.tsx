@@ -8,7 +8,7 @@ import useWorkers, { AppWorkers, initWorkers, InitWorkersResult } from "./worker
 import useConnectionStore from "../connectionStore";
 import { userStoreIdb, CommonTypes } from 'millegrilles.reactdeps.typescript';
 import useUserBrowsingStore from "../collections2/userBrowsingStore";
-import useTransferStore, { DownloadStateUpdateType } from "../collections2/transferStore";
+import useTransferStore, { DownloadStateUpdateType, UploadStateUpdateType } from "../collections2/transferStore";
 
 /**
  * Initializes the Web Workers and a few other elements to connect to the back-end.
@@ -56,7 +56,12 @@ function InitializeWorkers() {
     let downloadStateUpdateCallback = useMemo(()=>{
         return proxy(async (state: DownloadStateUpdateType)=>updateDownloadState(state));
     }, [updateDownloadState]);
-    
+
+    let updateUploadState = useTransferStore(state=>state.updateUploadState);
+    let uploadStateUpdateCallback = useMemo(()=>{
+        return proxy(async (state: UploadStateUpdateType)=>updateUploadState(state));
+    }, [updateUploadState]);
+
     // Load the workers with a useMemo that returns a Promise. Allows throwing the promise
     // and catching it with the <React.Suspense> element in index.tsx.
     let workerLoadingPromise = useMemo(() => {
@@ -82,7 +87,7 @@ function InitializeWorkers() {
                 setUserSessionActive(userStatus === 200);
                 if(username) setUsername(username);
 
-                let result = await initWorkers(connectionCallback, downloadStateUpdateCallback) as InitWorkersResult;
+                let result = await initWorkers(connectionCallback, downloadStateUpdateCallback, uploadStateUpdateCallback) as InitWorkersResult;
                 // Success.
                 setFiche(result.idmg, result.ca, result.chiffrage);
                 // Set the worker state to ready, allows the remainder of the application to load.
@@ -164,6 +169,7 @@ function MaintainConnection() {
     useEffect(()=>{
         if(!workersReady) return;
         workers?.download.changeUser(userId);
+        workers?.upload.changeUser(userId);
     }, [workers, workersReady, userId]);
 
     // Reconnect authentication handler

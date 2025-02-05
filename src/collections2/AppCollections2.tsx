@@ -119,6 +119,7 @@ async function maintainFilehosts(workers: AppWorkers, setFilehostAuthenticated: 
             // Transfer selected filehost to transfer workers
             let selectedFilehost = await workers.directory.getSelectedFilehost()
             workers.download.setFilehost(selectedFilehost);
+            workers.upload.setFilehost(selectedFilehost);
 
         } else {
             console.warn("No filehost available on this system");
@@ -149,7 +150,7 @@ function SyncDownloads() {
     let jobsDirty = useTransferStore(state=>state.jobsDirty);
     let setJobsDirty = useTransferStore(state=>state.setJobsDirty);
 
-    let setDownloadTicker = useTransferStore(state=>state.setDownloadTicker);
+    // let setDownloadTicker = useTransferStore(state=>state.setDownloadTicker);
 
     useEffect(()=>{
         if(!userId) return;

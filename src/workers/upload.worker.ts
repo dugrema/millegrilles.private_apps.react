@@ -93,7 +93,7 @@ export class AppsUploadWorker {
             this.listChanged = true;
             await this.triggerJobs();
         } else {
-            throw new Error('todo');
+            throw new Error('todo uploadCallback');
             // let download = {workerType: WorkerType.DOWNLOAD, fuuid, state: DownloadStateEnum.DOWNLOADING, position, totalSize: size} as TransferProgress;
             // this.downloadStatus = download;
             // await this.produceState();
@@ -113,7 +113,7 @@ export class AppsUploadWorker {
             
             await this.triggerJobs();
         } else {
-            throw new Error('todo');
+            throw new Error('todo encryptionCallback');
             // let decryption = {workerType: WorkerType.DECRYPTION, fuuid, state: DownloadStateEnum.ENCRYPTED, position, totalSize: size} as TransferProgress;
             // this.decryptionStatus = decryption;
             // await this.produceState();
@@ -126,11 +126,11 @@ export class AppsUploadWorker {
     // //     if(interval) clearInterval(interval);
     // // }
 
-    // /** The filehost connection is maintained by DirectoryWorker. */
-    // async setFilehost(filehost: FilehostDirType | null) {
-    //     console.debug("Setting filehost for download: ", filehost);
-    //     this.filehost = filehost;
-    // }
+    /** The filehost connection is maintained by DirectoryWorker. */
+    async setFilehost(filehost: FilehostDirType | null) {
+        console.debug("Setting filehost for upload: ", filehost);
+        this.filehost = filehost;
+    }
 
     async changeUser(userId: string | null) {
         let previousUserId = this.currentUserId;
@@ -164,7 +164,7 @@ export class AppsUploadWorker {
             return;
         }
 
-        throw new Error('todo');
+        throw new Error('todo triggerJobs');
 
         // // Downloads
         // if(this.downloadWorker) {
@@ -210,6 +210,10 @@ export class AppsUploadWorker {
         // await this.produceState();
     }
 
+    async addUploads(userId: string, files: any): Promise<void> {
+        console.debug("Adding upload for user %s, files: %O", userId, files);
+    }
+
     // async addUploadFromFile(tuuid: string, userId: string): Promise<Blob | null> {
     //     if(!this.uploadWorker || !this.encryptionWorker) throw new Error('Dedicated workers not initialized');
         
@@ -233,7 +237,7 @@ export class AppsUploadWorker {
     // }
 
     async cancelUpload(fuuid: string, userId: string) {
-        throw new Error('todo');
+        throw new Error('todo cancelUpload');
         // await removeUpload(fuuid, userId);
         // await this.uploadWorker?.cancelJobIf(fuuid, userId);
         // await this.encryptionWorker?.cancelJobIf(fuuid, userId);
@@ -241,11 +245,11 @@ export class AppsUploadWorker {
     }
 
     async pauseUpload(fuuid: string, userId: string) {
-        throw new Error('todo');
+        throw new Error('todo pauseUpload');
     }
 
     async resumeUpload(fuuid: string, userId: string) {
-        throw new Error('todo');
+        throw new Error('todo resumeUpload');
     }
 
     async produceState() {
@@ -269,7 +273,7 @@ export class AppsUploadWorker {
 
     maintain() {
         console.debug("Run maintenance");
-        throw new Error('todo');
+        console.warn('TODO maintain');
         // this.triggerJobs()
         //     .catch(err=>console.error("Error triggering jobs", err));
         // this.maintainCallbacks()
@@ -298,7 +302,7 @@ export class AppsUploadWorker {
     /** Allows any process to use the shared worker to trigger a list reload. */
     async triggerListChanged() {
         this.listChanged = true;
-        throw new Error('todo');
+        throw new Error('todo triggerListChanged');
         // await this.produceState();
     }
 

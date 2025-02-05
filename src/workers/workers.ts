@@ -7,7 +7,7 @@ import { AppsConnectionWorker } from "./connection.worker";
 import { AppsEncryptionWorker } from './encryption.worker';
 import { DirectoryWorker } from './directory.worker';
 import { AppsDownloadWorker, DownloadStateCallback } from './download.worker';
-import { AppsUploadWorker } from "./upload.worker";
+import { AppsUploadWorker, UploadStateCallback } from "./upload.worker";
 
 export type AppWorkers = {
     connection: Remote<AppsConnectionWorker>,
@@ -37,6 +37,7 @@ export type InitWorkersResult = {
 export async function initWorkers(
     callback: (params: ConnectionCallbackParameters) => void,
     downloadStateCallback: DownloadStateCallback,
+    uploadStateCallback: UploadStateCallback,
 ): Promise<InitWorkersResult> {
 
     let {idmg, ca, chiffrage} = await loadFiche();
@@ -84,6 +85,11 @@ export async function initWorkers(
         await download.setup(downloadStateCallback);
     } catch(err) {
         console.error("Error wiring download callback", err);
+    }
+    try {
+        await upload.setup(uploadStateCallback);
+    } catch(err) {
+        console.error("Error wiring upload callback", err);
     }
 
     workers = {connection, encryption, directory, download, upload};
