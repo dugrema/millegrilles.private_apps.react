@@ -1,5 +1,6 @@
-import { multiencoding } from "millegrilles.cryptography";
+import { messageStruct, multiencoding } from "millegrilles.cryptography";
 import { DownloadIdbType, DownloadStateEnum, FileVideoData, loadTuuid } from "./idb/collections2StoreIdb";
+import { AppWorkers } from "../workers/workers";
 
 /**
  * Helper function to create a file download from an IDB entry.
@@ -147,3 +148,27 @@ export function downloadFile(filename: string, content: Blob) {
     a.click();
     URL.revokeObjectURL(objectUrl);
 }
+
+// export async function generateFileUploads(workers: AppWorkers, userId: string, cuuid: string, files: FileList) {
+//     for await (let file of files) {
+//         // Generate command
+//         let content = {nom: file.name, dateFichier: Math.floor(file.lastModified/1000)};
+//         console.debug("Encrypt ", content);
+//         let encryptedFileContent = await workers.encryption.encryptMessageMgs4(content, {domain: 'GrosFichiers'});
+//         let encryptedKeys = encryptedFileContent.cle;
+//         if(!encryptedKeys) throw new Error('Secret key not generated');
+
+//         // Generate key command
+//         let keyCommand = {
+//             cle_id: encryptedFileContent.cle_id,
+//             signature: encryptedKeys.signature,
+//             // @ts-ignore
+//             cles: encryptedKeys.cles,
+//         };
+//         let keyCommandSigned = await workers.connection.createRoutedMessage(
+//             messageStruct.MessageKind.Command, keyCommand, {domaine: 'MaitreDesCles', action: 'XXX'});
+//         console.debug("Key command signed", keyCommandSigned);
+
+//         let correlationId = keyCommandSigned.id;
+//     }
+// }

@@ -96,8 +96,6 @@ const useTransferStore = create<TransferStoreState>()(
 
             setDownloadTicker: (downloadActivity, downloadTransferPercent) => set(()=>({downloadActivity, downloadTransferPercent})), 
             updateDownloadState: (updatedState) => set((state)=>{
-                console.debug("Received download state update", state);
-
                 let values = {} as TransferStoreState;
 
                 // Updates

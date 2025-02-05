@@ -62,7 +62,7 @@ export class AppsDownloadWorker {
                 let {DownloadThreadWorker}  = await import('./download.thread');
                 this.downloadWorker = new DownloadThreadWorker();
             }
-            this.downloadWorker.setup(this.downloadStateCallbackProxy);
+            await this.downloadWorker.setup(this.downloadStateCallbackProxy);
         }
         if(!this.decryptionWorker) {
             try {
@@ -74,7 +74,7 @@ export class AppsDownloadWorker {
                 let {DownloadDecryptionWorker}  = await import('./download.decryption');
                 this.decryptionWorker = new DownloadDecryptionWorker();
             }
-            this.decryptionWorker.setup(this.decryptionStateCallbackProxy);
+            await this.decryptionWorker.setup(this.decryptionStateCallbackProxy);
         }
 
         if(!this.intervalMaintenance) {
@@ -166,10 +166,10 @@ export class AppsDownloadWorker {
 
         // Downloads
         if(this.downloadWorker) {
-            console.debug("Trigger job downloadWorker check");
+            // console.debug("Trigger job downloadWorker check");
             if(await this.downloadWorker.isBusy() === false) {
                 let job = await getNextDownloadJob(this.currentUserId);
-                console.debug("Trigger job downloadWorker next", job);
+                // console.debug("Trigger job downloadWorker next", job);
                 if(!job) {
                     // Check if we can resume a download in Error state
                     job = await restartNextJobInError(this.currentUserId);
@@ -276,7 +276,7 @@ export class AppsDownloadWorker {
     }
 
     maintain() {
-        console.debug("Run maintenance");
+        // console.debug("Run maintenance");
         this.triggerJobs()
             .catch(err=>console.error("Error triggering jobs", err));
         this.maintainCallbacks()

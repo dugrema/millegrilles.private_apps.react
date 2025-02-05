@@ -1,9 +1,10 @@
 import { proxy, Remote, wrap } from "comlink";
-import { UploadIdbType } from "../collections2/idb/collections2StoreIdb";
+import { addUploadFile, getNextEncryptJob, UploadIdbType } from "../collections2/idb/collections2StoreIdb";
 import { UploadStateUpdateType, UploadTransferProgress } from "../collections2/transferStore";
 import { FilehostDirType } from "./directory.worker";
 import { UploadThreadWorker, UploadWorkerCallbackType } from "./upload.thread";
-import { EncryptionWorkerCallbackType, UploadEncryptionWorker } from "./upload.worker_encryption";
+import { EncryptionWorkerCallbackType, UploadEncryptionWorker } from "./upload.encryption";
+import { messageStruct } from "millegrilles.cryptography";
 
 export type UploadStateCallback = (state: UploadStateUpdateType)=>Promise<void>;
 
@@ -60,19 +61,19 @@ export class AppsUploadWorker {
                 let {UploadThreadWorker} = await import('./upload.thread');
                 this.uploadWorker = new UploadThreadWorker();
             }
-            this.uploadWorker.setup(this.uploadStateCallbackProxy);
+            await this.uploadWorker.setup(this.uploadStateCallbackProxy);
         }
         if(!this.encryptionWorker) {
             try {
-                let encryptionWorker = new Worker(new URL('./upload.worker_encryption', import.meta.url));
-                this.encryptionWorker = wrap(encryptionWorker);
+                let encryptionThreadWorker = new Worker(new URL('./upload.worker_encryption', import.meta.url));
+                this.encryptionWorker = wrap(encryptionThreadWorker);
             } catch(err) {
                 // Support using class directly if starting a Dedicated Worker from another worker fails (e.g. on iOS).
                 console.warn("Error starting a Dedicated WebWorker, using direct instanciation", err);
-                let {UploadEncryptionWorker}  = await import('./upload.worker_encryption');
+                let {UploadEncryptionWorker}  = await import('./upload.encryption');
                 this.encryptionWorker = new UploadEncryptionWorker();
             }
-            this.encryptionWorker.setup(this.encryptionStateCallbackProxy);
+            await this.encryptionWorker.setup(this.encryptionStateCallbackProxy);
         }
 
         if(!this.intervalMaintenance) {
@@ -152,7 +153,24 @@ export class AppsUploadWorker {
      * No effect if already running.
      */
     async triggerJobs() {
+        console.debug("Trigger jobs userId: ", this.currentUserId);
         if(!this.currentUserId) return;
+        console.warn("0")
+
+        // Encrypt
+        if(this.encryptionWorker) {
+            console.warn("1")
+            if((await this.encryptionWorker.isBusy()) === false) {
+                console.warn("2")
+                let job = await getNextEncryptJob(this.currentUserId);
+                console.debug("Trigger job encryptionWorker next", job);
+            } else {
+                console.info("Encryption worker busy");
+            }
+        } else {
+            console.warn("Encryption worker not wired");
+        }
+        console.warn("3");
         let filehost = this.filehost;
         if(!filehost) {
             console.warn("No filehost available for download");
@@ -164,7 +182,12 @@ export class AppsUploadWorker {
             return;
         }
 
-        throw new Error('todo triggerJobs');
+        // Upload
+        if(this.uploadWorker) {
+            console.warn("TODO - Trigger upload worker jobs")
+        } else {
+            console.warn("Upload worker not wired");
+        }
 
         // // Downloads
         // if(this.downloadWorker) {
@@ -206,12 +229,28 @@ export class AppsUploadWorker {
         // // Uploads
 
 
-        // // Update state
-        // await this.produceState();
+        // Update state
+        await this.produceState();
     }
 
-    async addUploads(userId: string, files: any): Promise<void> {
-        console.debug("Adding upload for user %s, files: %O", userId, files);
+    async addUploads(userId: string, cuuid: string, files: FileList): Promise<void> {
+        console.debug("Adding upload for user %s, cuuid: %s, files: %O", userId, cuuid, files);
+        for await (let file of files) {
+            console.debug("Saving file: ", file);
+            // Generate new IDB upload entry. This returns a locally unique Id for the upload.
+            let uploadId = await addUploadFile(userId, cuuid, file);
+            console.debug("New upload Id added: ", uploadId);
+
+            // Start encryption
+            // await this.startFileEncryption(userId, fileCommand);
+        }
+
+        // Start processing all jobs
+        await this.triggerJobs();
+    }
+
+    async startFileEncryption(userId: string, fileCommand: messageStruct.MilleGrillesMessage) {
+        console.debug("Start encryption of file", fileCommand);
     }
 
     // async addUploadFromFile(tuuid: string, userId: string): Promise<Blob | null> {
@@ -254,7 +293,7 @@ export class AppsUploadWorker {
 
     async produceState() {
         if(this.stateCallbacks.length === 0) {
-            console.warn("Download state callback not initialized");
+            console.warn("Upload state callback not initialized");
             return;
         }
         let stateList = [] as UploadTransferProgress[];
@@ -272,12 +311,10 @@ export class AppsUploadWorker {
     }
 
     maintain() {
-        console.debug("Run maintenance");
-        console.warn('TODO maintain');
-        // this.triggerJobs()
-        //     .catch(err=>console.error("Error triggering jobs", err));
-        // this.maintainCallbacks()
-        //     .catch(err=>console.error("Error maintaining callbacks", err));
+        this.triggerJobs()
+            .catch(err=>console.error("Error triggering jobs", err));
+        this.maintainCallbacks()
+            .catch(err=>console.error("Error maintaining callbacks", err));
     }
 
     // HACK: Remove callbacks that no longer respond

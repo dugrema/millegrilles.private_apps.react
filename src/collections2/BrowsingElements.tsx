@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
-import { MouseEvent, useCallback, useMemo } from "react";
+import { ChangeEvent, MouseEvent, useCallback, useMemo, useRef } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import ActionButton from "../resources/ActionButton";
 
@@ -136,11 +136,16 @@ export function ButtonBar(props: ButtonBarProps) {
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
+    let refUpload = useRef(null as HTMLInputElement | null);
+
+    let userId = useUserBrowsingStore(state=>state.userId);
+
     let viewMode = useUserBrowsingStore(state=>state.viewMode);
     let setViewMode = useUserBrowsingStore(state=>state.setViewMode);
     let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
     let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
     let selection = useUserBrowsingStore(state=>state.selection);
+    let cuuid = useUserBrowsingStore(state=>state.currentCuuid);
     let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
     let setModal = useUserBrowsingStore(state=>state.setModal);
     let onModal = useCallback((modal: ModalEnum)=>setModal(modal), [setModal]);
@@ -168,9 +173,7 @@ export function ButtonBar(props: ButtonBarProps) {
         setSelectionMode(!selectionMode);
     }, [selectionMode, setSelectionMode]);
 
-    let addFileHandler = useCallback(async () => {
-        console.debug("Add files!");
-    }, []);
+    let addFileHandler = useCallback(() => refUpload?.current?.click(), [refUpload]);
 
     let deleteHandler = useCallback(async () => {
         if(!workers || !ready) throw new Error('Workers not initialized');
@@ -187,6 +190,18 @@ export function ButtonBar(props: ButtonBarProps) {
     let copyHandler = useCallback(()=>onModal(ModalEnum.Copy), [onModal]);
     let cutHandler = useCallback(()=>onModal(ModalEnum.Cut), [onModal]);
     let shareHandler = useCallback(()=>onModal(ModalEnum.Share), [onModal]);
+
+    let fileUploadHandler = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
+        let files = e.currentTarget.files;
+        if(!workers || !ready) throw new Error('Workers not initialized');
+        if(!cuuid) throw new Error('Root cannot be used to upload files');
+        if(!userId) throw new Error("UserId not provided");
+        if(!files || files.length === 0) throw new Error('No files provided');
+        workers.upload.addUploads(userId, cuuid, files)
+            .catch(err=>console.error("Error starting upload", err));
+        // workers.upload.addUploads(workers.encryption, userId, cuuid, files)
+        //     .catch(err=>console.error("Error starting upload", err));
+    }, [workers, ready, userId, cuuid]);
 
     return (
         <div className='grid grid-cols-4 pt-1'>
@@ -213,7 +228,7 @@ export function ButtonBar(props: ButtonBarProps) {
                 <></>    
                 :
                     <>
-                        <button onClick={addFileHandler} disabled={true}
+                        <button onClick={addFileHandler} disabled={!cuuid}
                             className={'varbtn ml-2 px-0.5 py-0.5 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'}>
                                 <img src={FileAddIcon} alt='Add files' title='Add files' className='w-10 inline-block' />
                         </button>
@@ -268,6 +283,9 @@ export function ButtonBar(props: ButtonBarProps) {
                 }
                 
             </div>
+            
+            {/* Input that handles file upload. Hidden, it gets triggered through the upload file button. */}
+            <input ref={refUpload} id='file_upload' className='hidden' type='file' multiple={true} onChange={fileUploadHandler} />
         </div>        
     );
 }

@@ -6,8 +6,10 @@ const DB_NAME = 'collections2';
 const STORE_TUUIDS = 'tuuids';
 const STORE_VIDEO_PLAY = 'videoPlayback';
 const STORE_DOWNLOADS = 'downloads';
+const STORE_UPLOADS = 'uploads';
 export const STORE_DOWNLOAD_PARTS = 'downloadParts';
-const DB_VERSION_CURRENT = 3;
+export const STORE_UPLOAD_PARTS = 'uploadParts';
+const DB_VERSION_CURRENT = 4;
 
 export type TuuidEncryptedMetadata = messageStruct.MessageDecryption & {
     data_chiffre: string,
@@ -157,12 +159,12 @@ export enum DownloadStateEnum {
 // Upload types
 
 export type UploadIdbType = {
-    commandId: string,              // Message id of the Add command. Acts as unique primary key for the upload.
+    uploadId: number,   // Auto-incremented uploadId. Local IDB only, not to be used as upload key.
     userId: string,
 
     // Commands to upload with the file
-    command: messageStruct.MilleGrillesMessage,     // File add command
-    keyCommand: messageStruct.MilleGrillesMessage,  // Key add command
+    command: messageStruct.MilleGrillesMessage | null,      // File add command
+    keyCommand: messageStruct.MilleGrillesMessage | null,   // Key add command
     
     // Upload information, index [userId, state, processDate].
     state: UploadStateEnum,
@@ -170,10 +172,12 @@ export type UploadIdbType = {
     retry: number,
 
     // Decrypted metadata for reference on screen
+    file: File | null,              // Original received file object
     filename: string,
     mimetype: string,
     cuuid: string,                  // Directory where the file is being uploaded
     destinationPath: string,        // Directory path where the file is being uploaded for reference.
+    clearSize: number | null,       // Decrypted file size
     
     // Encrypted file information
     fuuid: string | null,           // Unique file id, null while file is being encrypted.
@@ -188,8 +192,8 @@ export type UploadIdbParts = {
 
 export enum UploadStateEnum {
     INITIAL = 1,
-    PAUSED,
     ENCRYPTING,
+    PAUSED,
     UPLOADING,
     DONE,
     ERROR,
@@ -214,7 +218,9 @@ export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
 }
 
 function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
-    let tuuidStore = null, downloadStore = null, downloadPartsStore = null;
+    let tuuidStore = null;
+    let downloadStore = null, downloadPartsStore = null;
+    let uploadStore = null, uploadPartsStore = null;
     switch(oldVersion) {
         // @ts-ignore Fallthrough
         case 0:
@@ -237,7 +243,15 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
             downloadStore.createIndex('state', ['userId', 'state', 'processDate'], {unique: false, multiEntry: false});
 
         // @ts-ignore Fallthrough
-        case 3: // Most recent
+        case 3: 
+            uploadStore = db.createObjectStore(STORE_UPLOADS, {keyPath: 'uploadId', autoIncrement: true});
+            uploadPartsStore = db.createObjectStore(STORE_UPLOAD_PARTS, {keyPath: ['uploadId', 'position']});
+
+            // Create indices
+            uploadStore.createIndex('state', ['userId', 'state', 'processDate'], {unique: false, multiEntry: false});
+
+        // @ts-ignore Fallthrough
+        case 4: // Most recent
             break;
 
         default:
@@ -597,6 +611,54 @@ export async function removeUserDownloads(userId: string, opts?: {state?: Downlo
             cursorParts = await cursorParts.continue();
         }
     }
+}
+
+export async function addUploadFile(userId: string, cuuid: string, file: File, opts?: {destinationPath?: string}): Promise<Number> {
+    const db = await openDB();
+    let entry = {
+        // uploadId: number,   // Auto-incremented uploadId - leave empty.
+        userId,
+    
+        // Commands to upload with the file
+        command: null,
+        keyCommand: null,
+        
+        // Upload information, index [userId, state, processDate].
+        state: UploadStateEnum.INITIAL,
+        processDate: new Date().getTime(),
+        retry: 0,
+    
+        // Decrypted metadata for reference on screen
+        file,
+        filename: file.name,
+        mimetype: file.type,
+        cuuid,
+        destinationPath: opts?.destinationPath,
+        clearSize: file.size,
+        
+        // Encrypted file information
+        fuuid: null,
+        size: null,
+    } as UploadIdbType;
+    let storeUploads = db.transaction(STORE_UPLOADS, 'readwrite').store;
+    let newKey = await storeUploads.add(entry) as Number;
+    return newKey;
+}
+
+export async function getNextEncryptJob(userId: string): Promise<UploadIdbType | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_UPLOADS, 'readonly').store;
+
+    // Get next jobs with initial state
+    let stateIndex = store.index('state');
+    let job = await stateIndex.getAll(
+        IDBKeyRange.bound([userId, UploadStateEnum.INITIAL, 0], [userId, UploadStateEnum.INITIAL, Number.MAX_SAFE_INTEGER]), 
+        1);
+
+    console.debug("getNextEncryptJob for %s: %O", userId, job)
+
+    if(job.length === 0) return null;
+    return job[0] as UploadIdbType;
 }
 
 /** Clears all stores. */
