@@ -1,6 +1,7 @@
 import { IDBPDatabase, openDB as openDbIdb } from 'idb';
 import { messageStruct } from 'millegrilles.cryptography'
 import { DownloadJobType } from '../../workers/download.worker';
+import { UploadJobType } from '../../workers/upload.worker';
 
 const DB_NAME = 'collections2';
 const STORE_TUUIDS = 'tuuids';
@@ -170,9 +171,9 @@ export type UploadIdbType = {
     state: UploadStateEnum,
     processDate: number,            // Time added/errored in millisecs.
     retry: number,
+    uploadUrl: string | null,       // Filehost url for the upload
 
     // Decrypted metadata for reference on screen
-    file: File | null,              // Original received file object
     filename: string,
     mimetype: string,
     cuuid: string,                  // Directory where the file is being uploaded
@@ -613,7 +614,7 @@ export async function removeUserDownloads(userId: string, opts?: {state?: Downlo
     }
 }
 
-export async function addUploadFile(userId: string, cuuid: string, file: File, opts?: {destinationPath?: string}): Promise<Number> {
+export async function addUploadFile(userId: string, cuuid: string, file: File, opts?: {destinationPath?: string}): Promise<number> {
     const db = await openDB();
     let entry = {
         // uploadId: number,   // Auto-incremented uploadId - leave empty.
@@ -629,7 +630,6 @@ export async function addUploadFile(userId: string, cuuid: string, file: File, o
         retry: 0,
     
         // Decrypted metadata for reference on screen
-        file,
         filename: file.name,
         mimetype: file.type,
         cuuid,
@@ -641,25 +641,44 @@ export async function addUploadFile(userId: string, cuuid: string, file: File, o
         size: null,
     } as UploadIdbType;
     let storeUploads = db.transaction(STORE_UPLOADS, 'readwrite').store;
-    let newKey = await storeUploads.add(entry) as Number;
+    let newKey = await storeUploads.add(entry) as number;
     return newKey;
 }
 
-export async function getNextEncryptJob(userId: string): Promise<UploadIdbType | null> {
+export async function getUploadJob(uploadId: number): Promise<UploadJobType | null> {
     const db = await openDB();
     const store = db.transaction(STORE_UPLOADS, 'readonly').store;
-
-    // Get next jobs with initial state
-    let stateIndex = store.index('state');
-    let job = await stateIndex.getAll(
-        IDBKeyRange.bound([userId, UploadStateEnum.INITIAL, 0], [userId, UploadStateEnum.INITIAL, Number.MAX_SAFE_INTEGER]), 
-        1);
-
-    console.debug("getNextEncryptJob for %s: %O", userId, job)
-
-    if(job.length === 0) return null;
-    return job[0] as UploadIdbType;
+    return await store.get(uploadId);
 }
+
+export async function updateUploadJobState(uploadId: number, state: UploadStateEnum) {
+    const db = await openDB();
+    const store = db.transaction(STORE_UPLOADS, 'readwrite').store;
+    let job = await store.get(uploadId) as UploadIdbType | null;
+    if(!job) throw new Error(`Download job uploadId:${uploadId} not found`);
+
+    // Update job content
+    job.state = state;
+
+    // Save
+    await store.put(job);
+}
+    
+// export async function getNextEncryptJob(userId: string): Promise<UploadJobType | null> {
+//     const db = await openDB();
+//     const store = db.transaction(STORE_UPLOADS, 'readonly').store;
+
+//     // Get next jobs with initial state
+//     let stateIndex = store.index('state');
+//     let job = await stateIndex.getAll(
+//         IDBKeyRange.bound([userId, UploadStateEnum.INITIAL, 0], [userId, UploadStateEnum.INITIAL, Number.MAX_SAFE_INTEGER]), 
+//         1);
+
+//     console.debug("getNextEncryptJob for %s: %O", userId, job)
+
+//     if(job.length === 0) return null;
+//     return job[0] as UploadJobType;
+// }
 
 /** Clears all stores. */
 export async function cleanup() {

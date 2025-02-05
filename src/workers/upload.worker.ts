@@ -1,5 +1,5 @@
 import { proxy, Remote, wrap } from "comlink";
-import { addUploadFile, getNextEncryptJob, UploadIdbType } from "../collections2/idb/collections2StoreIdb";
+import { addUploadFile, UploadIdbType } from "../collections2/idb/collections2StoreIdb";
 import { UploadStateUpdateType, UploadTransferProgress } from "../collections2/transferStore";
 import { FilehostDirType } from "./directory.worker";
 import { UploadThreadWorker, UploadWorkerCallbackType } from "./upload.thread";
@@ -34,8 +34,8 @@ export class AppsUploadWorker {
         }
         this.uploadStateCallbackProxy = proxy(uploadCb);
 
-        let encryptionCb = async (uuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) => {
-            await this.encryptionCallback(uuid, userId, done, position, size);
+        let encryptionCb = async (uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null) => {
+            await this.encryptionCallback(uploadId, userId, done, position, size);
         }
         this.encryptionStateCallbackProxy = proxy(encryptionCb);
 
@@ -101,16 +101,16 @@ export class AppsUploadWorker {
         }
     }
 
-    async encryptionCallback(fuuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) {
-        console.debug("Decryption worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
+    async encryptionCallback(uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null) {
+        console.debug("Decryption worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
             this.encryptionStatus = null;
             this.listChanged = true;
             
             // Add fuuid to list of new files that are ready
-            if(this.fuuidsReady) this.fuuidsReady.push(fuuid);
-            else this.fuuidsReady = [fuuid];
+            // if(this.fuuidsReady) this.fuuidsReady.push(fuuid);
+            // else this.fuuidsReady = [fuuid];
             
             await this.triggerJobs();
         } else {
@@ -153,24 +153,24 @@ export class AppsUploadWorker {
      * No effect if already running.
      */
     async triggerJobs() {
-        console.debug("Trigger jobs userId: ", this.currentUserId);
         if(!this.currentUserId) return;
-        console.warn("0")
 
         // Encrypt
-        if(this.encryptionWorker) {
-            console.warn("1")
-            if((await this.encryptionWorker.isBusy()) === false) {
-                console.warn("2")
-                let job = await getNextEncryptJob(this.currentUserId);
-                console.debug("Trigger job encryptionWorker next", job);
-            } else {
-                console.info("Encryption worker busy");
-            }
-        } else {
-            console.warn("Encryption worker not wired");
-        }
-        console.warn("3");
+        // if(this.encryptionWorker) {
+        //     if((await this.encryptionWorker.isBusy()) === false) {
+        //         let job = await getNextEncryptJob(this.currentUserId);
+        //         if(job) {
+        //             console.debug("Trigger job encryptionWorker next", job);
+        //             this.encryptionWorker.encryptContent(job)
+        //                 .catch(err=>console.error("Error encrypting file", err));
+        //         }
+        //     } else {
+        //         console.info("Encryption worker busy");
+        //     }
+        // } else {
+        //     console.warn("Encryption worker not wired");
+        // }
+
         let filehost = this.filehost;
         if(!filehost) {
             console.warn("No filehost available for download");
@@ -235,6 +235,7 @@ export class AppsUploadWorker {
 
     async addUploads(userId: string, cuuid: string, files: FileList): Promise<void> {
         console.debug("Adding upload for user %s, cuuid: %s, files: %O", userId, cuuid, files);
+        if(!this.encryptionWorker) throw new Error('Encryption worker not ready');
         for await (let file of files) {
             console.debug("Saving file: ", file);
             // Generate new IDB upload entry. This returns a locally unique Id for the upload.
@@ -242,15 +243,11 @@ export class AppsUploadWorker {
             console.debug("New upload Id added: ", uploadId);
 
             // Start encryption
-            // await this.startFileEncryption(userId, fileCommand);
+            this.encryptionWorker.addJob(uploadId, file);
         }
 
         // Start processing all jobs
         await this.triggerJobs();
-    }
-
-    async startFileEncryption(userId: string, fileCommand: messageStruct.MilleGrillesMessage) {
-        console.debug("Start encryption of file", fileCommand);
     }
 
     // async addUploadFromFile(tuuid: string, userId: string): Promise<Blob | null> {
@@ -353,5 +350,5 @@ export class AppsUploadWorker {
 }
 
 export type UploadJobType = UploadIdbType & {
-    url: string,
+    // url: string,
 };
