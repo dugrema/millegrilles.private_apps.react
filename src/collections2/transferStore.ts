@@ -1,10 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { DownloadStateEnum } from './idb/collections2StoreIdb';
-
-// export type FileInfoJobs = {tuuid: string, name?: string | null, size?: number | null, thumbnail?: Blob | null};
-// export type ConversionJobUpdate = {job_id: string, tuuid: string, fuuid: string, etat?: EtatJobEnum, pct_progres?: number};
-// export type ConversionJobStoreItem = Collection2ConversionJob & FileInfoJobs;
+import { DownloadStateEnum, UploadStateEnum } from './idb/collections2StoreIdb';
 
 export enum TransferActivity {
     IDLE=1,
@@ -15,7 +11,7 @@ export enum TransferActivity {
 export enum WorkerType {
     DOWNLOAD = 1,
     DECRYPTION,
-}
+};
 
 export type TransferProgress = {workerType: WorkerType, fuuid: string, state: DownloadStateEnum, position: number, totalSize: number};
 
@@ -40,6 +36,27 @@ export type DownloadJobStoreType = {
     // Content
     filename: string,
     mimetype: string,
+};
+
+export enum UploadTransferActivity {
+    IDLE=1,
+    RUNNING=2,
+    ERROR=3
+};
+
+export enum UploadWorkerType {
+    UPLOAD = 1,
+    ENCRYPTION,
+};
+
+export type UploadTransferProgress = {workerType: WorkerType, fuuid: string, state: UploadStateEnum, position: number, totalSize: number};
+
+/** Used to update the download state from the worker. */
+export type UploadStateUpdateType = {
+    activity?: UploadTransferActivity | null,       // Overall download state.
+    transferPercent?: number | null,                // Overall progress of uploads. Excludes Paused and also Done since before last reset/100%.
+    activeTransfers?: UploadTransferProgress[],     // State of transfers in workers (upload, encryption).
+    listChanged?: boolean,                          // Transfers added/removed.
 };
 
 interface TransferStoreState {

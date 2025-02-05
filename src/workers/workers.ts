@@ -7,12 +7,14 @@ import { AppsConnectionWorker } from "./connection.worker";
 import { AppsEncryptionWorker } from './encryption.worker';
 import { DirectoryWorker } from './directory.worker';
 import { AppsDownloadWorker, DownloadStateCallback } from './download.worker';
+import { AppsUploadWorker } from "./upload.worker";
 
 export type AppWorkers = {
     connection: Remote<AppsConnectionWorker>,
     encryption: Remote<AppsEncryptionWorker>,
     directory: Remote<DirectoryWorker>,
     download: Remote<AppsDownloadWorker>,
+    upload: Remote<AppsUploadWorker>,
 };
 
 const SOCKETIO_PATH = '/millegrilles/socket.io';
@@ -60,6 +62,18 @@ export async function initWorkers(
         download = wrap(downloadWorker) as Remote<AppsDownloadWorker>;
     }
 
+    let upload = null as Remote<AppsUploadWorker> | null;
+    if(!!window.SharedWorker) {
+        // Use shared workers.
+        let uploadWorker = new SharedWorker(new URL('./upload.shared.ts', import.meta.url));
+        upload = wrap(uploadWorker.port, uploadWorker) as Remote<AppsUploadWorker>;
+    } else {
+        // Use a dedicated worker. 
+        // Will cause unpredictable behaviour between tabs for certain functionality, especially file uploads/downloads.
+        let uploadWorker = new Worker(new URL('./upload.dedicated.ts', import.meta.url));
+        upload = wrap(uploadWorker) as Remote<AppsUploadWorker>;
+    }
+
     // Set-up the workers
     let serverUrl = new URL(window.location.href);
     serverUrl.pathname = SOCKETIO_PATH;
@@ -72,7 +86,7 @@ export async function initWorkers(
         console.error("Error wiring download callback", err);
     }
 
-    workers = {connection, encryption, directory, download};
+    workers = {connection, encryption, directory, download, upload};
 
     return {idmg, ca, chiffrage, workers};
 }

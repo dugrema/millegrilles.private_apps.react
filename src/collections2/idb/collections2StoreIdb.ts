@@ -113,6 +113,8 @@ export type VideoPlaybackRowType = {
     position: number | null,
 }
 
+// Download types
+
 export type DownloadIdbType = {
     fuuid: string,   // primary key 1
     userId: string,  // primary key 2
@@ -150,7 +152,46 @@ export enum DownloadStateEnum {
     ENCRYPTED,
     DONE,
     ERROR,
-}
+};
+
+// Upload types
+
+export type UploadIdbType = {
+    commandId: string,              // Message id of the Add command. Acts as unique primary key for the upload.
+    userId: string,
+
+    // Upload information, index [userId, state, processDate].
+    state: UploadStateEnum,
+    processDate: number,            // Time added/errored in millisecs.
+    retry: number,
+
+    // Encrypted file information
+    fuuid: string | null,           // Unique file id, null while file is being encrypted.
+    size: number | null,            // Encrypted file size
+
+    // Commands to upload with the file
+    command: messageStruct.MilleGrillesMessage,     // File add command
+    keyCommand: messageStruct.MilleGrillesMessage,  // Key add command
+   
+    // Content
+    filename: string,
+    mimetype: string,
+};
+
+export type UploadIdbParts = {
+    commandId: string,
+    position: number,
+    content: Blob,
+};
+
+export enum UploadStateEnum {
+    INITIAL = 1,
+    PAUSED,
+    ENCRYPTING,
+    UPLOADING,
+    DONE,
+    ERROR,
+};
 
 export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
     if(upgrade) {

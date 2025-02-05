@@ -114,8 +114,8 @@ function TestArea() {
         if(!workers || !ready) throw new Error('workers not initialized');
         
         console.debug("test download");
-        let response = await workers?.download.getActiveDownloads();
-        console.debug("Download worker response", response);
+        //let response = await workers?.download.getActiveDownloads();
+        //console.debug("Download worker response", response);
 
         await testBounds('zSEfXUA2auCgqVJ1Lrxv9yF9vgq9se7CDGhMdFNynV43EAitCuZuAXMsyCNz75uiKG3ibgrvkdLP4WHtjAxrmZMtM6k4Ji')
     }, [workers, ready])

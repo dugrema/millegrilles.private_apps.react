@@ -11,7 +11,6 @@ export type DownloadStateCallback = (state: DownloadStateUpdateType)=>Promise<vo
 
 export class AppsDownloadWorker {
     currentUserId: string | null
-    count: number
     downloadWorker: Remote<DownloadThreadWorker> | DownloadThreadWorker | null
     decryptionWorker: Remote<DownloadDecryptionWorker> | DownloadDecryptionWorker | null
     filehost: FilehostDirType | null
@@ -26,7 +25,6 @@ export class AppsDownloadWorker {
 
     constructor() {
         this.currentUserId = null;
-        this.count = 0;
         this.downloadWorker = null;
         this.decryptionWorker = null;
         this.filehost = null;
@@ -256,10 +254,6 @@ export class AppsDownloadWorker {
 
     async resumeDownload(fuuid: string, userId: string) {
         throw new Error('todo');
-    }
-
-    async getActiveDownloads() {
-        return this.count++;
     }
 
     async produceState() {
