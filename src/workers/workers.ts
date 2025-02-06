@@ -4,7 +4,7 @@ import { Remote, wrap } from 'comlink';
 import { ConnectionCallbackParameters } from 'millegrilles.reactdeps.typescript';
 
 import { AppsConnectionWorker } from "./connection.worker";
-import { AppsEncryptionWorker } from './encryption.worker';
+import { AppsEncryptionWorker } from './encryption';
 import { DirectoryWorker } from './directory.worker';
 import { AppsDownloadWorker, DownloadStateCallback } from './download.worker';
 import { AppsUploadWorker, UploadStateCallback } from "./upload.worker";
@@ -87,7 +87,8 @@ export async function initWorkers(
         console.error("Error wiring download callback", err);
     }
     try {
-        await upload.setup(uploadStateCallback);
+        await upload.setup(uploadStateCallback, ca);
+        await upload.setEncryptionKeys(chiffrage);
     } catch(err) {
         console.error("Error wiring upload callback", err);
     }

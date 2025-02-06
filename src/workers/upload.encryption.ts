@@ -1,5 +1,6 @@
 import { encryptionMgs4, messageStruct, multiencoding } from 'millegrilles.cryptography';
 import { getUploadJob, saveUploadJobDecryptionInfo, saveUploadPart, updateUploadJobState, UploadIdbType, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
+import { AppsEncryptionWorker } from './encryption';
 
 export type EncryptionWorkerCallbackType = (
     uploadId: number, 
@@ -20,19 +21,26 @@ export class UploadEncryptionWorker {
     jobs: EncryptionWorkerJob[]
     running: boolean
     intervalTrigger: any
+    appsEncryptionWorker: AppsEncryptionWorker      // Complete instance of the encryption worker class
 
     constructor() {
         this.callback = null;
         this.jobs = [];
         this.running = false;
+        this.appsEncryptionWorker = new AppsEncryptionWorker();
     }
 
-    async setup(callback: EncryptionWorkerCallbackType) {
+    async setup(callback: EncryptionWorkerCallbackType, caPem: string) {
         this.callback = callback;
+        await this.appsEncryptionWorker.initialize(caPem);
         this.intervalTrigger = setInterval(()=>{
             console.debug("Interval trigger encryption");
             this.triggerJobs().catch(err=>console.error("Error triggering encryption job from interval", err));
         }, 20_000);
+    }
+
+    async setEncryptionKeys(pems: Array<string[]>) {
+        await this.appsEncryptionWorker.setEncryptionKeys(pems);
     }
 
     async cancelJobIf(fuuid: string, userId: string) {

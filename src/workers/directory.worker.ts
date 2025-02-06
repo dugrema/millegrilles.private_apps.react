@@ -3,7 +3,7 @@ import { expose, Remote } from 'comlink';
 import { messageStruct, encryptionMgs4, multiencoding } from 'millegrilles.cryptography';
 
 import { Collections2FileSyncRow, DecryptedSecretKey, Filehost } from './connection.worker';
-import { AppsEncryptionWorker } from './encryption.worker';
+import { AppsEncryptionWorker } from './encryption';
 import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync, deleteFiles } from '../collections2/idb/collections2StoreIdb';
 
 type ProcessDirectoryChunkOptions = {

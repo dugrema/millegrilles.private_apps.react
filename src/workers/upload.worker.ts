@@ -46,7 +46,7 @@ export class AppsUploadWorker {
         this.fuuidsReady = null;
     }
 
-    async setup(stateCallback: UploadStateCallback) {
+    async setup(stateCallback: UploadStateCallback, caPem: string) {
         this.stateCallbacks.push(stateCallback);
         // console.debug("Callback count: ", this.stateCallbacks.length);
 
@@ -73,12 +73,17 @@ export class AppsUploadWorker {
                 let {UploadEncryptionWorker}  = await import('./upload.encryption');
                 this.encryptionWorker = new UploadEncryptionWorker();
             }
-            await this.encryptionWorker.setup(this.encryptionStateCallbackProxy);
+            await this.encryptionWorker.setup(this.encryptionStateCallbackProxy, caPem);
         }
 
         if(!this.intervalMaintenance) {
             this.intervalMaintenance = setInterval(()=>this.maintain(), 20_000);
         }
+    }
+
+    async setEncryptionKeys(pems: Array<string[]>) {
+        if(!this.encryptionWorker) throw new Error('Upload encryption worker not initialized');
+        await this.encryptionWorker.setEncryptionKeys(pems);
     }
 
     async unregister(stateCallback: UploadStateCallback) {

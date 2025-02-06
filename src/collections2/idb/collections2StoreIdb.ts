@@ -2,7 +2,7 @@ import { IDBPDatabase, openDB as openDbIdb } from 'idb';
 import { messageStruct } from 'millegrilles.cryptography'
 import { DownloadJobType } from '../../workers/download.worker';
 import { UploadJobType } from '../../workers/upload.worker';
-import { GeneratedSecretKeyResult } from '../../workers/encryption.worker';
+import { GeneratedSecretKeyResult } from '../../workers/encryption';
 
 const DB_NAME = 'collections2';
 const STORE_TUUIDS = 'tuuids';
