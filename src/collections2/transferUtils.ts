@@ -1,5 +1,5 @@
-import { messageStruct, multiencoding } from "millegrilles.cryptography";
-import { DownloadIdbType, DownloadStateEnum, FileVideoData, loadTuuid } from "./idb/collections2StoreIdb";
+import { keymaster, messageStruct, multiencoding, x25519 } from "millegrilles.cryptography";
+import { addUploadFile, DownloadIdbType, DownloadStateEnum, FileVideoData, loadTuuid } from "./idb/collections2StoreIdb";
 import { AppWorkers } from "../workers/workers";
 
 /**
@@ -149,26 +149,23 @@ export function downloadFile(filename: string, content: Blob) {
     URL.revokeObjectURL(objectUrl);
 }
 
-// export async function generateFileUploads(workers: AppWorkers, userId: string, cuuid: string, files: FileList) {
-//     for await (let file of files) {
-//         // Generate command
-//         let content = {nom: file.name, dateFichier: Math.floor(file.lastModified/1000)};
-//         console.debug("Encrypt ", content);
-//         let encryptedFileContent = await workers.encryption.encryptMessageMgs4(content, {domain: 'GrosFichiers'});
-//         let encryptedKeys = encryptedFileContent.cle;
-//         if(!encryptedKeys) throw new Error('Secret key not generated');
+export async function generateFileUploads(workers: AppWorkers, userId: string, cuuid: string, files: FileList) {
+    for await (let file of files) {
+        // Generate new key using the master key.
+        let secret = await workers.encryption.generateSecretKey(['GrosFichiers']);
+        let encryptedKeys = await workers.encryption.encryptSecretKey(secret.secret);
 
-//         // Generate key command
-//         let keyCommand = {
-//             cle_id: encryptedFileContent.cle_id,
-//             signature: encryptedKeys.signature,
-//             // @ts-ignore
-//             cles: encryptedKeys.cles,
-//         };
-//         let keyCommandSigned = await workers.connection.createRoutedMessage(
-//             messageStruct.MessageKind.Command, keyCommand, {domaine: 'MaitreDesCles', action: 'XXX'});
-//         console.debug("Key command signed", keyCommandSigned);
+        // Generate key command
+        let keyCommand = {
+            signature: secret.signature,
+            cles: encryptedKeys,
+        };
 
-//         let correlationId = keyCommandSigned.id;
-//     }
-// }
+        let keyCommandSigned = await workers.connection.createRoutedMessage(
+            messageStruct.MessageKind.Command, keyCommand, {domaine: 'MaitreDesCles', action: 'ajouterCleDomaines'});
+        console.debug("Key command signed", keyCommandSigned);
+
+        let uploadId = await addUploadFile(userId, cuuid, file, {secret, keyCommand: keyCommandSigned});
+        await workers.upload.addUpload(uploadId, file);
+    }
+}

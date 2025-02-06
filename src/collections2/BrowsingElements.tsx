@@ -18,6 +18,7 @@ import EditIcon from '../resources/icons/edit-2-svgrepo-com.svg';
 import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
+import { generateFileUploads } from "./transferUtils";
 
 type BreadcrumbProps = {
     root?: {tuuid: string | null, name: string, path?: string} | null,
@@ -197,9 +198,9 @@ export function ButtonBar(props: ButtonBarProps) {
         if(!cuuid) throw new Error('Root cannot be used to upload files');
         if(!userId) throw new Error("UserId not provided");
         if(!files || files.length === 0) throw new Error('No files provided');
-        workers.upload.addUploads(userId, cuuid, files)
+        generateFileUploads(workers, userId, cuuid, files)
             .catch(err=>console.error("Error starting upload", err));
-        // workers.upload.addUploads(workers.encryption, userId, cuuid, files)
+        // workers.upload.addUploads(userId, cuuid, files)
         //     .catch(err=>console.error("Error starting upload", err));
     }, [workers, ready, userId, cuuid]);
 

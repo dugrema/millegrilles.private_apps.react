@@ -233,19 +233,26 @@ export class AppsUploadWorker {
         await this.produceState();
     }
 
-    async addUploads(userId: string, cuuid: string, files: FileList): Promise<void> {
-        console.debug("Adding upload for user %s, cuuid: %s, files: %O", userId, cuuid, files);
+    // async addUploads(userId: string, cuuid: string, files: FileList): Promise<void> {
+    //     console.debug("Adding upload for user %s, cuuid: %s, files: %O", userId, cuuid, files);
+    //     if(!this.encryptionWorker) throw new Error('Encryption worker not ready');
+    //     for await (let file of files) {
+    //         console.debug("Saving file: ", file);
+    //         // Generate new IDB upload entry. This returns a locally unique Id for the upload.
+    //         let uploadId = await addUploadFile(userId, cuuid, file);
+    //         console.debug("New upload Id added: ", uploadId);
+
+    //         // Start encryption
+    //         this.encryptionWorker.addJob(uploadId, file);
+    //     }
+
+    //     // Start processing all jobs
+    //     await this.triggerJobs();
+    // }
+
+    async addUpload(uploadId: number, file: File): Promise<void> {
         if(!this.encryptionWorker) throw new Error('Encryption worker not ready');
-        for await (let file of files) {
-            console.debug("Saving file: ", file);
-            // Generate new IDB upload entry. This returns a locally unique Id for the upload.
-            let uploadId = await addUploadFile(userId, cuuid, file);
-            console.debug("New upload Id added: ", uploadId);
-
-            // Start encryption
-            this.encryptionWorker.addJob(uploadId, file);
-        }
-
+        this.encryptionWorker.addJob(uploadId, file);
         // Start processing all jobs
         await this.triggerJobs();
     }

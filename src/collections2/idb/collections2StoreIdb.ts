@@ -2,6 +2,7 @@ import { IDBPDatabase, openDB as openDbIdb } from 'idb';
 import { messageStruct } from 'millegrilles.cryptography'
 import { DownloadJobType } from '../../workers/download.worker';
 import { UploadJobType } from '../../workers/upload.worker';
+import { GeneratedSecretKeyResult } from '../../workers/encryption.worker';
 
 const DB_NAME = 'collections2';
 const STORE_TUUIDS = 'tuuids';
@@ -166,6 +167,7 @@ export type UploadIdbType = {
     // Commands to upload with the file
     command: messageStruct.MilleGrillesMessage | null,      // File add command
     keyCommand: messageStruct.MilleGrillesMessage | null,   // Key add command
+    secret: GeneratedSecretKeyResult | null,                // Secret key to use for encryption
     
     // Upload information, index [userId, state, processDate].
     state: UploadStateEnum,
@@ -183,6 +185,7 @@ export type UploadIdbType = {
     // Encrypted file information
     fuuid: string | null,           // Unique file id, null while file is being encrypted.
     size: number | null,            // Encrypted file size
+    decryption: messageStruct.MessageDecryption | null,
 };
 
 export type UploadIdbParts = {
@@ -194,6 +197,7 @@ export type UploadIdbParts = {
 export enum UploadStateEnum {
     INITIAL = 1,
     ENCRYPTING,
+    GENERATING,
     PAUSED,
     UPLOADING,
     DONE,
@@ -614,7 +618,13 @@ export async function removeUserDownloads(userId: string, opts?: {state?: Downlo
     }
 }
 
-export async function addUploadFile(userId: string, cuuid: string, file: File, opts?: {destinationPath?: string}): Promise<number> {
+export type AddUploadFileOptions = {
+    destinationPath?: string,
+    secret?: GeneratedSecretKeyResult,
+    keyCommand?: messageStruct.MilleGrillesMessage,
+}
+
+export async function addUploadFile(userId: string, cuuid: string, file: File, opts?: AddUploadFileOptions): Promise<number> {
     const db = await openDB();
     let entry = {
         // uploadId: number,   // Auto-incremented uploadId - leave empty.
@@ -622,7 +632,8 @@ export async function addUploadFile(userId: string, cuuid: string, file: File, o
     
         // Commands to upload with the file
         command: null,
-        keyCommand: null,
+        keyCommand: opts?.keyCommand,
+        secret: opts?.secret,
         
         // Upload information, index [userId, state, processDate].
         state: UploadStateEnum.INITIAL,
@@ -659,6 +670,20 @@ export async function updateUploadJobState(uploadId: number, state: UploadStateE
 
     // Update job content
     job.state = state;
+
+    // Save
+    await store.put(job);
+}
+
+export async function saveUploadJobDecryptionInfo(uploadId: number, decryptionInfo: messageStruct.MessageDecryption) {
+    const db = await openDB();
+    const store = db.transaction(STORE_UPLOADS, 'readwrite').store;
+    let job = await store.get(uploadId) as UploadIdbType | null;
+    if(!job) throw new Error(`Download job uploadId:${uploadId} not found`);
+
+    // Update job content
+    job.decryption = decryptionInfo;
+    job.state = UploadStateEnum.GENERATING;
 
     // Save
     await store.put(job);

@@ -7,8 +7,8 @@ import useConnectionStore from "../connectionStore";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import { DecryptionKeyIdb, getDecryptedKeys, saveDecryptedKey } from "../MillegrillesIdb";
 import { multiencoding, messageStruct } from "millegrilles.cryptography";
-import { EncryptionResult } from "../workers/encryption.worker";
 import { sortCategories } from "./Categories";
+import { EncryptionResult } from "../workers/encryptionUtils";
 
 function ViewGroupDocuments() {
 

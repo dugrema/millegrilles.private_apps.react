@@ -11,10 +11,10 @@ import { ChatAvailable } from './ChatSummaryHistory';
 import { ChatMessage, ConversationKey, getConversation, getConversationMessages, saveConversation, saveMessagesSync } from './aichatStoreIdb';
 import { MessageResponse, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
 import { messageStruct, multiencoding } from 'millegrilles.cryptography';
-import { EncryptionBase64Result } from '../workers/encryption.worker';
 import { getDecryptedKeys, saveDecryptedKey } from '../MillegrillesIdb';
 import { SendChatMessageCommand } from '../workers/connection.worker';
 import SyncConversationMessages from './SyncConversationMessages';
+import { EncryptionBase64Result } from '../workers/encryptionUtils';
 
 const CONST_DEFAULT_MODEL = 'llama3.2:3b-instruct-q8_0';
 

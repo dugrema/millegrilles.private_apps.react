@@ -1,6 +1,5 @@
-import { encryptionMgs4 } from 'millegrilles.cryptography';
-import { getUploadJob, saveUploadPart, updateUploadJobState, UploadIdbType, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
-import { UploadJobType } from './upload.worker';
+import { encryptionMgs4, messageStruct, multiencoding } from 'millegrilles.cryptography';
+import { getUploadJob, saveUploadJobDecryptionInfo, saveUploadPart, updateUploadJobState, UploadIdbType, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
 
 export type EncryptionWorkerCallbackType = (
     uploadId: number, 
@@ -110,7 +109,11 @@ export class UploadEncryptionWorker {
 
             // Encrypt file
             let stream = uploadJob.file.stream();
-            let cipher = await encryptionMgs4.getMgs4Cipher();
+
+            let key = uploadJob.secret?.secret;
+            if(!key) throw new Error('Secret key not generated');
+
+            let cipher = await encryptionMgs4.getMgs4CipherWithSecret(key);
 
             // Buffer with chunks and blobs.
             let chunks = [] as Uint8Array[];
@@ -167,70 +170,16 @@ export class UploadEncryptionWorker {
 
             // Save key and other encryption info to IDB
             console.warn("File encrypted, save cipher info to IDB ", cipher);
+            let encryptionInfo = {
+                cle_id: uploadJob.secret?.cle_id,
+                format: 'mgs4',
+                nonce: multiencoding.encodeBase64Nopad(cipher.header),
+            } as messageStruct.MessageDecryption;
+            if(cipher.digest) {
+                encryptionInfo.verification = multiencoding.encodeBase64Nopad(cipher.digest)
+            }
 
-
-            await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.UPLOADING);
-
-        //     // Open a cursor and iterate through all parts in order
-        //     const db = await openDB();
-        //     let store = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
-
-        //     let part = await store.get([fuuid, 0]) as DownloadIdbParts;
-            
-        //     let blobs = [] as Blob[];
-        //     let position = 0;
-        //     while(part) {
-        //         // console.debug("Decrypt ", part);
-        //         let content = part.content;
-
-        //         // Open reader for blob, iterate through content.
-        //         // @ts-ignore
-        //         let stream = getIterableStream(content.stream());
-
-        //         // Buffer with chunks and blobs.
-        //         let chunks = [] as Uint8Array[];
-        //         let chunkSize = 0;
-        //         let partBlobs = [] as Blob[];
-        //         for await (const chunk of stream) {
-        //             let output = await decipher.update(chunk);
-        //             if(output && output.length > 0) {
-        //                 decryptedPosition += output.length;  // Use decrypted position
-        //                 chunkSize += output.length;
-        //                 chunks.push(output);
-        //             }
-        //             if(chunkSize > CONST_CHUNK_SOFT_LIMIT) {
-        //                 // Offload chunks to blob
-        //                 partBlobs.push(new Blob(chunks));
-        //                 // Reset chunks
-        //                 chunkSize = 0;
-        //                 chunks = [];
-        //             }
-        //         }
-    
-        //         if(chunks.length > 0) {
-        //             // Last chunk
-        //             partBlobs.push(new Blob(chunks));
-        //         }
-    
-        //         // console.debug("Save %d chunks as decrypted part", partBlobs.length);
-        //         // Concatenate all blobs into one larger part blob
-        //         blobs.push(new Blob(partBlobs));
-        
-        //         position += content.size;
-
-        //         // New transaction
-        //         store = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
-        //         part = await store.get([fuuid, position]);
-        //     }
-
-        //     let finalize = await decipher.finalize();
-        //     if(finalize) blobs.push(new Blob([finalize]));
-
-        //     // Save all decrypted parts into a single blob
-        //     // console.debug("Save all decrypted parts to IDB");
-        //     let decryptedFileBlob = new Blob(blobs, {type: downloadJob.mimetype});
-        //     await saveDecryptedBlob(fuuid, decryptedFileBlob);
-            // await callback(uploadJob.uploadId, uploadJob.userId, true, uploadJob.size, uploadJob.size);
+            await saveUploadJobDecryptionInfo(uploadJob.uploadId, encryptionInfo);
         } catch(err) {
             await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.ERROR);
             await callback(uploadJob.uploadId, uploadJob.userId, true);

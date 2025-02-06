@@ -7,10 +7,10 @@ import apiMapping from './apiMapping.json';
 import { DeviceConfiguration, DeviceReadings } from '../senseurspassifs/senseursPassifsStore';
 import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType, NotepadNewCategoryType, NotepadNewDocumentType, NotepadNewGroupType } from '../notepad/idb/notepadStoreIdb';
 import { DecryptionKey } from '../MillegrillesIdb';
-import { EncryptionBase64Result } from './encryption.worker';
 import { ChatMessage, Conversation } from '../aichat/aichatStoreIdb';
 import { LanguageModelType } from '../aichat/chatStore';
 import { FileAudioData, FileImageDict, FileSubtitleData, FileVideoDict, TuuidEncryptedMetadata } from '../collections2/idb/collections2StoreIdb';
+import { EncryptionBase64Result } from './encryptionUtils';
 
 const DOMAINE_CORETOPOLOGIE = 'CoreTopologie';
 const DOMAINE_DOCUMENTS = 'Documents';

@@ -3,32 +3,11 @@ import { expose } from 'comlink';
 
 import { encryption, encryptionMgs4, multiencoding, keymaster, x25519, certificates } from 'millegrilles.cryptography';
 import { gzip, inflate } from 'pako';
+import { EncryptionBase64Result, EncryptionResult } from './encryptionUtils';
 
 export type EncryptionOptions = {
     base64?: boolean,
 }
-
-export type EncryptionResult = {
-    format: string, 
-    nonce: Uint8Array, 
-    ciphertext: Uint8Array, 
-    digest?: Uint8Array,
-    cle?: {signature: keymaster.DomainSignature}
-    cle_id?: string,
-    cleSecrete?: Uint8Array,
-    compression?: string,
-};
-
-export type EncryptionBase64Result = {
-    format: string, 
-    nonce: string, 
-    ciphertext_base64: string, 
-    digest?: string,
-    cle?: {signature: keymaster.DomainSignature}
-    cle_id?: string,
-    cleSecrete?: Uint8Array,
-    compression?: string,
-};
 
 export type GeneratedSecretKeyResult = { keyInfo: any, secret: Uint8Array, signature: keymaster.DomainSignature, cle_id: string };
 
