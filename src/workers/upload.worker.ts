@@ -1,5 +1,5 @@
 import { proxy, Remote, wrap } from "comlink";
-import { addUploadFile, UploadIdbType } from "../collections2/idb/collections2StoreIdb";
+import { addUploadFile, getNextUploadReadyJob, UploadIdbType } from "../collections2/idb/collections2StoreIdb";
 import { UploadStateUpdateType, UploadTransferProgress } from "../collections2/transferStore";
 import { FilehostDirType } from "./directory.worker";
 import { UploadThreadWorker, UploadWorkerCallbackType } from "./upload.thread";
@@ -29,8 +29,8 @@ export class AppsUploadWorker {
         this.filehost = null;
         this.intervalMaintenance = null;
 
-        let uploadCb = async (uuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) => {
-            await this.uploadCallback(uuid, userId, done, position, size);
+        let uploadCb = async (uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null) => {
+            await this.uploadCallback(uploadId, userId, done, position, size);
         }
         this.uploadStateCallbackProxy = proxy(uploadCb);
 
@@ -91,8 +91,8 @@ export class AppsUploadWorker {
         //TODO
     }
 
-    async uploadCallback(fuuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) {
-        console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
+    async uploadCallback(uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null) {
+        console.debug("Download worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
             this.uploadStatus = null;
@@ -190,7 +190,16 @@ export class AppsUploadWorker {
 
         // Upload
         if(this.uploadWorker) {
-            console.warn("TODO - Trigger upload worker jobs")
+            if((await this.uploadWorker.isBusy()) === false) {
+                let job = await getNextUploadReadyJob(this.currentUserId);
+                if(job) {
+                    if(!job.uploadUrl) {
+                        // Set the current filehost as upload url
+                        job.uploadUrl = filehostUrl;
+                    }
+                    await this.uploadWorker.addJob(job);
+                }
+            }
         } else {
             console.warn("Upload worker not wired");
         }

@@ -1,5 +1,5 @@
-import { encryptionMgs4, messageStruct, multiencoding } from 'millegrilles.cryptography';
-import { getUploadJob, saveUploadJobAddCommand, saveUploadJobDecryptionInfo, saveUploadPart, updateUploadJobState, UploadIdbType, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
+import { digest, encryptionMgs4, messageStruct, multiencoding } from 'millegrilles.cryptography';
+import { getUploadJob, saveUploadJobAddCommand, saveUploadJobDecryptionInfo, saveUploadPart, TuuidEncryptedMetadata, updateUploadJobState, UploadIdbType, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
 import { AppsEncryptionWorker } from './encryption';
 import { Collections2AddFileCommand } from './connection.worker';
 
@@ -122,6 +122,11 @@ export class UploadEncryptionWorker {
             let key = uploadJob.secret?.secret;
             if(!key) throw new Error('Secret key not generated');
 
+            // let hasher = await createBLAKE2b();
+            // hasher.init();
+            let hasher = new digest.WrappedHasher('base64', 'blake2s-256');
+            await hasher.init();
+        
             let cipher = await encryptionMgs4.getMgs4CipherWithSecret(key);
 
             // Buffer with chunks and blobs.
@@ -132,8 +137,9 @@ export class UploadEncryptionWorker {
             for await (let chunk of stream) {
                 encryptedPosition += chunk.length;
 
-                //@ts-ignore
-                let ciphertext = await cipher.update(chunk);
+                hasher.update(chunk as any);    // Hash of the original decrypted content
+
+                let ciphertext = await cipher.update(chunk as any);
                 if(ciphertext) {
                     chunks.push(ciphertext);
                     chunksSize += ciphertext.length;
@@ -165,6 +171,7 @@ export class UploadEncryptionWorker {
                 }
             }
 
+            let originalDigest = hasher.finalize();
             let finalize = await cipher.finalize();
             if(finalize) {
                 chunks.push(finalize);
@@ -189,7 +196,7 @@ export class UploadEncryptionWorker {
                 encryptionInfo.verification = multiencoding.hashEncode('base58btc', 'blake2b-512', cipher.digest);
             }
 
-            await saveUploadJobDecryptionInfo(uploadJob.uploadId, encryptionInfo, position);
+            await saveUploadJobDecryptionInfo(uploadJob.uploadId, encryptionInfo, position, originalDigest);
             await this.prepareFileAddMetadata(uploadJob.uploadId);
 
             // Trigger next step
@@ -210,8 +217,9 @@ export class UploadEncryptionWorker {
 
         let decryptedMetadata = {
             nom: uploadJob.filename,
-            date: Math.floor(new Date().getTime()/1000),
-            hachage_original: uploadJob.decryption?.verification
+            dateFichier: Math.floor(uploadJob.lastModified / 1000),
+            hachage_original: uploadJob.originalDigest,
+            originalSize: uploadJob.clearSize,
         };
         console.debug("Encrypt metadata: ", decryptedMetadata);
 
@@ -221,7 +229,8 @@ export class UploadEncryptionWorker {
             cle_id: uploadJob.secret.cle_id,
             nonce: encryptedMetadata.nonce,
             format: encryptedMetadata.format,
-        };
+        } as TuuidEncryptedMetadata;
+        if(encryptedMetadata.compression) metadata.compression = encryptedMetadata.compression;
 
         let mimetype = uploadJob.mimetype;
         if(!mimetype) {

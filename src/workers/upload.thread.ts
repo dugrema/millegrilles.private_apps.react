@@ -1,10 +1,9 @@
-// import { DownloadJobType } from './download.worker';
-// import { DownloadStateEnum, findDownloadPosition, removeDownloadParts, saveDownloadPart, updateDownloadJobState } from '../collections2/idb/collections2StoreIdb';
-import { getIterableStream } from '../collections2/transferUtils';
+import axios from 'axios';
+import { getUploadPart, updateUploadJobState, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
 import { UploadJobType } from './upload.worker';
 
 export type UploadWorkerCallbackType = (
-    fuuid: string, 
+    uploadId: number, 
     userId: string, 
     done: boolean, 
     position?: number | null,
@@ -32,10 +31,15 @@ export class UploadThreadWorker {
         return false;
     }
 
-    async addJob(downloadJob: UploadJobType): Promise<void> {
+    async addJob(uploadJob: UploadJobType): Promise<void> {
         if(!!this.currentJob) throw new Error('Busy');
-        this.currentJob = downloadJob;
+        this.currentJob = uploadJob;
         if(!this.callback) throw new Error('Callback not wired');
+
+        // Change job state to UPLOADING
+        let uploadUrl = uploadJob?.uploadUrl || undefined;
+        await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.UPLOADING, {uploadUrl});
+
         this.processJob().catch(err=>{
             console.error("Error processing download job", err);
         })
@@ -51,9 +55,34 @@ export class UploadThreadWorker {
 
         // Validations
         if(!currentJob) return;  // Nothing to do
-        if(!callback) throw new Error('Callback not wired');
-        
-        throw new Error('todo');
+
+        let {uploadId, fuuid, uploadUrl, size} = currentJob;
+
+        try {
+            if(!callback) throw new Error('Callback not wired');
+            if(!fuuid) throw new Error('File unique identifier (fuuid) not provided');
+            if(!uploadUrl) throw new Error('No filehost url provided for the upload');
+            if(!size) throw new Error('No file size provided for the upload');
+            
+            // Run the upload
+            await this.uploadFile(uploadId, fuuid, uploadUrl, size);
+
+            // Upload completed
+            await updateUploadJobState(uploadId, UploadStateEnum.DONE);
+
+            // Send feedback, triggers the next job
+            callback(uploadId, currentJob.userId, true, currentJob.size, currentJob.size);
+
+        } catch(err) {
+            console.error("Error uploading file %O: %O", currentJob, err);
+            await updateUploadJobState(uploadId, UploadStateEnum.ERROR);
+            if(callback) {
+                await callback(uploadId, currentJob.userId, true);
+            }
+        } finally {
+            // Free job
+            this.currentJob = null;
+        }
 
         // let url = currentJob.url;
 
@@ -116,6 +145,48 @@ export class UploadThreadWorker {
         // }
     }
 
+    async uploadFile(uploadId: number, fuuid: string, filehostUrl: string, fileSize: number) {
+
+        const postUrl = `${filehostUrl}/files/${fuuid}`;
+
+        // Iterate through parts to upload from IDB for this uploadId.
+        let position = 0;
+        while(true) {
+            // Get next part
+            let part = await getUploadPart(uploadId, position);
+            if(!part) break;  // Done
+
+            let partSize = part.content.size;
+
+            let putUrl = `${postUrl}/${position}`;
+            console.debug("Upload to ", putUrl);
+            await axios({
+                method: 'PUT', 
+                url: putUrl,
+                withCredentials: true,
+                data: part.content
+            });
+
+            // Increment position with current part size
+            position += partSize;
+        }
+
+        // Compare uploaded size to expected file size
+        if(position !== fileSize) {
+            // Delete uploaded content from server (invalid).
+
+            throw new Error('Mismatch in expected file size and uploaded parts');
+        }
+
+        // Post to complete file upload
+        console.debug("Post to ", postUrl);
+        await axios({
+            method: 'POST',
+            url: postUrl,
+            withCredentials: true,
+        });
+
+    }
 }
 
 const CONST_SIZE_1MB = 1024 * 1024;

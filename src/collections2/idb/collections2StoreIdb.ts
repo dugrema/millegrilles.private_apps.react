@@ -178,10 +178,12 @@ export type UploadIdbType = {
 
     // Decrypted metadata for reference on screen
     filename: string,
+    lastModified: number,
     mimetype: string,
     cuuid: string,                  // Directory where the file is being uploaded
     destinationPath: string,        // Directory path where the file is being uploaded for reference.
     clearSize: number | null,       // Decrypted file size
+    originalDigest: string | null,  // Decrypted file digest
     
     // Encrypted file information
     fuuid: string | null,           // Unique file id, null while file is being encrypted.
@@ -653,6 +655,7 @@ export async function addUploadFile(userId: string, cuuid: string, file: File, o
     
         // Decrypted metadata for reference on screen
         filename: file.name,
+        lastModified: file.lastModified,
         mimetype: file.type,
         cuuid,
         destinationPath: opts?.destinationPath,
@@ -673,7 +676,7 @@ export async function getUploadJob(uploadId: number): Promise<UploadJobType | nu
     return await store.get(uploadId);
 }
 
-export async function updateUploadJobState(uploadId: number, state: UploadStateEnum) {
+export async function updateUploadJobState(uploadId: number, state: UploadStateEnum, opts?: {uploadUrl?: string}) {
     const db = await openDB();
     const store = db.transaction(STORE_UPLOADS, 'readwrite').store;
     let job = await store.get(uploadId) as UploadIdbType | null;
@@ -681,12 +684,19 @@ export async function updateUploadJobState(uploadId: number, state: UploadStateE
 
     // Update job content
     job.state = state;
+    if(opts?.uploadUrl) job.uploadUrl = opts.uploadUrl;
 
     // Save
     await store.put(job);
 }
 
-export async function saveUploadJobDecryptionInfo(uploadId: number, decryptionInfo: messageStruct.MessageDecryption, fileSize: number) {
+export async function getUploadPart(uploadId: number, position: number): Promise<UploadIdbParts | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_UPLOAD_PARTS, 'readonly').store;
+    return await store.get([uploadId, position]);
+}
+
+export async function saveUploadJobDecryptionInfo(uploadId: number, decryptionInfo: messageStruct.MessageDecryption, fileSize: number, originalDigest: string) {
     const db = await openDB();
     const store = db.transaction(STORE_UPLOADS, 'readwrite').store;
     let job = await store.get(uploadId) as UploadIdbType | null;
@@ -696,6 +706,7 @@ export async function saveUploadJobDecryptionInfo(uploadId: number, decryptionIn
     job.decryption = decryptionInfo;
     job.state = UploadStateEnum.GENERATING;
     job.size = fileSize;
+    job.originalDigest = originalDigest;
     if(decryptionInfo.verification) {
         job.fuuid = decryptionInfo.verification;
     } else {
@@ -726,6 +737,19 @@ export async function saveUploadPart(uploadId: number, position: number, part: B
     await store.put({uploadId, position, content: part});
 }
 
+export async function getNextUploadReadyJob(userId: string): Promise<UploadJobType | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_UPLOADS, 'readonly').store;
+
+    // Get next jobs with initial state
+    let stateIndex = store.index('state');
+    let job = await stateIndex.getAll(
+        IDBKeyRange.bound([userId, UploadStateEnum.READY, 0], [userId, UploadStateEnum.READY, Number.MAX_SAFE_INTEGER]), 
+        1);
+
+    if(job.length === 0) return null;
+    return job[0] as UploadJobType;
+}
     
 // export async function getNextEncryptJob(userId: string): Promise<UploadJobType | null> {
 //     const db = await openDB();
