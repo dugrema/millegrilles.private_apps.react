@@ -1,5 +1,5 @@
 import { encryptionMgs4 } from 'millegrilles.cryptography';
-import { getUploadJob, updateUploadJobState, UploadIdbType, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
+import { getUploadJob, saveUploadPart, updateUploadJobState, UploadIdbType, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
 import { UploadJobType } from './upload.worker';
 
 export type EncryptionWorkerCallbackType = (
@@ -74,7 +74,7 @@ export class UploadEncryptionWorker {
                 try {
                     await this.encryptContent(job);
                 } catch(err) {
-                    console.error("Error processing job: ", job);
+                    console.error("Error processing encryption job %O: %O", job, err);
                     //TODO Mark job as in Error
                 }
             }
@@ -96,16 +96,17 @@ export class UploadEncryptionWorker {
         if(!callback) throw new Error('Callback not wired');
 
         let encryptedPosition = 0;
+        let fileSize = uploadJob.file.size;
         let interval = setInterval(()=>{
-            console.debug("Decrypt position %d/%d", encryptedPosition, uploadJob.size);
+            console.debug("Encrypt position %s/%s", encryptedPosition, fileSize);
             if(callback && uploadJob.size) {
-                callback(uploadJob.uploadId, uploadJob.userId, false, encryptedPosition, uploadJob.size);
+                callback(uploadJob.uploadId, uploadJob.userId, false, encryptedPosition, fileSize);
             }
         }, 750);
 
         try {
             let position = 0;
-            let partSize = suggestPartSize(uploadJob.file.size);
+            let partSize = suggestPartSize(fileSize);
 
             // Encrypt file
             let stream = uploadJob.file.stream();
@@ -116,7 +117,6 @@ export class UploadEncryptionWorker {
             let chunksSize = 0;
             let blobs = [] as Blob[];       // List of blobs to include in the current part
             let blobsSize = 0;              // Current part size
-            let partBlobs = [] as Blob[];
             for await (let chunk of stream) {
                 encryptedPosition += chunk.length;
 
@@ -130,7 +130,7 @@ export class UploadEncryptionWorker {
                 if(chunksSize > CONST_CHUNK_SOFT_LIMIT) {
                     // Offload chunks to blob
                     let partBlob = new Blob(chunks);
-                    partBlobs.push(partBlob);
+                    blobs.push(partBlob);
                     blobsSize += partBlob.size;
                     
                     // Reset chunks
@@ -140,8 +140,9 @@ export class UploadEncryptionWorker {
 
                 if(blobsSize > partSize) {
                     // Save blob to IDB
-                    let blob = new Blob(partBlobs);
-                    console.warn("save part position %d of size %d", position, blob.size);
+                    let blob = new Blob(blobs);
+                    console.info("save part position %s of size %s", position, blob.size);
+                    await saveUploadPart(uploadJob.uploadId, position, blob);
 
                     // Update position for next part
                     position += blobsSize;
@@ -154,15 +155,19 @@ export class UploadEncryptionWorker {
 
             let finalize = await cipher.finalize();
             if(finalize) {
-                console.warn('TODO - last part');
                 chunks.push(finalize);
             }
 
             if(chunks.length > 0) {
                 // Save blob to IDB
-                let partBlob = new Blob(chunks);
-                console.warn("save last part position %d of size %d", position, partBlob.size);
+                let blob = new Blob(chunks);
+                console.info("save last part position %s of size %s", position, blob.size);
+                await saveUploadPart(uploadJob.uploadId, position, blob);
             }
+
+            // Save key and other encryption info to IDB
+            console.warn("File encrypted, save cipher info to IDB ", cipher);
+
 
             await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.UPLOADING);
 

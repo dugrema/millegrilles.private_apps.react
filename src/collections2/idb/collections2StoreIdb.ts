@@ -663,6 +663,13 @@ export async function updateUploadJobState(uploadId: number, state: UploadStateE
     // Save
     await store.put(job);
 }
+
+export async function saveUploadPart(uploadId: number, position: number, part: Blob) {
+    const db = await openDB();
+    const store = db.transaction(STORE_UPLOAD_PARTS, 'readwrite').store;
+    await store.put({uploadId, position, content: part});
+}
+
     
 // export async function getNextEncryptJob(userId: string): Promise<UploadJobType | null> {
 //     const db = await openDB();
@@ -695,4 +702,10 @@ export async function cleanup() {
 
     let storeDownloadParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
     await storeDownloadParts.clear();
+
+    let storeUploads = db.transaction(STORE_UPLOADS, 'readwrite').store;
+    await storeUploads.clear();
+
+    let storeUploadParts = db.transaction(STORE_UPLOAD_PARTS, 'readwrite').store;
+    await storeUploadParts.clear();
 }
