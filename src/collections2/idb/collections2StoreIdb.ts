@@ -4,6 +4,7 @@ import { DownloadJobType } from '../../workers/download.worker';
 import { UploadJobType } from '../../workers/upload.worker';
 import { GeneratedSecretKeyResult } from '../../workers/encryption';
 import { Collections2AddFileCommand } from '../../workers/connection.worker';
+import { getMimetypeByExtensionMap } from '../mimetypes';
 
 const DB_NAME = 'collections2';
 const STORE_TUUIDS = 'tuuids';
@@ -639,6 +640,22 @@ export type AddUploadFileOptions = {
 
 export async function addUploadFile(userId: string, cuuid: string, file: File, opts?: AddUploadFileOptions): Promise<number> {
     const db = await openDB();
+
+    // iOS uses character combining. Fix with normalize().
+    let filename = file.name.normalize();
+
+    let mimetype = '';  //file.type;
+    if(!mimetype || mimetype === 'application/octet-stream') {
+        // Try to detect the mimetype by using the file extension.
+        let extension = filename.split('.').pop();
+        if(extension) {
+            let mapExtensions = getMimetypeByExtensionMap();
+            mimetype = mapExtensions[extension];
+        }
+        // Set default when required
+        if(!mimetype) mimetype = 'application/octet-stream';
+    }
+
     let entry = {
         // uploadId: number,   // Auto-incremented uploadId - leave empty.
         userId,
@@ -654,9 +671,9 @@ export async function addUploadFile(userId: string, cuuid: string, file: File, o
         retry: 0,
     
         // Decrypted metadata for reference on screen
-        filename: file.name,
+        filename,
         lastModified: file.lastModified,
-        mimetype: file.type,
+        mimetype,
         cuuid,
         destinationPath: opts?.destinationPath,
         clearSize: file.size,

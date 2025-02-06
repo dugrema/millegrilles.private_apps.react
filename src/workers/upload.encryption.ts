@@ -35,7 +35,6 @@ export class UploadEncryptionWorker {
         this.callback = callback;
         await this.appsEncryptionWorker.initialize(caPem);
         this.intervalTrigger = setInterval(()=>{
-            console.debug("Interval trigger encryption");
             this.triggerJobs().catch(err=>console.error("Error triggering encryption job from interval", err));
         }, 20_000);
     }
@@ -95,8 +94,6 @@ export class UploadEncryptionWorker {
         // if(this.currentJob) throw new Error('Busy');
         if(!uploadJob.file) throw new Error('No file to encrypt');
 
-        console.debug("Encrypting upload job %d", uploadJob.uploadId);
-        
         //TODO put status to encrypting in IDB
         await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.ENCRYPTING);
 
@@ -106,7 +103,6 @@ export class UploadEncryptionWorker {
         let encryptedPosition = 0;
         let fileSize = uploadJob.file.size;
         let interval = setInterval(()=>{
-            console.debug("Encrypt position %s/%s", encryptedPosition, fileSize);
             if(callback && uploadJob.size) {
                 callback(uploadJob.uploadId, uploadJob.userId, false, encryptedPosition, fileSize);
             }
@@ -191,7 +187,6 @@ export class UploadEncryptionWorker {
             }
 
             // Save key and other encryption info to IDB
-            console.warn("File encrypted, save cipher info to IDB ", cipher);
             let encryptionInfo = {
                 cle_id: uploadJob.secret?.cle_id,
                 format: 'mgs4',
@@ -219,6 +214,8 @@ export class UploadEncryptionWorker {
         let uploadJob = await getUploadJob(uploadId) as UploadIdbType;
         if(!uploadJob) throw new Error('Unknown upload Id: ' + uploadId);
         if(!uploadJob.secret) throw new Error('Upload without secret key: ' + uploadId);
+        let mimetype = uploadJob.mimetype;
+        if(!mimetype) throw new Error('Mimetype not provided');
 
         let decryptedMetadata = {
             nom: uploadJob.filename,
@@ -226,7 +223,6 @@ export class UploadEncryptionWorker {
             hachage_original: uploadJob.originalDigest,
             originalSize: uploadJob.clearSize,
         };
-        console.debug("Encrypt metadata: ", decryptedMetadata);
 
         let encryptedMetadata = await this.appsEncryptionWorker.encryptMessageMgs4ToBase64(decryptedMetadata, uploadJob.secret.secret);
         let metadata = {
@@ -236,13 +232,6 @@ export class UploadEncryptionWorker {
             format: encryptedMetadata.format,
         } as TuuidEncryptedMetadata;
         if(encryptedMetadata.compression) metadata.compression = encryptedMetadata.compression;
-
-        let mimetype = uploadJob.mimetype;
-        if(!mimetype) {
-            // TODO - try to fix mimetype with file extension when empty            
-            console.warn("TODO - fix mimetype with file extension");
-            mimetype = 'application/octet-stream';
-        }
 
         let command = {
             fuuid: uploadJob.fuuid,
@@ -254,7 +243,7 @@ export class UploadEncryptionWorker {
             format: uploadJob.decryption?.format,
             nonce: uploadJob.decryption?.nonce,
         } as Collections2AddFileCommand;
-        console.debug("Add file command: ", command);
+
         await saveUploadJobAddCommand(uploadJob.uploadId, command);
     }
 
