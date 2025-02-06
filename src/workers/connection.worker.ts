@@ -297,6 +297,19 @@ export type Collection2CopyFilesCommand = {
     include_deleted?: boolean,
 };
 
+export type Collections2AddFileCommand = {
+    fuuid: string,
+    cuuid: string,
+    tuuid?: string | null,
+    mimetype: string,
+    metadata: TuuidEncryptedMetadata,
+    taille: number,
+    cle_id?: string | null,
+    format?: string | null,
+    nonce?: string | null,
+    verification?: string | null,
+};
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -796,6 +809,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendCommand(
             {tuuids}, 
             DOMAINE_GROSFICHIERS, 'recycleItemsV3'
+        ) as Collections2ConvertVideoResponse;
+    }
+
+    async collection2AddFile(addCommand: Collections2AddFileCommand, keyCommand: messageStruct.MilleGrillesMessage) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand(
+            addCommand, 
+            DOMAINE_GROSFICHIERS, 'nouvelleVersion', {attachments: {"cle": keyCommand}}
         ) as Collections2ConvertVideoResponse;
     }
 

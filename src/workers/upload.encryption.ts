@@ -1,6 +1,7 @@
 import { encryptionMgs4, messageStruct, multiencoding } from 'millegrilles.cryptography';
-import { getUploadJob, saveUploadJobDecryptionInfo, saveUploadPart, updateUploadJobState, UploadIdbType, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
+import { getUploadJob, saveUploadJobAddCommand, saveUploadJobDecryptionInfo, saveUploadPart, updateUploadJobState, UploadIdbType, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
 import { AppsEncryptionWorker } from './encryption';
+import { Collections2AddFileCommand } from './connection.worker';
 
 export type EncryptionWorkerCallbackType = (
     uploadId: number, 
@@ -174,6 +175,7 @@ export class UploadEncryptionWorker {
                 let blob = new Blob(chunks);
                 console.info("save last part position %s of size %s", position, blob.size);
                 await saveUploadPart(uploadJob.uploadId, position, blob);
+                position += blob.size;
             }
 
             // Save key and other encryption info to IDB
@@ -184,10 +186,11 @@ export class UploadEncryptionWorker {
                 nonce: multiencoding.encodeBase64Nopad(cipher.header),
             } as messageStruct.MessageDecryption;
             if(cipher.digest) {
-                encryptionInfo.verification = multiencoding.encodeBase64Nopad(cipher.digest)
+                encryptionInfo.verification = multiencoding.hashEncode('base58btc', 'blake2b-512', cipher.digest);
             }
 
-            await saveUploadJobDecryptionInfo(uploadJob.uploadId, encryptionInfo);
+            await saveUploadJobDecryptionInfo(uploadJob.uploadId, encryptionInfo, position);
+            await this.prepareFileAddMetadata(uploadJob.uploadId);
         } catch(err) {
             await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.ERROR);
             await callback(uploadJob.uploadId, uploadJob.userId, true);
@@ -195,6 +198,47 @@ export class UploadEncryptionWorker {
         } finally {
             clearInterval(interval);
         }
+    }
+
+    async prepareFileAddMetadata(uploadId: number) {
+        let uploadJob = await getUploadJob(uploadId) as UploadIdbType;
+        if(!uploadJob) throw new Error('Unknown upload Id: ' + uploadId);
+        if(!uploadJob.secret) throw new Error('Upload without secret key: ' + uploadId);
+
+        let decryptedMetadata = {
+            nom: uploadJob.filename,
+            date: Math.floor(new Date().getTime()/1000),
+            hachage_original: uploadJob.decryption?.verification
+        };
+        console.debug("Encrypt metadata: ", decryptedMetadata);
+
+        let encryptedMetadata = await this.appsEncryptionWorker.encryptMessageMgs4ToBase64(decryptedMetadata, uploadJob.secret.secret);
+        let metadata = {
+            data_chiffre: encryptedMetadata.ciphertext_base64,
+            cle_id: uploadJob.secret.cle_id,
+            nonce: encryptedMetadata.nonce,
+            format: encryptedMetadata.format,
+        };
+
+        let mimetype = uploadJob.mimetype;
+        if(!mimetype) {
+            // TODO - try to fix mimetype with file extension when empty            
+            console.warn("TODO - fix mimetype with file extension");
+            mimetype = 'application/octet-stream';
+        }
+
+        let command = {
+            fuuid: uploadJob.fuuid,
+            cuuid: uploadJob.cuuid,
+            mimetype, 
+            metadata,
+            taille: uploadJob.size,
+            cle_id: uploadJob.decryption?.cle_id,
+            format: uploadJob.decryption?.format,
+            nonce: uploadJob.decryption?.nonce,
+        } as Collections2AddFileCommand;
+        console.debug("Add file command: ", command);
+        await saveUploadJobAddCommand(uploadJob.uploadId, command);
     }
 
 }
