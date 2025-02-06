@@ -149,7 +149,7 @@ export function downloadFile(filename: string, content: Blob) {
     URL.revokeObjectURL(objectUrl);
 }
 
-export async function generateFileUploads(workers: AppWorkers, userId: string, cuuid: string, files: FileList) {
+export async function generateFileUploads(workers: AppWorkers, userId: string, cuuid: string, files: FileList, breadcrumb?: string) {
     for await (let file of files) {
         // Generate new key using the master key.
         let secret = await workers.encryption.generateSecretKey(['GrosFichiers']);
@@ -165,7 +165,7 @@ export async function generateFileUploads(workers: AppWorkers, userId: string, c
             messageStruct.MessageKind.Command, keyCommand, {domaine: 'MaitreDesCles', action: 'ajouterCleDomaines'});
         console.debug("Key command signed", keyCommandSigned);
 
-        let uploadId = await addUploadFile(userId, cuuid, file, {secret, keyCommand: keyCommandSigned});
+        let uploadId = await addUploadFile(userId, cuuid, file, {secret, keyCommand: keyCommandSigned, destinationPath: breadcrumb});
         await workers.upload.addUpload(uploadId, file);
     }
 }

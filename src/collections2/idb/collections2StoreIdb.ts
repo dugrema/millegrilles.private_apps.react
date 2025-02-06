@@ -632,7 +632,7 @@ export async function removeUserDownloads(userId: string, opts?: {state?: Downlo
 }
 
 export type AddUploadFileOptions = {
-    destinationPath?: string,
+    destinationPath?: string | null,
     secret?: GeneratedSecretKeyResult,
     keyCommand?: messageStruct.MilleGrillesMessage,
 }

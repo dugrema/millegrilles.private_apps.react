@@ -148,6 +148,7 @@ export function ButtonBar(props: ButtonBarProps) {
     let selection = useUserBrowsingStore(state=>state.selection);
     let cuuid = useUserBrowsingStore(state=>state.currentCuuid);
     let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
+    let breadcrumb = useUserBrowsingStore(state=>state.breadcrumb);
     let setModal = useUserBrowsingStore(state=>state.setModal);
     let onModal = useCallback((modal: ModalEnum)=>setModal(modal), [setModal]);
 
@@ -198,11 +199,13 @@ export function ButtonBar(props: ButtonBarProps) {
         if(!cuuid) throw new Error('Root cannot be used to upload files');
         if(!userId) throw new Error("UserId not provided");
         if(!files || files.length === 0) throw new Error('No files provided');
-        generateFileUploads(workers, userId, cuuid, files)
+        let breadcrumbString = breadcrumb?.map(item=>item.nom).join('/');
+
+        generateFileUploads(workers, userId, cuuid, files, breadcrumbString)
             .catch(err=>console.error("Error starting upload", err));
         // workers.upload.addUploads(userId, cuuid, files)
         //     .catch(err=>console.error("Error starting upload", err));
-    }, [workers, ready, userId, cuuid]);
+    }, [workers, ready, userId, cuuid, breadcrumb]);
 
     return (
         <div className='grid grid-cols-4 pt-1'>
