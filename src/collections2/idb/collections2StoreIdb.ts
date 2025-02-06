@@ -707,6 +707,12 @@ export async function updateUploadJobState(uploadId: number, state: UploadStateE
     await store.put(job);
 }
 
+export async function removeUploadParts(uploadId: number) {
+    const db = await openDB();
+    const storeParts = db.transaction(STORE_UPLOAD_PARTS, 'readwrite').store;
+    storeParts.delete(IDBKeyRange.bound([uploadId, 0], [uploadId, Number.MAX_SAFE_INTEGER]));
+}
+
 export async function getUploadPart(uploadId: number, position: number): Promise<UploadIdbParts | null> {
     const db = await openDB();
     const store = db.transaction(STORE_UPLOAD_PARTS, 'readonly').store;

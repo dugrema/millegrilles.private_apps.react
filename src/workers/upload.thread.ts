@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getUploadPart, updateUploadJobState, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
+import { getUploadPart, removeUploadParts, updateUploadJobState, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
 import { UploadJobType } from './upload.worker';
 
 export type UploadWorkerCallbackType = (
@@ -67,9 +67,7 @@ export class UploadThreadWorker {
             // Run the upload
             await this.uploadFile(uploadId, fuuid, uploadUrl, size);
 
-            // Upload completed
-            await updateUploadJobState(uploadId, UploadStateEnum.DONE);
-
+            // Upload complete, state is either VERIFYING or DONE. 
             // Send feedback, triggers the next job
             callback(uploadId, currentJob.userId, true, currentJob.size, currentJob.size);
 
@@ -83,66 +81,6 @@ export class UploadThreadWorker {
             // Free job
             this.currentJob = null;
         }
-
-        // let url = currentJob.url;
-
-        // let positionOuter = 0;
-        // let headerContentRange = null as string | null;
-        // let headers = {} as {[key: string]: string};
-        // try {
-        //     // Check stored download parts to find the resume position (if any)
-        //     let resumePosition = await findDownloadPosition(currentJob.fuuid);
-        //     if(resumePosition) {
-        //         positionOuter = resumePosition;
-        //         // Add header to request file position from server
-        //         headerContentRange = `bytes=${resumePosition}-`
-        //         headers['Range'] = headerContentRange;
-        //     }
-
-        //     // Start downloading
-        //     // console.debug("Getting URL", url);
-        //     let response = await fetch(url, {
-        //         // signal, 
-        //         cache: 'no-store', keepalive: false, credentials: "include", headers,
-        //     });
-        //     if(response.status === 206) {
-        //         // Resuming
-        //         console.debug("Resuming download of fuuid:%s from position", currentJob.fuuid, positionOuter);
-        //     } else if(response.status === 200) {
-        //         if(positionOuter > 0) {
-        //             // No resuming possible
-        //             positionOuter = 0;
-        //             // Clear already downloaded parts
-        //             await removeDownloadParts(currentJob.fuuid);
-        //         }
-        //     } else if(response.status !== 200) {
-        //         throw new Error(`Invalid HTTP response status: ${response.status}`);
-        //     }
-
-        //     let currentJobLocal = currentJob;
-        //     let statusCallback = (position: number, totalSize: number | null) => {
-        //         positionOuter = position;
-        //         if(!totalSize) totalSize = currentJobLocal.size;
-        //         // console.debug("Download position for file %s: %d / %d", currentJobLocal.fuuid, position, totalSize);
-        //         if(callback && totalSize) {
-        //             callback(currentJobLocal.fuuid, currentJobLocal.userId, false, position, totalSize);
-        //         }
-        //     }
-
-        //     // console.debug("Content length: %d", contentLength);
-        //     await streamResponse(currentJob, response, positionOuter, statusCallback);
-
-        //     // Done downloading - mark state for decryption
-        //     await updateDownloadJobState(currentJob.fuuid, currentJob.userId, DownloadStateEnum.ENCRYPTED, {position: positionOuter});
-        //     this.currentJob = null;  // Remove job before callback - allows chaining to next job
-        //     await callback(currentJob.fuuid, currentJob.userId, true, positionOuter, positionOuter);
-        // } catch(err) {
-        //     console.error("Download job error: ", err);
-        //     await updateDownloadJobState(currentJob.fuuid, currentJob.userId, DownloadStateEnum.ERROR);
-        //     await callback(currentJob.fuuid, currentJob.userId, true);
-        // } finally {
-        //     this.currentJob = null;
-        // }
     }
 
     async uploadFile(uploadId: number, fuuid: string, filehostUrl: string, fileSize: number) {
@@ -178,13 +116,70 @@ export class UploadThreadWorker {
             throw new Error('Mismatch in expected file size and uploaded parts');
         }
 
-        // Post to complete file upload
-        console.debug("Post to ", postUrl);
-        await axios({
-            method: 'POST',
-            url: postUrl,
-            withCredentials: true,
-        });
+        // All parts have been completed. 
+        // Mark file as uploaded pending the server-side verification.
+        await updateUploadJobState(uploadId, UploadStateEnum.VERIFYING);
 
+        // Launch a promise to tell the server to finish processing the file.
+        // Wait for a while but then move on to the next upload if it takes too long.
+        let processFilePromise = Promise.resolve().then(async () => {
+            try {
+
+                // Start server-side verification.
+                let response = await axios({
+                    method: 'POST',
+                    url: postUrl,
+                    withCredentials: true,
+                    timeout: 300_000,    // The server will check the entire file. Give 5 minutes then consider failed.
+                });
+
+                if(response.status !== 200) {
+                    throw new Error('Unsupported response status for file uploda POST verification: ' + response.status);
+                }
+
+                console.debug("Marking file upload as done. Cleaning up.")
+                await updateUploadJobState(uploadId, UploadStateEnum.DONE);
+                await removeUploadParts(uploadId);
+
+                return true;
+            } catch(err) {
+                await updateUploadJobState(uploadId, UploadStateEnum.ERROR);
+
+                // let errAxios = err as AxiosError;
+                // if(errAxios.code === 'ECONNABORTED') {
+                //     // Client-side timeout. The server is still checking the file. 
+                //     // Will have to rely on getting the newFuuid event or a "visits" entry in the file.
+                //     console.warn("Timeout POST");
+                // }
+
+                throw err;
+            }
+        }) as Promise<boolean>;
+
+        let timeoutPromise = new Promise(resolve=>{
+            setTimeout(()=>{
+                // console.debug("File POST timeout promise done");
+                resolve(false);
+            }, 15_000);
+        }) as Promise<boolean>;
+
+        // Race the two promises. If the verification finishes up first (result===true), all good.
+        // If the timeout occurs (result===false), we'll just move on. 
+        // The upload will still get marked as completed when the server returns (within the axios timeout). 
+        // If all else fails, the newFuuid events and "visits" file element will indicate that the file was 
+        // successfully uploaded. The flag in IDB remains VERIFYING until then. 
+        // Manual cleanup may be necessary upon failure. This allows retrying the upload.
+        let result = await Promise.race([processFilePromise, timeoutPromise]);
+        console.debug("Race result: ", result);
+        if(!result) {
+            console.debug("Timeout waiting for file response, moving to next upload");
+
+            // Attach an error handler on the dangling download process
+            processFilePromise.catch(err=>console.error("Error finishing file upload: ", err));
+        }
     }
 }
+
+
+// Axios error codes from https://dev.to/mperon/axios-error-handling-like-a-boss-333d
+// ERR_FR_TOO_MANY_REDIRECTS, ERR_BAD_OPTION_VALUE, ERR_BAD_OPTION, ERR_NETWORK, ERR_DEPRECATED, ERR_BAD_RESPONSE, ERR_BAD_REQUEST, ERR_CANCELED, ECONNABORTED, ETIMEDOUT
