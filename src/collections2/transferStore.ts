@@ -76,12 +76,14 @@ interface TransferStoreState {
     downloadJobs: DownloadJobStoreType[] | null,
     uploadProgress: UploadTransferProgress[],
     jobsDirty: boolean,
+    uploadJobsDirty: boolean,
 
     setDownloadTicker: (downloadActivity: TransferActivity, downloadTransferPercent: number | null) => void,
     updateDownloadState: (state: DownloadStateUpdateType) => void,
     setDownloadJobs: (downloadJobs: DownloadJobStoreType[] | null) => void,
     updateUploadState: (state: UploadStateUpdateType) => void,
     setJobsDirty: (jobsDirty: boolean) => void,
+    setUploadJobsDirty: (uploadJobsDirty: boolean) => void,
 }
 
 const useTransferStore = create<TransferStoreState>()(
@@ -93,6 +95,7 @@ const useTransferStore = create<TransferStoreState>()(
             downloadJobs: null,
             uploadProgress: [],
             jobsDirty: true,
+            uploadJobsDirty: true,
 
             setDownloadTicker: (downloadActivity, downloadTransferPercent) => set(()=>({downloadActivity, downloadTransferPercent})), 
             updateDownloadState: (updatedState) => set((state)=>{
@@ -121,13 +124,14 @@ const useTransferStore = create<TransferStoreState>()(
                     values.uploadProgress = updatedState.activeTransfers;
                 }
                 if(updatedState.listChanged) {
-                    values.jobsDirty = true;
+                    values.uploadJobsDirty = true;
                 }
 
                 return values;
             }),
 
             setJobsDirty: (jobsDirty) => set(()=>({jobsDirty})),
+            setUploadJobsDirty: (uploadJobsDirty) => set(()=>({uploadJobsDirty})),
 
             // setConversionJobs: (jobs) => set((state)=>{
             //     if(!jobs) {

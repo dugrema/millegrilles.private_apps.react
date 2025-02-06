@@ -191,6 +191,9 @@ export class UploadEncryptionWorker {
 
             await saveUploadJobDecryptionInfo(uploadJob.uploadId, encryptionInfo, position);
             await this.prepareFileAddMetadata(uploadJob.uploadId);
+
+            // Trigger next step
+            await callback(uploadJob.uploadId, uploadJob.userId, true, position, position);
         } catch(err) {
             await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.ERROR);
             await callback(uploadJob.uploadId, uploadJob.userId, true);

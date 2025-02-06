@@ -51,6 +51,7 @@
         {"domain": "GrosFichiers", "action": "supprimerContacts"},
         {"domain": "GrosFichiers", "action": "partagerCollections"},
         {"domain": "GrosFichiers", "action": "supprimerPartageUsager"},
+        {"domain": "GrosFichiers", "action": "nouvelleVersion"},
         {"domain": "GrosFichiers", "action": "nouvelleCollection"},
         {"domain": "GrosFichiers", "action": "decrireFichier"},
         {"domain": "GrosFichiers", "action": "decrireCollection"},

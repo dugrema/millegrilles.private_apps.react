@@ -20,7 +20,7 @@ export class AppsUploadWorker {
     uploadStatus: UploadTransferProgress | null
     encryptionStatus: UploadTransferProgress | null
     listChanged: boolean
-    fuuidsReady: string[] | null    // List of files for which the download just completed
+    uploadsSendCommand: number[] | null    // List of uploads that need the connectionWorker to send the add file command.
 
     constructor() {
         this.currentUserId = null;
@@ -43,7 +43,7 @@ export class AppsUploadWorker {
         this.uploadStatus = null;
         this.encryptionStatus = null;
         this.listChanged = true;
-        this.fuuidsReady = null;
+        this.uploadsSendCommand = null;
     }
 
     async setup(stateCallback: UploadStateCallback, caPem: string) {
@@ -107,17 +107,18 @@ export class AppsUploadWorker {
     }
 
     async encryptionCallback(uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null) {
-        console.debug("Decryption worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
+        console.debug("Encryption worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
             this.encryptionStatus = null;
             this.listChanged = true;
             
-            // Add fuuid to list of new files that are ready
-            // if(this.fuuidsReady) this.fuuidsReady.push(fuuid);
-            // else this.fuuidsReady = [fuuid];
+            // Add uploadId to list of AddFile command to send
+            if(this.uploadsSendCommand) this.uploadsSendCommand.push(uploadId);
+            else this.uploadsSendCommand = [uploadId];
             
             await this.triggerJobs();
+            await this.triggerListChanged();
         } else {
             throw new Error('todo encryptionCallback');
             // let decryption = {workerType: WorkerType.DECRYPTION, fuuid, state: DownloadStateEnum.ENCRYPTED, position, totalSize: size} as TransferProgress;
@@ -348,15 +349,14 @@ export class AppsUploadWorker {
     /** Allows any process to use the shared worker to trigger a list reload. */
     async triggerListChanged() {
         this.listChanged = true;
-        throw new Error('todo triggerListChanged');
-        // await this.produceState();
+        await this.produceState();
     }
 
-    /** Consume the list of fuuids that are ready to be automatically uploaded. */
-    async getFuuidsReady() {
-        let fuuidsReady = this.fuuidsReady;
-        this.fuuidsReady = null;
-        return fuuidsReady;
+    /** Consume the list of uploadIds that need the AddFile command from the connection worker. */
+    async getUploadsSendCommand() {
+        let uploadsSendCommand = this.uploadsSendCommand;
+        this.uploadsSendCommand = null;
+        return uploadsSendCommand;
     }
 
 }
