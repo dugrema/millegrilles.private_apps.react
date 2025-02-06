@@ -6,7 +6,7 @@ import useUserBrowsingStore from "./userBrowsingStore";
 import { useEffect } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
-import { getDownloadJob, getDownloadJobs, getUploadJob, openDB } from "./idb/collections2StoreIdb";
+import { getDownloadJob, getDownloadJobs, getUploadJob, openDB, updateUploadJobState, UploadStateEnum } from "./idb/collections2StoreIdb";
 import { messageStruct } from "millegrilles.cryptography";
 import useTransferStore, { DownloadJobStoreType } from "./transferStore";
 import { downloadFile } from "./transferUtils";
@@ -239,7 +239,7 @@ function SyncUploads() {
 
     useEffect(()=>{
         if(!workers || !ready || !userId || !uploadJobsDirty) return;  // Nothing to do
-        let connection = workers.connection;
+        let {connection, upload} = workers;
         workers.upload.getUploadsSendCommand()
             .then( async uploadIds => {
                 console.debug("Uploads send command: %O", uploadIds);
@@ -250,7 +250,9 @@ function SyncUploads() {
                     if(job) {
                         console.debug("Send command for upload job", job);
                         if(job.addCommand && job.keyCommand) {
+                            // Send Add File command and set upload to ready.
                             await connection.collection2AddFile(job.addCommand, job.keyCommand);
+                            await updateUploadJobState(job.uploadId, UploadStateEnum.READY);
                         } else {
                             console.warn("Error on jobId:%s, no add/key commands present", job.uploadId);
                         }
@@ -258,6 +260,9 @@ function SyncUploads() {
                         console.warn("No job found to download fuuid:%s", uploadId);
                     }
                 }
+
+                // Make sure the worker picks up the new jobs from IDB
+                await upload.triggerJobs();
             })
             .catch(err=>console.error("Error getting fuuids to download", err));
     }, [workers, ready, uploadJobsDirty, userId]);
