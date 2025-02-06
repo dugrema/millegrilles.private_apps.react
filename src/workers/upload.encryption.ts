@@ -163,7 +163,7 @@ export class UploadEncryptionWorker {
                     await saveUploadPart(uploadJob.uploadId, position, blob);
 
                     // Update position for next part
-                    position += blobsSize;
+                    position += blob.size;
 
                     // Reset blobs
                     blobs = [];
@@ -178,8 +178,13 @@ export class UploadEncryptionWorker {
             }
 
             if(chunks.length > 0) {
+                // Add chunks to remaining blobs
+                blobs.push(new Blob(chunks));
+            }
+
+            if(blobs.length > 0) {
                 // Save blob to IDB
-                let blob = new Blob(chunks);
+                let blob = new Blob(blobs);
                 console.info("save last part position %s of size %s", position, blob.size);
                 await saveUploadPart(uploadJob.uploadId, position, blob);
                 position += blob.size;
@@ -264,10 +269,13 @@ function suggestPartSize(fileSize: number | null) {
         return CONST_SIZE_1MB;
     }
 
-    if(fileSize < 100 * CONST_SIZE_1MB) {       // 100MB
+    if(fileSize < 50 * CONST_SIZE_1MB) {        // 50MB
         return CONST_SIZE_1MB;
+    } else if(fileSize < CONST_SIZE_1GB){       // 1GB
+        // Recommend parts of 4% of the file size.
+        return Math.floor(fileSize / 25);
     } else if(fileSize < 10 * CONST_SIZE_1GB){  // 10GB
-        // Recommend parts of 1% of the file size. Gives good granularity for resuming.
+        // Recommend parts of 1% of the file size.
         return Math.floor(fileSize / 100);
     } else {                                    // >10GB
         // For anything over 10 GB, clamp to 100MB per part
