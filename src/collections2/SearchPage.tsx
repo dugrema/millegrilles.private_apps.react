@@ -67,7 +67,7 @@ function SearchPage() {
         e.preventDefault();
         e.stopPropagation();
         searchHandler();
-    }, [searchHandler, setSearchResultsPosition]);
+    }, [searchHandler]);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -309,18 +309,22 @@ function DisplayMore(props: {sharedCuuids: {[tuuid: string]: Collections2SharedC
 
     let [nextIndex, setNextIndex] = useState(null as number | null);
 
-    let [itemsLoaded, itemsAvailable] = useMemo(()=>{
-        if(!searchListing || !searchResults) return [0, 0];
+    // let [itemsLoaded, itemsAvailable] = useMemo(()=>{
+    let itemsAvailable = useMemo(()=>{
+        // if(!searchListing || !searchResults) return [0, 0];
+        if(!searchListing || !searchResults) return 0;
         let docs = searchResults.searchResults?.search_results?.docs;
-        if(!docs) return [0, 0];
-        return [Object.keys(searchListing).length, docs.length];
+        // if(!docs) return [0, 0];
+        if(!docs) return 0;
+        // return [Object.keys(searchListing).length, docs.length];
+        return docs.length
     }, [searchListing, searchResults]);
 
     let onClickHandler = useCallback(async () => {
         // Load all remaining items
         let nextIndex = Math.min(searchResultsPosition + 40, itemsAvailable);
         setNextIndex(nextIndex);
-    }, [itemsLoaded, itemsAvailable, setNextIndex, searchResultsPosition]);
+    }, [itemsAvailable, setNextIndex, searchResultsPosition]);
 
     if(searchResultsPosition === itemsAvailable || !sharedCuuids) return <></>;  // Nothing to do
 

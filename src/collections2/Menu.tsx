@@ -236,7 +236,7 @@ function TransferTickers() {
         
         if(typeof(downloadTransferPercent) === 'number') downloadLabel = <>{`${downloadTransferPercent}%`}</>;
 
-        return [downloadActivity, downloadLabel];
+        return [downloadClassName, downloadLabel];
     }, [downloadActivity, downloadTransferPercent]);
 
     return (

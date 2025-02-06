@@ -238,8 +238,8 @@ export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
 
 function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
     let tuuidStore = null;
-    let downloadStore = null, downloadPartsStore = null;
-    let uploadStore = null, uploadPartsStore = null;
+    let downloadStore = null;
+    let uploadStore = null;
     switch(oldVersion) {
         // @ts-ignore Fallthrough
         case 0:
@@ -255,7 +255,7 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
         // @ts-ignore Fallthrough
         case 2:
             downloadStore = db.createObjectStore(STORE_DOWNLOADS, {keyPath: ['fuuid', 'userId']});
-            downloadPartsStore = db.createObjectStore(STORE_DOWNLOAD_PARTS, {keyPath: ['fuuid', 'position']});
+            db.createObjectStore(STORE_DOWNLOAD_PARTS, {keyPath: ['fuuid', 'position']});
 
             // Create indices
             downloadStore.createIndex('tuuid', ['tuuid', 'userId'], {unique: false, multiEntry: false});
@@ -264,7 +264,7 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
         // @ts-ignore Fallthrough
         case 3: 
             uploadStore = db.createObjectStore(STORE_UPLOADS, {keyPath: 'uploadId', autoIncrement: true});
-            uploadPartsStore = db.createObjectStore(STORE_UPLOAD_PARTS, {keyPath: ['uploadId', 'position']});
+            db.createObjectStore(STORE_UPLOAD_PARTS, {keyPath: ['uploadId', 'position']});
 
             // Create indices
             uploadStore.createIndex('state', ['userId', 'state', 'processDate'], {unique: false, multiEntry: false});

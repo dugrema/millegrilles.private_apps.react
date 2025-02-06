@@ -10,15 +10,18 @@ import RecycleIcon from '../resources/icons/undo-svgrepo-com.svg';
 import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
 import ActionButton from "../resources/ActionButton";
 import { useNavigate } from "react-router-dom";
-import { ModalBrowseAction, Modals } from "./Modals";
+import { Modals } from "./Modals";
 
 function BrowsingDeleted() {
 
     let navigate = useNavigate();
 
-    let [modal, setModal] = useState(null as ModalEnum | null);
-    let onModal = useCallback((modal: ModalEnum)=>setModal(modal), [setModal]);
-    let closeModal = useCallback(()=>setModal(null), [setModal]);
+    // let [modal, setModal] = useState(null as ModalEnum | null);
+    let onModal = useCallback((modal: ModalEnum)=>{
+        throw new Error('todo onModal()')
+        // setModal(modal)
+    }, []);
+    // let closeModal = useCallback(()=>setModal(null), [setModal]);
 
     let [breadcrumbTuuids, setBreadcrumbTuuids] = useState(null as string[] | null);
     let [tuuid, rootTuuid] = useMemo(()=>{

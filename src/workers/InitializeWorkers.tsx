@@ -126,6 +126,7 @@ function InitializeWorkers() {
             setUsername,
             connectionCallback,
             downloadStateUpdateCallback,
+            uploadStateUpdateCallback,
     ]);
 
     if (workerLoadingPromise && !workersReady) throw workerLoadingPromise;

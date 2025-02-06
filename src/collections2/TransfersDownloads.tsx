@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import ActionButton from "../resources/ActionButton";
 import useTransferStore, { DownloadJobStoreType, WorkerType } from "./transferStore";
@@ -23,7 +23,7 @@ function TransfersDownloads() {
 
     let completedTransfersPresent = true;
 
-    let [allPaused, setAllPaused] = useState(false);
+    // let [allPaused, setAllPaused] = useState(false);
 
     let removeCompletedHandler = useCallback(async ()=>{
         if(!workers || !ready) throw new Error('workers not initialized');
@@ -168,7 +168,7 @@ function OngoingTransfers() {
         return jobs.map(item=>(
             <JobRow key={item.fuuid} value={item} onRemove={removeHandler} onPause={pauseHandler} onResume={resumeHandler} />
         ));
-    }, [downloadJobs]);
+    }, [downloadJobs, pauseHandler, removeHandler, resumeHandler]);
 
     if(mappedTransfers.length === 0) return <></>;
 
@@ -219,7 +219,7 @@ function CompletedTransfers() {
         return completedJobs.map(item=>(
             <JobRow key={item.fuuid} value={item} onDownload={downloadHandler} onRemove={removeHandler} />
         ));
-    }, [downloadJobs]);
+    }, [downloadJobs, downloadHandler, removeHandler]);
 
     if(mappedTransfers.length === 0) return <></>;
 

@@ -1,10 +1,9 @@
 import { proxy, Remote, wrap } from "comlink";
-import { addUploadFile, getNextUploadReadyJob, UploadIdbType } from "../collections2/idb/collections2StoreIdb";
+import { getNextUploadReadyJob, UploadIdbType } from "../collections2/idb/collections2StoreIdb";
 import { UploadStateUpdateType, UploadTransferProgress } from "../collections2/transferStore";
 import { FilehostDirType } from "./directory.worker";
 import { UploadThreadWorker, UploadWorkerCallbackType } from "./upload.thread";
 import { EncryptionWorkerCallbackType, UploadEncryptionWorker } from "./upload.encryption";
-import { messageStruct } from "millegrilles.cryptography";
 
 export type UploadStateCallback = (state: UploadStateUpdateType)=>Promise<void>;
 
@@ -161,21 +160,7 @@ export class AppsUploadWorker {
     async triggerJobs() {
         if(!this.currentUserId) return;
 
-        // Encrypt
-        // if(this.encryptionWorker) {
-        //     if((await this.encryptionWorker.isBusy()) === false) {
-        //         let job = await getNextEncryptJob(this.currentUserId);
-        //         if(job) {
-        //             console.debug("Trigger job encryptionWorker next", job);
-        //             this.encryptionWorker.encryptContent(job)
-        //                 .catch(err=>console.error("Error encrypting file", err));
-        //         }
-        //     } else {
-        //         console.info("Encryption worker busy");
-        //     }
-        // } else {
-        //     console.warn("Encryption worker not wired");
-        // }
+        // Note: encryption jobs cannot be recovered - the original content blob does not get saved.
 
         let filehost = this.filehost;
         if(!filehost) {
@@ -204,46 +189,6 @@ export class AppsUploadWorker {
             console.warn("Upload worker not wired");
         }
 
-        // // Downloads
-        // if(this.downloadWorker) {
-        //     console.debug("Trigger job downloadWorker check");
-        //     if(await this.downloadWorker.isBusy() === false) {
-        //         let job = await getNextDownloadJob(this.currentUserId);
-        //         console.debug("Trigger job downloadWorker next", job);
-        //         if(!job) {
-        //             // Check if we can resume a download in Error state
-        //             job = await restartNextJobInError(this.currentUserId);
-        //         }
-        //         if(job) {
-        //             // Generate download url
-        //             let url = filehostUrl;
-        //             if(!url.endsWith('/')) url += '/';
-        //             url += 'files/' + job.fuuid;
-                    
-        //             let downloadJob = {...job, url};
-        //             console.debug("Add download job", downloadJob);
-        //             await this.downloadWorker.addJob(downloadJob);
-        //         }
-        //     }
-        // } else {
-        //     console.warn("Download worker not wired");
-        // }
-
-        // // Decryption
-        // if(this.decryptionWorker) {
-        //     if(await this.decryptionWorker.isBusy() === false) {
-        //         let job = await getNextDecryptionJob(this.currentUserId);
-        //         if(job) {
-        //             await this.decryptionWorker.decryptContent(job);
-        //         }
-        //     }
-        // } else {
-        //     console.warn("Download decryption worker not wired");
-        // }
-
-        // // Uploads
-
-
         // Update state
         await this.produceState();
     }
@@ -271,28 +216,6 @@ export class AppsUploadWorker {
         // Start processing all jobs
         await this.triggerJobs();
     }
-
-    // async addUploadFromFile(tuuid: string, userId: string): Promise<Blob | null> {
-    //     if(!this.uploadWorker || !this.encryptionWorker) throw new Error('Dedicated workers not initialized');
-        
-    //     let entry = await createUploadEntryFromFile(tuuid, userId);
-    //     console.debug("New upload entry", entry);
-
-    //     let content = await getUploadContent(entry.fuuid, userId);
-    //     console.debug("Existing upload content", content);
-    //     if(content) {
-    //         // Upload already completed, return the file
-    //         return content;
-    //     }
-
-    //     // Add to IDB
-    //     await addUpload(entry);
-
-    //     this.listChanged = true;
-    //     await this.triggerJobs();
-
-    //     return null;
-    // }
 
     async cancelUpload(fuuid: string, userId: string) {
         throw new Error('todo cancelUpload');

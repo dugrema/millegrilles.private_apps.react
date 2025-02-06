@@ -1,4 +1,4 @@
-import { keymaster, messageStruct, multiencoding, x25519 } from "millegrilles.cryptography";
+import { messageStruct, multiencoding } from "millegrilles.cryptography";
 import { addUploadFile, DownloadIdbType, DownloadStateEnum, FileVideoData, loadTuuid } from "./idb/collections2StoreIdb";
 import { AppWorkers } from "../workers/workers";
 

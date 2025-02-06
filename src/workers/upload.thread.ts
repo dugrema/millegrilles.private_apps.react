@@ -188,25 +188,3 @@ export class UploadThreadWorker {
 
     }
 }
-
-const CONST_SIZE_1MB = 1024 * 1024;
-const CONST_SIZE_1GB = 1024 * 1024 * 1024;
-// Soft limits for chunks and blobs (will get exceeded).
-const CHUNK_SOFT_LIMIT = 1024 * 256;            // Soft limit for chunks in memory
-
-function suggestPartSize(fileSize: number | null) {
-    if(!fileSize) {
-        // Unknown file size. Default to 1MB parts.
-        return CONST_SIZE_1MB;
-    }
-
-    if(fileSize < 100 * CONST_SIZE_1MB) {       // 100MB
-        return CONST_SIZE_1MB;
-    } else if(fileSize < 10 * CONST_SIZE_1GB){  // 10GB
-        // Recommend parts of 1% of the file size. Gives good granularity for resuming.
-        return Math.floor(fileSize / 100);
-    } else {                                    // >10GB
-        // For anything over 10 GB, clamp to 100MB per part
-        return 100 * CONST_SIZE_1MB;
-    }
-}

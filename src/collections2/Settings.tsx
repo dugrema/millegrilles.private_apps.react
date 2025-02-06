@@ -73,7 +73,7 @@ function Cleanup() {
 
     let cleanupHandler = useCallback(async ()=>{
         await cleanup();
-    }, [setStorageUsage]);
+    }, []);
 
     useEffect(()=>{
         loadEstimate(setStorageUsage).catch(err=>console.error("Error loading storage usage", err));
