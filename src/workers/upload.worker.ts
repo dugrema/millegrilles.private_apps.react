@@ -20,6 +20,7 @@ export class AppsUploadWorker {
     encryptionStatus: UploadTransferProgress | null
     listChanged: boolean
     uploadsSendCommand: number[] | null    // List of uploads that need the connectionWorker to send the add file command.
+    pauseUploads: boolean
 
     constructor() {
         this.currentUserId = null;
@@ -43,6 +44,7 @@ export class AppsUploadWorker {
         this.encryptionStatus = null;
         this.listChanged = true;
         this.uploadsSendCommand = null;
+        this.pauseUploads = false;
     }
 
     async setup(stateCallback: UploadStateCallback, caPem: string) {
@@ -183,14 +185,16 @@ export class AppsUploadWorker {
 
         // Upload
         if(this.uploadWorker) {
-            if((await this.uploadWorker.isBusy()) === false) {
-                let job = await getNextUploadReadyJob(this.currentUserId);
-                if(job) {
-                    if(!job.uploadUrl) {
-                        // Set the current filehost as upload url
-                        job.uploadUrl = filehostUrl;
+            if(!this.pauseUploads) {
+                if((await this.uploadWorker.isBusy()) === false) {
+                    let job = await getNextUploadReadyJob(this.currentUserId);
+                    if(job) {
+                        if(!job.uploadUrl) {
+                            // Set the current filehost as upload url
+                            job.uploadUrl = filehostUrl;
+                        }
+                        await this.uploadWorker.addJob(job);
                     }
-                    await this.uploadWorker.addJob(job);
                 }
             }
         } else {
@@ -220,7 +224,7 @@ export class AppsUploadWorker {
     }
 
     async pauseUpload(uploadId: number) {
-        // Cancel current work on the upload. Note: encryption cannot be paused.
+        // Pause current work on the upload.
         await this.uploadWorker?.cancelJobIf(uploadId, {pause: true});
         // Mark upload as paused
         if(this.currentUserId) {
@@ -228,8 +232,23 @@ export class AppsUploadWorker {
         }
         // Find next job
         await this.triggerJobs();
+
         // Update screen
         await this.triggerListChanged();
+    }
+
+    async isPaused() {
+        return this.pauseUploads;
+    }
+
+    async pauseUploading() {
+        this.pauseUploads = true;
+        await this.uploadWorker?.pauseJob();
+    }
+
+    async resumeUploading() {
+        this.pauseUploads = false;
+        await this.triggerJobs();
     }
 
     async resumeUpload(uploadId: number) {

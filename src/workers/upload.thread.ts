@@ -29,6 +29,16 @@ export class UploadThreadWorker {
         this.callback = callback;
     }
 
+    async pauseJob(): Promise<boolean> {
+        if(this.currentJob) {
+            await updateUploadJobState(this.currentJob.uploadId, UploadStateEnum.PAUSED);
+            this.pauseUpload = true;
+            this.abortController?.abort();
+            return true;
+        }
+        return false;
+    }
+
     async cancelJobIf(uploadId: number, opts?: {pause?: boolean}): Promise<boolean> {
         if(this.currentJob?.uploadId === uploadId) {
             if(opts?.pause) {

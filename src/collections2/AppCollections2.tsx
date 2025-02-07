@@ -270,5 +270,21 @@ function SyncUploads() {
             .catch(err=>console.error("Error getting fuuids to download", err));
     }, [workers, ready, uploadJobsDirty, userId]);
 
+    // Pause or resume downloads
+    useEffect(()=>{
+        if(!workers || !ready || !userId) return;
+
+        let currentlyPaused = localStorage.getItem(`pauseUploading_${userId}`) === 'true';
+        console.debug("Currently paused? ", currentlyPaused);
+
+        if(currentlyPaused) {
+            // Stop upload worker
+            workers.upload.pauseUploading();
+        } else {
+            // Resume uploading with worker
+            workers.upload.resumeUploading();
+        }
+    }, [workers, ready, userId]);    
+
     return <></>;
 }

@@ -3,7 +3,7 @@ import ActionButton from "../resources/ActionButton";
 import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore from "./userBrowsingStore";
-import { MouseEvent, useCallback, useMemo } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { removeUserUploads, UploadStateEnum } from "./idb/collections2StoreIdb";
 import ProgressBar from "./ProgressBar";
 import useTransferStore, { UploadJobStoreType, UploadWorkerType } from "./transferStore";
@@ -21,7 +21,7 @@ function TransfersUploads() {
 
     let completedTransfersPresent = true;
 
-    // let [allPaused, setAllPaused] = useState(false);
+    let [allPaused, setAllPaused] = useState(false);
 
     let removeCompletedHandler = useCallback(async ()=>{
         if(!workers || !ready) throw new Error('workers not initialized');
@@ -31,11 +31,31 @@ function TransfersUploads() {
         await workers.upload.triggerListChanged();
     }, [workers, ready, userId]);
 
-    let pauseAllDownloads = useCallback(async ()=>{
+    let pauseUploadingHandler = useCallback(async ()=>{
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!userId) throw new Error('User Id not provided');
-        throw new Error('Todo');
-    }, [workers, ready, userId]);
+        
+        let currentlyPaused = localStorage.getItem(`pauseUploading_${userId}`) === 'true';
+        let pauseStatus = !currentlyPaused;  // Toggle
+        setAllPaused(pauseStatus);
+        localStorage.setItem(`pauseUploading_${userId}`, pauseStatus?'true':'false');
+
+        if(pauseStatus) {
+            // Stop upload worker
+            await workers.upload.pauseUploading();
+        } else {
+            // Resume uploading with worker
+            await workers.upload.resumeUploading();
+        }
+
+    }, [workers, ready, userId, setAllPaused]);
+
+    useEffect(()=>{
+        if(!workers || !ready || !userId) return;
+        let currentlyPaused = localStorage.getItem(`pauseUploading_${userId}`) === 'true';
+        console.debug("Currently paused: ", currentlyPaused);
+        setAllPaused(currentlyPaused);
+    }, [workers, ready, setAllPaused, userId]);
 
     return (
         <>
@@ -46,8 +66,8 @@ function TransfersUploads() {
                     <ActionButton onClick={removeCompletedHandler} mainButton={true} disabled={!completedTransfersPresent} revertSuccessTimeout={3}>
                         Remove completed
                     </ActionButton>
-                    <ActionButton onClick={pauseAllDownloads} revertSuccessTimeout={3}>
-                        Pause all
+                    <ActionButton onClick={pauseUploadingHandler} revertSuccessTimeout={3}>
+                        {allPaused?<>Resume uploading</>:<>Pause uploading</>}
                     </ActionButton>
                     <Link to={'/apps/collections2/transfers'}
                         className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
