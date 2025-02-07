@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
-import { ChangeEvent, MouseEvent, useCallback, useMemo, useRef } from "react";
+import { ChangeEvent, DragEvent, MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import ActionButton from "../resources/ActionButton";
 
@@ -193,6 +193,42 @@ export function ButtonBar(props: ButtonBarProps) {
     let cutHandler = useCallback(()=>onModal(ModalEnum.Cut), [onModal]);
     let shareHandler = useCallback(()=>onModal(ModalEnum.Share), [onModal]);
 
+    let [dragOverFileButton, setDragOverFileButton] = useState(false);
+
+    let cssDragFileButton = useMemo(()=>{
+        if(dragOverFileButton) return ' bg-violet-500';
+        return 'bg-slate-700';
+    }, [dragOverFileButton]);
+
+    // Drag and drop files on the Add File button
+    let fileDragEnterHandler = useCallback((e: DragEvent<HTMLButtonElement>)=>{
+        e.preventDefault();
+        setDragOverFileButton(true);
+    }, [setDragOverFileButton]);
+    let fileDragLeaveHandler = useCallback((e: DragEvent<HTMLButtonElement>)=>{
+        e.preventDefault();
+        setDragOverFileButton(false);
+    }, [setDragOverFileButton]);
+    let fileDragOverHandler = useCallback((e: DragEvent<HTMLButtonElement>)=>{
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        setDragOverFileButton(true);
+    }, [setDragOverFileButton]);
+    let fileDropHandler = useCallback((e: DragEvent<HTMLButtonElement>)=>{
+        e.preventDefault();
+        setDragOverFileButton(false);
+
+        let files = e.dataTransfer.files;
+        if(!workers || !ready) throw new Error('Workers not initialized');
+        if(!cuuid) throw new Error('Root cannot be used to upload files');
+        if(!userId) throw new Error("UserId not provided");
+        if(!files || files.length === 0) throw new Error('No files provided');
+        let breadcrumbString = breadcrumb?.map(item=>item.nom).join('/');
+
+        generateFileUploads(workers, userId, cuuid, files, breadcrumbString)
+            .catch(err=>console.error("Error starting upload", err));
+    }, [workers, ready, cuuid, userId, breadcrumb, setDragOverFileButton]);
+
     let fileUploadHandler = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
         let files = e.currentTarget.files;
         if(!workers || !ready) throw new Error('Workers not initialized');
@@ -203,8 +239,6 @@ export function ButtonBar(props: ButtonBarProps) {
 
         generateFileUploads(workers, userId, cuuid, files, breadcrumbString)
             .catch(err=>console.error("Error starting upload", err));
-        // workers.upload.addUploads(userId, cuuid, files)
-        //     .catch(err=>console.error("Error starting upload", err));
     }, [workers, ready, userId, cuuid, breadcrumb]);
 
     return (
@@ -233,7 +267,8 @@ export function ButtonBar(props: ButtonBarProps) {
                 :
                     <>
                         <button onClick={addFileHandler} disabled={!cuuid}
-                            className={'varbtn ml-2 px-0.5 py-0.5 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'}>
+                            onDrop={fileDropHandler} onDragEnter={fileDragEnterHandler} onDragLeave={fileDragLeaveHandler} onDragOver={fileDragOverHandler}
+                            className={`varbtn ml-2 px-0.5 py-0.5 ${cssDragFileButton} hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900`}>
                                 <img src={FileAddIcon} alt='Add files' title='Add files' className='w-10 inline-block' />
                         </button>
 

@@ -150,6 +150,13 @@ export function downloadFile(filename: string, content: Blob) {
 }
 
 export async function generateFileUploads(workers: AppWorkers, userId: string, cuuid: string, files: FileList, breadcrumb?: string) {
+    // Validate that no selected file is a directory
+    for await (let file of files) {
+        if(file.type === '' && file.size === 0) {
+            throw new Error('Directories cannot be uploaded');
+        }
+    }
+
     for await (let file of files) {
         // Generate new key using the master key.
         let secret = await workers.encryption.generateSecretKey(['GrosFichiers']);
