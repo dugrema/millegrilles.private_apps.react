@@ -255,6 +255,7 @@ function SyncUploads() {
                             // Send Add File command and set upload to ready.
                             await connection.collection2AddFile(job.addCommand, job.keyCommand);
                             await updateUploadJobState(job.uploadId, UploadStateEnum.READY);
+                            await upload.triggerListChanged();
                         } else {
                             console.warn("Error on jobId:%s, no add/key commands present", job.uploadId);
                         }

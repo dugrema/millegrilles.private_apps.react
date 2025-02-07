@@ -1,6 +1,7 @@
-import {encryptionMgs4} from 'millegrilles.cryptography';
-
 import { keymaster } from "millegrilles.cryptography";
+
+/** DEBUG - Used for throttling the workers */
+export const THROTTLE_UPLOAD = 0;
 
 export type EncryptionResult = {
     format: string, 

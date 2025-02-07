@@ -1,6 +1,7 @@
 import axios, { AxiosProgressEvent } from 'axios';
 import { getUploadPart, removeUploadParts, updateUploadJobState, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
 import { UploadJobType } from './upload.worker';
+import { THROTTLE_UPLOAD } from './encryptionUtils';
 
 export type UploadWorkerCallbackType = (
     uploadId: number, 
@@ -116,7 +117,7 @@ export class UploadThreadWorker {
             let partSize = part.content.size;
 
             let putUrl = `${postUrl}/${position}`;
-            // await new Promise(resolve=>(setTimeout(resolve, 500)));  // Throttle
+            if(THROTTLE_UPLOAD) await new Promise(resolve=>(setTimeout(resolve, THROTTLE_UPLOAD)));  // Throttle
             await axios({
                 method: 'PUT', 
                 url: putUrl,

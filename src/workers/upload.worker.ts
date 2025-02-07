@@ -206,6 +206,7 @@ export class AppsUploadWorker {
         this.encryptionWorker.addJob(uploadId, file);
         // Start processing all jobs
         await this.triggerJobs();
+        await this.triggerListChanged();
     }
 
     async cancelUpload(uploadId: number) {

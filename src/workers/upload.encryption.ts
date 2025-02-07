@@ -2,6 +2,7 @@ import { digest, encryptionMgs4, messageStruct, multiencoding } from 'millegrill
 import { getUploadJob, saveUploadJobAddCommand, saveUploadJobDecryptionInfo, saveUploadPart, TuuidEncryptedMetadata, updateUploadJobState, UploadIdbType, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
 import { AppsEncryptionWorker } from './encryption';
 import { Collections2AddFileCommand } from './connection.worker';
+import { THROTTLE_UPLOAD } from './encryptionUtils';
 
 export type EncryptionWorkerCallbackType = (
     uploadId: number, 
@@ -175,7 +176,7 @@ export class UploadEncryptionWorker {
                     console.info("save part position %s of size %s", position, blob.size);
                     await saveUploadPart(uploadJob.uploadId, position, blob);
 
-                    // await new Promise(resolve=>(setTimeout(resolve, 500)));  // Throttle
+                    if(THROTTLE_UPLOAD) await new Promise(resolve=>(setTimeout(resolve, THROTTLE_UPLOAD)));  // Throttle
                     
                     // Update position for next part
                     position += blob.size;
