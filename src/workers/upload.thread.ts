@@ -1,4 +1,4 @@
-import axios, { AxiosProgressEvent } from 'axios';
+import axios, { AxiosError, AxiosProgressEvent } from 'axios';
 import { getUploadPart, removeUploadParts, updateUploadJobState, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
 import { UploadJobType } from './upload.worker';
 import { THROTTLE_UPLOAD } from './encryptionUtils';
@@ -118,17 +118,27 @@ export class UploadThreadWorker {
 
             let putUrl = `${postUrl}/${position}`;
             if(THROTTLE_UPLOAD) await new Promise(resolve=>(setTimeout(resolve, THROTTLE_UPLOAD)));  // Throttle
-            await axios({
-                method: 'PUT', 
-                url: putUrl,
-                withCredentials: true,
-                data: part.content,
-                signal: this.abortController.signal,
-                onUploadProgress,
-            });
+            try {
+                await axios({
+                    method: 'PUT', 
+                    url: putUrl,
+                    withCredentials: true,
+                    data: part.content,
+                    signal: this.abortController.signal,
+                    onUploadProgress,
+                });
+            } catch(err) {
+                if(this.abortController.signal.aborted) {
+                    // Upload cancelled - send DELETE command to filehost
+                    axios({method: 'POST', data: {'cancel': true}, url: postUrl, withCredentials: true})
+                        .catch(err=>console.warn("Error sending cancel command to filehost for cancelled upload", err));
+                    // Update process progress (done)
+                    await callback(uploadId, currentJob.userId, true);
+                    return;
+                }
 
-            if(this.abortController.signal.aborted) {
-                return;  // Stop the upload
+                // Upload not cancelled - rethrow the error
+                throw err;
             }
 
             // Increment position with current part size

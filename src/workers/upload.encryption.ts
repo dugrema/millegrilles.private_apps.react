@@ -149,7 +149,11 @@ export class UploadEncryptionWorker {
             let blobsSize = 0;              // Current part size
             for await (let chunk of stream) {
                 encryptedPosition += chunk.length;
-                if(this.jobCancelled) return;  // Job has been cancelled, go pick up next job. Cleanup is not this worker's responsibility.
+                if(this.jobCancelled) {
+                    // Job has been cancelled. Done here and go pick up next job. Cleanup is not this worker's responsibility.
+                    callback(uploadJob.uploadId, uploadJob.userId, true);
+                    return;
+                }
 
                 hasher.update(chunk as any);    // Hash of the original decrypted content
 

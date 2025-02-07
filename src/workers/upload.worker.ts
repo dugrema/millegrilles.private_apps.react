@@ -211,11 +211,12 @@ export class AppsUploadWorker {
 
     async cancelUpload(uploadId: number) {
         await this.encryptionWorker?.cancelJobIf(uploadId);
+        await this.uploadWorker?.cancelJobIf(uploadId);
         if(this.currentUserId) {
             await removeUserUploads(this.currentUserId, {uploadId});
         }
-        await this.uploadWorker?.cancelJobIf(uploadId);
         await this.triggerJobs();
+        await this.triggerListChanged();
     }
 
     async pauseUpload(uploadId: number) {

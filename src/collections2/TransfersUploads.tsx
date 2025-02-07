@@ -155,14 +155,9 @@ function OngoingTransfers() {
         let uploadId = Number.parseInt(uploadIdString);
 
         // Stop/cancel the file if it is being processing in the download or decryption workers.
+        // This also removes the job and any download parts from IDB.
+        console.debug("Cancel upload for fuuid:%s", uploadId)
         await workers.upload.cancelUpload(uploadId);
-
-        // Remove the job and any download parts from IDB.
-        console.debug("Remove upload job for fuuid:%s", uploadId)
-        await removeUserUploads(userId, {uploadId});
-        
-        // Signal that the download job content has changed to all tabs.
-        await workers.upload.triggerListChanged();
     }, [workers, ready, userId]);
 
     let mappedTransfers = useMemo(()=>{
@@ -235,6 +230,7 @@ type JobRowProps = {
 };
 
 const CONST_RESUME_STATE_CANDIDATES = [UploadStateEnum.PAUSED, UploadStateEnum.ERROR];
+const CONST_PAUSE_STATE_CANDIDATES = [UploadStateEnum.READY, UploadStateEnum.UPLOADING];
 
 const UPLOAD_STATE_LABEL = {
     [UploadStateEnum.INITIAL]: 'Initial',
@@ -262,6 +258,9 @@ function JobRow(props: JobRowProps) {
         return filepath;
     }, [value]);
 
+    let disablePauseButton = useMemo(()=>!CONST_PAUSE_STATE_CANDIDATES.includes(value.state), [value]);
+    let disableResumeButton = useMemo(()=>!CONST_RESUME_STATE_CANDIDATES.includes(value.state), [value]);
+
     return (
         <div key={value.uploadId} className='grid grid-cols-6 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 gap-x-1 px-2 py-1'>
             <Link to={`/apps/collections2/b/${value.cuuid}`} className='col-span-3'>{fullpath}</Link>
@@ -269,12 +268,12 @@ function JobRow(props: JobRowProps) {
             <p>{UPLOAD_STATE_LABEL[value.state]}</p>
             <div>
                 {onPause?
-                    <ActionButton onClick={onPause} value={''+value.uploadId} varwidth={10} revertSuccessTimeout={3} disabled={value.state === UploadStateEnum.PAUSED}>
+                    <ActionButton onClick={onPause} value={''+value.uploadId} varwidth={10} revertSuccessTimeout={3} disabled={disablePauseButton}>
                         <img src={PauseIcon} alt='Pause file download' className='h-6 pl-1' />
                     </ActionButton>
                 :<></>}
                 {onResume?
-                    <ActionButton onClick={onResume} value={''+value.uploadId} varwidth={10} revertSuccessTimeout={3} disabled={!CONST_RESUME_STATE_CANDIDATES.includes(value.state)}>
+                    <ActionButton onClick={onResume} value={''+value.uploadId} varwidth={10} revertSuccessTimeout={3} disabled={disableResumeButton}>
                         <img src={ForwardIcon} alt='Resume file processing' className='h-6 pl-1' />
                     </ActionButton>
                 :<></>}
