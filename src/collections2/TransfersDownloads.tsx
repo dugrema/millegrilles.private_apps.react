@@ -1,7 +1,7 @@
 import { MouseEvent, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import ActionButton from "../resources/ActionButton";
-import useTransferStore, { DownloadJobStoreType, WorkerType } from "./transferStore";
+import useTransferStore, { DownloadJobStoreType, DownloadWorkerType } from "./transferStore";
 import { DownloadStateEnum, getDownloadContent, removeUserDownloads } from "./idb/collections2StoreIdb";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import useUserBrowsingStore from "./userBrowsingStore";
@@ -13,6 +13,7 @@ import DownloadIcon from '../resources/icons/download-svgrepo-com.svg';
 import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
 import ForwardIcon from '../resources/icons/forward-svgrepo-com.svg';
 import PauseIcon from '../resources/icons/pause-svgrepo-com.svg';
+import ProgressBar from "./ProgressBar";
 
 function TransfersDownloads() {
 
@@ -82,9 +83,9 @@ function WorkerActivity() {
             if(typeof(progress.totalSize) === 'number') {
                 percent = Math.floor(progress.position / progress.totalSize * 100);
             }
-            if(progress.workerType === WorkerType.DOWNLOAD) {
+            if(progress.workerType === DownloadWorkerType.DOWNLOAD) {
                 downloadPercent = percent;
-            } else if(progress.workerType === WorkerType.DECRYPTION) {
+            } else if(progress.workerType === DownloadWorkerType.DECRYPTION) {
                 decryptionPercent = percent;
             } else {
                 throw new Error('Unsupported worker type');
@@ -229,26 +230,6 @@ function CompletedTransfers() {
             {mappedTransfers}
         </section>
     );
-}
-
-function ProgressBar(props: {value: number | null}) {
-
-    let {value} = props;
-
-    if(typeof(value) !== 'number') return <></>;
-
-    return (
-        <div className="ml-2 relative col-span-3 w-11/12 mt-1 h-4 text-xs bg-slate-200 rounded-full dark:bg-slate-700">
-            {value<=30?
-                <div className='w-full text-violet-800 text-xs font-medium text-center'>{value} %</div>
-                :
-                <></>
-            }
-            <div className="absolute top-0 h-4 bg-violet-600 text-xs font-medium text-violet-100 text-center p-0.5 leading-none rounded-full transition-all duration-500" style={{width: value+'%'}}>
-                {value>30?<>{value} %</>:''}
-            </div>
-        </div>            
-    )
 }
 
 type JobRowProps = {

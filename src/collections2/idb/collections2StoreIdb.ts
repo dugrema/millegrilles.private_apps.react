@@ -157,7 +157,7 @@ export enum DownloadStateEnum {
     DOWNLOADING,
     ENCRYPTED,
     DONE,
-    ERROR,
+    ERROR = 99,
 };
 
 // Upload types
@@ -193,7 +193,7 @@ export type UploadIdbType = {
 };
 
 export type UploadIdbParts = {
-    commandId: string,
+    uploadId: string,
     position: number,
     content: Blob,
 };
@@ -632,6 +632,17 @@ export async function removeUserDownloads(userId: string, opts?: {state?: Downlo
     }
 }
 
+// Uploads
+
+export async function getUploadJobs(userId: string): Promise<UploadJobType[]> {
+    const db = await openDB();
+    let store = db.transaction(STORE_UPLOADS, 'readonly').store;
+    let stateIndex = store.index('state');
+    let jobs = await stateIndex.getAll(
+        IDBKeyRange.bound([userId, UploadStateEnum.INITIAL, 0], [userId, UploadStateEnum.ERROR, Number.MAX_SAFE_INTEGER])) as UploadJobType[];
+    return jobs;
+}
+
 export type AddUploadFileOptions = {
     destinationPath?: string | null,
     secret?: GeneratedSecretKeyResult,
@@ -772,6 +783,50 @@ export async function getNextUploadReadyJob(userId: string): Promise<UploadJobTy
 
     if(job.length === 0) return null;
     return job[0] as UploadJobType;
+}
+
+export async function removeUserUploads(userId: string, opts?: {state?: UploadStateEnum, uploadId?: number}) {
+    const db = await openDB();
+
+    let uploadIds = new Set();
+
+    let storeUploads = db.transaction(STORE_UPLOADS, 'readwrite').store;
+
+    if(opts?.uploadId) {
+        let uploadId = opts.uploadId;
+        uploadIds.add(uploadId);  // Need to cleanup the uploaded file parts table for that uploadId.
+        await storeUploads.delete(uploadId);
+    } else {
+        // Go through all uploads for the user.
+        let state = opts?.state || UploadStateEnum.DONE;  // Default is to remove completed jobs
+        let stateIndex = storeUploads.index('state');
+        let cursorUserJobs = await stateIndex.openCursor(
+            IDBKeyRange.bound([userId, state, 0], [userId, state, Number.MAX_SAFE_INTEGER]));
+        
+        while(cursorUserJobs) {
+            let value = cursorUserJobs.value as UploadIdbType;
+            
+            if(state !== UploadStateEnum.DONE) {
+                // Need to cleanup the downloaded file parts table.
+                uploadIds.add(value.uploadId);
+            }
+            
+            await cursorUserJobs.delete();  // Remove the download entry
+            cursorUserJobs = await cursorUserJobs.continue();
+        }
+    }
+
+    if(uploadIds.size > 0) {
+        let storeDownloadParts = db.transaction(STORE_UPLOAD_PARTS, 'readwrite').store;
+        let cursorParts = await storeDownloadParts.openCursor();
+        while(cursorParts) {
+            let value = cursorParts.value as UploadIdbParts;
+            if(uploadIds.has(value.uploadId)) {
+                await cursorParts.delete();  // Remove this part
+            }
+            cursorParts = await cursorParts.continue();
+        }
+    }
 }
     
 // export async function getNextEncryptJob(userId: string): Promise<UploadJobType | null> {

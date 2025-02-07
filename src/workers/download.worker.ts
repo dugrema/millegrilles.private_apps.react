@@ -5,7 +5,7 @@ import { DecryptionWorkerCallbackType, DownloadDecryptionWorker } from './downlo
 import { addDownload, DownloadIdbType, DownloadStateEnum, FileVideoData, getDownloadContent, getNextDecryptionJob, getNextDownloadJob, removeDownload, restartNextJobInError } from '../collections2/idb/collections2StoreIdb';
 import { createDownloadEntryFromFile, createDownloadEntryFromVideo } from '../collections2/transferUtils';
 import { FilehostDirType } from './directory.worker';
-import { DownloadStateUpdateType, TransferProgress, WorkerType } from '../collections2/transferStore';
+import { DownloadStateUpdateType, DownloadTransferProgress, DownloadWorkerType } from '../collections2/transferStore';
 
 export type DownloadStateCallback = (state: DownloadStateUpdateType)=>Promise<void>;
 
@@ -18,8 +18,8 @@ export class AppsDownloadWorker {
     downloadStateCallbackProxy: DownloadWorkerCallbackType
     decryptionStateCallbackProxy: DecryptionWorkerCallbackType
     stateCallbacks: DownloadStateCallback[]
-    downloadStatus: TransferProgress | null
-    decryptionStatus: TransferProgress | null
+    downloadStatus: DownloadTransferProgress | null
+    decryptionStatus: DownloadTransferProgress | null
     listChanged: boolean
     fuuidsReady: string[] | null    // List of files for which the download just completed
 
@@ -95,7 +95,7 @@ export class AppsDownloadWorker {
             this.listChanged = true;
             await this.triggerJobs();
         } else {
-            let download = {workerType: WorkerType.DOWNLOAD, fuuid, state: DownloadStateEnum.DOWNLOADING, position, totalSize: size} as TransferProgress;
+            let download = {workerType: DownloadWorkerType.DOWNLOAD, fuuid, state: DownloadStateEnum.DOWNLOADING, position, totalSize: size} as DownloadTransferProgress;
             this.downloadStatus = download;
             await this.produceState();
         }
@@ -114,7 +114,7 @@ export class AppsDownloadWorker {
             
             await this.triggerJobs();
         } else {
-            let decryption = {workerType: WorkerType.DECRYPTION, fuuid, state: DownloadStateEnum.ENCRYPTED, position, totalSize: size} as TransferProgress;
+            let decryption = {workerType: DownloadWorkerType.DECRYPTION, fuuid, state: DownloadStateEnum.ENCRYPTED, position, totalSize: size} as DownloadTransferProgress;
             this.decryptionStatus = decryption;
             await this.produceState();
         }
@@ -261,7 +261,7 @@ export class AppsDownloadWorker {
             console.warn("Download state callback not initialized");
             return;
         }
-        let stateList = [] as TransferProgress[];
+        let stateList = [] as DownloadTransferProgress[];
         if(this.downloadStatus) stateList.push(this.downloadStatus);
         if(this.decryptionStatus) stateList.push(this.decryptionStatus);
         let update = {activeTransfers: stateList} as DownloadStateUpdateType;

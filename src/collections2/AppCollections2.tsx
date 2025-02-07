@@ -6,9 +6,9 @@ import useUserBrowsingStore from "./userBrowsingStore";
 import { useEffect } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
-import { getDownloadJob, getDownloadJobs, getUploadJob, openDB, updateUploadJobState, UploadStateEnum } from "./idb/collections2StoreIdb";
+import { getDownloadJob, getDownloadJobs, getUploadJob, getUploadJobs, openDB, updateUploadJobState, UploadStateEnum } from "./idb/collections2StoreIdb";
 import { messageStruct } from "millegrilles.cryptography";
-import useTransferStore, { DownloadJobStoreType } from "./transferStore";
+import useTransferStore, { DownloadJobStoreType, UploadJobStoreType } from "./transferStore";
 import { downloadFile } from "./transferUtils";
 
 function Collections2() {
@@ -148,8 +148,8 @@ function SyncDownloads() {
     
     let userId = useUserBrowsingStore(state=>state.userId);
     let setDownloadJobs = useTransferStore(state=>state.setDownloadJobs);
-    let jobsDirty = useTransferStore(state=>state.jobsDirty);
-    let setJobsDirty = useTransferStore(state=>state.setJobsDirty);
+    let jobsDirty = useTransferStore(state=>state.downloadJobsDirty);
+    let setJobsDirty = useTransferStore(state=>state.setDownloadJobsDirty);
 
     // let setDownloadTicker = useTransferStore(state=>state.setDownloadTicker);
 
@@ -205,7 +205,7 @@ function SyncUploads() {
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     
     let userId = useUserBrowsingStore(state=>state.userId);
-    // let setDownloadJobs = useTransferStore(state=>state.setDownloadJobs);
+    let setUploadJobs = useTransferStore(state=>state.setUploadJobs);
     let uploadJobsDirty = useTransferStore(state=>state.uploadJobsDirty);
     let setUploadJobsDirty = useTransferStore(state=>state.setUploadJobsDirty);
 
@@ -216,24 +216,25 @@ function SyncUploads() {
         if(!uploadJobsDirty) return;
         setUploadJobsDirty(false);  // Avoid loop
 
-        // getDownloadJobs(userId)
-        //     .then(jobs=>{
-        //         console.debug("Download jobs", jobs);
-        //         let mappedJobs = jobs.map(item=>{
-        //             return {
-        //                 fuuid: item.fuuid,
-        //                 tuuid: item.tuuid,
-        //                 processDate: item.processDate,
-        //                 state: item.state,
-        //                 size: item.size,
-        //                 retry: item.retry,
-        //                 filename: item.filename,
-        //                 mimetype: item.mimetype,
-        //             } as DownloadJobStoreType;
-        //         });
-        //         setDownloadJobs(mappedJobs);
-        //     })
-        //     .catch(err=>console.error("Error loading download jobs", err))
+        getUploadJobs(userId)
+            .then(jobs=>{
+                console.debug("Upload jobs", jobs);
+                let mappedJobs = jobs.map(item=>{
+                    return {
+                        uploadId: item.uploadId,
+                        processDate: item.processDate,
+                        state: item.state,
+                        size: item.size,
+                        retry: item.retry,
+                        filename: item.filename,
+                        mimetype: item.mimetype,
+                        destinationPath: item.destinationPath,
+                        cuuid: item.cuuid,
+                    } as UploadJobStoreType;
+                });
+                setUploadJobs(mappedJobs);
+            })
+            .catch(err=>console.error("Error loading download jobs", err))
 
     }, [userId, uploadJobsDirty, setUploadJobsDirty]);
 
