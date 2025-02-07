@@ -28,7 +28,7 @@ function TransfersUploads() {
         if(!userId) throw new Error('User Id not provided');
         await removeUserUploads(userId);
         // Signal that the download job content has changed to all tabs.
-        await workers.download.triggerListChanged();
+        await workers.upload.triggerListChanged();
     }, [workers, ready, userId]);
 
     let pauseAllDownloads = useCallback(async ()=>{
@@ -58,7 +58,7 @@ function TransfersUploads() {
 
             <WorkerActivity />
             <CompletedTransfers />
-            {/* <OngoingTransfers /> */}
+            <OngoingTransfers />
         </>
     );
 }
@@ -115,6 +115,76 @@ function WorkerActivity() {
     )
 }
 
+const CONST_ONGOING_STATES = [
+    UploadStateEnum.INITIAL,
+    UploadStateEnum.ENCRYPTING,
+    UploadStateEnum.GENERATING,
+    UploadStateEnum.SENDCOMMAND,
+    UploadStateEnum.READY,
+    UploadStateEnum.PAUSED,
+    UploadStateEnum.UPLOADING,
+    UploadStateEnum.VERIFYING,
+    UploadStateEnum.ERROR,
+]
+
+function OngoingTransfers() {
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    let userId = useUserBrowsingStore(state=>state.userId);
+    let uploadJobs = useTransferStore(state=>state.uploadJobs);
+
+    let pauseHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!userId) throw new Error('UserId not provided');
+        throw new Error('todo');
+    }, [workers, ready, userId]);
+
+    let resumeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!userId) throw new Error('UserId not provided');
+        throw new Error('todo');
+    }, [workers, ready, userId]);
+
+    let removeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!userId) throw new Error('UserId not provided');
+        
+        let uploadIdString = e.currentTarget.value;
+        let uploadId = Number.parseInt(uploadIdString);
+
+        // Stop/cancel the file if it is being processing in the download or decryption workers.
+        await workers.upload.cancelUpload(uploadId);
+
+        // Remove the job and any download parts from IDB.
+        console.debug("Remove upload job for fuuid:%s", uploadId)
+        await removeUserUploads(userId, {uploadId});
+        
+        // Signal that the download job content has changed to all tabs.
+        await workers.upload.triggerListChanged();
+    }, [workers, ready, userId]);
+
+    let mappedTransfers = useMemo(()=>{
+        let jobs = uploadJobs?.filter(item=>CONST_ONGOING_STATES.includes(item.state));
+        if(!jobs) return [];
+
+        jobs.sort(sortJobs);
+        return jobs.map(item=>(
+            <JobRow key={item.uploadId} value={item} onRemove={removeHandler} onPause={pauseHandler} onResume={resumeHandler} />
+        ));
+    }, [uploadJobs, pauseHandler, removeHandler, resumeHandler]);
+
+    if(mappedTransfers.length === 0) return <></>;
+
+    return (
+        <section>
+            <h2 className='font-bold pt-4 pb-2'>Transfer queue</h2>
+            {mappedTransfers}
+        </section>
+    );
+}
+
 function CompletedTransfers() {
 
     let workers = useWorkers();
@@ -133,7 +203,7 @@ function CompletedTransfers() {
         await removeUserUploads(userId, {uploadId});
         
         // Signal that the download job content has changed to all tabs.
-        await workers.download.triggerListChanged();
+        await workers.upload.triggerListChanged();
     }, [workers, ready, userId]);
 
     let mappedTransfers = useMemo(()=>{

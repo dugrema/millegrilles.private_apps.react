@@ -217,7 +217,7 @@ export class AppsUploadWorker {
         await this.triggerJobs();
     }
 
-    async cancelUpload(fuuid: string, userId: string) {
+    async cancelUpload(uploadId: number) {
         throw new Error('todo cancelUpload');
         // await removeUpload(fuuid, userId);
         // await this.uploadWorker?.cancelJobIf(fuuid, userId);
