@@ -47,7 +47,7 @@ export enum UploadWorkerType {
     ENCRYPTION,
 };
 
-export type UploadTransferProgress = {workerType: UploadWorkerType, fuuid: string, state: UploadStateEnum, position: number, totalSize: number};
+export type UploadTransferProgress = {workerType: UploadWorkerType, uploadId: number, state: UploadStateEnum, position: number, totalSize: number};
 
 /** Used to update the download state from the worker. */
 export type UploadStateUpdateType = {

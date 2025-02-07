@@ -23,12 +23,16 @@ export class UploadEncryptionWorker {
     running: boolean
     intervalTrigger: any
     appsEncryptionWorker: AppsEncryptionWorker      // Complete instance of the encryption worker class
+    currentJob: EncryptionWorkerJob | null
+    jobCancelled: boolean
 
     constructor() {
         this.callback = null;
         this.jobs = [];
         this.running = false;
         this.appsEncryptionWorker = new AppsEncryptionWorker();
+        this.currentJob = null;
+        this.jobCancelled = false;
     }
 
     async setup(callback: EncryptionWorkerCallbackType, caPem: string) {
@@ -43,8 +47,10 @@ export class UploadEncryptionWorker {
         await this.appsEncryptionWorker.setEncryptionKeys(pems);
     }
 
-    async cancelJobIf(fuuid: string, userId: string) {
-        console.warn("TODO");
+    async cancelJobIf(uploadId: number) {
+        if(this.currentJob?.uploadId === uploadId) {
+            this.jobCancelled = true;
+        }
     }
 
     async isBusy() {
@@ -78,32 +84,39 @@ export class UploadEncryptionWorker {
             while(true) {
                 let job = this.jobs.shift();
                 if(!job) break;
+                this.currentJob = job;
+                this.jobCancelled = false;
                 try {
                     await this.encryptContent(job);
                 } catch(err) {
                     console.error("Error processing encryption job %O: %O", job, err);
-                    //TODO Mark job as in Error
+                    await updateUploadJobState(job.uploadId, UploadStateEnum.ERROR);
+                    if(this.callback) {
+                        await this.callback(job.uploadId, job.userId, true);
+                    }
                 }
             }
         } finally {
+            // Reset flags
             this.running = false;
+            this.currentJob = null;
+            this.jobCancelled = false;
         }
     }
 
     async encryptContent(uploadJob: EncryptionWorkerJob) {
-        // if(this.currentJob) throw new Error('Busy');
         if(!uploadJob.file) throw new Error('No file to encrypt');
 
-        //TODO put status to encrypting in IDB
         await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.ENCRYPTING);
 
         let callback = this.callback;
         if(!callback) throw new Error('Callback not wired');
 
+        // Regularly send progress events
         let encryptedPosition = 0;
         let fileSize = uploadJob.file.size;
         let interval = setInterval(()=>{
-            if(callback && uploadJob.size) {
+            if(callback && fileSize) {
                 callback(uploadJob.uploadId, uploadJob.userId, false, encryptedPosition, fileSize);
             }
         }, 750);
@@ -132,6 +145,7 @@ export class UploadEncryptionWorker {
             let blobsSize = 0;              // Current part size
             for await (let chunk of stream) {
                 encryptedPosition += chunk.length;
+                if(this.jobCancelled) return;  // Job has been cancelled, go pick up next job. Cleanup is not this worker's responsibility.
 
                 hasher.update(chunk as any);    // Hash of the original decrypted content
 
@@ -157,6 +171,8 @@ export class UploadEncryptionWorker {
                     let blob = new Blob(blobs);
                     console.info("save part position %s of size %s", position, blob.size);
                     await saveUploadPart(uploadJob.uploadId, position, blob);
+
+                    // await new Promise(resolve=>(setTimeout(resolve, 500)));  // Throttle
 
                     // Update position for next part
                     position += blob.size;
@@ -200,7 +216,7 @@ export class UploadEncryptionWorker {
             await this.prepareFileAddMetadata(uploadJob.uploadId);
 
             // Trigger next step
-            await callback(uploadJob.uploadId, uploadJob.userId, true, position, position);
+            await callback(uploadJob.uploadId, uploadJob.userId, true, encryptedPosition, encryptedPosition);
         } catch(err) {
             await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.ERROR);
             await callback(uploadJob.uploadId, uploadJob.userId, true);

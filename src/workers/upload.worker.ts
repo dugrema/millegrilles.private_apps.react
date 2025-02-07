@@ -1,6 +1,6 @@
 import { proxy, Remote, wrap } from "comlink";
-import { getNextUploadReadyJob, UploadIdbType } from "../collections2/idb/collections2StoreIdb";
-import { UploadStateUpdateType, UploadTransferProgress } from "../collections2/transferStore";
+import { getNextUploadReadyJob, removeUserUploads, UploadIdbType, UploadStateEnum } from "../collections2/idb/collections2StoreIdb";
+import { UploadStateUpdateType, UploadTransferProgress, UploadWorkerType } from "../collections2/transferStore";
 import { FilehostDirType } from "./directory.worker";
 import { UploadThreadWorker, UploadWorkerCallbackType } from "./upload.thread";
 import { EncryptionWorkerCallbackType, UploadEncryptionWorker } from "./upload.encryption";
@@ -98,10 +98,9 @@ export class AppsUploadWorker {
             this.listChanged = true;
             await this.triggerJobs();
         } else {
-            throw new Error('todo uploadCallback');
-            // let download = {workerType: WorkerType.DOWNLOAD, fuuid, state: DownloadStateEnum.DOWNLOADING, position, totalSize: size} as TransferProgress;
-            // this.downloadStatus = download;
-            // await this.produceState();
+            let upload = {workerType: UploadWorkerType.UPLOAD, uploadId, state: UploadStateEnum.UPLOADING, position, totalSize: size} as UploadTransferProgress;
+            this.uploadStatus = upload;
+            await this.produceState();
         }
     }
 
@@ -119,10 +118,9 @@ export class AppsUploadWorker {
             await this.triggerJobs();
             await this.triggerListChanged();
         } else {
-            throw new Error('todo encryptionCallback');
-            // let decryption = {workerType: WorkerType.DECRYPTION, fuuid, state: DownloadStateEnum.ENCRYPTED, position, totalSize: size} as TransferProgress;
-            // this.decryptionStatus = decryption;
-            // await this.produceState();
+            let encryption = {workerType: UploadWorkerType.ENCRYPTION, uploadId, state: UploadStateEnum.ENCRYPTING, position, totalSize: size} as UploadTransferProgress;
+            this.encryptionStatus = encryption;
+            await this.produceState();
         }
     }
     
@@ -193,23 +191,6 @@ export class AppsUploadWorker {
         await this.produceState();
     }
 
-    // async addUploads(userId: string, cuuid: string, files: FileList): Promise<void> {
-    //     console.debug("Adding upload for user %s, cuuid: %s, files: %O", userId, cuuid, files);
-    //     if(!this.encryptionWorker) throw new Error('Encryption worker not ready');
-    //     for await (let file of files) {
-    //         console.debug("Saving file: ", file);
-    //         // Generate new IDB upload entry. This returns a locally unique Id for the upload.
-    //         let uploadId = await addUploadFile(userId, cuuid, file);
-    //         console.debug("New upload Id added: ", uploadId);
-
-    //         // Start encryption
-    //         this.encryptionWorker.addJob(uploadId, file);
-    //     }
-
-    //     // Start processing all jobs
-    //     await this.triggerJobs();
-    // }
-
     async addUpload(uploadId: number, file: File): Promise<void> {
         if(!this.encryptionWorker) throw new Error('Encryption worker not ready');
         this.encryptionWorker.addJob(uploadId, file);
@@ -218,18 +199,19 @@ export class AppsUploadWorker {
     }
 
     async cancelUpload(uploadId: number) {
-        throw new Error('todo cancelUpload');
-        // await removeUpload(fuuid, userId);
-        // await this.uploadWorker?.cancelJobIf(fuuid, userId);
-        // await this.encryptionWorker?.cancelJobIf(fuuid, userId);
-        // await this.triggerJobs();
+        await this.encryptionWorker?.cancelJobIf(uploadId);
+        if(this.currentUserId) {
+            await removeUserUploads(this.currentUserId, {uploadId});
+        }
+        await this.uploadWorker?.cancelJobIf(uploadId);
+        await this.triggerJobs();
     }
 
-    async pauseUpload(fuuid: string, userId: string) {
+    async pauseUpload(uploadId: number) {
         throw new Error('todo pauseUpload');
     }
 
-    async resumeUpload(fuuid: string, userId: string) {
+    async resumeUpload(uploadId: number) {
         throw new Error('todo resumeUpload');
     }
 

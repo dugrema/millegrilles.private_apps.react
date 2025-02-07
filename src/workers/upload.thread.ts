@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosProgressEvent } from 'axios';
 import { getUploadPart, removeUploadParts, updateUploadJobState, UploadStateEnum } from '../collections2/idb/collections2StoreIdb';
 import { UploadJobType } from './upload.worker';
 
@@ -13,20 +13,22 @@ export type UploadWorkerCallbackType = (
 export class UploadThreadWorker {
     callback: UploadWorkerCallbackType | null
     currentJob: UploadJobType | null
+    abortController: AbortController | null
 
     constructor() {
         this.callback = null;
         this.currentJob = null;
+        this.abortController = null;
     }
 
     async setup(callback: UploadWorkerCallbackType) {
         this.callback = callback;
     }
 
-    async cancelJobIf(fuuid: string, userId: string): Promise<boolean> {
-        if(this.currentJob?.userId === userId && this.currentJob.fuuid === fuuid) {
-            throw new Error('todo')
-            // return true;
+    async cancelJobIf(uploadId: number): Promise<boolean> {
+        if(this.currentJob?.uploadId === uploadId) {
+            this.abortController?.abort();
+            return true;
         }
         return false;
     }
@@ -80,15 +82,27 @@ export class UploadThreadWorker {
         } finally {
             // Free job
             this.currentJob = null;
+            this.abortController = null;
         }
     }
 
     async uploadFile(uploadId: number, fuuid: string, filehostUrl: string, fileSize: number) {
 
+        const callback = this.callback;
         const postUrl = `${filehostUrl}/files/${fuuid}`;
 
         // Iterate through parts to upload from IDB for this uploadId.
         let position = 0;
+        this.abortController = new AbortController();
+
+        let currentJob = this.currentJob;
+        if(!currentJob) throw new Error("Current job not set");
+        if(!callback) throw new Error("Callback not initialized");
+        let onUploadProgress = (e: AxiosProgressEvent) => {
+            if(!currentJob) throw new Error("Current job not set (inner)");
+            progressEventHandler(e, currentJob, position, callback);
+        };
+
         while(true) {
             // Get next part
             let part = await getUploadPart(uploadId, position);
@@ -97,13 +111,19 @@ export class UploadThreadWorker {
             let partSize = part.content.size;
 
             let putUrl = `${postUrl}/${position}`;
-            console.debug("Upload to ", putUrl);
+            // await new Promise(resolve=>(setTimeout(resolve, 500)));  // Throttle
             await axios({
                 method: 'PUT', 
                 url: putUrl,
                 withCredentials: true,
-                data: part.content
+                data: part.content,
+                signal: this.abortController.signal,
+                onUploadProgress,
             });
+
+            if(this.abortController.signal.aborted) {
+                return;  // Stop the upload
+            }
 
             // Increment position with current part size
             position += partSize;
@@ -178,6 +198,14 @@ export class UploadThreadWorker {
             processFilePromise.catch(err=>console.error("Error finishing file upload: ", err));
         }
     }
+}
+
+function progressEventHandler(e: AxiosProgressEvent, job: UploadJobType, position: number, callback: UploadWorkerCallbackType) {
+    let totalSize = job.size;
+    let partPosition = e.loaded;
+    let currentPosition = position + partPosition;
+    callback(job.uploadId, job.userId, false, currentPosition, totalSize)
+        .catch(err=>console.error("Error on progressEventHandler", err));
 }
 
 
