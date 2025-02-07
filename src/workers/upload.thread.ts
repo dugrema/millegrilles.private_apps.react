@@ -16,19 +16,24 @@ export class UploadThreadWorker {
     callback: UploadWorkerCallbackType | null
     currentJob: UploadJobType | null
     abortController: AbortController | null
+    pauseUpload: boolean
 
     constructor() {
         this.callback = null;
         this.currentJob = null;
         this.abortController = null;
+        this.pauseUpload = false;
     }
 
     async setup(callback: UploadWorkerCallbackType) {
         this.callback = callback;
     }
 
-    async cancelJobIf(uploadId: number): Promise<boolean> {
+    async cancelJobIf(uploadId: number, opts?: {pause?: boolean}): Promise<boolean> {
         if(this.currentJob?.uploadId === uploadId) {
+            if(opts?.pause) {
+                this.pauseUpload = true;
+            }
             this.abortController?.abort();
             return true;
         }
@@ -77,7 +82,7 @@ export class UploadThreadWorker {
 
         } catch(err) {
             console.error("Error uploading file %O: %O", currentJob, err);
-            await updateUploadJobState(uploadId, UploadStateEnum.ERROR);
+            await updateUploadJobState(uploadId, UploadStateEnum.ERROR_DURING_PART_UPLOAD);
             if(callback) {
                 await callback(uploadId, currentJob.userId, true);
             }
@@ -85,6 +90,7 @@ export class UploadThreadWorker {
             // Free job
             this.currentJob = null;
             this.abortController = null;
+            this.pauseUpload = false;
         }
     }
 
@@ -96,6 +102,7 @@ export class UploadThreadWorker {
         // Iterate through parts to upload from IDB for this uploadId.
         let position = 0;
         this.abortController = new AbortController();
+        this.pauseUpload = false;
 
         let currentJob = this.currentJob;
         if(!currentJob) throw new Error("Current job not set");
@@ -129,16 +136,24 @@ export class UploadThreadWorker {
                 });
             } catch(err) {
                 if(this.abortController.signal.aborted) {
-                    // Upload cancelled - send DELETE command to filehost
-                    axios({method: 'POST', data: {'cancel': true}, url: postUrl, withCredentials: true})
-                        .catch(err=>console.warn("Error sending cancel command to filehost for cancelled upload", err));
+                    if(!this.pauseUpload) {
+                        // Upload cancelled - send DELETE command to filehost
+                        axios({method: 'POST', data: {'cancel': true}, url: postUrl, withCredentials: true})
+                            .catch(err=>console.warn("Error sending cancel command to filehost for cancelled upload", err));
+                    }
                     // Update process progress (done)
                     await callback(uploadId, currentJob.userId, true);
                     return;
+                } else {
+                    let axiosErr = err as AxiosError;
+                    if(axiosErr.status === 412) {
+                        // The part is already uploaded. Just move on to next.
+                        console.debug("part %s already uploaded", position);
+                    } else {
+                        // Unhandled upload error
+                        throw err;
+                    }
                 }
-
-                // Upload not cancelled - rethrow the error
-                throw err;
             }
 
             // Increment position with current part size

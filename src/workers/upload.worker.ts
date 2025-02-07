@@ -1,5 +1,5 @@
 import { proxy, Remote, wrap } from "comlink";
-import { getNextUploadReadyJob, removeUserUploads, UploadIdbType, UploadStateEnum } from "../collections2/idb/collections2StoreIdb";
+import { getNextUploadReadyJob, getUploadJob, removeUserUploads, updateUploadJobState, UploadIdbType, UploadStateEnum } from "../collections2/idb/collections2StoreIdb";
 import { UploadStateUpdateType, UploadTransferProgress, UploadWorkerType } from "../collections2/transferStore";
 import { FilehostDirType } from "./directory.worker";
 import { UploadThreadWorker, UploadWorkerCallbackType } from "./upload.thread";
@@ -220,11 +220,30 @@ export class AppsUploadWorker {
     }
 
     async pauseUpload(uploadId: number) {
-        throw new Error('todo pauseUpload');
+        // Cancel current work on the upload. Note: encryption cannot be paused.
+        await this.uploadWorker?.cancelJobIf(uploadId, {pause: true});
+        // Mark upload as paused
+        if(this.currentUserId) {
+            await updateUploadJobState(uploadId, UploadStateEnum.PAUSED);
+        }
+        // Find next job
+        await this.triggerJobs();
+        // Update screen
+        await this.triggerListChanged();
     }
 
     async resumeUpload(uploadId: number) {
-        throw new Error('todo resumeUpload');
+        let job = await getUploadJob(uploadId);
+        if(!job) throw new Error('Unknown job ID:' + uploadId);
+
+        const CONST_RESUMABLE_STATES = [UploadStateEnum.PAUSED, UploadStateEnum.ERROR_DURING_PART_UPLOAD]
+        if(!CONST_RESUMABLE_STATES.includes(job.state)) throw new Error('Job not in a resumable state');
+
+        await updateUploadJobState(uploadId, UploadStateEnum.READY);
+        // Find next job
+        await this.triggerJobs();
+        // Update screen
+        await this.triggerListChanged();
     }
 
     async produceState() {

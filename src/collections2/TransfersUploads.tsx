@@ -115,17 +115,18 @@ function WorkerActivity() {
     )
 }
 
-const CONST_ONGOING_STATES = [
-    UploadStateEnum.INITIAL,
-    UploadStateEnum.ENCRYPTING,
-    UploadStateEnum.GENERATING,
-    UploadStateEnum.SENDCOMMAND,
-    UploadStateEnum.READY,
-    UploadStateEnum.PAUSED,
-    UploadStateEnum.UPLOADING,
-    UploadStateEnum.VERIFYING,
-    UploadStateEnum.ERROR,
-]
+// const CONST_ONGOING_STATES = [
+//     UploadStateEnum.INITIAL,
+//     UploadStateEnum.ENCRYPTING,
+//     UploadStateEnum.GENERATING,
+//     UploadStateEnum.SENDCOMMAND,
+//     UploadStateEnum.READY,
+//     UploadStateEnum.PAUSED,
+//     UploadStateEnum.UPLOADING,
+//     UploadStateEnum.VERIFYING,
+//     UploadStateEnum.ERROR_DURING_PART_UPLOAD,
+//     UploadStateEnum.ERROR,
+// ]
 
 function OngoingTransfers() {
 
@@ -138,13 +139,22 @@ function OngoingTransfers() {
     let pauseHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!userId) throw new Error('UserId not provided');
-        throw new Error('todo');
+
+        let uploadIdString = e.currentTarget.value;
+        let uploadId = Number.parseInt(uploadIdString);
+
+        await workers.upload.pauseUpload(uploadId);
+
     }, [workers, ready, userId]);
 
     let resumeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!userId) throw new Error('UserId not provided');
-        throw new Error('todo');
+
+        let uploadIdString = e.currentTarget.value;
+        let uploadId = Number.parseInt(uploadIdString);
+
+        await workers.upload.resumeUpload(uploadId);
     }, [workers, ready, userId]);
 
     let removeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
@@ -156,12 +166,12 @@ function OngoingTransfers() {
 
         // Stop/cancel the file if it is being processing in the download or decryption workers.
         // This also removes the job and any download parts from IDB.
-        console.debug("Cancel upload for fuuid:%s", uploadId)
+        console.debug("Cancel upload for fuuid:%s", uploadId);
         await workers.upload.cancelUpload(uploadId);
     }, [workers, ready, userId]);
 
     let mappedTransfers = useMemo(()=>{
-        let jobs = uploadJobs?.filter(item=>CONST_ONGOING_STATES.includes(item.state));
+        let jobs = uploadJobs?.filter(item=>item.state!==UploadStateEnum.DONE);
         if(!jobs) return [];
 
         jobs.sort(sortJobs);
@@ -229,7 +239,7 @@ type JobRowProps = {
     onResume?: (e: MouseEvent<HTMLButtonElement>)=>Promise<void>,
 };
 
-const CONST_RESUME_STATE_CANDIDATES = [UploadStateEnum.PAUSED, UploadStateEnum.ERROR];
+const CONST_RESUME_STATE_CANDIDATES = [UploadStateEnum.PAUSED, UploadStateEnum.ERROR_DURING_PART_UPLOAD];
 const CONST_PAUSE_STATE_CANDIDATES = [UploadStateEnum.READY, UploadStateEnum.UPLOADING];
 
 const UPLOAD_STATE_LABEL = {
@@ -242,6 +252,7 @@ const UPLOAD_STATE_LABEL = {
     [UploadStateEnum.UPLOADING]: 'Uploading',
     [UploadStateEnum.VERIFYING]: 'Verifying',
     [UploadStateEnum.DONE]: 'Done',
+    [UploadStateEnum.ERROR_DURING_PART_UPLOAD]: 'Upload error',
     [UploadStateEnum.ERROR]: 'Error',
 };
 

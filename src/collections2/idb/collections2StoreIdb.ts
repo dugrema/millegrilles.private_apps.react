@@ -203,18 +203,21 @@ export enum UploadStateEnum {
     INITIAL = 1,
     ENCRYPTING,
     GENERATING,
-    SENDCOMMAND,    // To READY
+    SENDCOMMAND,    // To READY or PAUSED
 
     // Client upload to server. Transition from any to any of these states is possible.
     READY,
     PAUSED,
-    UPLOADING,      // TO VERIFYING or ERROR
+    UPLOADING,      // TO VERIFYING or ERROR_DURING_PART_UPLOAD
 
     // After upload completed from client side
     VERIFYING,      // Server-side verification
     DONE,           // Final state
-    
-    // Any state can transition to ERROR
+
+    // Error during UPLOADING - can be resumed.
+    ERROR_DURING_PART_UPLOAD = 98,
+
+    // Any state can transition to ERROR. This is a final state like DONE (no resume).
     ERROR = 99,
 };
 
