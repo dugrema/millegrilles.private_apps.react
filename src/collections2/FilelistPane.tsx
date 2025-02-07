@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { DragEvent, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import { useVisibility } from 'reactjs-visibility';
@@ -12,6 +12,7 @@ import useWorkers from "../workers/workers";
 import { loadTuuid, updateFilesIdb } from "./idb/collections2StoreIdb";
 import useConnectionStore from "../connectionStore";
 import { useParams } from "react-router-dom";
+import { generateFileUploads } from "./transferUtils";
 
 export type FileListPaneOnClickRowType = (
     e: MouseEvent<HTMLButtonElement | HTMLDivElement>, 
@@ -98,6 +99,48 @@ type ViewProps = {
 function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
     let { files, dateColumn, onClick, columnNameOnly } = props;
 
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let userId = useUserBrowsingStore(state=>state.userId);
+    let cuuid = useUserBrowsingStore(state=>state.currentCuuid);
+    let breadcrumb = useUserBrowsingStore(state=>state.breadcrumb);
+
+    let [dragOverFileButton, setDragOverFileButton] = useState(false);
+
+    let cssDragFilesPanel = useMemo(()=>{
+        if(dragOverFileButton) return ' bg-slate-600';
+        return '';
+    }, [dragOverFileButton]);
+
+    // Drag and drop files on the Add File button
+    let fileDragEnterHandler = useCallback((e: DragEvent<HTMLDivElement>)=>{
+        e.preventDefault();
+        setDragOverFileButton(true);
+    }, [setDragOverFileButton]);
+    let fileDragLeaveHandler = useCallback((e: DragEvent<HTMLDivElement>)=>{
+        e.preventDefault();
+        setDragOverFileButton(false);
+    }, [setDragOverFileButton]);
+    let fileDragOverHandler = useCallback((e: DragEvent<HTMLDivElement>)=>{
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        setDragOverFileButton(true);
+    }, [setDragOverFileButton]);
+    let fileDropHandler = useCallback((e: DragEvent<HTMLDivElement>)=>{
+        e.preventDefault();
+        setDragOverFileButton(false);
+
+        let files = e.dataTransfer.files;
+        if(!workers || !ready) throw new Error('Workers not initialized');
+        if(!cuuid) throw new Error('Root cannot be used to upload files');
+        if(!userId) throw new Error("UserId not provided");
+        if(!files || files.length === 0) throw new Error('No files provided');
+        let breadcrumbString = breadcrumb?.map(item=>item.nom).join('/');
+
+        generateFileUploads(workers, userId, cuuid, files, breadcrumbString)
+            .catch(err=>console.error("Error starting upload", err));
+    }, [workers, ready, cuuid, userId, breadcrumb, setDragOverFileButton]);
+
     let mappedFiles = useMemo(()=>{
         if(!files) return <></>;
         return files.map(item=>{
@@ -106,21 +149,22 @@ function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
     }, [files, dateColumn, columnNameOnly, onClick]);
 
     return (
-        <>
-            {/* Fixed header */}
-            <div className='fixed w-full pr-4'>
-                <div className='grid grid-cols-12 bg-slate-800 text-sm select-none mx-2 px-1'>
-                    <div className='col-span-7 px-1'>Name</div>
-                    {columnNameOnly?<></>:<p className='col-span-1 px-1'>Size</p>}
-                    {columnNameOnly?<></>:<p className='col-span-2 px-1'>Type</p>}
-                    {columnNameOnly?<></>:<p className='col-span-2 px-1'>Date</p>}
+        <div onDrop={fileDropHandler} onDragEnter={fileDragEnterHandler} onDragLeave={fileDragLeaveHandler} onDragOver={fileDragOverHandler} 
+            className={cssDragFilesPanel}>
+                {/* Fixed header */}
+                <div className='fixed w-full pr-4'>
+                    <div className='grid grid-cols-12 bg-slate-800 text-sm select-none mx-2 px-1'>
+                        <div className='col-span-7 px-1'>Name</div>
+                        {columnNameOnly?<></>:<p className='col-span-1 px-1'>Size</p>}
+                        {columnNameOnly?<></>:<p className='col-span-2 px-1'>Type</p>}
+                        {columnNameOnly?<></>:<p className='col-span-2 px-1'>Date</p>}
+                    </div>
                 </div>
-            </div>
-            {/* Padding to push content below header */}
-            <div className='pb-5'></div>
-            {/* Content */}
-            {mappedFiles}
-        </>
+                {/* Padding to push content below header */}
+                <div className='pb-5'></div>
+                {/* Content */}
+                {mappedFiles}
+        </div>
     );
 }
 
