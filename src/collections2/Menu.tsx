@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useMemo, useState } from 'react';
+import { ChangeEvent, MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import useConnectionStore from '../connectionStore';
@@ -30,6 +30,7 @@ import { ModalEnum } from './BrowsingElements';
 import ActionButton from '../resources/ActionButton';
 import useWorkers from '../workers/workers';
 import useTransferStore, { TransferActivity } from './transferStore';
+import { generateFileUploads } from './transferUtils';
 
 type MenuProps = {
     title: string,
@@ -334,6 +335,14 @@ function SubmenuButtonBar(props: SubmenuButtonBarProps) {
 
     let {disableEdit, close} = props;
 
+    let refUpload = useRef(null as HTMLInputElement | null);
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    let cuuid = useUserBrowsingStore(state=>state.currentCuuid);
+    let breadcrumb = useUserBrowsingStore(state=>state.breadcrumb);
+    let userId = useUserBrowsingStore(state=>state.userId);
+
     let viewMode = useUserBrowsingStore(state=>state.viewMode);
     let setViewMode = useUserBrowsingStore(state=>state.setViewMode);
 
@@ -349,14 +358,23 @@ function SubmenuButtonBar(props: SubmenuButtonBarProps) {
         setViewMode(value);
         close();
     }, [close, setViewMode]);
-    let addFileHandler = useCallback(()=>{
-        //TODO Add file pop-up
-        close();
-    }, [close]);
+    let addFileHandler = useCallback(() => refUpload?.current?.click(), [refUpload]);
     let createDirectoryHandler = useCallback(()=>{
         onModal(ModalEnum.NewDirectory);
         close()
     }, [onModal, close]);
+
+    let fileUploadHandler = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
+        let files = e.currentTarget.files;
+        if(!workers || !ready) throw new Error('Workers not initialized');
+        if(!cuuid) throw new Error('Root cannot be used to upload files');
+        if(!userId) throw new Error("UserId not provided");
+        if(!files || files.length === 0) throw new Error('No files provided');
+        let breadcrumbString = breadcrumb?.map(item=>item.nom).join('/');
+
+        generateFileUploads(workers, userId, cuuid, files, breadcrumbString)
+            .catch(err=>console.error("Error starting upload", err));
+    }, [workers, ready, userId, cuuid, breadcrumb]);
 
     return (
         <>
@@ -382,7 +400,7 @@ function SubmenuButtonBar(props: SubmenuButtonBarProps) {
             <></>    
             :
                 <>
-                    <button onClick={addFileHandler} disabled={true}
+                    <button onClick={addFileHandler} disabled={!cuuid}
                         className={'varbtn ml-2 px-0.5 py-0.5 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'}>
                             <img src={FileAddIcon} alt='Add files' title='Add files' className='w-10 inline-block' />
                     </button>
@@ -391,6 +409,9 @@ function SubmenuButtonBar(props: SubmenuButtonBarProps) {
                         className={'varbtn ml-0 px-0.5 py-0.5 bg-slate-700 hover:bg-slate-600 active:bg-slate-500'}>
                             <img src={FolderAddIcon} alt='Add directory' title='Add directory' className='w-10 inline-block' />
                     </button>
+
+                    {/* Input that handles file upload. Hidden, it gets triggered through the upload file button. */}
+                    <input ref={refUpload} id='menu_file_upload' className='hidden' type='file' multiple={true} onChange={fileUploadHandler} />
                 </>
             }
         </>
