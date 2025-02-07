@@ -8,7 +8,8 @@ export type EncryptionWorkerCallbackType = (
     userId: string, 
     done: boolean, 
     position?: number | null, 
-    size?: number | null
+    size?: number | null,
+    stateChanged?: boolean | null,
 ) => Promise<void>;
 
 export type EncryptionWorkerJob = UploadIdbType & {
@@ -107,10 +108,12 @@ export class UploadEncryptionWorker {
     async encryptContent(uploadJob: EncryptionWorkerJob) {
         if(!uploadJob.file) throw new Error('No file to encrypt');
 
-        await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.ENCRYPTING);
-
         let callback = this.callback;
         if(!callback) throw new Error('Callback not wired');
+
+        // Update status
+        await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.ENCRYPTING);
+        await callback(uploadJob.uploadId, uploadJob.userId, false, 0, uploadJob.clearSize, true);
 
         // Regularly send progress events
         let encryptedPosition = 0;
@@ -173,7 +176,7 @@ export class UploadEncryptionWorker {
                     await saveUploadPart(uploadJob.uploadId, position, blob);
 
                     // await new Promise(resolve=>(setTimeout(resolve, 500)));  // Throttle
-
+                    
                     // Update position for next part
                     position += blob.size;
 
@@ -216,10 +219,10 @@ export class UploadEncryptionWorker {
             await this.prepareFileAddMetadata(uploadJob.uploadId);
 
             // Trigger next step
-            await callback(uploadJob.uploadId, uploadJob.userId, true, encryptedPosition, encryptedPosition);
+            await callback(uploadJob.uploadId, uploadJob.userId, true, encryptedPosition, encryptedPosition, true);
         } catch(err) {
             await updateUploadJobState(uploadJob.uploadId, UploadStateEnum.ERROR);
-            await callback(uploadJob.uploadId, uploadJob.userId, true);
+            await callback(uploadJob.uploadId, uploadJob.userId, true, null, null, true);
             throw err
         } finally {
             clearInterval(interval);

@@ -236,6 +236,19 @@ type JobRowProps = {
 
 const CONST_RESUME_STATE_CANDIDATES = [UploadStateEnum.PAUSED, UploadStateEnum.ERROR];
 
+const UPLOAD_STATE_LABEL = {
+    [UploadStateEnum.INITIAL]: 'Initial',
+    [UploadStateEnum.ENCRYPTING]: 'Encrypting',
+    [UploadStateEnum.GENERATING]: 'Generating',
+    [UploadStateEnum.SENDCOMMAND]: 'Send add command',
+    [UploadStateEnum.READY]: 'Ready',
+    [UploadStateEnum.PAUSED]: 'Paused',
+    [UploadStateEnum.UPLOADING]: 'Uploading',
+    [UploadStateEnum.VERIFYING]: 'Verifying',
+    [UploadStateEnum.DONE]: 'Done',
+    [UploadStateEnum.ERROR]: 'Error',
+};
+
 function JobRow(props: JobRowProps) {
 
     let {value, onRemove, onPause, onResume} = props;
@@ -250,9 +263,10 @@ function JobRow(props: JobRowProps) {
     }, [value]);
 
     return (
-        <div key={value.uploadId} className='grid grid-cols-6'>
+        <div key={value.uploadId} className='grid grid-cols-6 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 gap-x-1 px-2 py-1'>
             <Link to={`/apps/collections2/b/${value.cuuid}`} className='col-span-3'>{fullpath}</Link>
-            <Formatters.FormatteurTaille value={value.size || undefined} />
+            <Formatters.FormatteurTaille value={value.clearSize || value.size || undefined} />
+            <p>{UPLOAD_STATE_LABEL[value.state]}</p>
             <div>
                 {onPause?
                     <ActionButton onClick={onPause} value={''+value.uploadId} varwidth={10} revertSuccessTimeout={3} disabled={value.state === UploadStateEnum.PAUSED}>

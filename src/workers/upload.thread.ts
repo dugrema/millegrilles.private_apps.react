@@ -7,7 +7,8 @@ export type UploadWorkerCallbackType = (
     userId: string, 
     done: boolean, 
     position?: number | null,
-    size?: number | null
+    size?: number | null,
+    stateChanged?: boolean | null,
 ) => Promise<void>;
 
 export class UploadThreadWorker {
@@ -103,6 +104,10 @@ export class UploadThreadWorker {
             progressEventHandler(e, currentJob, position, callback);
         };
 
+        // Triger change on file state
+        await updateUploadJobState(uploadId, UploadStateEnum.UPLOADING);
+        callback(uploadId, currentJob.userId, false, 0, currentJob.size, true);
+        
         while(true) {
             // Get next part
             let part = await getUploadPart(uploadId, position);
@@ -139,6 +144,7 @@ export class UploadThreadWorker {
         // All parts have been completed. 
         // Mark file as uploaded pending the server-side verification.
         await updateUploadJobState(uploadId, UploadStateEnum.VERIFYING);
+        callback(uploadId, currentJob.userId, false, currentJob.size, currentJob.size, true);
 
         // Launch a promise to tell the server to finish processing the file.
         // Wait for a while but then move on to the next upload if it takes too long.

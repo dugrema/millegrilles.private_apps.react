@@ -224,6 +224,7 @@ function SyncUploads() {
                         uploadId: item.uploadId,
                         processDate: item.processDate,
                         state: item.state,
+                        clearSize: item.clearSize,
                         size: item.size,
                         retry: item.retry,
                         filename: item.filename,

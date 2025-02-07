@@ -28,13 +28,13 @@ export class AppsUploadWorker {
         this.filehost = null;
         this.intervalMaintenance = null;
 
-        let uploadCb = async (uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null) => {
-            await this.uploadCallback(uploadId, userId, done, position, size);
+        let uploadCb = async (uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null, stateChanged?: boolean | null) => {
+            await this.uploadCallback(uploadId, userId, done, position, size, stateChanged);
         }
         this.uploadStateCallbackProxy = proxy(uploadCb);
 
-        let encryptionCb = async (uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null) => {
-            await this.encryptionCallback(uploadId, userId, done, position, size);
+        let encryptionCb = async (uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null, stateChanged?: boolean | null) => {
+            await this.encryptionCallback(uploadId, userId, done, position, size, stateChanged);
         }
         this.encryptionStateCallbackProxy = proxy(encryptionCb);
 
@@ -90,21 +90,27 @@ export class AppsUploadWorker {
         //TODO
     }
 
-    async uploadCallback(uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null) {
+    async uploadCallback(uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null, stateChanged?: boolean | null) {
         console.debug("Download worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
             this.uploadStatus = null;
             this.listChanged = true;
             await this.triggerJobs();
+            await this.triggerListChanged();
         } else {
             let upload = {workerType: UploadWorkerType.UPLOAD, uploadId, state: UploadStateEnum.UPLOADING, position, totalSize: size} as UploadTransferProgress;
             this.uploadStatus = upload;
-            await this.produceState();
+            if(stateChanged) {
+                console.warn("Trigger list changed");
+                await this.triggerListChanged();
+            } else {
+                await this.produceState();
+            }
         }
     }
 
-    async encryptionCallback(uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null) {
+    async encryptionCallback(uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null, stateChanged?: boolean | null) {
         console.debug("Encryption worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
@@ -120,7 +126,11 @@ export class AppsUploadWorker {
         } else {
             let encryption = {workerType: UploadWorkerType.ENCRYPTION, uploadId, state: UploadStateEnum.ENCRYPTING, position, totalSize: size} as UploadTransferProgress;
             this.encryptionStatus = encryption;
-            await this.produceState();
+            if(stateChanged) {
+                await this.triggerListChanged()
+            } else {
+                await this.produceState();
+            }
         }
     }
     

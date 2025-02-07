@@ -63,6 +63,7 @@ export type UploadJobStoreType = {
     // Upload information
     processDate: number,            // Time added/errored in millisecs.
     state: UploadStateEnum,
+    clearSize: number,              // Decrypted file size
     size: number | null,            // Encrypted file size
     retry: number,
 
