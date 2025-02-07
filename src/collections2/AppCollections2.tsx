@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 import HeaderMenu from "./Menu";
 import Footer from "../Footer";
 import useUserBrowsingStore from "./userBrowsingStore";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { getDownloadJob, getDownloadJobs, getUploadJob, getUploadJobs, openDB, updateUploadJobState, UploadStateEnum } from "./idb/collections2StoreIdb";
@@ -211,9 +211,22 @@ function SyncUploads() {
 
     // let setDownloadTicker = useTransferStore(state=>state.setDownloadTicker);
 
+    let [jobsReady, setJobsReady] = useState(true);
+
+    // Throttle updates, max 3/sec.
+    useEffect(()=>{
+        if(uploadJobsDirty) {
+            setJobsReady(false);
+            setTimeout(()=>{
+                setJobsReady(true);
+                setUploadJobsDirty(false);
+            }, 350);
+        }
+    }, [uploadJobsDirty, setUploadJobsDirty]);
+
     useEffect(()=>{
         if(!userId) return;
-        if(!uploadJobsDirty) return;
+        if(!jobsReady) return;
         setUploadJobsDirty(false);  // Avoid loop
 
         getUploadJobs(userId)
@@ -237,10 +250,10 @@ function SyncUploads() {
             })
             .catch(err=>console.error("Error loading download jobs", err))
 
-    }, [userId, uploadJobsDirty, setUploadJobsDirty]);
+    }, [userId, jobsReady]);
 
     useEffect(()=>{
-        if(!workers || !ready || !userId || !uploadJobsDirty) return;  // Nothing to do
+        if(!workers || !ready || !userId || !jobsReady) return;  // Nothing to do
         let {connection, upload} = workers;
         workers.upload.getUploadsSendCommand()
             .then( async uploadIds => {
@@ -268,7 +281,7 @@ function SyncUploads() {
                 await upload.triggerJobs();
             })
             .catch(err=>console.error("Error getting fuuids to download", err));
-    }, [workers, ready, uploadJobsDirty, userId]);
+    }, [workers, ready, jobsReady, userId]);
 
     // Pause or resume downloads
     useEffect(()=>{

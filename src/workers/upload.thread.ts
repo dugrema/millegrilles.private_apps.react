@@ -203,6 +203,7 @@ export class UploadThreadWorker {
                 await updateUploadJobState(uploadId, UploadStateEnum.DONE);
                 await removeUploadParts(uploadId);
 
+
                 return true;
             } catch(err) {
                 await updateUploadJobState(uploadId, UploadStateEnum.ERROR);
@@ -236,8 +237,13 @@ export class UploadThreadWorker {
         if(!result) {
             console.debug("Timeout waiting for file response, moving to next upload");
 
-            // Attach an error handler on the dangling download process
-            processFilePromise.catch(err=>console.error("Error finishing file upload: ", err));
+            // Attach a job complete callback and error handler on the dangling download process
+            let userId = currentJob.userId;
+            processFilePromise
+                .then(async ()=>{
+                    await callback(uploadId, userId, true);
+                })
+                .catch(err=>console.error("Error finishing file upload: ", err));
         }
     }
 }

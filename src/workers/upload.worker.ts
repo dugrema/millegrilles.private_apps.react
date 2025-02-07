@@ -98,7 +98,7 @@ export class AppsUploadWorker {
             // Start next download job (if any). Also does a produceState()
             this.uploadStatus = null;
             this.listChanged = true;
-            await this.triggerJobs();
+            this.triggerJobs().catch(err=>console.error("uploadCallback Error on triggerJobs", err));
             await this.triggerListChanged();
         } else {
             let upload = {workerType: UploadWorkerType.UPLOAD, uploadId, state: UploadStateEnum.UPLOADING, position, totalSize: size} as UploadTransferProgress;
@@ -123,7 +123,7 @@ export class AppsUploadWorker {
             if(this.uploadsSendCommand) this.uploadsSendCommand.push(uploadId);
             else this.uploadsSendCommand = [uploadId];
             
-            await this.triggerJobs();
+            this.triggerJobs().catch(err=>console.error("encryptionCallback Error on triggerJobs", err));
             await this.triggerListChanged();
         } else {
             let encryption = {workerType: UploadWorkerType.ENCRYPTION, uploadId, state: UploadStateEnum.ENCRYPTING, position, totalSize: size} as UploadTransferProgress;
@@ -193,7 +193,11 @@ export class AppsUploadWorker {
                             // Set the current filehost as upload url
                             job.uploadUrl = filehostUrl;
                         }
-                        await this.uploadWorker.addJob(job);
+                        try {
+                            await this.uploadWorker.addJob(job);
+                        } catch (err) {
+                            console.info("Upload worker busy, will retry");
+                        }
                     }
                 }
             }
@@ -280,7 +284,8 @@ export class AppsUploadWorker {
         this.listChanged = false;
         
         for (let cb of this.stateCallbacks) {
-            cb(update);
+            cb(update)
+                .catch(err=>console.error("Error on upload produceState callback", err));
         }
     }
 
