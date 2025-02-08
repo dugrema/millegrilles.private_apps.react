@@ -2,6 +2,10 @@ import { Link } from "react-router-dom";
 import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
 import { ChangeEvent, DragEvent, MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
+import useConnectionStore from "../connectionStore";
+import useWorkers from "../workers/workers";
+import { downloadFile, generateFileUploads } from "./transferUtils";
+
 import ActionButton from "../resources/ActionButton";
 
 import FileAddIcon from '../resources/icons/file-dock-svgrepo-com.svg';
@@ -15,10 +19,8 @@ import CutIcon from '../resources/icons/cut-svgrepo-com.svg';
 import ShareIcon from '../resources/icons/share-1-svgrepo-com.svg';
 import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
 import EditIcon from '../resources/icons/edit-2-svgrepo-com.svg';
+import DownloadIcon from '../resources/icons/download-svgrepo-com.svg';
 import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
-import useConnectionStore from "../connectionStore";
-import useWorkers from "../workers/workers";
-import { generateFileUploads } from "./transferUtils";
 
 type BreadcrumbProps = {
     root?: {tuuid: string | null, name: string, path?: string} | null,
@@ -185,6 +187,28 @@ export function ButtonBar(props: ButtonBarProps) {
         setSelectionMode(false);  // Exit selection mode
     }, [workers, ready, selection, setSelectionMode]);
 
+    let downloadHandler = useCallback(async () => {
+        if(!workers || !ready) throw new Error('Workers not initialized');
+        if(!selection || selection.length === 0) throw new Error('Nothing selected to delete');
+        if(!userId) throw new Error('User Id not provided');
+        if(!currentDirectory) throw new Error('Current directory information not provided');
+        for(let tuuid of selection) {
+            let file = currentDirectory[tuuid];
+            if(file) {
+                if(file.type_node === 'Fichier') {
+                    let content = await workers.download.addDownloadFromFile(tuuid, userId);
+                    if(content) {
+                        // The file has already been downloaded. Tell the browser to save it.
+                        let filename = file.nom || `${tuuid}.obj`;
+                        downloadFile(filename, content);
+                    }
+                } else {
+                    console.warn("Directory %s cannot be downloaded here", tuuid);
+                }
+            }
+        }
+    }, [workers, ready, userId, selection, currentDirectory]);
+
     let directoryInfoHandler = useCallback(() => onModal(ModalEnum.Info), [onModal]);
     let createDirectoryHandler = useCallback(() => onModal(ModalEnum.NewDirectory), [onModal]);
     let importZipHandler = useCallback(()=>onModal(ModalEnum.ImportZip), [onModal]);
@@ -288,6 +312,9 @@ export function ButtonBar(props: ButtonBarProps) {
                     className={'varbtn ml-4 px-1 py-1 w-10 hover:bg-slate-600 active:bg-slate-500 ' + (selectionMode?'bg-violet-500':'bg-slate-700')}>
                         <img src={SelectionModeIcon} alt="Select files" title="Select files" className='w-8 inline-block'/>
                 </button>
+                <ActionButton disabled={!selectionMode || !selectCount || !!directorySelectCount} onClick={downloadHandler} revertSuccessTimeout={2} varwidth={10}>
+                    <img src={DownloadIcon} alt="Download files" title="Download files" className='w-8 inline-block'/>
+                </ActionButton>
                 {props.disableEdit?<></>:
                     <button onClick={renameHandler} disabled={!selectionMode || selectCount !== 1}
                         className='varbtn ml-0 px-1 py-1 hover:bg-slate-600 active:bg-slate-500 bg-slate-700 disabled:bg-slate-900'>
