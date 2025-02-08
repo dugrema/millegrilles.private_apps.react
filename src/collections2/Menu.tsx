@@ -121,13 +121,7 @@ export default function HeaderMenu(props: MenuProps) {
                     {/* Regular menu items - need to hide in mobile mode during selection. */}
                     <div className={'inline ' + (selectionMode?'hidden md:inline':'')}>
                         <div className={'hidden md:inline-block px-1 lg:w-40 transition-colors duration-300' + (selectedSection==='transfers'?selectedClassname:unselectedClassname)}>
-                            <Link to='/apps/collections2/transfers'>
-                                <span className='hidden lg:block'><TransferTickers /></span>
-                                <span className='lg:hidden'>
-                                    <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />/
-                                    <img src={DownloadIcon} alt='Download' className='w-7 inline-block' />
-                                </span>
-                            </Link>
+                            <Link to='/apps/collections2/transfers'><TransferTickers /></Link>
                         </div>
                         <div className={'inline-block px-1 sm:px-2 transition-colors duration-300' + (selectedSection==='browse'?selectedClassname:unselectedClassname)}>
                             <Link to='/apps/collections2/b'>
@@ -243,10 +237,10 @@ function TransferTickers() {
     return (
         <>
             <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />
-            <p className='inline-block text-sm w-10'>100%</p>
+            <p className='inline-block text-sm w-10 hidden lg:inline-block'>100%</p>
             <span className='pl-1'>/</span>
             <img src={DownloadIcon} alt='Download' className={'w-7 inline-block ' + downloadClassName} />
-            <p className='inline-block text-sm w-10'>{downloadLabel}</p>
+            <p className='inline-block text-sm w-10 hidden lg:inline-block'>{downloadLabel}</p>
         </>
     )
 }
