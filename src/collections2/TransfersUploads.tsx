@@ -69,10 +69,6 @@ function TransfersUploads() {
                     <ActionButton onClick={pauseUploadingHandler} revertSuccessTimeout={3}>
                         {allPaused?<>Resume uploading</>:<>Pause uploading</>}
                     </ActionButton>
-                    <Link to={'/apps/collections2/transfers'}
-                        className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
-                            Summary
-                    </Link>
                 </div>
             </section>
 

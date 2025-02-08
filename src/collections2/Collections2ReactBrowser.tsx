@@ -15,7 +15,6 @@ const Collections2SharedUserCollections = React.lazy(()=>import('./SharedUserCol
 const SettingsPage = React.lazy(()=>import('./Settings'));
 const MediaConversionsPage = React.lazy(()=>import('./MediaConversions'));
 const Transfers = React.lazy(()=>import('./Transfers'));
-const TransfersSummary = React.lazy(()=>import('./TransfersSummary'));
 const TransfersDownloads = React.lazy(()=>import('./TransfersDownloads'));
 const TransfersUploads = React.lazy(()=>import('./TransfersUploads'));
 
@@ -45,7 +44,6 @@ function createCollections2ReactBrowserChildren() {
         },
         { path: "transfers", element: <Transfers />,
             children: [
-                { path: "", element: <TransfersSummary /> },
                 { path: "downloads", element: <TransfersDownloads /> },
                 { path: "uploads", element: <TransfersUploads /> },
             ]

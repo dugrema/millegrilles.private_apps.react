@@ -56,10 +56,6 @@ function TransfersDownloads() {
                     <ActionButton onClick={pauseAllDownloads} revertSuccessTimeout={3}>
                         Pause all
                     </ActionButton>
-                    <Link to={'/apps/collections2/transfers'}
-                        className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
-                            Summary
-                    </Link>
                 </div>
 
                 <WorkerActivity />
