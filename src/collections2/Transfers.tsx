@@ -170,19 +170,28 @@ export function SyncUploads() {
             .catch(err=>console.error("Error getting fuuids to download", err));
     }, [workers, ready, jobsReady, userId]);
 
-    // Pause or resume downloads
+    // Pause or resume uploads
     useEffect(()=>{
         if(!workers || !ready || !userId) return;
 
-        let currentlyPaused = localStorage.getItem(`pauseUploading_${userId}`) === 'true';
-        // console.debug("Currently paused? ", currentlyPaused);
+        let uploadsCurrentlyPaused = localStorage.getItem(`pauseUploading_${userId}`) === 'true';
+        let downloadsCurrentlyPaused = localStorage.getItem(`pauseDownloading_${userId}`) === 'true';
+        // console.debug("Currently paused? ", uploadsCurrentlyPaused);
 
-        if(currentlyPaused) {
+        if(uploadsCurrentlyPaused) {
             // Stop upload worker
             workers.upload.pauseUploading();
         } else {
             // Resume uploading with worker
             workers.upload.resumeUploading();
+        }
+
+        if(downloadsCurrentlyPaused) {
+            // Stop download worker
+            workers.download.pauseDownloading();
+        } else {
+            // Resume downloading with worker
+            workers.download.resumeDownloading();
         }
     }, [workers, ready, userId]);    
 

@@ -303,7 +303,7 @@ export class AppsUploadWorker {
         let list = [] as UploadStateCallback[];
         for await(let cb of this.stateCallbacks) {
             // console.debug("Callback found");
-            await new Promise(async (resolve) => {
+            await new Promise((resolve) => {
                 setTimeout(resolve, 100);
                 cb({}).then(()=>{
                     list.push(cb);  // Keep

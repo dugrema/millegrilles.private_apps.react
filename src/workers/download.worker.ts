@@ -23,6 +23,7 @@ export class AppsDownloadWorker {
     listChanged: boolean
     fuuidsReady: string[] | null    // List of files for which the download just completed
     triggerDebounceTimeout: ReturnType<typeof setTimeout> | null;
+    pauseDownloads: boolean
 
     constructor() {
         this.currentUserId = null;
@@ -48,6 +49,7 @@ export class AppsDownloadWorker {
         this.fuuidsReady = null;
 
         this.triggerDebounceTimeout = null;
+        this.pauseDownloads = false;
     }
 
     async setup(stateCallback: DownloadStateCallback) {
@@ -136,18 +138,18 @@ export class AppsDownloadWorker {
     }
 
     async changeUser(userId: string | null) {
-        let previousUserId = this.currentUserId;
+        //let previousUserId = this.currentUserId;
         this.currentUserId = userId;
 
-        if(previousUserId && previousUserId !== userId) {
-            // Pause downloads from other user
-            console.debug("Pausing all downloads for user %s", previousUserId);
-        }
+        // if(previousUserId && previousUserId !== userId) {
+        //     // Pause downloads from other user
+        //     console.debug("Pausing all downloads for user %s", previousUserId);
+        // }
 
-        if(userId) {
-            // Resume downloads for this user
-            console.debug("Restarting downloads for user %s", userId);
-        }
+        // if(userId) {
+        //     // Resume downloads for this user
+        //     console.debug("Restarting downloads for user %s", userId);
+        // }
     }
 
     async triggerJobs() {
@@ -183,23 +185,25 @@ export class AppsDownloadWorker {
 
         // Downloads
         if(this.downloadWorker) {
-            // console.debug("Trigger job downloadWorker check");
-            if(await this.downloadWorker.isBusy() === false) {
-                let job = await getNextDownloadJob(this.currentUserId);
-                // console.debug("Trigger job downloadWorker next", job);
-                if(!job) {
-                    // Check if we can resume a download in Error state
-                    job = await restartNextJobInError(this.currentUserId);
-                }
-                if(job) {
-                    // Generate download url
-                    let url = filehostUrl;
-                    if(!url.endsWith('/')) url += '/';
-                    url += 'files/' + job.fuuid;
-                    
-                    let downloadJob = {...job, url};
-                    //console.debug("Add download job", downloadJob);
-                    await this.downloadWorker.addJob(downloadJob);
+            if(!this.pauseDownloads) {
+                // console.debug("Trigger job downloadWorker check");
+                if(await this.downloadWorker.isBusy() === false) {
+                    let job = await getNextDownloadJob(this.currentUserId);
+                    // console.debug("Trigger job downloadWorker next", job);
+                    if(!job) {
+                        // Check if we can resume a download in Error state
+                        job = await restartNextJobInError(this.currentUserId);
+                    }
+                    if(job) {
+                        // Generate download url
+                        let url = filehostUrl;
+                        if(!url.endsWith('/')) url += '/';
+                        url += 'files/' + job.fuuid;
+                        
+                        let downloadJob = {...job, url};
+                        //console.debug("Add download job", downloadJob);
+                        await this.downloadWorker.addJob(downloadJob);
+                    }
                 }
             }
         } else {
@@ -279,6 +283,20 @@ export class AppsDownloadWorker {
         await this.triggerListChanged();
     }
 
+    async isPaused() {
+        return this.pauseDownloads;
+    }
+
+    async pauseDownloading() {
+        this.pauseDownloads = true;
+        await this.downloadWorker?.pauseJob();
+    }
+
+    async resumeDownloading() {
+        this.pauseDownloads = false;
+        await this.triggerJobs();
+    }
+
     async resumeDownload(fuuid: string, userId: string) {
         let job = await getDownloadJob(userId, fuuid);
         if(!job) throw new Error('Unknown job');
@@ -324,7 +342,7 @@ export class AppsDownloadWorker {
         let list = [] as DownloadStateCallback[];
         for await(let cb of this.stateCallbacks) {
             // console.debug("Callback found");
-            await new Promise(async (resolve) => {
+            await new Promise((resolve) => {
                 setTimeout(resolve, 100);
                 cb({}).then(()=>{
                     list.push(cb);  // Keep

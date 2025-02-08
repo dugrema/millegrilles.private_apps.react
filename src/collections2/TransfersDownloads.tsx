@@ -1,4 +1,4 @@
-import React, { MouseEvent, useCallback, useMemo } from "react";
+import React, { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import ActionButton from "../resources/ActionButton";
 import useTransferStore, { DownloadJobStoreType, DownloadWorkerType } from "./transferStore";
@@ -24,7 +24,7 @@ function TransfersDownloads() {
 
     let completedTransfersPresent = true;
 
-    // let [allPaused, setAllPaused] = useState(false);
+    let [allPaused, setAllPaused] = useState(false);
 
     let removeCompletedHandler = useCallback(async ()=>{
         if(!workers || !ready) throw new Error('workers not initialized');
@@ -37,8 +37,27 @@ function TransfersDownloads() {
     let pauseAllDownloads = useCallback(async ()=>{
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!userId) throw new Error('User Id not provided');
-        throw new Error('Todo');
-    }, [workers, ready, userId]);
+        
+        let currentlyPaused = localStorage.getItem(`pauseDownloading_${userId}`) === 'true';
+        let pauseStatus = !currentlyPaused;  // Toggle
+        setAllPaused(pauseStatus);
+        localStorage.setItem(`pauseDownloading_${userId}`, pauseStatus?'true':'false');
+
+        if(pauseStatus) {
+            // Stop upload worker
+            await workers.download.pauseDownloading();
+        } else {
+            // Resume uploading with worker
+            await workers.download.resumeDownloading();
+        }
+    }, [workers, ready, userId, setAllPaused]);
+
+    useEffect(()=>{
+        if(!workers || !ready || !userId) return;
+        let currentlyPaused = localStorage.getItem(`pauseDownloading_${userId}`) === 'true';
+        console.debug("Currently paused: ", currentlyPaused);
+        setAllPaused(currentlyPaused);
+    }, [workers, ready, setAllPaused, userId]);
 
     return (
         <>
@@ -54,7 +73,7 @@ function TransfersDownloads() {
                         Remove completed
                     </ActionButton>
                     <ActionButton onClick={pauseAllDownloads} revertSuccessTimeout={3}>
-                        Pause all
+                        {allPaused?<>Resume downloading</>:<>Pause downloading</>}
                     </ActionButton>
                 </div>
 

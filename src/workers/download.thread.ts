@@ -35,6 +35,11 @@ export class DownloadThreadWorker {
         return false;
     }
 
+    async pauseJob() {
+        // Just cancel the current job if any.
+        this.abortController?.abort();
+    }
+
     async addJob(downloadJob: DownloadJobType): Promise<void> {
         if(!!this.currentJob) throw new Error('Busy');
         this.currentJob = downloadJob;
@@ -74,7 +79,7 @@ export class DownloadThreadWorker {
             }
 
             // Start downloading
-            console.debug("Getting URL", url);
+            // console.debug("Getting URL", url);
             let response = await fetch(url, {
                 signal: abortController.signal,
                 cache: 'no-store', keepalive: false, credentials: "include", headers,
