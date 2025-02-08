@@ -68,7 +68,11 @@ export function SyncDownloads() {
                     // console.debug("Trigger download of ", fuuid);
                     let job = await getDownloadJob(userId, fuuid);
                     if(job) {
-                        downloadFile(job.filename, job.content);
+                        if(job.content) {
+                            downloadFile(job.filename, job.content);
+                        } else {
+                            console.error("No content to download found for fuuid:%s", fuuid)
+                        }
                     } else {
                         console.warn("No job found to download fuuid:%s", fuuid);
                     }

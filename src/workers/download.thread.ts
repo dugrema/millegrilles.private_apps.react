@@ -74,7 +74,7 @@ export class DownloadThreadWorker {
             }
 
             // Start downloading
-            // console.debug("Getting URL", url);
+            console.debug("Getting URL", url);
             let response = await fetch(url, {
                 signal: abortController.signal,
                 cache: 'no-store', keepalive: false, credentials: "include", headers,

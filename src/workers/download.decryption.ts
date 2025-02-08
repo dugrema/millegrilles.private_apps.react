@@ -128,6 +128,11 @@ export class DownloadDecryptionWorker {
             // Save all decrypted parts into a single blob
             // console.debug("Save all decrypted parts to IDB");
             let decryptedFileBlob = new Blob(blobs, {type: downloadJob.mimetype});
+
+            if(decryptedFileBlob.size === 0 && downloadJob.size) {
+                throw new Error('Decrypted file %s size is 0 (empty)');
+            }
+
             await saveDecryptedBlob(fuuid, decryptedFileBlob);
             this.currentJob = null;  // Remove job before callback - allows chaining to next job
             await callback(downloadJob.fuuid, downloadJob.userId, true, downloadJob.size, downloadJob.size);

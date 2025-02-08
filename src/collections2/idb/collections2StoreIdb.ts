@@ -398,7 +398,7 @@ export async function addDownload(download: DownloadIdbType) {
     }
 }
 
-export async function getDownloadJob(userId: string, fuuid: string) {
+export async function getDownloadJob(userId: string, fuuid: string): Promise<DownloadIdbType> {
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
     return await store.get([fuuid, userId]);
@@ -529,7 +529,7 @@ export async function saveDecryptionError(fuuid: string,) {
         let value = cursor.value as DownloadIdbType;
         
         // Update the record
-        value.secretKey = null;  // Erase key
+        // value.secretKey = null;  // Erase key
         value.state = DownloadStateEnum.ERROR;
         await cursor.update(value);  // Replace value
         

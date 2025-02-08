@@ -218,9 +218,6 @@ export class AppsDownloadWorker {
             console.warn("Download decryption worker not wired");
         }
 
-        // Uploads
-
-
         // Update state
         await this.produceState();
     }
@@ -314,7 +311,6 @@ export class AppsDownloadWorker {
     }
 
     maintain() {
-        // console.debug("Run maintenance");
         this.triggerJobs()
             .catch(err=>console.error("Error triggering jobs", err));
         this.maintainCallbacks()
