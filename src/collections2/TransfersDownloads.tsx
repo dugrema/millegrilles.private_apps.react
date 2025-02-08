@@ -80,7 +80,7 @@ function TransfersDownloads() {
                 <WorkerActivity />
             </section>
 
-            <section className='fixed top-64 md:top-64 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
+            <section className='fixed top-52 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <CompletedTransfers />
                 <OngoingTransfers />
             </section>

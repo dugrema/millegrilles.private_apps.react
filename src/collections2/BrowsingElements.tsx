@@ -20,6 +20,7 @@ import ShareIcon from '../resources/icons/share-1-svgrepo-com.svg';
 import TrashIcon from '../resources/icons/trash-2-svgrepo-com.svg';
 import EditIcon from '../resources/icons/edit-2-svgrepo-com.svg';
 import DownloadIcon from '../resources/icons/download-svgrepo-com.svg';
+import UploadIcon from '../resources/icons/share-2-svgrepo-com.svg';
 import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
 
 type BreadcrumbProps = {
@@ -292,8 +293,8 @@ export function ButtonBar(props: ButtonBarProps) {
                     <>
                         <button onClick={addFileHandler} disabled={!cuuid}
                             onDrop={fileDropHandler} onDragEnter={fileDragEnterHandler} onDragLeave={fileDragLeaveHandler} onDragOver={fileDragOverHandler}
-                            className={`varbtn ml-2 px-0.5 py-0.5 ${cssDragFileButton} hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900`}>
-                                <img src={FileAddIcon} alt='Add files' title='Add files' className='w-10 inline-block' />
+                            className={`varbtn ml-2 w-11 h-11 px-0.5 py-0.5 ${cssDragFileButton} hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900`}>
+                                <img src={UploadIcon} alt='Add files' title='Add files' className='w-8 inline-block' />
                         </button>
 
                         <button onClick={createDirectoryHandler}

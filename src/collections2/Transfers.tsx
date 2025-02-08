@@ -544,7 +544,7 @@ export function TransferTickerUpdate() {
         } else if(activity === TransferActivity.IDLE_CONTENT) {
             percent = 100;  // We have some completed transfers
         }
-        setUploadTicker(activity, percent);
+        setUploadTicker(activity, percent, {states: uploadStates});
 
         if(uploadStates[UploadStateEnum.INITIAL] === 0 &&
             uploadStates[UploadStateEnum.ENCRYPTING] === 0 &&

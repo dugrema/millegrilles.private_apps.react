@@ -3,7 +3,7 @@ import ActionButton from "../resources/ActionButton";
 import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore from "./userBrowsingStore";
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import React, { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { removeUserUploads, UploadStateEnum } from "./idb/collections2StoreIdb";
 import ProgressBar from "./ProgressBar";
 import useTransferStore, { UploadJobStoreType, UploadWorkerType } from "./transferStore";
@@ -59,8 +59,12 @@ function TransfersUploads() {
 
     return (
         <>
-            <section>
-                <h2 className='font-bold pt-4 pb-2'>Uploads</h2>
+            <section className='fixed top-10'>
+                <h2 className='font-bold pb-2'>Uploads</h2>
+
+                <div className='grid grid-cols-8 pb-2 space-x-2'>
+                    <UploadSummary />
+                </div>
 
                 <div>
                     <ActionButton onClick={removeCompletedHandler} mainButton={true} disabled={!completedTransfersPresent} revertSuccessTimeout={3}>
@@ -70,16 +74,44 @@ function TransfersUploads() {
                         {allPaused?<>Resume uploading</>:<>Pause uploading</>}
                     </ActionButton>
                 </div>
+
+                <WorkerActivity />
             </section>
 
-            <WorkerActivity />
-            <CompletedTransfers />
-            <OngoingTransfers />
+            <section className='fixed top-56 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
+                <CompletedTransfers />
+                <OngoingTransfers />
+            </section>
         </>
     );
 }
 
 export default TransfersUploads;
+
+function UploadSummary() {
+
+    let uploadSummary = useTransferStore(state=>state.uploadSummary);
+
+    let summaryList = useMemo(()=>{
+        let list = [] as JSX.Element[];
+
+        let queued = 
+            uploadSummary[UploadStateEnum.INITIAL] + uploadSummary[UploadStateEnum.GENERATING] + uploadSummary[UploadStateEnum.SENDCOMMAND] + 
+            uploadSummary[UploadStateEnum.READY] + uploadSummary[UploadStateEnum.UPLOADING] + uploadSummary[UploadStateEnum.VERIFYING] +
+            uploadSummary[UploadStateEnum.ERROR_DURING_PART_UPLOAD];
+        if(isNaN(queued)) queued = 0;
+
+        list.push(<React.Fragment key='done'><p>Done</p><p className='text-right pr-1'>{uploadSummary[UploadStateEnum.DONE]}</p></React.Fragment>);
+        list.push(<React.Fragment key='pause'><p>Paused</p><p className='text-right pr-1'>{uploadSummary[UploadStateEnum.PAUSED]}</p></React.Fragment>);
+        list.push(<React.Fragment key='initial'><p>Queued</p><p className='text-right pr-1'>{queued}</p></React.Fragment>);
+        list.push(<React.Fragment key='error'><p>Error</p><p className='text-right pr-1'>{uploadSummary[UploadStateEnum.ERROR]}</p></React.Fragment>);
+
+        return list;
+    }, [uploadSummary]);
+
+    return <>{summaryList}</>;
+}
+
 
 function WorkerActivity() {
 
@@ -108,7 +140,7 @@ function WorkerActivity() {
     }, [uploadProgress]);
 
     return (
-        <section>
+        <>
             <h2>Upload processes</h2>
 
             <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
@@ -127,7 +159,7 @@ function WorkerActivity() {
                 }
             </div>
 
-        </section>
+        </>
     )
 }
 
@@ -199,10 +231,10 @@ function OngoingTransfers() {
     if(mappedTransfers.length === 0) return <></>;
 
     return (
-        <section>
+        <div>
             <h2 className='font-bold pt-4 pb-2'>Transfer queue</h2>
             {mappedTransfers}
-        </section>
+        </div>
     );
 }
 
@@ -241,10 +273,10 @@ function CompletedTransfers() {
     if(mappedTransfers.length === 0) return <></>;
 
     return (
-        <section>
-            <h2 className='font-bold pt-4 pb-2'>Completed transfers</h2>
+        <div>
+            <h2 className='font-bold pb-2'>Completed transfers</h2>
             {mappedTransfers}
-        </section>
+        </div>
     );
 }
 

@@ -88,6 +88,7 @@ interface TransferStoreState {
 
     uploadActivity: TransferActivity,
     uploadTransferPercent: number | null,
+    uploadSummary: {[state: number]: number},
     uploadSessionStart: Date | null,          // Used to include DONE downloads for the current progress
 
     // Current processes in workers
@@ -105,7 +106,7 @@ interface TransferStoreState {
     setDownloadJobs: (downloadJobs: DownloadJobStoreType[] | null) => void,
     setDownloadJobsDirty: (jobsDirty: boolean) => void,
 
-    setUploadTicker: (uploadActivity: TransferActivity, uploadTransferPercent: number | null) => void,
+    setUploadTicker: (uploadActivity: TransferActivity, uploadTransferPercent: number | null, opts?: {states: {[state: number]: number}}) => void,
     setUploadSessionStart: (uploadSessionStart: Date | null) => void,
     updateUploadState: (state: UploadStateUpdateType) => void,
     setUploadJobs: (uploadJobs: UploadJobStoreType[] | null) => void,
@@ -122,6 +123,7 @@ const useTransferStore = create<TransferStoreState>()(
 
             uploadActivity: TransferActivity.IDLE_EMTPY,
             uploadTransferPercent: null,
+            uploadSummary: {},
             uploadSessionStart: null,
 
             downloadProgress: [],
@@ -159,7 +161,13 @@ const useTransferStore = create<TransferStoreState>()(
             setDownloadJobs: (downloadJobs) => set(()=>({downloadJobs})),
             setDownloadJobsDirty: (downloadJobsDirty) => set(()=>({downloadJobsDirty})),
 
-            setUploadTicker: (uploadActivity, uploadTransferPercent) => set(()=>({uploadActivity, uploadTransferPercent})), 
+            setUploadTicker: (uploadActivity, uploadTransferPercent, opts) => set(()=>{
+                let values = {uploadActivity, uploadTransferPercent} as TransferStoreState;
+                if(opts?.states) {
+                    values.uploadSummary = opts.states;
+                }
+                return values;
+            }), 
             setUploadSessionStart: (uploadSessionStart) => set(()=>({uploadSessionStart})), 
             updateUploadState: (updatedState) => set((state)=>{
                 // console.debug("Received upload state update", state);
