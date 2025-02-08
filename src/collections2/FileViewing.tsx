@@ -376,7 +376,7 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!userId) throw new Error('UserId not provided');
         let tuuid = file.tuuid;
-        if(!downloadSessionStart) setDownloadSessionStart(new Date());
+        //if(!downloadSessionStart) setDownloadSessionStart(new Date());
         let content = await workers.download.addDownloadFromFile(tuuid, userId);
         if(content) {
             let filename = file.decryptedMetadata?.nom || `${file.tuuid}.obj`;

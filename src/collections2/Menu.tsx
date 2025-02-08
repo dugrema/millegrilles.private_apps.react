@@ -224,6 +224,9 @@ function TransferTickers() {
     let downloadActivity = useTransferStore(state=>state.downloadActivity);
     let downloadTransferPercent = useTransferStore(state=>state.downloadTransferPercent);
 
+    let uploadActivity = useTransferStore(state=>state.uploadActivity);
+    let uploadTransferPercent = useTransferStore(state=>state.uploadTransferPercent);
+
     let [downloadClassName, downloadLabel] = useMemo(()=>{
         let downloadClassName = '', downloadLabel = <>-</>;
         if(downloadActivity === TransferActivity.ERROR) downloadClassName = 'bg-red-600 bg-opacity-50';
@@ -236,10 +239,22 @@ function TransferTickers() {
         return [downloadClassName, downloadLabel];
     }, [downloadActivity, downloadTransferPercent]);
 
+    let [uploadClassName, uploadLabel] = useMemo(()=>{
+        let uploadClassName = '', uploadLabel = <>-</>;
+        if(uploadActivity === TransferActivity.ERROR) uploadClassName = 'bg-red-600 bg-opacity-50';
+        else if(uploadActivity === TransferActivity.RUNNING) uploadClassName = 'bg-green-600 bg-opacity-70';
+        else if(uploadActivity === TransferActivity.PENDING) uploadClassName = 'bg-yellow-500 bg-opacity-60';
+        else if(uploadActivity === TransferActivity.IDLE_CONTENT) uploadClassName = 'bg-indigo-500 bg-opacity-60';
+        
+        if(typeof(uploadTransferPercent) === 'number') uploadLabel = <>{`${uploadTransferPercent}%`}</>;
+
+        return [uploadClassName, uploadLabel];
+    }, [uploadActivity, uploadTransferPercent]);
+
     return (
         <>
-            <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />
-            <p className='inline-block text-sm w-10 hidden lg:inline-block'>100%</p>
+            <img src={UploadIcon} alt='Upload' className={'w-7 inline-block rounded-t-md ' + uploadClassName} />
+            <p className='inline-block text-sm w-10 hidden lg:inline-block'>{uploadLabel}</p>
             <span className='pl-1'>/</span>
             <img src={DownloadIcon} alt='Download' className={'w-7 inline-block ml-1 rounded-t-md ' + downloadClassName} />
             <p className='inline-block text-sm w-10 hidden lg:inline-block'>{downloadLabel}</p>

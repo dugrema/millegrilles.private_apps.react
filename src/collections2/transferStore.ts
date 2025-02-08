@@ -85,12 +85,9 @@ interface TransferStoreState {
     downloadTransferPercent: number | null,
     downloadSessionStart: Date | null,          // Used to include DONE downloads for the current progress
 
-    // Data used to prepare the total on screen
-    // downloadStartReference: number | null,  // Start of the download period. Files older that this do not get included in the totals.
-    // downloadTotalSize: number | null,       // Size to use for calculating 100% of the download completed
-    // downloadCompletedSize: number | null,   // Current sum of the completed files to use in the download progress.
-    // downloadPosition: number | null,        // Position of the current download worker files
-    // decryptionPosition: number | null,      // Position of the current decryption worker files
+    uploadActivity: TransferActivity,
+    uploadTransferPercent: number | null,
+    uploadSessionStart: Date | null,          // Used to include DONE downloads for the current progress
 
     // Current processes in workers
     downloadProgress: DownloadTransferProgress[],
@@ -107,6 +104,8 @@ interface TransferStoreState {
     setDownloadJobs: (downloadJobs: DownloadJobStoreType[] | null) => void,
     setDownloadJobsDirty: (jobsDirty: boolean) => void,
 
+    setUploadTicker: (uploadActivity: TransferActivity, uploadTransferPercent: number | null) => void,
+    setUploadSessionStart: (uploadSessionStart: Date | null) => void,
     updateUploadState: (state: UploadStateUpdateType) => void,
     setUploadJobs: (uploadJobs: UploadJobStoreType[] | null) => void,
     setUploadJobsDirty: (uploadJobsDirty: boolean) => void,
@@ -118,12 +117,15 @@ const useTransferStore = create<TransferStoreState>()(
             downloadActivity: TransferActivity.IDLE_EMTPY,
             downloadTransferPercent: null,
             downloadSessionStart: null,
+
+            uploadActivity: TransferActivity.IDLE_EMTPY,
+            uploadTransferPercent: null,
+            uploadSessionStart: null,
+
             downloadProgress: [],
             downloadJobs: null,
             downloadJobsDirty: true,
 
-            uploadActivity: TransferActivity.IDLE_EMTPY,
-            uploadTransferPercent: null,
             uploadProgress: [],
             uploadJobs: null,
             uploadJobsDirty: true,
@@ -135,6 +137,8 @@ const useTransferStore = create<TransferStoreState>()(
 
                 // Updates
                 if(updatedState.activeTransfers) {
+                    // Save new session start
+                    if(!state.downloadSessionStart) values.downloadSessionStart = new Date();
                     values.downloadProgress = updatedState.activeTransfers;
                 }
                 if(updatedState.listChanged) {
@@ -147,6 +151,8 @@ const useTransferStore = create<TransferStoreState>()(
             setDownloadJobs: (downloadJobs) => set(()=>({downloadJobs})),
             setDownloadJobsDirty: (downloadJobsDirty) => set(()=>({downloadJobsDirty})),
 
+            setUploadTicker: (uploadActivity, uploadTransferPercent) => set(()=>({uploadActivity, uploadTransferPercent})), 
+            setUploadSessionStart: (uploadSessionStart) => set(()=>({uploadSessionStart})), 
             updateUploadState: (updatedState) => set((state)=>{
                 // console.debug("Received upload state update", state);
 
@@ -154,6 +160,7 @@ const useTransferStore = create<TransferStoreState>()(
 
                 // Updates
                 if(updatedState.activeTransfers) {
+                    if(!state.uploadSessionStart) values.uploadSessionStart = new Date();
                     values.uploadProgress = updatedState.activeTransfers;
                 }
                 if(updatedState.listChanged) {
