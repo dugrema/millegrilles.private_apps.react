@@ -3,9 +3,12 @@ import { devtools } from 'zustand/middleware';
 import { DownloadStateEnum, UploadStateEnum } from './idb/collections2StoreIdb';
 
 export enum TransferActivity {
-    IDLE=1,
-    RUNNING=2,
-    ERROR=3
+    IDLE_EMTPY=1,           // No items
+    IDLE_CONTENT=2,         // Items but no activity
+    RUNNING_ENCRYPTION=3,   // Upload only, this step must not be interrupted
+    RUNNING=4,              // At least 1 worker running (upload, download or decryption, encryption is a different state)
+    PENDING=5,              // No worker running, at least 1 item in pause/recoverable error state
+    ERROR=99,               // At least 1 transfer in _unrecoverable_ error
 };
 
 // Downloads
@@ -110,13 +113,13 @@ interface TransferStoreState {
 const useTransferStore = create<TransferStoreState>()(
     devtools(
         (set) => ({
-            downloadActivity: TransferActivity.IDLE,
+            downloadActivity: TransferActivity.IDLE_EMTPY,
             downloadTransferPercent: null,
             downloadProgress: [],
             downloadJobs: null,
             downloadJobsDirty: true,
 
-            uploadActivity: TransferActivity.IDLE,
+            uploadActivity: TransferActivity.IDLE_EMTPY,
             uploadTransferPercent: null,
             uploadProgress: [],
             uploadJobs: null,

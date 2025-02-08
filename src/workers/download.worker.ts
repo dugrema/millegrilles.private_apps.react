@@ -88,7 +88,7 @@ export class AppsDownloadWorker {
     }
 
     async downloadCallback(fuuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) {
-        console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
+        // console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
             this.downloadStatus = null;
@@ -102,7 +102,7 @@ export class AppsDownloadWorker {
     }
 
     async decryptionCallback(fuuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) {
-        console.debug("Decryption worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
+        // console.debug("Decryption worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
             this.decryptionStatus = null;
@@ -181,7 +181,7 @@ export class AppsDownloadWorker {
                     url += 'files/' + job.fuuid;
                     
                     let downloadJob = {...job, url};
-                    console.debug("Add download job", downloadJob);
+                    //console.debug("Add download job", downloadJob);
                     await this.downloadWorker.addJob(downloadJob);
                 }
             }
@@ -212,10 +212,10 @@ export class AppsDownloadWorker {
         if(!this.downloadWorker || !this.decryptionWorker) throw new Error('Dedicated workers not initialized');
         
         let entry = await createDownloadEntryFromFile(tuuid, userId);
-        console.debug("New download entry", entry);
+        // console.debug("New download entry", entry);
 
         let content = await getDownloadContent(entry.fuuid, userId);
-        console.debug("Existing download content", content);
+        // console.debug("Existing download content", content);
         if(content) {
             // Download already completed, return the file
             return content;
@@ -232,7 +232,7 @@ export class AppsDownloadWorker {
 
     async addDownloadFromVideo(tuuid: string, userId: string, video: FileVideoData) {
         let entry = await createDownloadEntryFromVideo(tuuid, userId, video);
-        console.debug("New video download entry", entry);
+        // console.debug("New video download entry", entry);
 
         // Add to IDB
         await addDownload(entry);

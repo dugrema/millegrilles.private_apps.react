@@ -8,7 +8,7 @@ import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { openDB } from "./idb/collections2StoreIdb";
 import { messageStruct } from "millegrilles.cryptography";
-import { SyncDownloads, SyncUploads } from "./Transfers";
+import { SyncDownloads, SyncUploads, TransferTickerUpdate } from "./Transfers";
 
 function Collections2() {
     return (
@@ -141,6 +141,7 @@ function TransferStoreSync() {
         <>
             <SyncDownloads />
             <SyncUploads />
+            <TransferTickerUpdate />
         </>
     )
 }
