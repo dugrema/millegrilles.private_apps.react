@@ -186,24 +186,12 @@ export function SyncUploads() {
     return <></>;
 }
 
-// INITIAL = 1,
-// PAUSED,
-// DOWNLOADING,
-// ENCRYPTED,
-// DONE,
-// ERROR = 99,
-
 const CONST_STATUS_JOB_TOTAL = [
     DownloadStateEnum.INITIAL, 
     DownloadStateEnum.DOWNLOADING, 
     DownloadStateEnum.ENCRYPTED, 
-    DownloadStateEnum.DONE, 
-    DownloadStateEnum.ERROR,
-];
-
-const CONST_STATUS_JOB_COMPLETED = [
-    DownloadStateEnum.ENCRYPTED, 
-    DownloadStateEnum.DONE, 
+    // DownloadStateEnum.DONE, 
+    // DownloadStateEnum.ERROR,
 ];
 
 /** Maintains the transfer ticker (pct upload/download) */
@@ -212,6 +200,8 @@ export function TransferTickerUpdate() {
     let downloadJobs = useTransferStore(state=>state.downloadJobs);
     let downloadProgress = useTransferStore(state=>state.downloadProgress);
     let setDownloadTicker = useTransferStore(state=>state.setDownloadTicker);
+    let downloadSessionStart = useTransferStore(state=>state.downloadSessionStart);
+    let setDownloadSessionStart = useTransferStore(state=>state.setDownloadSessionStart);
 
     useEffect(()=>{
         let activity = TransferActivity.IDLE_EMTPY;
@@ -241,6 +231,35 @@ export function TransferTickerUpdate() {
                 }, 0);
             totalBytesDownloading = total || 0;
 
+            if(downloadSessionStart) {
+                // Add jobs that have completed since the start of this session to the total
+                let startTimestamp = downloadSessionStart.getTime();
+                let totalCompleted = downloadJobs
+                    .filter(item=>{
+                        return item.state === DownloadStateEnum.DONE && item.processDate >= startTimestamp;
+                    })
+                    .map(item=>item.size)
+                    .reduce((acc, item)=>{
+                        if(acc && item) return acc + item;
+                        if(item) return item;
+                        return acc;
+                    }, 0);
+                if(totalCompleted) totalBytesDownloading += totalCompleted;
+
+                // Current progress when adding jobs DONE that started in the current session
+                let currentDone = downloadJobs
+                    .filter(item=>{
+                        return item.state === DownloadStateEnum.DONE && item.processDate >= startTimestamp;
+                    })
+                    .map(item=>item.size)
+                    .reduce((acc, item)=>{
+                        if(acc && item) return acc + item;
+                        if(item) return item;
+                        return acc;
+                    }, 0);
+                if(currentDone) bytesPosition += currentDone;
+            }
+
             // Jobs that are completely downloaded by not decrypted
             let currentEncrypted = downloadJobs
                 .filter(item=>item.state===DownloadStateEnum.ENCRYPTED)
@@ -255,23 +274,11 @@ export function TransferTickerUpdate() {
                 bytesPosition += Math.floor(currentEncrypted / 2);
             }
 
-            // Current progress when adding jobs DONE that started in the current session
-            let currentDone = downloadJobs
-                .filter(item=>item.state===DownloadStateEnum.DONE)
-                .map(item=>item.size)
-                .reduce((acc, item)=>{
-                    if(acc && item) return acc + item;
-                    if(item) return item;
-                    return acc;
-                }, 0);
-            if(currentDone) bytesPosition += currentDone;
-
             // Check states
             downloadStates = downloadJobs.map(item=>item.state).reduce((acc, item)=>{
                 acc[item] += 1;
                 return acc;
             }, downloadStates);
-
         }
 
         if(downloadProgress && downloadProgress.length > 0) {
@@ -302,7 +309,6 @@ export function TransferTickerUpdate() {
 
             // Decrypting is half the work
             if(encryptedWorkerPosition) bytesPosition += encryptedWorkerPosition / 2;
-
         }
 
         if(downloadStates[DownloadStateEnum.ERROR] > 0) {
@@ -318,7 +324,14 @@ export function TransferTickerUpdate() {
         }
         setDownloadTicker(activity, percent);
 
-    }, [downloadJobs, downloadProgress, setDownloadTicker]);
+        if(downloadStates[DownloadStateEnum.INITIAL] === 0 &&
+            downloadStates[DownloadStateEnum.DOWNLOADING] === 0 &&
+            downloadStates[DownloadStateEnum.ENCRYPTED] === 0
+        ) {
+            // Reset download session start
+            setDownloadSessionStart(null);
+        }
+    }, [downloadJobs, downloadProgress, setDownloadTicker, downloadSessionStart, setDownloadSessionStart]);
 
     return <></>;
 }

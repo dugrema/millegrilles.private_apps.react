@@ -83,6 +83,7 @@ interface TransferStoreState {
     // Overall activity, used for transfer items in menu
     downloadActivity: TransferActivity,
     downloadTransferPercent: number | null,
+    downloadSessionStart: Date | null,          // Used to include DONE downloads for the current progress
 
     // Data used to prepare the total on screen
     // downloadStartReference: number | null,  // Start of the download period. Files older that this do not get included in the totals.
@@ -101,6 +102,7 @@ interface TransferStoreState {
     uploadJobsDirty: boolean,
 
     setDownloadTicker: (downloadActivity: TransferActivity, downloadTransferPercent: number | null) => void,
+    setDownloadSessionStart: (downloadSessionStart: Date | null) => void,
     updateDownloadState: (state: DownloadStateUpdateType) => void,
     setDownloadJobs: (downloadJobs: DownloadJobStoreType[] | null) => void,
     setDownloadJobsDirty: (jobsDirty: boolean) => void,
@@ -115,6 +117,7 @@ const useTransferStore = create<TransferStoreState>()(
         (set) => ({
             downloadActivity: TransferActivity.IDLE_EMTPY,
             downloadTransferPercent: null,
+            downloadSessionStart: null,
             downloadProgress: [],
             downloadJobs: null,
             downloadJobsDirty: true,
@@ -126,6 +129,7 @@ const useTransferStore = create<TransferStoreState>()(
             uploadJobsDirty: true,
 
             setDownloadTicker: (downloadActivity, downloadTransferPercent) => set(()=>({downloadActivity, downloadTransferPercent})), 
+            setDownloadSessionStart: (downloadSessionStart) => set(()=>({downloadSessionStart})), 
             updateDownloadState: (updatedState) => set((state)=>{
                 let values = {} as TransferStoreState;
 

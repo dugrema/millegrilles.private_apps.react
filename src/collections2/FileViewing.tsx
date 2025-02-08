@@ -6,13 +6,14 @@ import { Formatters } from "millegrilles.reactdeps.typescript";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore from "./userBrowsingStore";
 import useWorkers from "../workers/workers";
-import { FileImageData, FileVideoData, getCurrentVideoPosition, removeVideoPosition, setVideoPosition, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
+import { FileImageData, FileVideoData, getCurrentVideoPosition, removeVideoPosition, setVideoPosition, TuuidsIdbStoreRowType, updateDownloadJobState } from "./idb/collections2StoreIdb";
 import { CONST_VIDEO_MAX_RESOLUTION } from "./Settings";
 import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import VideoConversion from "./VideoConversion";
 import { isVideoMimetype } from "./mimetypes";
 import ActionButton from "../resources/ActionButton";
 import { downloadFile } from "./transferUtils";
+import useTransferStore from "./transferStore";
 
 export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
     let {file, thumbnail} = props;
@@ -368,11 +369,14 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useUserBrowsingStore(state=>state.userId);
+    let downloadSessionStart = useTransferStore(state=>state.downloadSessionStart);
+    let setDownloadSessionStart = useTransferStore(state=>state.setDownloadSessionStart);
 
     let downloadHandler = useCallback(async () => {
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!userId) throw new Error('UserId not provided');
         let tuuid = file.tuuid;
+        if(!downloadSessionStart) setDownloadSessionStart(new Date());
         let content = await workers.download.addDownloadFromFile(tuuid, userId);
         if(content) {
             let filename = file.decryptedMetadata?.nom || `${file.tuuid}.obj`;
@@ -388,7 +392,7 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
             // a.click();
             // URL.revokeObjectURL(objectUrl)
         }
-    }, [workers, ready, file, userId]);
+    }, [workers, ready, file, userId, downloadSessionStart, setDownloadSessionStart]);
 
     return (
         <div className='grid grid-cols-6 md:grid-cols-1'>
