@@ -291,18 +291,15 @@ function JobRow(props: JobRowProps) {
 
     let disablePauseButton = useMemo(()=>!CONST_PAUSE_STATE_CANDIDATES.includes(value.state), [value]);
     let disableResumeButton = useMemo(()=>!CONST_RESUME_STATE_CANDIDATES.includes(value.state), [value]);
-    let rowBgOpacity = useMemo(()=>{
-        return 'odd:bg-opacity-40 even:bg-opacity-40';
-    }, [value])
     let rowBgCss = useMemo(()=>{
         if([UploadStateEnum.ENCRYPTING, UploadStateEnum.UPLOADING].includes(value.state)) return 'odd:bg-violet-700 even:bg-violet-600';
         if([UploadStateEnum.ERROR].includes(value.state)) return 'odd:bg-red-700 even:bg-red-600';
         if([UploadStateEnum.ERROR_DURING_PART_UPLOAD, UploadStateEnum.PAUSED].includes(value.state)) return 'odd:bg-yellow-800 even:bg-yellow-700';
         return 'odd:bg-slate-700 even:bg-slate-600';
-    }, [value])
+    }, [value]);
 
     return (
-        <div key={value.uploadId} className={`grid grid-cols-6 ${rowBgCss} ${rowBgOpacity} hover:bg-violet-800 gap-x-1 px-2 py-1`}>
+        <div key={value.uploadId} className={`grid grid-cols-6 ${rowBgCss} odd:bg-opacity-40 even:bg-opacity-40 hover:bg-violet-800 gap-x-1 px-2 py-1`}>
             <Link to={`/apps/collections2/b/${value.cuuid}`} className='col-span-3'>{fullpath}</Link>
             <Formatters.FormatteurTaille value={value.clearSize || value.size || undefined} />
             <p>{UPLOAD_STATE_LABEL[value.state]}</p>
