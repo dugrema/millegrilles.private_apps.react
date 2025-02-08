@@ -13,21 +13,26 @@ import { SyncDownloads, SyncUploads } from "./Transfers";
 function Collections2() {
     return (
         <div className='px-2'>
+            
+            {/* Visual components */}
             <HeaderMenu title='Collections' backLink={true} />
             <main id="main" className='pt-4 pb-2 pl-2 pr-6 w-full'>
                 <Outlet />
             </main>
             <Footer />
-            <InitializeStore />
+
+            {/* Background operation components - no effect on screen. */}
+            <InitializeUserStore />
             <FilehostManager />
             <TransferStoreSync />
+
         </div>
     );
 }
 
 export default Collections2;
 
-function InitializeStore() {
+function InitializeUserStore() {
     let setUserId = useUserBrowsingStore(state=>state.setUserId);
 
     let workers = useWorkers();

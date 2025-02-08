@@ -159,7 +159,7 @@ export default function HeaderMenu(props: MenuProps) {
                                 <img src={SettingIcon} alt="Settings" className='w-7 inline-block' />
                             </Link>
                         </div>
-                        <div className={'inline md:hidden px-1 pb-1.5 sm:px-2 transition-colors duration-300' + (['submenu', 'settings'].includes(selectedSection||'')?selectedClassname:unselectedClassname)}>
+                        <div className={'inline lg:hidden px-1 pb-1.5 sm:px-2 transition-colors duration-300' + (['submenu', 'settings'].includes(selectedSection||'')?selectedClassname:unselectedClassname)}>
                             <button onClick={toggleSubmenu}>
                                 <img src={MenuIcon} alt="Menu" className='w-7 inline-block' />
                             </button>
