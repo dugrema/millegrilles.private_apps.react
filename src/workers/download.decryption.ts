@@ -49,7 +49,7 @@ export class DownloadDecryptionWorker {
 
         let decryptedPosition = 0;
         let interval = setInterval(()=>{
-            console.debug("Decrypt position %d/%d", decryptedPosition, downloadJob.size);
+            // console.debug("Decrypt position %d/%d", decryptedPosition, downloadJob.size);
             if(callback && downloadJob.size) {
                 callback(downloadJob.fuuid, downloadJob.userId, false, decryptedPosition, downloadJob.size);
             }

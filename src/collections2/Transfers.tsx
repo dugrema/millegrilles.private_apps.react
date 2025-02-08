@@ -190,8 +190,6 @@ const CONST_STATUS_JOB_TOTAL = [
     DownloadStateEnum.INITIAL, 
     DownloadStateEnum.DOWNLOADING, 
     DownloadStateEnum.ENCRYPTED, 
-    // DownloadStateEnum.DONE, 
-    // DownloadStateEnum.ERROR,
 ];
 
 /** Maintains the transfer ticker (pct upload/download) */
@@ -321,6 +319,15 @@ export function TransferTickerUpdate() {
         let percent = null as number | null;
         if(typeof(bytesPosition) === 'number' && totalBytesDownloading) {
             percent = Math.floor(bytesPosition / totalBytesDownloading * 100);
+            if(percent > 100) {
+                console.warn("Error - download pct %s over 100 - clamping", percent);
+                percent = 100;
+            } else if(percent < 0) {
+                console.warn("Error - download pct %s below 0 - clamping", percent);
+                percent = 0;
+            }
+        } else if(activity === TransferActivity.IDLE_CONTENT) {
+            percent = 100;  // We have some completed transfers
         }
         setDownloadTicker(activity, percent);
 

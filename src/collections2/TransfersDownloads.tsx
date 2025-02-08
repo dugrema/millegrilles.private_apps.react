@@ -154,7 +154,7 @@ function OngoingTransfers() {
         await workers.download.cancelDownload(fuuid, userId);
 
         // Remove the job and any download parts from IDB.
-        console.debug("Remove download job for fuuid:%s", fuuid)
+        // console.debug("Remove download job for fuuid:%s", fuuid)
         await removeUserDownloads(userId, {fuuid});
         
         // Signal that the download job content has changed to all tabs.
@@ -204,7 +204,7 @@ function CompletedTransfers() {
         if(!userId) throw new Error('UserId not provided');
         
         let fuuid = e.currentTarget.value;
-        console.debug("Remove download job for fuuid:%s", fuuid)
+        // console.debug("Remove download job for fuuid:%s", fuuid)
         await removeUserDownloads(userId, {fuuid});
         
         // Signal that the download job content has changed to all tabs.

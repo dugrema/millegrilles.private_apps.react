@@ -226,8 +226,10 @@ function TransferTickers() {
 
     let [downloadClassName, downloadLabel] = useMemo(()=>{
         let downloadClassName = '', downloadLabel = <>-</>;
-        if(downloadActivity === TransferActivity.ERROR) downloadClassName = 'bg-red-600';
-        else if(downloadActivity === TransferActivity.RUNNING) downloadClassName = 'bg-green-600';
+        if(downloadActivity === TransferActivity.ERROR) downloadClassName = 'bg-red-600 bg-opacity-50';
+        else if(downloadActivity === TransferActivity.RUNNING) downloadClassName = 'bg-green-600 bg-opacity-70';
+        else if(downloadActivity === TransferActivity.PENDING) downloadClassName = 'bg-yellow-500 bg-opacity-60';
+        else if(downloadActivity === TransferActivity.IDLE_CONTENT) downloadClassName = 'bg-indigo-500 bg-opacity-60';
         
         if(typeof(downloadTransferPercent) === 'number') downloadLabel = <>{`${downloadTransferPercent}%`}</>;
 
@@ -239,7 +241,7 @@ function TransferTickers() {
             <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />
             <p className='inline-block text-sm w-10 hidden lg:inline-block'>100%</p>
             <span className='pl-1'>/</span>
-            <img src={DownloadIcon} alt='Download' className={'w-7 inline-block ' + downloadClassName} />
+            <img src={DownloadIcon} alt='Download' className={'w-7 inline-block ml-1 rounded-t-md ' + downloadClassName} />
             <p className='inline-block text-sm w-10 hidden lg:inline-block'>{downloadLabel}</p>
         </>
     )
