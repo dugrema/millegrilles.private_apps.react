@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useMemo } from "react";
+import React, { MouseEvent, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import ActionButton from "../resources/ActionButton";
 import useTransferStore, { DownloadJobStoreType, DownloadWorkerType } from "./transferStore";
@@ -42,8 +42,12 @@ function TransfersDownloads() {
 
     return (
         <>
-            <section>
-                <h2 className='font-bold pt-4 pb-2'>Downloads</h2>
+            <section className='fixed top-10'>
+                <h1 className='font-bold pb-1'>Downloads</h1>
+
+                <div className='grid grid-cols-8 pb-2 space-x-2'>
+                    <DownloadSummary />
+                </div>
 
                 <div>
                     <ActionButton onClick={removeCompletedHandler} mainButton={true} disabled={!completedTransfersPresent} revertSuccessTimeout={3}>
@@ -54,19 +58,43 @@ function TransfersDownloads() {
                     </ActionButton>
                     <Link to={'/apps/collections2/transfers'}
                         className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
-                            Back
+                            Summary
                     </Link>
                 </div>
+
+                <WorkerActivity />
             </section>
 
-            <WorkerActivity />
-            <CompletedTransfers />
-            <OngoingTransfers />
+            <section className='fixed top-64 md:top-64 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
+                <CompletedTransfers />
+                <OngoingTransfers />
+            </section>
         </>
     );
 }
 
 export default TransfersDownloads;
+
+function DownloadSummary() {
+
+    let downloadSummary = useTransferStore(state=>state.downloadSummary);
+
+    let summaryList = useMemo(()=>{
+        let list = [] as JSX.Element[];
+
+        let queued = downloadSummary[DownloadStateEnum.INITIAL] + downloadSummary[DownloadStateEnum.DOWNLOADING] + downloadSummary[DownloadStateEnum.ENCRYPTED];
+        if(isNaN(queued)) queued = 0;
+
+        list.push(<React.Fragment key='done'><p>Done</p><p className='text-right pr-1'>{downloadSummary[DownloadStateEnum.DONE]}</p></React.Fragment>);
+        list.push(<React.Fragment key='pause'><p>Paused</p><p className='text-right pr-1'>{downloadSummary[DownloadStateEnum.PAUSED]}</p></React.Fragment>);
+        list.push(<React.Fragment key='initial'><p>Queued</p><p className='text-right pr-1'>{queued}</p></React.Fragment>);
+        list.push(<React.Fragment key='error'><p>Error</p><p className='text-right pr-1'>{downloadSummary[DownloadStateEnum.ERROR]}</p></React.Fragment>);
+
+        return list;
+    }, [downloadSummary]);
+
+    return <>{summaryList}</>;
+}
 
 function WorkerActivity() {
 
@@ -95,7 +123,7 @@ function WorkerActivity() {
     }, [downloadProgress]);
 
     return (
-        <section>
+        <>
             <h2>Download processes</h2>
 
             <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
@@ -113,7 +141,7 @@ function WorkerActivity() {
                     :<>None</>
                 }
             </div>
-        </section>
+        </>
     )
 }
 
@@ -174,10 +202,10 @@ function OngoingTransfers() {
     if(mappedTransfers.length === 0) return <></>;
 
     return (
-        <section>
+        <div>
             <h2 className='font-bold pt-4 pb-2'>Transfer queue</h2>
             {mappedTransfers}
-        </section>
+        </div>
     );
 }
 
@@ -225,10 +253,10 @@ function CompletedTransfers() {
     if(mappedTransfers.length === 0) return <></>;
 
     return (
-        <section>
+        <div>
             <h2 className='font-bold pt-4 pb-2'>Completed transfers</h2>
             {mappedTransfers}
-        </section>
+        </div>
     );
 }
 
@@ -242,14 +270,31 @@ type JobRowProps = {
 
 const CONST_RESUME_STATE_CANDIDATES = [DownloadStateEnum.PAUSED, DownloadStateEnum.ERROR];
 
+const CONST_DOWNLOAD_STATE_LABELS = {
+    [DownloadStateEnum.INITIAL]: 'Queued',
+    [DownloadStateEnum.PAUSED]: 'Paused',
+    [DownloadStateEnum.DOWNLOADING]: 'Downloading',
+    [DownloadStateEnum.ENCRYPTED]: 'Encrypted',
+    [DownloadStateEnum.DONE]: 'Done',
+    [DownloadStateEnum.ERROR]: 'Error',
+}
+
 function JobRow(props: JobRowProps) {
 
     let {value, onDownload, onRemove, onPause, onResume} = props;
 
+    let rowBgCss = useMemo(()=>{
+        if([DownloadStateEnum.ENCRYPTED, DownloadStateEnum.DOWNLOADING].includes(value.state)) return 'odd:bg-violet-700 even:bg-violet-600';
+        if([DownloadStateEnum.ERROR].includes(value.state)) return 'odd:bg-red-700 even:bg-red-600';
+        if([DownloadStateEnum.PAUSED].includes(value.state)) return 'odd:bg-yellow-800 even:bg-yellow-700';
+        return 'odd:bg-slate-700 even:bg-slate-600';
+    }, [value]);
+
     return (
-        <div key={value.fuuid} className='grid grid-cols-6'>
+        <div key={value.fuuid} className={`grid grid-cols-6 ${rowBgCss} odd:bg-opacity-40 even:bg-opacity-40 hover:bg-violet-800 gap-x-1 px-2 py-1`}>
             <Link to={`/apps/collections2/f/${value.tuuid}`} className='col-span-3'>{value.filename}</Link>
             <Formatters.FormatteurTaille value={value.size || undefined} />
+            <p>{CONST_DOWNLOAD_STATE_LABELS[value.state]}</p>
             <div>
                 {onDownload?
                     <ActionButton onClick={onDownload} value={value.fuuid} varwidth={10} revertSuccessTimeout={3}>

@@ -77,6 +77,10 @@ export default function HeaderMenu(props: MenuProps) {
             return 'settings';
         } else if(locationPath.startsWith('/apps/collections2/conversions')) {
             return 'conversions';
+        } else if(locationPath.startsWith('/apps/collections2/transfers/downloads')) {
+            return 'downloads';
+        } else if(locationPath.startsWith('/apps/collections2/transfers/uploads')) {
+            return 'uploads';
         } else if(locationPath.startsWith('/apps/collections2/transfers')) {
             return 'transfers';
         } else if(locationPath.startsWith('/apps/collections2/b')) {
@@ -120,8 +124,8 @@ export default function HeaderMenu(props: MenuProps) {
 
                     {/* Regular menu items - need to hide in mobile mode during selection. */}
                     <div className={'inline ' + (selectionMode?'hidden md:inline':'')}>
-                        <div className={'hidden md:inline-block px-1 lg:w-40 transition-colors duration-300' + (selectedSection==='transfers'?selectedClassname:unselectedClassname)}>
-                            <Link to='/apps/collections2/transfers'><TransferTickers /></Link>
+                        <div className={'hidden md:inline-block px-1 lg:w-42 transition-colors duration-300' + (selectedSection==='transfers'?selectedClassname:unselectedClassname)}>
+                            <TransferTickers selectedSection={selectedSection} />
                         </div>
                         <div className={'inline-block px-1 sm:px-2 transition-colors duration-300' + (selectedSection==='browse'?selectedClassname:unselectedClassname)}>
                             <Link to='/apps/collections2/b'>
@@ -219,13 +223,25 @@ export default function HeaderMenu(props: MenuProps) {
     )
 }
 
-function TransferTickers() {
+function TransferTickers(props: {selectedSection?: string | null}) {
+
+    let {selectedSection} = props;
 
     let downloadActivity = useTransferStore(state=>state.downloadActivity);
     let downloadTransferPercent = useTransferStore(state=>state.downloadTransferPercent);
 
     let uploadActivity = useTransferStore(state=>state.uploadActivity);
     let uploadTransferPercent = useTransferStore(state=>state.uploadTransferPercent);
+
+    let uploadLinkCss = useMemo(()=>{
+        if(selectedSection === 'uploads') return 'bg-violet-500';
+        return '';
+    }, [selectedSection])
+
+    let downloadLinkCss = useMemo(()=>{
+        if(selectedSection === 'downloads') return 'bg-violet-500';
+        return '';
+    }, [selectedSection])
 
     let [downloadClassName, downloadLabel] = useMemo(()=>{
         let downloadClassName = '', downloadLabel = <>-</>;
@@ -253,11 +269,15 @@ function TransferTickers() {
 
     return (
         <>
-            <img src={UploadIcon} alt='Upload' className={'w-7 inline-block rounded-t-md ' + uploadClassName} />
-            <p className='inline-block text-sm w-10 hidden lg:inline-block'>{uploadLabel}</p>
+            <Link className={'ml-1 py-1.5 rounded-t-md ' + uploadLinkCss} to='/apps/collections2/transfers/uploads'>
+                <img src={UploadIcon} alt='Upload' className={'w-7 inline-block rounded-t-md ' + uploadClassName} />
+                <span className='text-sm w-10 hidden lg:inline-block'>{uploadLabel}</span>
+            </Link>
             <span className='pl-1'>/</span>
-            <img src={DownloadIcon} alt='Download' className={'w-7 inline-block ml-1 rounded-t-md ' + downloadClassName} />
-            <p className='inline-block text-sm w-10 hidden lg:inline-block'>{downloadLabel}</p>
+            <Link className={'ml-1 py-1.5 rounded-t-md ' + downloadLinkCss} to='/apps/collections2/transfers/downloads'>
+                <img src={DownloadIcon} alt='Download' className={'w-7 inline-block ml-1 rounded-t-md ' + downloadClassName} />
+                <span className='text-sm w-10 hidden lg:inline-block'>{downloadLabel}</span>
+            </Link>
         </>
     )
 }

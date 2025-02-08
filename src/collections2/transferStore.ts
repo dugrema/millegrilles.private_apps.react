@@ -83,6 +83,7 @@ interface TransferStoreState {
     // Overall activity, used for transfer items in menu
     downloadActivity: TransferActivity,
     downloadTransferPercent: number | null,
+    downloadSummary: {[state: number]: number},
     downloadSessionStart: Date | null,          // Used to include DONE downloads for the current progress
 
     uploadActivity: TransferActivity,
@@ -98,7 +99,7 @@ interface TransferStoreState {
     uploadJobs: UploadJobStoreType[] | null,
     uploadJobsDirty: boolean,
 
-    setDownloadTicker: (downloadActivity: TransferActivity, downloadTransferPercent: number | null) => void,
+    setDownloadTicker: (downloadActivity: TransferActivity, downloadTransferPercent: number | null, opts?: {states: {[state: number]: number}}) => void,
     setDownloadSessionStart: (downloadSessionStart: Date | null) => void,
     updateDownloadState: (state: DownloadStateUpdateType) => void,
     setDownloadJobs: (downloadJobs: DownloadJobStoreType[] | null) => void,
@@ -116,6 +117,7 @@ const useTransferStore = create<TransferStoreState>()(
         (set) => ({
             downloadActivity: TransferActivity.IDLE_EMTPY,
             downloadTransferPercent: null,
+            downloadSummary: {},
             downloadSessionStart: null,
 
             uploadActivity: TransferActivity.IDLE_EMTPY,
@@ -130,7 +132,13 @@ const useTransferStore = create<TransferStoreState>()(
             uploadJobs: null,
             uploadJobsDirty: true,
 
-            setDownloadTicker: (downloadActivity, downloadTransferPercent) => set(()=>({downloadActivity, downloadTransferPercent})), 
+            setDownloadTicker: (downloadActivity, downloadTransferPercent, opts) => set(()=>{
+                let values = {downloadActivity, downloadTransferPercent} as TransferStoreState;
+                if(opts?.states) {
+                    values.downloadSummary = opts.states;
+                }
+                return values;
+            }), 
             setDownloadSessionStart: (downloadSessionStart) => set(()=>({downloadSessionStart})), 
             updateDownloadState: (updatedState) => set((state)=>{
                 let values = {} as TransferStoreState;

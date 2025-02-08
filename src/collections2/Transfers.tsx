@@ -11,7 +11,6 @@ import { downloadFile } from "./transferUtils";
 function Transfers() {
     return (
         <>
-            <h1 className='pt-12 pb-2 text-xl font-bold'>Transfers</h1>
             <Outlet />
         </>
     );
@@ -376,7 +375,8 @@ export function TransferTickerUpdate() {
         } else if(activity === TransferActivity.IDLE_CONTENT) {
             percent = 100;  // We have some completed transfers
         }
-        setDownloadTicker(activity, percent);
+        
+        setDownloadTicker(activity, percent, {states: downloadStates});
 
         if(downloadStates[DownloadStateEnum.INITIAL] === 0 &&
             downloadStates[DownloadStateEnum.DOWNLOADING] === 0 &&
