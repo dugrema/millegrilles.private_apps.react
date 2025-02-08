@@ -13,10 +13,12 @@ export type DownloadWorkerCallbackType = (
 export class DownloadThreadWorker {
     callback: DownloadWorkerCallbackType | null
     currentJob: DownloadJobType | null
+    abortController: AbortController | null
 
     constructor() {
         this.callback = null;
         this.currentJob = null;
+        this.abortController = null;
     }
 
     async setup(callback: DownloadWorkerCallbackType) {
@@ -25,8 +27,10 @@ export class DownloadThreadWorker {
 
     async cancelJobIf(fuuid: string, userId: string): Promise<boolean> {
         if(this.currentJob?.userId === userId && this.currentJob.fuuid === fuuid) {
-            throw new Error('todo')
-            // return true;
+            if(this.abortController) {
+                this.abortController.abort();    
+                return true;
+            }
         }
         return false;
     }
@@ -58,6 +62,8 @@ export class DownloadThreadWorker {
         let headerContentRange = null as string | null;
         let headers = {} as {[key: string]: string};
         try {
+            let abortController = new AbortController();
+            this.abortController = abortController;
             // Check stored download parts to find the resume position (if any)
             let resumePosition = await findDownloadPosition(currentJob.fuuid);
             if(resumePosition) {
@@ -70,7 +76,7 @@ export class DownloadThreadWorker {
             // Start downloading
             // console.debug("Getting URL", url);
             let response = await fetch(url, {
-                // signal, 
+                signal: abortController.signal,
                 cache: 'no-store', keepalive: false, credentials: "include", headers,
             });
             if(response.status === 206) {
@@ -106,10 +112,16 @@ export class DownloadThreadWorker {
             await callback(currentJob.fuuid, currentJob.userId, true, positionOuter, positionOuter);
         } catch(err) {
             console.error("Download job error: ", err);
-            await updateDownloadJobState(currentJob.fuuid, currentJob.userId, DownloadStateEnum.ERROR);
+            if(this.abortController?.signal.aborted) {
+                // Download has been cancelled - not an error
+            } else {
+                // Error
+                await updateDownloadJobState(currentJob.fuuid, currentJob.userId, DownloadStateEnum.ERROR);
+            }
             await callback(currentJob.fuuid, currentJob.userId, true);
         } finally {
             this.currentJob = null;
+            this.abortController = null;
         }
     }
 

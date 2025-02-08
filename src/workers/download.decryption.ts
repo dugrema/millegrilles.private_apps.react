@@ -15,18 +15,24 @@ const CONST_CHUNK_SOFT_LIMIT = 1024 * 1024;
 export class DownloadDecryptionWorker {
     callback: DecryptionWorkerCallbackType | null
     currentJob: DownloadIdbType | null
+    cancelled: boolean
 
     constructor() {
         this.callback = null;
         this.currentJob = null;
+        this.cancelled = false;
     }
 
     async setup(callback: DecryptionWorkerCallbackType) {
         this.callback = callback;
     }
 
-    async cancelJobIf(fuuid: string, userId: string) {
-        console.warn("TODO");
+    async cancelJobIf(fuuid: string, userId: string): Promise<boolean> {
+        if(this.currentJob?.fuuid === fuuid && this.currentJob?.userId === userId) {
+            this.cancelled = true;
+            return true;
+        }
+        return false;
     }
 
     async isBusy() {
@@ -46,6 +52,7 @@ export class DownloadDecryptionWorker {
 
         this.currentJob = downloadJob;
         let fuuid = downloadJob.fuuid;
+        this.cancelled = false;
 
         let decryptedPosition = 0;
         let interval = setInterval(()=>{
@@ -82,6 +89,8 @@ export class DownloadDecryptionWorker {
                 let chunkSize = 0;
                 let partBlobs = [] as Blob[];
                 for await (const chunk of stream) {
+                    if(this.cancelled) return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
+
                     let output = await decipher.update(chunk);
                     if(output && output.length > 0) {
                         decryptedPosition += output.length;  // Use decrypted position
@@ -129,6 +138,7 @@ export class DownloadDecryptionWorker {
         } finally {
             clearInterval(interval);
             this.currentJob = null;
+            this.cancelled = false;
         }
     }
 

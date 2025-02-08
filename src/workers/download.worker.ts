@@ -2,7 +2,7 @@ import { Remote, wrap, proxy } from 'comlink';
 
 import { DownloadThreadWorker, DownloadWorkerCallbackType } from './download.thread';
 import { DecryptionWorkerCallbackType, DownloadDecryptionWorker } from './download.decryption';
-import { addDownload, DownloadIdbType, DownloadStateEnum, FileVideoData, getDownloadContent, getNextDecryptionJob, getNextDownloadJob, removeDownload, restartNextJobInError } from '../collections2/idb/collections2StoreIdb';
+import { addDownload, DownloadIdbType, DownloadStateEnum, FileVideoData, getDownloadContent, getDownloadJob, getNextDecryptionJob, getNextDownloadJob, removeDownload, restartNextJobInError, updateDownloadJobState } from '../collections2/idb/collections2StoreIdb';
 import { createDownloadEntryFromFile, createDownloadEntryFromVideo } from '../collections2/transferUtils';
 import { FilehostDirType } from './directory.worker';
 import { DownloadStateUpdateType, DownloadTransferProgress, DownloadWorkerType } from '../collections2/transferStore';
@@ -22,6 +22,7 @@ export class AppsDownloadWorker {
     decryptionStatus: DownloadTransferProgress | null
     listChanged: boolean
     fuuidsReady: string[] | null    // List of files for which the download just completed
+    triggerDebounceTimeout: ReturnType<typeof setTimeout> | null;
 
     constructor() {
         this.currentUserId = null;
@@ -45,6 +46,8 @@ export class AppsDownloadWorker {
         this.decryptionStatus = null;
         this.listChanged = true;
         this.fuuidsReady = null;
+
+        this.triggerDebounceTimeout = null;
     }
 
     async setup(stateCallback: DownloadStateCallback) {
@@ -147,11 +150,25 @@ export class AppsDownloadWorker {
         }
     }
 
+    async triggerJobs() {
+        if(!this.triggerDebounceTimeout) {
+            this.triggerDebounceTimeout = setTimeout(()=>{
+                this._triggerJobs();
+            }, 300);
+        }
+    }
+
     /**
      * Triggers the downloading process.
      * No effect if already running.
      */
-    async triggerJobs() {
+    async _triggerJobs() {
+        if(this.triggerDebounceTimeout) {
+            // Debounce cleanup
+            clearTimeout(this.triggerDebounceTimeout);
+            this.triggerDebounceTimeout = null;
+        }
+
         if(!this.currentUserId) return;
         let filehost = this.filehost;
         if(!filehost) {
@@ -246,14 +263,35 @@ export class AppsDownloadWorker {
         await this.downloadWorker?.cancelJobIf(fuuid, userId);
         await this.decryptionWorker?.cancelJobIf(fuuid, userId);
         await this.triggerJobs();
+        await this.triggerListChanged();
     }
 
     async pauseDownload(fuuid: string, userId: string) {
-        throw new Error('todo');
+        let job = await getDownloadJob(userId, fuuid);
+        if(!job) throw new Error('Unknown job');
+
+        const CONST_PAUSABLE_STATES = [DownloadStateEnum.INITIAL, DownloadStateEnum.DOWNLOADING];
+        if(!CONST_PAUSABLE_STATES.includes(job.state)) throw new Error('Job cannot be paused');
+
+        // Cancel download
+        await this.downloadWorker?.cancelJobIf(fuuid, userId);
+        await updateDownloadJobState(fuuid, userId, DownloadStateEnum.PAUSED);
+
+        // Chain next download
+        await this.triggerJobs();
+        await this.triggerListChanged();
     }
 
     async resumeDownload(fuuid: string, userId: string) {
-        throw new Error('todo');
+        let job = await getDownloadJob(userId, fuuid);
+        if(!job) throw new Error('Unknown job');
+
+        const CONST_RESUMABLE_STATES = [DownloadStateEnum.PAUSED, DownloadStateEnum.ERROR];
+        if(!CONST_RESUMABLE_STATES.includes(job.state)) throw new Error('Job cannot be resumed');
+
+        await updateDownloadJobState(fuuid, userId, DownloadStateEnum.INITIAL);
+        await this.triggerJobs();
+        await this.triggerListChanged();
     }
 
     async produceState() {

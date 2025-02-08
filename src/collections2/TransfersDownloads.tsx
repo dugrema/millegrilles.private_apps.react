@@ -143,6 +143,7 @@ function WorkerActivity() {
 
 const CONST_ONGOING_STATES = [
     DownloadStateEnum.INITIAL,
+    DownloadStateEnum.PAUSED,
     DownloadStateEnum.DOWNLOADING,
     DownloadStateEnum.ERROR,
     DownloadStateEnum.ENCRYPTED,
@@ -159,13 +160,15 @@ function OngoingTransfers() {
     let pauseHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!userId) throw new Error('UserId not provided');
-        throw new Error('todo');
+        let fuuid = e.currentTarget.value;
+        await workers.download.pauseDownload(fuuid, userId);
     }, [workers, ready, userId]);
 
     let resumeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!userId) throw new Error('UserId not provided');
-        throw new Error('todo');
+        let fuuid = e.currentTarget.value;
+        await workers.download.resumeDownload(fuuid, userId);
     }, [workers, ready, userId]);
 
     let removeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
@@ -265,6 +268,7 @@ type JobRowProps = {
 };
 
 const CONST_RESUME_STATE_CANDIDATES = [DownloadStateEnum.PAUSED, DownloadStateEnum.ERROR];
+const CONST_PAUSE_STATE_CANDIDATES = [DownloadStateEnum.INITIAL, DownloadStateEnum.DOWNLOADING];
 
 const CONST_DOWNLOAD_STATE_LABELS = {
     [DownloadStateEnum.INITIAL]: 'Queued',
@@ -298,7 +302,7 @@ function JobRow(props: JobRowProps) {
                     </ActionButton>
                 :<></>}
                 {onPause?
-                    <ActionButton onClick={onPause} value={value.fuuid} varwidth={10} revertSuccessTimeout={3} disabled={value.state === DownloadStateEnum.PAUSED}>
+                    <ActionButton onClick={onPause} value={value.fuuid} varwidth={10} revertSuccessTimeout={3} disabled={!CONST_PAUSE_STATE_CANDIDATES.includes(value.state)}>
                         <img src={PauseIcon} alt='Pause file download' className='h-6 pl-1' />
                     </ActionButton>
                 :<></>}
