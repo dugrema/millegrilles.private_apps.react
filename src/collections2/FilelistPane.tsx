@@ -355,6 +355,9 @@ function ThumbnailItem(props: FileItem) {
     let filehostReady = useConnectionStore(state=>state.filehostAuthenticated);
     let updateThumbnail = useUserBrowsingStore(state=>state.updateThumbnail);
     let updateSharedThumbnail = useUserBrowsingStore(state=>state.updateSharedThumbnail);
+    let selection = useUserBrowsingStore(state=>state.selection);
+    let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
+    let lastOpenedFile = useUserBrowsingStore(state=>state.lastOpenedFile);
     let userId = useUserBrowsingStore(state=>state.userId);
 
     let defaultIcon = useMemo(()=>getIcon(value.type_node, value.mimetype), [value]);
@@ -370,6 +373,24 @@ function ThumbnailItem(props: FileItem) {
     let onclickHandler = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
         onClick(e, value)
     }, [value, onClick]);
+
+    let [selectionCss, imageCss] = useMemo(()=>{
+        if(selectionMode) {
+            // Disable text select (copy/paste)
+            if(selection?.includes(value.tuuid)) {
+                return ['border ring-2 ring-violet-300', 'opacity-50 contrast-50'];
+            }
+            return ['border border-slate-500', 'opacity-100'];
+        }
+
+        if(lastOpenedFile === value.tuuid) {
+            // Highlight the file that was just opened (back in containing folder)
+            return ['border ring-4 ring-indigo-400 border-slate-300', 'opacity-100'];
+        }
+
+        // Allow text select
+        return ['border border-slate-500', 'opacity-100'];
+    }, [value, selection, selectionMode, lastOpenedFile]);
 
     useEffect(()=>{
         if(!workers || !ready || !filehostReady) return;    // Not ready
@@ -433,10 +454,10 @@ function ThumbnailItem(props: FileItem) {
     }, [value, setThumbnail]);
 
     return (
-        <button ref={ref} className="inline-block m-1 border relative" onClick={onclickHandler} value={value.tuuid}>
+        <button ref={ref} className={`inline-block m-1 relative ${selectionCss}`} onClick={onclickHandler} value={value.tuuid}>
             <p className='text-sm break-all font-bold absolute align-center bottom-0 bg-slate-800 w-full bg-opacity-70 px-1 pb-1'>{value.nom}</p>
             <div className='w-40 sm:w-full object-cover'>
-                <img src={imgSrc} alt={'File ' + value.nom} width={200} height={200} className='opacity-100' />
+                <img src={imgSrc} alt={'File ' + value.nom} width={200} height={200} className={imageCss} />
             </div>
         </button>
     );
