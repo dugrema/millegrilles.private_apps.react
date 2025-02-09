@@ -17,6 +17,7 @@ interface ConnectionStoreState {
     certificateRenewable: boolean,
     connectionInsecure: boolean,
     filehostAuthenticated: boolean,
+    filehostId: string | null,
     
     setFiche: (idmg: string, ca: string, chiffrage: Array<Array<string>>) => void,
     setUserSessionActive: (userSessionActive: boolean) => void,
@@ -32,6 +33,7 @@ interface ConnectionStoreState {
     setCertificateRenewable: (certificateRenewable: boolean) => void,
     setConnectionInsecure: (connectionInsecure: boolean) => void,
     setFilehostAuthenticated: (authenticated: boolean) => void,
+    setFilehostId: (filehostId: string | null) => void,
 };
 
 const useConnectionStore = create<ConnectionStoreState>()(
@@ -52,6 +54,7 @@ const useConnectionStore = create<ConnectionStoreState>()(
             certificateRenewable: false,
             connectionInsecure: false,
             filehostAuthenticated: false,
+            filehostId: null,
 
             setFiche: (idmg, ca, chiffrage) => set(() => ({ idmg, ca, chiffrage })),
             setUsername: (username) => set(() => ({ username })),
@@ -67,6 +70,7 @@ const useConnectionStore = create<ConnectionStoreState>()(
             setCertificateRenewable: (certificateRenewable) => set(() => ({ certificateRenewable })),
             setConnectionInsecure: (connectionInsecure) => set(() => ({ connectionInsecure })),
             setFilehostAuthenticated: (authenticated: boolean) => set(()=>({filehostAuthenticated: authenticated})),
+            setFilehostId: (filehostId: string | null) => set(()=>({filehostId})),
         })
     ),
 );

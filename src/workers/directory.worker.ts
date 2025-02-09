@@ -235,26 +235,31 @@ export class DirectoryWorker {
         this.filehosts = filehosts;
     }
 
-    async selectFilehost(localUrl: string) {
-        // Check if the local filehost is available first
+    async selectLocalFilehost(localUrl: string) {
         try {
             await axios({url: localUrl + 'filehost/status'})
-            // console.debug("Local filehost is available, using by default");
+            console.debug("Local filehost is available, using by default");
 
             let url = new URL(localUrl + 'filehost');
             let localFilehost = {filehost_id: 'LOCAL', url: url.href} as FilehostDirType;
             this.selectedFilehost = localFilehost;
-
             return;
         } catch(err: any) {
             if(err.status) {
-                console.info("Local /filehost is not available: ", err.status);
+                throw new Error(`Local /filehost is not available: ${err.status}`)
             } else {
                 throw err;
             }
         }
+    }
 
-        if(!this.filehosts || this.filehosts.length === 0) throw new Error('No filehosts are available');
+    async selectFilehost(localUrl: string, filehostId: string | null) {
+        // Check if the local filehost is available first
+        if(!this.filehosts || this.filehosts.length === 0) {
+            await this.selectLocalFilehost(localUrl);
+            return;  // Successful
+        }
+
         if(this.filehosts.length === 1) {
             // Only one filehost, select and test
             let filehost = this.filehosts[0];
@@ -266,17 +271,40 @@ export class DirectoryWorker {
                 if(url.pathname.endsWith('filehost')) {
                     url.pathname += 'filehost';
                 }
+                filehost.url = url.href;
             } else {
                 throw new Error('The only available filehost has no means of accessing it from a browser');
             }
 
             this.selectedFilehost = filehost;
             return;
+        } else if(filehostId) {
+            // Try to pick the manually chosen filehost
+            let filehost = this.filehosts.filter(item=>item.filehost_id === filehostId).pop();
+            if(filehost) {
+                // Extract url
+                if(filehost.url_external && filehost.tls_external !== 'millegrille') {
+                    let url = new URL(filehost.url_external);
+                    if(url.pathname.endsWith('filehost')) {
+                        url.pathname += 'filehost';
+                    }
+                    filehost.url = url.href;
+                } else {
+                    throw new Error('The only available filehost has no means of accessing it from a browser');
+                }
+
+                console.debug("Using manually chosen filehost ", filehost);
+                this.selectedFilehost = filehost;
+                return;
+            }
         }
+
+        // Default to local
+        await this.selectLocalFilehost(localUrl);
 
         // Find a suitable filehost from the list. Ping the status of each to get an idea of the connection speed.
         //let performance = {} as {[filehostId: string]: number};
-        throw new Error('todo - select filehost from list');
+        //TODO
     }
 
     async authenticateFilehost(authenticationMessage: messageStruct.MilleGrillesMessage) {

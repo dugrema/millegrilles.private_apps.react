@@ -70,14 +70,38 @@ function FilehostManager() {
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let filehostAuthenticated = useConnectionStore(state=>state.filehostAuthenticated);
     let setFilehostAuthenticated = useConnectionStore(state=>state.setFilehostAuthenticated);
+    let filehostId = useConnectionStore(state=>state.filehostId);
+    let setFilehostId = useConnectionStore(state=>state.setFilehostId);
+    let userId = useUserBrowsingStore(state=>state.userId);
+
+    // Load pre-selected filehostId from localStorage
+    useEffect(()=>{
+        if(!userId) return;
+        let filehostId = localStorage.getItem(`filehost_${userId}`) || '';
+        if(filehostId) {
+            console.debug("Initializing with filehostId:%s", filehostId);
+            setFilehostId(filehostId);
+        } else {
+            filehostId = 'LOCAL';  // Use truthy value to ensure it gets picked up by the connect to filehost useEffect().
+        }
+    }, [userId, setFilehostId]);
+
+    // Trigger a reauthentication for a newly selected filehostId
+    useEffect(()=>{
+        console.debug("Changing filehost id to", filehostId);
+        setFilehostAuthenticated(false);
+    }, [filehostId]);
 
     // Connect to filehost. This resets on first successful connection to a longer check interval.
     useEffect(()=>{
-        if(!workers || !ready) return;
+        console.debug("useEffect maintain filehostAuthenticated:%s, filehostId:%s", filehostAuthenticated, filehostId);
+        if(!workers || !ready || !userId) return;
+
+        if(filehostId === 'LOCAL') filehostId = '';  // Reset filehost placeholder value
 
         if(!filehostAuthenticated) {
             // Initial connection attempt
-            maintainFilehosts(workers, setFilehostAuthenticated)
+            maintainFilehosts(workers, filehostId, setFilehostAuthenticated)
                 .catch(err=>console.error("Error during filehost initialization", err));
         }
 
@@ -86,28 +110,31 @@ function FilehostManager() {
 
         let interval = setInterval(()=>{
             if(!workers) throw new Error('workers not initialized');
-            maintainFilehosts(workers, setFilehostAuthenticated)
+            maintainFilehosts(workers, filehostId, setFilehostAuthenticated)
                 .catch(err=>console.error("Error during filehost maintenance", err));
         }, intervalMillisecs);
 
         return () => {
             clearInterval(interval);
         }
-    }, [workers, ready, filehostAuthenticated, setFilehostAuthenticated]);
+    }, [workers, ready, filehostAuthenticated, filehostId, setFilehostAuthenticated, userId]);
 
     return <></>;
 }
 
-async function maintainFilehosts(workers: AppWorkers, setFilehostAuthenticated: (authenticated: boolean)=>void) {
+async function maintainFilehosts(workers: AppWorkers, filehostId: string | null, setFilehostAuthenticated: (authenticated: boolean)=>void) {
     let filehostResponse = await workers.connection.getFilehosts();
     if(!filehostResponse.ok) throw new Error('Error loading filehosts: ' + filehostResponse.err);
+
+    console.debug("maintainFilehost with id:%s, list received: %O", filehostId, filehostResponse);
+
     let list = filehostResponse.list;
     try {
         if(list) {
             await workers.directory.setFilehostList(list);
             let localUrl = new URL(window.location.href);
             localUrl.pathname = ''
-            await workers.directory.selectFilehost(localUrl.href);
+            await workers.directory.selectFilehost(localUrl.href, filehostId);
 
             // Generate an authentication message
             let caPem = (await workers.connection.getMessageFactoryCertificate()).pemMillegrille;
@@ -121,7 +148,8 @@ async function maintainFilehosts(workers: AppWorkers, setFilehostAuthenticated: 
             setFilehostAuthenticated(true);
 
             // Transfer selected filehost to transfer workers
-            let selectedFilehost = await workers.directory.getSelectedFilehost()
+            let selectedFilehost = await workers.directory.getSelectedFilehost();
+            console.debug("Selected filehost ", selectedFilehost);
             workers.download.setFilehost(selectedFilehost);
             workers.upload.setFilehost(selectedFilehost);
 

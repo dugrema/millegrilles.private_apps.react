@@ -1,10 +1,12 @@
-import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import ActionButton from "../resources/ActionButton";
 import { cleanup, testBounds } from "./idb/collections2StoreIdb";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
+import { Filehost } from "../workers/connection.worker";
+import useUserBrowsingStore from "./userBrowsingStore";
 
 function SettingsPage() {
     return (
@@ -15,6 +17,11 @@ function SettingsPage() {
 
             <section>
                 <ResolutionSettings />
+            </section>
+
+            <section>
+                <h2 className='text-xl font-bold pt-6'>File host</h2>
+                <FilehostConfiguration />
             </section>
 
             <section>
@@ -64,6 +71,67 @@ function ResolutionSettings() {
             </select>
             <div><ActionButton onClick={actionHandler} revertSuccessTimeout={3}>Change</ActionButton></div>
         </div>
+    )
+}
+
+function FilehostConfiguration() {
+
+    let workers = useWorkers();
+    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    let userId = useUserBrowsingStore(state=>state.userId);
+    let setFilehostId = useConnectionStore(state=>state.setFilehostId);
+
+    let [current, setCurrent] = useState('');
+    let currentOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setCurrent(e.currentTarget.value), [setCurrent]);
+    let [filehosts, setFilehosts] = useState(null as Filehost[] | null);
+
+    let filehostOptions = useMemo(()=>{
+        if(!filehosts) return [];
+        return filehosts.filter(item=>item.url_external).map(item=>{
+            return <option key={item.filehost_id} value={item.filehost_id}>{item.url_external}</option>;
+        });
+    }, [filehosts]);
+
+    let changeFilehostHandler = useCallback(async ()=>{
+        // Save the filehost to local storage and trigger a reconnection
+        localStorage.setItem(`filehost_${userId}`, current);
+        setFilehostId(current);
+    }, [current, setFilehostId]);
+
+    useEffect(()=>{
+        if(!userId) return;
+        let current = localStorage.getItem(`filehost_${userId}`) || '';
+        console.debug("Setting current filehostId to ", current);
+        setCurrent(current);
+    }, [userId, setCurrent]);
+
+    useEffect(()=>{
+        if(!workers || !ready) return;
+        workers.connection.getFilehosts()
+            .then(response=>{
+                console.debug('Filehosts: ', response);
+                if(response.ok && response.list) {
+                    setFilehosts(response.list)
+                } else {
+                    console.error("Error loading filehosts: ", response.err);
+                }
+            })
+    }, [workers, ready]);
+
+    return (
+        <>
+            <p>You can select the filehost to use for uploading and downloading files.</p>
+
+            <div className='grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 pt-2'>
+                <label htmlFor='select-filehost'>File host</label>
+                <select id='select-filehost' value={current} onChange={currentOnChange} className='col-span-2 text-black bg-slate-300'>
+                    <option value=''>Default</option>
+                    {filehostOptions}
+                </select>
+            </div>
+
+            <ActionButton onClick={changeFilehostHandler} disabled={!ready}>Save</ActionButton>
+        </>
     )
 }
 
