@@ -356,7 +356,7 @@ export class DirectoryWorker {
         if(!decryptionInformation.nonce) throw new Error('Nonce missing');
 
         let fileUrl = new URL(url + '/files/' + fuuid);
-        let response = await axios({method: 'GET', url: fileUrl.href, responseType: 'blob'});
+        let response = await axios({method: 'GET', url: fileUrl.href, responseType: 'blob', withCredentials: true});
 
         let encryptedBlob = response.data as Blob;
         
