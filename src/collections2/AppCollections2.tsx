@@ -77,7 +77,7 @@ function FilehostManager() {
     // Load pre-selected filehostId from localStorage
     useEffect(()=>{
         if(!userId) return;
-        let filehostId = localStorage.getItem(`filehost_${userId}`) || '';
+        let filehostId = localStorage.getItem(`filehost_${userId}`) || 'LOCAL';
         if(filehostId) {
             // console.debug("Initializing with filehostId:%s", filehostId);
             setFilehostId(filehostId);
