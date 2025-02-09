@@ -2,17 +2,19 @@ import { DragEvent, MouseEvent, useCallback, useEffect, useMemo, useState } from
 import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import { useVisibility } from 'reactjs-visibility';
+import useWorkers from "../workers/workers";
+import { loadTuuid, updateFilesIdb } from "./idb/collections2StoreIdb";
+import useConnectionStore from "../connectionStore";
+import { useParams } from "react-router-dom";
+import { generateFileUploads } from "./transferUtils";
 
 import FolderIcon from '../resources/icons/folder-svgrepo-com-duotoneicon.svg';
 import FileIcon from '../resources/icons/file-svgrepo-com.svg';
 import PdfIcon from '../resources/icons/document-filled-svgrepo-com.svg';
 import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
 import VideoIcon from '../resources/icons/video-file-svgrepo-com.svg';
-import useWorkers from "../workers/workers";
-import { loadTuuid, updateFilesIdb } from "./idb/collections2StoreIdb";
-import useConnectionStore from "../connectionStore";
-import { useParams } from "react-router-dom";
-import { generateFileUploads } from "./transferUtils";
+import SpinnerIcon from '../resources/icons/spinner-svgrepo-com.svg';
+import QuestionIcon from '../resources/icons/question-circle-svgrepo-com.svg';
 
 export type FileListPaneOnClickRowType = (
     e: MouseEvent<HTMLButtonElement | HTMLDivElement>, 
@@ -269,8 +271,6 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
     let lastOpenedFile = useUserBrowsingStore(state=>state.lastOpenedFile);
     let { ref, visible } = useVisibility({});
 
-    // let navigate = useNavigate();
-
     let [thumbnail, setThumbnail] = useState('');
 
     let dateValue = useMemo(()=>{
@@ -282,6 +282,39 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
     let onclickHandler = useCallback((e: MouseEvent<HTMLDivElement>)=>{
         onClick(e, value)
     }, [value, onClick]);
+
+    let visitsElem = useMemo(()=>{
+        if(value.type_node !== 'Fichier') return null;  // Only apply to files
+
+        let visits = value.visits;
+        let currentDate = Math.floor(new Date().getTime()/1000);
+        let weekExpired = currentDate - 7*86_400;
+        let monthExpired = currentDate - 31*86_400;
+        if(visits) {
+            if(visits.nouveau) {
+                // Special flag, the file is considered as just uploaded
+                return <img src={SpinnerIcon} alt='Processing' title='Processing' className='inline-block w-4 ml-1 animate-spin bg-violet-700 rounded-full' />;
+            }
+            let visitNumber = Object.keys(visits).length;
+            if(visitNumber === 0) {
+                return <img src={QuestionIcon} alt='File gone' title='File gone' className='inline-block w-4 ml-1 bg-red-800 rounded-full' />;
+            }
+
+            // Check last visit date. Warnings start after a week.
+            let mostRecentVisit = Object.values(visits).reduce((acc, item)=>{
+                if(acc < item) return item;
+                return acc;
+            }, 0);
+            if(mostRecentVisit < monthExpired) {
+                return <img src={QuestionIcon} alt='File presence over a month old' title='File presence over a month old' className='inline-block w-4 ml-1 bg-red-800 rounded-full' />;
+            } else if(mostRecentVisit < weekExpired) {
+                return <img src={QuestionIcon} alt='File presence over a week old' title='File presence over a week old' className='inline-block w-4 ml-1 bg-yellow-500 rounded-full' />;
+            }
+
+            return null;  // No issues
+        }
+        return <img src={QuestionIcon} alt='File presence issue' title='File presence issue' className='inline-block w-4 ml-1 bg-red-800 rounded-full' />;
+    }, [value]);
 
     useEffect(()=>{
         if(!value || !value.thumbnail) return;
@@ -318,7 +351,7 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
     }, [value, selection, selectionMode, lastOpenedFile]);
 
     return (
-        <div key={value.tuuid} onClick={onclickHandler} className={selectionCss}>
+        <div key={value.tuuid} onClick={onclickHandler} className={'h-11 md:h-6 ' + selectionCss}>
             <div ref={ref} className='col-span-7 px-1 truncate'>
                 {thumbnail?
                     <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
@@ -337,7 +370,11 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
                     </p>
                     <p className='col-span-2 px-1 text-xs text-xs lg:text-sm truncate'>{value.mimetype}</p>
                     <p className='col-span-3 text-right md:col-span-2 md:text-left px-1 text-xs lg:text-sm'>
-                        <Formatters.FormatterDate value={dateValue || undefined} />
+                        {visitsElem?
+                            visitsElem
+                            :
+                            <Formatters.FormatterDate value={dateValue || undefined} />
+                        }
                     </p>
                 </>
             }

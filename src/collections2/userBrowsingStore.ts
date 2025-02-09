@@ -20,6 +20,7 @@ export type TuuidsBrowsingStoreRow = {
     path_cuuids?: string[] | null,
     ownerUserId: string | null,
     contactId?: string | null,
+    visits?: {[filehostId: string]: number},
 }
 
 export type TuuidsBrowsingStoreSearchRow = TuuidsBrowsingStoreRow & {score: number, contactId?: string | null};
@@ -55,6 +56,7 @@ export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsi
             dateFichier: decryptedMetadata.dateFichier,
             taille: item.fileData?.taille,
             mimetype: item.fileData?.mimetype,
+            visits: item.fileData?.visites,
             thumbnail: item.thumbnail,
             thumbnailDownloaded: item.thumbnailDownloaded || false,
             ownerUserId: item.ownerUserId,
