@@ -93,7 +93,7 @@ export class AppsUploadWorker {
     }
 
     async uploadCallback(uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null, stateChanged?: boolean | null) {
-        console.debug("Download worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
+        // console.debug("Download worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
             this.uploadStatus = null;
@@ -113,7 +113,7 @@ export class AppsUploadWorker {
     }
 
     async encryptionCallback(uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null, stateChanged?: boolean | null) {
-        console.debug("Encryption worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
+        // console.debug("Encryption worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
             this.encryptionStatus = null;
@@ -144,7 +144,7 @@ export class AppsUploadWorker {
 
     /** The filehost connection is maintained by DirectoryWorker. */
     async setFilehost(filehost: FilehostDirType | null) {
-        console.debug("Setting filehost for upload: ", filehost);
+        console.info("Setting filehost URL for upload: ", filehost?.url);
         this.filehost = filehost;
     }
 

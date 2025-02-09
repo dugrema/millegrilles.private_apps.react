@@ -133,7 +133,7 @@ export class AppsDownloadWorker {
 
     /** The filehost connection is maintained by DirectoryWorker. */
     async setFilehost(filehost: FilehostDirType | null) {
-        console.debug("Setting filehost for download: ", filehost);
+        console.info("Setting filehost URL for download: ", filehost?.url);
         this.filehost = filehost;
     }
 

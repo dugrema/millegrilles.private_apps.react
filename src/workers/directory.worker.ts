@@ -238,7 +238,7 @@ export class DirectoryWorker {
     async selectLocalFilehost(localUrl: string) {
         try {
             await axios({url: localUrl + 'filehost/status'})
-            console.debug("Local filehost is available, using by default");
+            // console.debug("Local filehost is available, using by default");
 
             let url = new URL(localUrl + 'filehost');
             let localFilehost = {filehost_id: 'LOCAL', url: url.href} as FilehostDirType;
@@ -268,7 +268,7 @@ export class DirectoryWorker {
             // Extract url
             if(filehost.url_external && filehost.tls_external !== 'millegrille') {
                 let url = new URL(filehost.url_external);
-                if(url.pathname.endsWith('filehost')) {
+                if(!url.pathname.endsWith('filehost')) {
                     url.pathname += 'filehost';
                 }
                 filehost.url = url.href;
@@ -285,7 +285,7 @@ export class DirectoryWorker {
                 // Extract url
                 if(filehost.url_external && filehost.tls_external !== 'millegrille') {
                     let url = new URL(filehost.url_external);
-                    if(url.pathname.endsWith('filehost')) {
+                    if(!url.pathname.endsWith('filehost')) {
                         url.pathname += 'filehost';
                     }
                     filehost.url = url.href;
@@ -293,7 +293,7 @@ export class DirectoryWorker {
                     throw new Error('The only available filehost has no means of accessing it from a browser');
                 }
 
-                console.debug("Using manually chosen filehost ", filehost);
+                // console.debug("Using manually chosen filehost ", filehost);
                 this.selectedFilehost = filehost;
                 return;
             }

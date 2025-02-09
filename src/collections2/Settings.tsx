@@ -125,7 +125,7 @@ function FilehostConfiguration() {
             <div className='grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 pt-2'>
                 <label htmlFor='select-filehost'>File host</label>
                 <select id='select-filehost' value={current} onChange={currentOnChange} className='col-span-2 text-black bg-slate-300'>
-                    <option value=''>Default</option>
+                    <option value='LOCAL'>Default</option>
                     {filehostOptions}
                 </select>
             </div>

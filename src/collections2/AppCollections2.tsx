@@ -79,7 +79,7 @@ function FilehostManager() {
         if(!userId) return;
         let filehostId = localStorage.getItem(`filehost_${userId}`) || '';
         if(filehostId) {
-            console.debug("Initializing with filehostId:%s", filehostId);
+            // console.debug("Initializing with filehostId:%s", filehostId);
             setFilehostId(filehostId);
         } else {
             filehostId = 'LOCAL';  // Use truthy value to ensure it gets picked up by the connect to filehost useEffect().
@@ -88,14 +88,14 @@ function FilehostManager() {
 
     // Trigger a reauthentication for a newly selected filehostId
     useEffect(()=>{
-        console.debug("Changing filehost id to", filehostId);
+        // console.debug("Changing filehost id to", filehostId);
         setFilehostAuthenticated(false);
     }, [filehostId]);
 
     // Connect to filehost. This resets on first successful connection to a longer check interval.
     useEffect(()=>{
-        console.debug("useEffect maintain filehostAuthenticated:%s, filehostId:%s", filehostAuthenticated, filehostId);
-        if(!workers || !ready || !userId) return;
+        // console.debug("useEffect maintain filehostAuthenticated:%s, filehostId:%s", filehostAuthenticated, filehostId);
+        if(!workers || !ready || !userId || !filehostId) return;
 
         if(filehostId === 'LOCAL') filehostId = '';  // Reset filehost placeholder value
 
@@ -126,7 +126,7 @@ async function maintainFilehosts(workers: AppWorkers, filehostId: string | null,
     let filehostResponse = await workers.connection.getFilehosts();
     if(!filehostResponse.ok) throw new Error('Error loading filehosts: ' + filehostResponse.err);
 
-    console.debug("maintainFilehost with id:%s, list received: %O", filehostId, filehostResponse);
+    // console.debug("maintainFilehost with id:%s, list received: %O", filehostId, filehostResponse);
 
     let list = filehostResponse.list;
     try {
@@ -149,7 +149,7 @@ async function maintainFilehosts(workers: AppWorkers, filehostId: string | null,
 
             // Transfer selected filehost to transfer workers
             let selectedFilehost = await workers.directory.getSelectedFilehost();
-            console.debug("Selected filehost ", selectedFilehost);
+            console.debug("Selected filehost id: ", selectedFilehost?.filehost_id);
             workers.download.setFilehost(selectedFilehost);
             workers.upload.setFilehost(selectedFilehost);
 
