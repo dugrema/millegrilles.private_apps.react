@@ -34,6 +34,8 @@ function FilelistPane(props: FileListPaneProps) {
 
     let { files, sortKey, sortOrder, dateColumn, onClickRow, columnNameOnly } = props;
     let viewMode = useUserBrowsingStore(state=>state.viewMode);
+    let lastOpenedFile = useUserBrowsingStore(state=>state.lastOpenedFile);
+    let setLastOpenedFile = useUserBrowsingStore(state=>state.setLastOpenedFile);
 
     let [cursorItemPosition, setCursorItemPosition] = useState('');
 
@@ -81,6 +83,13 @@ function FilelistPane(props: FileListPaneProps) {
             setCursorItemPosition('');  // Reset
         }
     }, [onClickRow, cursorItemPosition, sortedFiles, setCursorItemPosition]);
+
+    // Remove the last opened file if it was not from the current directory
+    useEffect(()=>{
+        if(!files || !lastOpenedFile) return;
+        let filteredFiles = files.filter(item=>item.tuuid === lastOpenedFile);
+        if(filteredFiles.length === 0) setLastOpenedFile(null);
+    }, [files, lastOpenedFile, setLastOpenedFile]);
 
     if(viewMode === ViewMode.Thumbnails) return <ThumbnailView onClick={onClickRowHandler} files={sortedFiles} />;
     if(viewMode === ViewMode.Carousel) throw new Error('todo');
@@ -257,6 +266,7 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
     let {value, dateColumn, onClick, columnNameOnly} = props;
     let selection = useUserBrowsingStore(state=>state.selection);
     let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
+    let lastOpenedFile = useUserBrowsingStore(state=>state.lastOpenedFile);
     let { ref, visible } = useVisibility({});
 
     // let navigate = useNavigate();
@@ -297,9 +307,15 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
             }
             return 'grid grid-cols-6 md:grid-cols-12 mx-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer select-none';
         }
+
+        if(lastOpenedFile === value.tuuid) {
+            // Highlight the file that was just opened (back in containing folder)
+            return 'grid grid-cols-6 md:grid-cols-12 mx-2 bg-slate-500 hover:bg-violet-800 bg-opacity-80 text-sm cursor-pointer';
+        }
+
         // Allow text select
         return 'grid grid-cols-6 md:grid-cols-12 mx-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer';
-    }, [value, selection, selectionMode]);
+    }, [value, selection, selectionMode, lastOpenedFile]);
 
     return (
         <div key={value.tuuid} onClick={onclickHandler} className={selectionCss}>

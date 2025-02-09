@@ -79,6 +79,7 @@ interface UserBrowsingStoreState {
     usernameBreadcrumb: string | null,
     breadcrumb: TuuidsBrowsingStoreRow[] | null,
     directoryStatistics: Collection2DirectoryStats[] | null,
+    lastOpenedFile: string | null,  // Used to highlight the file that was opened when going back to parent directory view
     
     // Search
     searchResults: Collection2SearchStore | null,  // Complete set on results that can be displayed
@@ -114,6 +115,7 @@ interface UserBrowsingStoreState {
     updateCurrentDirectoryDeleted: (files: TuuidsBrowsingStoreRow[] | null) => void,
     setBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
     setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
+    setLastOpenedFile: (lastOpenedFile: string | null) => void,
     updateThumbnail: (tuuid: string, thumbnail: Blob) => void,
     deleteFilesDirectory: (files: string[]) => void,
     
@@ -155,6 +157,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             usernameBreadcrumb: null,
             breadcrumb: null,
             directoryStatistics: null,
+            lastOpenedFile: null,
 
             searchResults: null,
             searchResultsPosition: 0,
@@ -242,6 +245,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
 
             setBreadcrumb: (username, breadcrumb) => set(()=>({usernameBreadcrumb: username, breadcrumb})),
             setDirectoryStatistics: (directoryStatistics) => set(()=>({directoryStatistics})),
+            setLastOpenedFile: (lastOpenedFile) => set(()=>({lastOpenedFile})),
             updateThumbnail: (tuuid, thumbnail) => set((state)=>{
                 let currentDirectory = state.currentDirectory;
                 if(currentDirectory) {

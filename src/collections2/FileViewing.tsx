@@ -18,6 +18,8 @@ import useTransferStore from "./transferStore";
 export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
     let {file, thumbnail} = props;
 
+    let setLastOpenedFile = useUserBrowsingStore(state=>state.setLastOpenedFile);
+
     let [selectedVideo, setSelectedVideo] = useState(null as FileVideoData | null);
     let [loadProgress, setLoadProgress] = useState(null as number | null);
 
@@ -29,6 +31,9 @@ export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null,
         if(mimetype) return isVideoMimetype(mimetype);
         return false;
     }, [file, thumbnail]);
+
+    // Set this file as the last opened. Used to highlight the file when going back to containing directory.
+    useEffect(()=>setLastOpenedFile(file?.tuuid || null), [file, setLastOpenedFile]);
 
     if(!isMedia) return <FileViewLayout file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} />;
     return <FileMediaLayout file={file} thumbnail={thumbnail} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} setLoadProgress={setLoadProgress} />;

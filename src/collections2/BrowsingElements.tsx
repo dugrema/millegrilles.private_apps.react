@@ -153,6 +153,7 @@ export function ButtonBar(props: ButtonBarProps) {
     let currentDirectory = useUserBrowsingStore(state=>state.currentDirectory);
     let breadcrumb = useUserBrowsingStore(state=>state.breadcrumb);
     let setModal = useUserBrowsingStore(state=>state.setModal);
+    let setLastOpenedFile = useUserBrowsingStore(state=>state.setLastOpenedFile);
     let onModal = useCallback((modal: ModalEnum)=>setModal(modal), [setModal]);
 
     let [selectCount, directorySelectCount] = useMemo(()=>{
@@ -176,7 +177,8 @@ export function ButtonBar(props: ButtonBarProps) {
 
     let toggleSelectionMode = useCallback(()=>{
         setSelectionMode(!selectionMode);
-    }, [selectionMode, setSelectionMode]);
+        setLastOpenedFile(null);  // Reset last opened file highlighting
+    }, [selectionMode, setSelectionMode, setLastOpenedFile]);
 
     let addFileHandler = useCallback(() => refUpload?.current?.click(), [refUpload]);
 
