@@ -362,7 +362,7 @@ function FileViewLayout(props: FileViewLayoutProps) {
     if(!file) return <></>;
 
     return (
-        <div className='pt-2'>
+        <div className='pt-2 grid grid-cols-1 md:grid-cols-2'>
             <FileDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} isVideo={false} />
         </div>
     )
@@ -377,25 +377,43 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
     let downloadSessionStart = useTransferStore(state=>state.downloadSessionStart);
     let setDownloadSessionStart = useTransferStore(state=>state.setDownloadSessionStart);
 
+    let [fuuid, lastPresence, recentVisits] = useMemo(()=>{
+        if(!file) return [null, null, null];
+        let fuuids = file.fileData?.fuuids_versions;
+        let fuuid = null;
+        if(fuuids && fuuids[0]) fuuid = fuuids[0];
+        
+        let visits = file.fileData?.visites;
+        let lastPresence = null as number | null;
+        let recentVisits = 0;
+        let currentDate = Math.floor(new Date().getTime()/1000);
+        let weekExpired = currentDate - 7*86_400;
+        if(visits) {
+            recentVisits = Object.values(visits).filter(item=>item>weekExpired).length;
+            let presence = Object.values(visits).reduce((acc, item)=>{
+                if(acc < item) return item;
+                return acc;
+            }, 0);
+            if(presence) lastPresence = presence;
+        }
+
+        return [fuuid, lastPresence, recentVisits];
+    }, [file]);
+
+    let fileSize = useMemo(()=>{
+        if(!file) return null;
+        // Return the original decrypted file size when available. It may differ from the encrypted file size.
+        return file.decryptedMetadata?.originalSize || file.fileData?.taille;
+    }, [file]);
+
     let downloadHandler = useCallback(async () => {
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!userId) throw new Error('UserId not provided');
         let tuuid = file.tuuid;
-        //if(!downloadSessionStart) setDownloadSessionStart(new Date());
         let content = await workers.download.addDownloadFromFile(tuuid, userId);
         if(content) {
             let filename = file.decryptedMetadata?.nom || `${file.tuuid}.obj`;
             downloadFile(filename, content);
-            // // File received already, download it now.
-            // console.debug("Download handler, content received ", content);
-            // const filename = file.decryptedMetadata?.nom || `${file.tuuid}.obj`;
-            // let objectUrl = window.URL.createObjectURL(content);
-            // let a = document.createElement('a');
-            // a.href = objectUrl;
-            // if (filename) a.download = filename;
-            // a.target = '_blank';
-            // a.click();
-            // URL.revokeObjectURL(objectUrl)
         }
     }, [workers, ready, file, userId, downloadSessionStart, setDownloadSessionStart]);
 
@@ -408,14 +426,20 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
                 </>
             :<></>}
             <p className='col-span-6 text-slate-400'>File name</p>
-            <p className='col-span-6'>{file.decryptedMetadata?.nom}</p>
+            <p className='col-span-6 break-words'>{file.decryptedMetadata?.nom}</p>
             <p className='col-span-2 text-slate-400'>File size</p>
-            <p className='col-span-4'><Formatters.FormatteurTaille value={file.fileData?.taille} /></p>
+            <p className='col-span-4' title={fileSize + ' bytes'}><Formatters.FormatteurTaille value={fileSize || undefined} /></p>
             <p className='col-span-2 text-slate-400'>File date</p>
             <p className='col-span-4'><Formatters.FormatterDate value={file.decryptedMetadata?.dateFichier || file.date_creation} /></p>
             <p className='col-span-2 text-slate-400'>Type</p>
             <p className='col-span-4'>{file.fileData?.mimetype}</p>
             <ImageDimensions file={file} />
+            <p className='col-span-2 text-slate-400'>Last presence check</p>
+            <p className='col-span-4'><Formatters.FormatterDate value={lastPresence || undefined} /></p>
+            <p className='col-span-2 text-slate-400'>Number of copies</p>
+            <p className='col-span-4'>{recentVisits}</p>
+            <p className='col-span-6 text-slate-400'>File unique Id</p>
+            <p className='col-span-6 break-words text-sm'>{fuuid}</p>
             <ActionButton onClick={downloadHandler} revertSuccessTimeout={3}>
                 Download
             </ActionButton>

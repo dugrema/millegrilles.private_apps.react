@@ -23,6 +23,7 @@ export type TuuidDecryptedMetadata = {
     nom: string,
     dateFichier?: number,
     hachage_original?: string,
+    originalSize?: number,
 };
 
 export type FileData = {
