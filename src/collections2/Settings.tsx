@@ -87,7 +87,7 @@ function FilehostConfiguration() {
 
     let filehostOptions = useMemo(()=>{
         if(!filehosts) return [];
-        return filehosts.filter(item=>item.url_external).map(item=>{
+        return filehosts.filter(item=>item.url_external && item.tls_external !== 'millegrille').map(item=>{
             return <option key={item.filehost_id} value={item.filehost_id}>{item.url_external}</option>;
         });
     }, [filehosts]);
