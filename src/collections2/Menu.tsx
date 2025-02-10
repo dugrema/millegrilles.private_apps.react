@@ -24,7 +24,6 @@ import ListIcon from '../resources/icons/list-pointers-svgrepo-com.svg';
 import GridIcon from '../resources/icons/grid-4-svgrepo-com.svg';
 import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
 
-
 import SelectionModeIcon from '../resources/icons/pinpaper-filled-svgrepo-com.svg';
 import { ModalEnum } from './BrowsingElements';
 import ActionButton from '../resources/ActionButton';
@@ -157,7 +156,7 @@ export default function HeaderMenu(props: MenuProps) {
                                 <img src={SettingIcon} alt="Settings" className='w-7 inline-block' />
                             </Link>
                         </div>
-                        <div className={'inline md:hidden px-1 pb-1.5 sm:px-2 transition-colors duration-300' + (['submenu', 'settings'].includes(selectedSection||'')?selectedClassname:unselectedClassname)}>
+                        <div className={'inline md:hidden px-1 pb-1.5 sm:px-2 transition-colors duration-300' + (['submenu', 'settings', 'downloads', 'uploads'].includes(selectedSection||'')?selectedClassname:unselectedClassname)}>
                             <button onClick={toggleSubmenu}>
                                 <img src={MenuIcon} alt="Menu" className='w-7 inline-block' />
                             </button>
@@ -197,13 +196,7 @@ export default function HeaderMenu(props: MenuProps) {
 
                     {/* Transfers */}
                     <div className='py-3 px-1 w-40 transition-colors duration-300'>
-                        <Link to='/apps/collections2/transfers' onClick={toggleSubmenu}>
-                            <img src={UploadIcon} alt='Upload' className='w-7 inline-block' />
-                            <p className='inline-block text-sm w-10'>100%</p>
-                            <span className='pl-1'>/</span>
-                            <img src={DownloadIcon} alt='Download' className='w-7 inline-block' />
-                            <p className='inline-block text-sm w-10'>100%</p>
-                        </Link>
+                        <TransferTickers selectedSection={selectedSection} alwaysFullSize={true} close={toggleSubmenu} />
                     </div>
 
                     {/* Additional links */}
@@ -223,9 +216,9 @@ export default function HeaderMenu(props: MenuProps) {
     )
 }
 
-function TransferTickers(props: {selectedSection?: string | null}) {
+function TransferTickers(props: {selectedSection?: string | null, alwaysFullSize?: boolean, close?: ()=>void}) {
 
-    let {selectedSection} = props;
+    let {selectedSection, alwaysFullSize, close} = props;
 
     let downloadActivity = useTransferStore(state=>state.downloadActivity);
     let downloadTransferPercent = useTransferStore(state=>state.downloadTransferPercent);
@@ -267,16 +260,21 @@ function TransferTickers(props: {selectedSection?: string | null}) {
         return [uploadClassName, uploadLabel];
     }, [uploadActivity, uploadTransferPercent]);
 
+    let hiddenDetailCss = useMemo(()=>{
+        if(alwaysFullSize) return '';
+        return 'hidden lg:inline-block';
+    }, [alwaysFullSize]);
+
     return (
         <>
-            <Link className={'ml-1 py-1.5 rounded-t-md ' + uploadLinkCss} to='/apps/collections2/transfers/uploads'>
+            <Link className={'ml-1 py-1.5 rounded-t-md ' + uploadLinkCss} to='/apps/collections2/transfers/uploads' onClick={close}>
                 <img src={UploadIcon} alt='Upload' className={'w-7 inline-block rounded-t-md ' + uploadClassName} />
-                <span className='text-sm w-10 hidden lg:inline-block'>{uploadLabel}</span>
+                <span className={`text-sm w-10 ${hiddenDetailCss}`}>{uploadLabel}</span>
             </Link>
             <span className='pl-1'>/</span>
-            <Link className={'ml-1 py-1.5 rounded-t-md ' + downloadLinkCss} to='/apps/collections2/transfers/downloads'>
+            <Link className={'ml-1 py-1.5 rounded-t-md ' + downloadLinkCss} to='/apps/collections2/transfers/downloads' onClick={close}>
                 <img src={DownloadIcon} alt='Download' className={'w-7 inline-block ml-1 rounded-t-md ' + downloadClassName} />
-                <span className='text-sm w-10 hidden lg:inline-block'>{downloadLabel}</span>
+                <span className={`text-sm w-10 ${hiddenDetailCss}`}>{downloadLabel}</span>
             </Link>
         </>
     )
@@ -433,7 +431,7 @@ function SubmenuButtonBar(props: SubmenuButtonBarProps) {
                 <>
                     <button onClick={addFileHandler} disabled={!cuuid}
                         className={'varbtn ml-2 px-0.5 py-0.5 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900'}>
-                            <img src={FileAddIcon} alt='Add files' title='Add files' className='w-10 inline-block' />
+                            <img src={UploadIcon} alt='Add files' title='Add files' className='w-10 inline-block' />
                     </button>
 
                     <button onClick={createDirectoryHandler}
