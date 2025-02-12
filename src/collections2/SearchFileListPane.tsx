@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { TuuidsBrowsingStoreSearchRow } from "./userBrowsingStore";
+import useUserBrowsingStore, { TuuidsBrowsingStoreSearchRow } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 
 import FolderIcon from '../resources/icons/folder-svgrepo-com-duotoneicon.svg';
@@ -7,6 +7,7 @@ import FileIcon from '../resources/icons/file-svgrepo-com.svg';
 import PdfIcon from '../resources/icons/document-filled-svgrepo-com.svg';
 import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
 import VideoIcon from '../resources/icons/video-file-svgrepo-com.svg';
+import ShareIcon from '../resources/icons/share-1-svgrepo-com.svg';
 
 type SearchFileListPaneProps = {
     files: TuuidsBrowsingStoreSearchRow[] | null,
@@ -114,6 +115,8 @@ function FileRow(props: {value: TuuidsBrowsingStoreSearchRow, dateColumn?: strin
         }
     }, [value]);
 
+    let shared = useMemo(()=>!!value.contactId, [value]);
+
     let defaultIcon = useMemo(()=>{
         let typeNode = value.type_node;
         if(typeNode === 'Fichier') {
@@ -135,8 +138,10 @@ function FileRow(props: {value: TuuidsBrowsingStoreSearchRow, dateColumn?: strin
                 {thumbnail?
                     <img src={thumbnail} className='ml-1 w-5 h-5 my-0.5 inline-block rounded' alt='File icon' />
                 :
-                    <img src={defaultIcon} alt='File icon' className='w-4 mr-1 ml-1 inline-block'/>
+                    <img src={defaultIcon} alt='File icon' className='w-5 h-5 my-0.5 mr-0 ml-1 inline-block'/>
                 }
+                
+                {shared?<img src={ShareIcon} className='ml-1 w-5 inline-block' alt="Shared file"/>:<></>}
                 
                 <span className='pl-3'>{value.nom}</span>
             </div>

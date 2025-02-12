@@ -275,15 +275,18 @@ function SearchStatistics() {
         return searchParams.get('search');
     }, [searchParams]);
 
+    
+    let searchListing = useUserBrowsingStore(state=>state.searchListing);
     let searchResults = useUserBrowsingStore(state=>state.searchResults);
-    let [fileInfo, dirInfo, numberFound] = useMemo(()=>{
+    let [dirInfo, numberFound, numberDisplayed] = useMemo(()=>{
         if(!searchResults || !searchResults.stats) return [null, null, null];
 
+        let numberDisplayed = searchListing?Object.keys(searchListing).length:0;
         let stats = searchResults.stats;
         let numberFound = searchResults.searchResults?.search_results?.numFound;
 
-        return [stats.files, stats.directories, numberFound];
-    }, [searchResults]);
+        return [stats.directories, numberFound, numberDisplayed];
+    }, [searchResults, searchListing]);
 
     if(!searchResults) {
         if(!query) return <p>Enter en query to begin.</p>;
@@ -293,8 +296,7 @@ function SearchStatistics() {
     return (
         <p className='pt-2 text-sm'>
             <span className='pr-2'>Found {numberFound} files and directories. </span>
-            <span className='pr-1'>{dirInfo?dirInfo:'No'} directories and</span>
-            <span>{fileInfo?fileInfo:'No'} files are available to display.</span>
+            <span className='pr-1'>{numberDisplayed} unique items displayed.</span>
         </p>
     )
 }
@@ -325,6 +327,10 @@ function DisplayMore(props: {sharedCuuids: {[tuuid: string]: Collections2SharedC
         let nextIndex = Math.min(searchResultsPosition + 40, itemsAvailable);
         setNextIndex(nextIndex);
     }, [itemsAvailable, setNextIndex, searchResultsPosition]);
+
+    useEffect(()=>{
+        return () => {setNextIndex(0);};
+    }, [setNextIndex]);
 
     if(searchResultsPosition === itemsAvailable || !sharedCuuids) return <></>;  // Nothing to do
 
