@@ -49,7 +49,7 @@ export class AppsUploadWorker {
 
     async setup(stateCallback: UploadStateCallback, caPem: string) {
         this.stateCallbacks.push(stateCallback);
-        // console.debug("Callback count: ", this.stateCallbacks.length);
+        // console.debug("UPLOAD callback count: ", this.stateCallbacks.length);
 
         // This is a shared worker. Only create instances if not already done.
         if(!this.uploadWorker) {
@@ -93,7 +93,7 @@ export class AppsUploadWorker {
     }
 
     async uploadCallback(uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null, stateChanged?: boolean | null) {
-        // console.debug("Download worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
+        // console.debug("Upload worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
         if(done) {
             // Start next download job (if any). Also does a produceState()
             this.uploadStatus = null;
@@ -186,18 +186,16 @@ export class AppsUploadWorker {
         // Upload
         if(this.uploadWorker) {
             if(!this.pauseUploads) {
+                let userId = this.currentUserId;
                 if((await this.uploadWorker.isBusy()) === false) {
-                    let job = await getNextUploadReadyJob(this.currentUserId);
-                    if(job) {
-                        if(!job.uploadUrl) {
-                            // Set the current filehost as upload url
-                            job.uploadUrl = filehostUrl;
-                        }
-                        try {
-                            await this.uploadWorker.addJob(job);
-                        } catch (err) {
-                            console.info("Upload worker busy, will retry");
-                        }
+                    await this.triggerNextUploadJob(userId, filehostUrl)
+                } else {
+                    // Retry quickly, required on chromium to chain jobs
+                    await new Promise(resolve=>setTimeout(resolve, 2));
+                    if((await this.uploadWorker.isBusy()) === false) {
+                        await this.triggerNextUploadJob(userId, filehostUrl)
+                    } else {
+                        console.info("Upload worker busy, will retry");
                     }
                 }
             }
@@ -207,6 +205,22 @@ export class AppsUploadWorker {
 
         // Update state
         await this.produceState();
+    }
+
+    async triggerNextUploadJob(userId: string, filehostUrl: string) {
+        // console.debug("trigger jobs uploadWorker not busy")
+        let job = await getNextUploadReadyJob(userId);
+        if(job) {
+            if(!job.uploadUrl) {
+                // Set the current filehost as upload url
+                job.uploadUrl = filehostUrl;
+            }
+            try {
+                await this.uploadWorker?.addJob(job);
+            } catch (err) {
+                console.info("Upload worker busy, will retry");
+            }
+        }
     }
 
     async addUpload(uploadId: number, file: File): Promise<void> {
