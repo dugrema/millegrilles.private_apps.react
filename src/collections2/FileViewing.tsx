@@ -138,7 +138,7 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
 }
 
 function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: string | null, setLoadProgress: Dispatch<number | null>}) {
-    let {file, thumbnailBlobUrl, selectedVideo, setSelectedVideo, setLoadProgress} = props;
+    let {file, thumbnailBlobUrl, selectedVideo, loadProgress, setSelectedVideo, setLoadProgress} = props;
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.filehostAuthenticated);
 
@@ -165,6 +165,11 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         let fuuid = (fuuids&&fuuids.length>0)?fuuids[0]:null;
         return fuuid;
     }, [file]);
+
+    let videoCss = useMemo(()=>{
+        if(loadProgress && loadProgress < 100) return ' contrast-50';
+        return '';
+    }, [loadProgress]);
 
     let onClickStart = useCallback(()=>{
         if(!isVideoFile) return;  // Not a video, nothing to do
@@ -326,26 +331,30 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
     if(file && selectedVideo && videoReady) {
         return (
             <VideoPlayer 
+                className={videoCss}
                 fuuidVideo={selectedVideo.fuuid_video || selectedVideo.fuuid} 
                 mimetypeVideo={selectedVideo.mimetype} 
                 jwt={jwt} 
                 thumbnailBlobUrl={thumbnailBlobUrl} />
+        
         )
     }
     if(thumbnailBlobUrl) {
-        let className = 'grow object-contain object-center md:object-right';
+        let className = 'grow object-contain object-center md:object-right ' + videoCss;
         if(isPdf) className = 'grow object-contain bg-slate-100 bg-opacity-70';  // for transparency
         return (
             <img src={thumbnailBlobUrl} onClick={onClickStart} alt='Content of the file'
                 className={className} />
         );
-    } else {
+    } else if(selectedVideo) {
         return (
             <button onClick={onClickStart} 
                 className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
                     Play video
             </button>
         );
+    } else {
+        return <></>;
     }
 }
 
@@ -470,9 +479,17 @@ function VideoDuration(props: {file: TuuidsIdbStoreRowType | null}) {
     )
 }
 
-function VideoPlayer(props: {thumbnailBlobUrl: string | null, fuuidVideo: string, mimetypeVideo: string, jwt: string | null}) {
+type VideoPlayerProps = {
+    thumbnailBlobUrl: string | null, 
+    fuuidVideo: string, 
+    mimetypeVideo: string, 
+    jwt: string | null,
+    className?: string | null,
+};
 
-    let {fuuidVideo, mimetypeVideo, thumbnailBlobUrl, jwt} = props;
+function VideoPlayer(props: VideoPlayerProps) {
+
+    let {fuuidVideo, mimetypeVideo, thumbnailBlobUrl, jwt, className} = props;
     let {tuuid} = useParams();
     let userId = useUserBrowsingStore(state=>state.userId);
     
@@ -511,9 +528,10 @@ function VideoPlayer(props: {thumbnailBlobUrl: string | null, fuuidVideo: string
 
     let videoClassname = useMemo(()=>{
         // In full screen mode, the video goes in the center
-        if(fullscreen) return 'grow object-contain object-center';
-        return 'grow object-contain object-right';
-    }, [fullscreen]);
+        let classNameProps = className || '';
+        if(fullscreen) return `grow object-contain object-center ${classNameProps}`;
+        return `grow object-contain object-right ${classNameProps}`;
+    }, [fullscreen, className]);
 
     useEffect(()=>{
         if(!tuuid || !userId) return;
