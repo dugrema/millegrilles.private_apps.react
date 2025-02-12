@@ -14,6 +14,7 @@ import { isVideoMimetype } from "./mimetypes";
 import ActionButton from "../resources/ActionButton";
 import { downloadFile } from "./transferUtils";
 import useTransferStore from "./transferStore";
+import ProgressBar from "./ProgressBar";
 
 export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
     let {file, thumbnail} = props;
@@ -694,14 +695,11 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
         // Handle original format, detect if it is supported
         if(fuuid && mimetype) {
             let support = supportsVideoFormat(mimetype);
-            //let originalItem = { fuuid, mimetype, height, width, codec, supportMedia };
-            // codec, fuuid, fuuid_video: fuuid, width, height, mimetype, quality: 1, original: true
             if(support) {
                 let originalSelected = false;
                 if(!selectedVideo?.fuuid_video && selectedVideo?.fuuid === fuuid) {
                     originalSelected = true;
                 }
-                // console.debug("Original video format %s supported (%s), selected: %s ", mimetype, support, originalSelected);
                 let url = `/apps/collections2/f/${file?.tuuid}/v/${fuuid}`;
                 if(contactId) {
                     url = `/apps/collections2/c/${contactId}/f/${file?.tuuid}/v/${fuuid}`;
@@ -732,8 +730,10 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
             <ol className="col-span-6 cursor-pointer items-pl-2 max-w-48">
                 {elems}
             </ol>
-            <p className={'col-span-4 text-slate-400 duration-700 transition-all' + progressClassHide}>Loading progress</p>
-            <p className={'col-span-2 duration-500 transition-all' + progressClassHide}>{loadProgress}%</p>
+            <p className={'col-span-2 md:col-span-1 text-slate-400 duration-700 transition-all' + progressClassHide}>Loading progress</p>
+            <div className={'col-span-4 md:col-span-5 transition-all' + progressClassHide}>
+                <ProgressBar value={loadProgress} />
+            </div>
         </>
     )
 }
