@@ -89,20 +89,21 @@ function FilehostManager() {
 
     // Trigger a reauthentication for a newly selected filehostId
     useEffect(()=>{
-        // console.debug("Changing filehost id to", filehostId);
+        console.debug("Changing filehost id to", filehostId);
         setFilehostAuthenticated(false);
-    }, [filehostId]);
+    }, [filehostId, setFilehostAuthenticated]);
 
     // Connect to filehost. This resets on first successful connection to a longer check interval.
     useEffect(()=>{
         // console.debug("useEffect maintain filehostAuthenticated:%s, filehostId:%s", filehostAuthenticated, filehostId);
         if(!workers || !ready || !userId || !filehostId) return;
 
-        if(filehostId === 'LOCAL') filehostId = '';  // Reset filehost placeholder value
+        let filehostIdInner = filehostId;
+        if(filehostIdInner === 'LOCAL') filehostIdInner = '';  // Reset filehost placeholder value
 
         if(!filehostAuthenticated) {
             // Initial connection attempt
-            maintainFilehosts(workers, filehostId, setFilehostAuthenticated)
+            maintainFilehosts(workers, filehostIdInner, setFilehostAuthenticated)
                 .catch(err=>console.error("Error during filehost initialization", err));
         }
 
@@ -111,7 +112,7 @@ function FilehostManager() {
 
         let interval = setInterval(()=>{
             if(!workers) throw new Error('workers not initialized');
-            maintainFilehosts(workers, filehostId, setFilehostAuthenticated)
+            maintainFilehosts(workers, filehostIdInner, setFilehostAuthenticated)
                 .catch(err=>console.error("Error during filehost maintenance", err));
         }, intervalMillisecs);
 

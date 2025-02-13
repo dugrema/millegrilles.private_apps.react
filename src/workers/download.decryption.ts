@@ -133,7 +133,7 @@ export class DownloadDecryptionWorker {
             // Concatenate all decrypted parts from IDB into a single blob
             let decryptedFileBlob = await getDecryptedBlob(fuuid);
 
-            if(!decryptedFileBlob || decryptedFileBlob.size === 0 && downloadJob.size) {
+            if(!decryptedFileBlob || (decryptedFileBlob.size === 0 && downloadJob.size)) {
                 throw new Error('Decrypted file %s size is 0 (empty)');
             }
 

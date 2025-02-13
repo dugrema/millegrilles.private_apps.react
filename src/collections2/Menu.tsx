@@ -17,7 +17,6 @@ import CopyIcon from '../resources/icons/copy-svgrepo-com.svg';
 import CutIcon from '../resources/icons/cut-svgrepo-com.svg';
 import EditIcon from '../resources/icons/edit-2-svgrepo-com.svg';
 import MenuIcon from '../resources/icons/menu-hamburger-svgrepo-com.svg';
-import FileAddIcon from '../resources/icons/file-dock-svgrepo-com.svg';
 import FolderAddIcon from '../resources/icons/folder-add-fill-svgrepo-com.svg';
 import InfoIcon from '../resources/icons/info-svgrepo-com.svg';
 import ListIcon from '../resources/icons/list-pointers-svgrepo-com.svg';

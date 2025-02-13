@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import useUserBrowsingStore, { TuuidsBrowsingStoreSearchRow } from "./userBrowsingStore";
+import { TuuidsBrowsingStoreSearchRow } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 
 import FolderIcon from '../resources/icons/folder-svgrepo-com-duotoneicon.svg';

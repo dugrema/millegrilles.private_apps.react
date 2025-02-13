@@ -13,7 +13,6 @@ import VideoConversion from "./VideoConversion";
 import { isVideoMimetype } from "./mimetypes";
 import ActionButton from "../resources/ActionButton";
 import { downloadFile } from "./transferUtils";
-import useTransferStore from "./transferStore";
 import ProgressBar from "./ProgressBar";
 
 export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Uint8Array | null}) {
@@ -148,8 +147,8 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Uint8Array | n
     )
 }
 
-function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: string | null, setLoadProgress: Dispatch<number | null>, videoError: number, setVideoError: (code: number)=>void}) {
-    let {file, thumbnailBlobUrl, selectedVideo, loadProgress, setSelectedVideo, setLoadProgress, videoError, setVideoError} = props;
+function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: string | null, setLoadProgress: Dispatch<number | null>, setVideoError: (code: number)=>void}) {
+    let {file, thumbnailBlobUrl, selectedVideo, loadProgress, setSelectedVideo, setLoadProgress, setVideoError} = props;
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.filehostAuthenticated);
 
@@ -348,7 +347,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
                 setVideoError(1);
             }
         });
-    }, [selectedVideo, jwt, setLoadProgress, setVideoReady, setPlayVideo]);
+    }, [selectedVideo, jwt, setLoadProgress, setVideoReady, setPlayVideo, setVideoError]);
 
     if(file && selectedVideo && videoReady) {
         return (
@@ -407,8 +406,6 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useUserBrowsingStore(state=>state.userId);
-    let downloadSessionStart = useTransferStore(state=>state.downloadSessionStart);
-    let setDownloadSessionStart = useTransferStore(state=>state.setDownloadSessionStart);
 
     let [fuuid, lastPresence, recentVisits] = useMemo(()=>{
         if(!file) return [null, null, null];
@@ -448,7 +445,7 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
             let filename = file.decryptedMetadata?.nom || `${file.tuuid}.obj`;
             downloadFile(filename, content);
         }
-    }, [workers, ready, file, userId, downloadSessionStart, setDownloadSessionStart]);
+    }, [workers, ready, file, userId]);
 
     return (
         <div className='grid grid-cols-6 md:grid-cols-1'>

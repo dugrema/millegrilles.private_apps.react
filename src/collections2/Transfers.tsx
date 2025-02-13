@@ -557,7 +557,7 @@ export function TransferTickerUpdate() {
             // Reset download session start
             setDownloadSessionStart(null);
         }
-    }, [uploadJobs, uploadProgress, setUploadTicker, uploadSessionStart, setUploadSessionStart]);
+    }, [uploadJobs, uploadProgress, setUploadTicker, uploadSessionStart, setUploadSessionStart, setDownloadSessionStart]);
 
     return <></>;
 }
