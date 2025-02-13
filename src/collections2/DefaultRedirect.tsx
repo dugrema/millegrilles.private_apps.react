@@ -11,7 +11,7 @@ function DefaultPageRedirect() {
         if(!userId) return;
 
         let previousLocation = localStorage.getItem(`location_${userId}`);
-        console.debug("Previous location", previousLocation);
+        // console.debug("Previous location", previousLocation);
         if(previousLocation) {
             navigate(previousLocation);
             return;    

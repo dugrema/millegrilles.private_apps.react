@@ -1,12 +1,12 @@
 import { ChangeEvent, Dispatch, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore from "./userBrowsingStore";
 import useWorkers from "../workers/workers";
-import { FileImageData, FileVideoData, getCurrentVideoPosition, removeVideoPosition, setVideoPosition, TuuidsIdbStoreRowType, updateDownloadJobState } from "./idb/collections2StoreIdb";
+import { FileImageData, FileVideoData, getCurrentVideoPosition, removeVideoPosition, setVideoPosition, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
 import { CONST_VIDEO_MAX_RESOLUTION } from "./Settings";
 import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import VideoConversion from "./VideoConversion";
@@ -51,6 +51,7 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
     let [viewConversionScreen, setViewConversionScreen] = useState(false);
     let conversionScreenOpen = useCallback(()=>setViewConversionScreen(true), [setViewConversionScreen]);
     let conversionScreenClose = useCallback(()=>setViewConversionScreen(false), [setViewConversionScreen]);
+    let [videoError, setVideoError] = useState(0);
 
     let isVideoFile = useMemo(()=>{
         if(file?.fileData?.video) return true;
@@ -117,7 +118,15 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
     return (
         <div className='grid grid-cols-1 md:grid-cols-3 pt-2 px-2'>
             <div className='flex grow col-span-2 pr-4 max-h-screen md:pb-32 px-1'>
-                <MediaContentDisplay file={file} thumbnailBlobUrl={fullSizeBlobUrl || blobUrl} selectedVideo={selectedVideo} loadProgress={loadProgress} setSelectedVideo={setSelectedVideo} setLoadProgress={setLoadProgress} />
+                <MediaContentDisplay 
+                    file={file} 
+                    thumbnailBlobUrl={fullSizeBlobUrl || blobUrl} 
+                    selectedVideo={selectedVideo} 
+                    loadProgress={loadProgress} 
+                    setSelectedVideo={setSelectedVideo} 
+                    setLoadProgress={setLoadProgress} 
+                    videoError={videoError}
+                    setVideoError={setVideoError} />
             </div>
             <div className='px-1 md:px-0 pt-2'>
                 {isVideoFile?
@@ -131,14 +140,15 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
                     selectedVideo={selectedVideo} 
                     setSelectedVideo={setSelectedVideo} 
                     loadProgress={loadProgress} 
-                    isVideo={isVideoFile} />
+                    isVideo={isVideoFile}
+                    videoError={videoError} />
             </div>
         </div>
     )
 }
 
-function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: string | null, setLoadProgress: Dispatch<number | null>}) {
-    let {file, thumbnailBlobUrl, selectedVideo, loadProgress, setSelectedVideo, setLoadProgress} = props;
+function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: string | null, setLoadProgress: Dispatch<number | null>, videoError: number, setVideoError: (code: number)=>void}) {
+    let {file, thumbnailBlobUrl, selectedVideo, loadProgress, setSelectedVideo, setLoadProgress, videoError, setVideoError} = props;
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.filehostAuthenticated);
 
@@ -306,6 +316,7 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             // Put a limit of 60 HEAD query loads (about 5 seconds each)
             for(let loadingCount = 0; loadingCount < 60; loadingCount++) {
                 let result = await axios({method: 'HEAD', url: videoSrc, timeout: 20_000});
+                setVideoError(0);  // Reset error
                 // console.debug("Video load result: ", result.status);
                 let status = result.status;
                 if(status === 200 || status === 206) {
@@ -325,8 +336,18 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
                 }
             }
         })
-        .catch(err=>console.error("Error loading video", err));
-    }, [selectedVideo, jwt, setLoadProgress, setVideoReady]);
+        .catch(err=>{
+            console.error("Error loading video", err);
+            let errAxios = err as AxiosError;
+            setPlayVideo(false);
+            setLoadProgress(0);
+            if(errAxios.status) {
+                setVideoError(errAxios.status);
+            } else {
+                setVideoError(1);
+            }
+        });
+    }, [selectedVideo, jwt, setLoadProgress, setVideoReady, setPlayVideo]);
 
     if(file && selectedVideo && videoReady) {
         return (
@@ -362,24 +383,25 @@ type FileViewLayoutProps = {
     file: TuuidsIdbStoreRowType | null, 
     selectedVideo: FileVideoData | null, 
     setSelectedVideo: Dispatch<FileVideoData | null>, 
-    loadProgress: number | null
+    loadProgress: number | null,
+    videoError?: number,
 };
 
 function FileViewLayout(props: FileViewLayoutProps) {
 
-    let {file, selectedVideo, setSelectedVideo, loadProgress} = props;
+    let {file, selectedVideo, setSelectedVideo, loadProgress, videoError} = props;
 
     if(!file) return <></>;
 
     return (
         <div className='pt-2 grid grid-cols-1 md:grid-cols-2'>
-            <FileDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} isVideo={false} />
+            <FileDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} isVideo={false} videoError={videoError} />
         </div>
     )
 }
 
 function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, isVideo: boolean}) {
-    let {file, selectedVideo, setSelectedVideo, loadProgress, isVideo} = props;
+    let {file, selectedVideo, setSelectedVideo, loadProgress, isVideo, videoError} = props;
     
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
@@ -432,7 +454,7 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
             {isVideo?
                 <>
                     <VideoDuration file={file} />
-                    <VideoSelectionDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} />
+                    <VideoSelectionDetail file={file} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} videoError={videoError} />
                 </>
             :<></>}
             <p className='col-span-6 text-slate-400'>File name</p>
@@ -617,7 +639,7 @@ export function sortVideoEntries(a: FileVideoDataWithItemKey, b: FileVideoDataWi
 }
 
 function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType} & {setSelectedVideo: Dispatch<FileVideoData | null>}) {
-    let {file, selectedVideo, setSelectedVideo, loadProgress} = props;
+    let {file, selectedVideo, setSelectedVideo, loadProgress, videoError} = props;
 
     let {contactId} = useParams();
 
@@ -750,7 +772,12 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
             </ol>
             <p className={'col-span-2 md:col-span-1 text-slate-400 duration-700 transition-all' + progressClassHide}>Loading progress</p>
             <div className={'col-span-4 md:col-span-5 transition-all' + progressClassHide}>
-                <ProgressBar value={loadProgress} />
+                {videoError?
+                    <div className='font-bold text-red-700'>Error HTTP {videoError}</div>
+                :
+                    <ProgressBar value={loadProgress} />
+                }
+                
             </div>
         </>
     )
