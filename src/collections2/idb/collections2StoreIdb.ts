@@ -664,6 +664,7 @@ export async function addUploadFile(userId: string, cuuid: string, file: File, o
         // Try to detect the mimetype by using the file extension.
         let extension = filename.split('.').pop();
         if(extension) {
+            extension = extension.toLocaleLowerCase();
             let mapExtensions = getMimetypeByExtensionMap();
             mimetype = mapExtensions[extension];
         }
