@@ -70,7 +70,7 @@ export class DownloadDecryptionWorker {
 
             // Open a cursor and iterate through all parts in order
             const db = await openDB();
-            let store = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
+            let store = db.transaction(STORE_DOWNLOAD_PARTS, 'readonly').store;
 
             let part = await store.get([fuuid, 0]) as DownloadIdbParts;
             
@@ -80,20 +80,20 @@ export class DownloadDecryptionWorker {
                 if(this.cancelled) return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
 
                 let chunk = part.content;
-                let partBlobs = [] as Blob[];
+                let partSize = part.content.length;
+
                 let output = await decipher.update(chunk);
                 if(output && output.length > 0) {
                     decryptedPosition += output.length;  // Use decrypted position
-                    partBlobs.push(new Blob([output]));
+                    // console.debug("Decrypted position: %s", decryptedPosition);
+                    blobs.push(new Blob([output]));
                 }
-    
-                // Concatenate all blobs into one larger part blob
-                blobs.push(new Blob(partBlobs));
         
-                position += part.content.length;
+                position += partSize;
+                // console.debug("Encrypted position %s", position);
 
                 // New transaction
-                store = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
+                store = db.transaction(STORE_DOWNLOAD_PARTS, 'readonly').store;
                 part = await store.get([fuuid, position]);
             }
 

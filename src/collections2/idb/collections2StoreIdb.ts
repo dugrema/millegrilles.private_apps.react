@@ -143,7 +143,7 @@ export type DownloadIdbType = {
     // Content
     filename: string,
     mimetype: string,
-    content: Uint8Array | null,           // Decrypted content
+    content: Blob | null,           // Decrypted content
 };
 
 export type DownloadIdbParts = {
@@ -380,7 +380,7 @@ export async function getCurrentVideoPosition(tuuid: string, userId: string): Pr
     return await store.get([tuuid, userId]);
 }
 
-export async function getDownloadContent(fuuid: string, userId: string): Promise<Uint8Array | null> {
+export async function getDownloadContent(fuuid: string, userId: string): Promise<Blob | null> {
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
     let value = await store.get([fuuid, userId]) as DownloadJobType;
@@ -499,8 +499,6 @@ export async function saveDownloadPart(fuuid: string, position: number, part: Bl
 }
 
 export async function saveDecryptedBlob(fuuid: string, decryptedBlob: Blob) {
-    let contentArray = new Uint8Array(await decryptedBlob.arrayBuffer());
-
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
     let cursor = await store.openCursor(IDBKeyRange.bound([fuuid, ''], [fuuid, '~']));
@@ -509,9 +507,10 @@ export async function saveDecryptedBlob(fuuid: string, decryptedBlob: Blob) {
         let value = cursor.value as DownloadIdbType;
         
         // Update the record
-        value.content = contentArray;
+        value.content = decryptedBlob;
         value.secretKey = null;  // Erase key
         value.state = DownloadStateEnum.DONE;
+        console.debug("Replacing file value with decrypted content", value);
         await cursor.update(value);  // Replace value
         
         cursor = await cursor.continue();
