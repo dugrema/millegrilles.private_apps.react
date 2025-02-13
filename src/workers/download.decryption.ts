@@ -77,45 +77,20 @@ export class DownloadDecryptionWorker {
             let blobs = [] as Blob[];
             let position = 0;
             while(part) {
-                // console.debug("Decrypt ", part);
-                let content = part.content;
+                if(this.cancelled) return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
 
-                // Open reader for blob, iterate through content.
-                // @ts-ignore
-                let stream = getIterableStream(content.stream());
-
-                // Buffer with chunks and blobs.
-                let chunks = [] as Uint8Array[];
-                let chunkSize = 0;
+                let chunk = part.content;
                 let partBlobs = [] as Blob[];
-                for await (const chunk of stream) {
-                    if(this.cancelled) return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
-
-                    let output = await decipher.update(chunk);
-                    if(output && output.length > 0) {
-                        decryptedPosition += output.length;  // Use decrypted position
-                        chunkSize += output.length;
-                        chunks.push(output);
-                    }
-                    if(chunkSize > CONST_CHUNK_SOFT_LIMIT) {
-                        // Offload chunks to blob
-                        partBlobs.push(new Blob(chunks));
-                        // Reset chunks
-                        chunkSize = 0;
-                        chunks = [];
-                    }
+                let output = await decipher.update(chunk);
+                if(output && output.length > 0) {
+                    decryptedPosition += output.length;  // Use decrypted position
+                    partBlobs.push(new Blob([output]));
                 }
     
-                if(chunks.length > 0) {
-                    // Last chunk
-                    partBlobs.push(new Blob(chunks));
-                }
-    
-                // console.debug("Save %d chunks as decrypted part", partBlobs.length);
                 // Concatenate all blobs into one larger part blob
                 blobs.push(new Blob(partBlobs));
         
-                position += content.size;
+                position += part.content.length;
 
                 // New transaction
                 store = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;

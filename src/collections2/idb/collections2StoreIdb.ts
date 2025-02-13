@@ -143,13 +143,13 @@ export type DownloadIdbType = {
     // Content
     filename: string,
     mimetype: string,
-    content: Blob | null,           // Decrypted content
+    content: Uint8Array | null,           // Decrypted content
 };
 
 export type DownloadIdbParts = {
     fuuid: string,
     position: number,
-    content: Blob,
+    content: Uint8Array,
 };
 
 export enum DownloadStateEnum {
@@ -196,7 +196,7 @@ export type UploadIdbType = {
 export type UploadIdbParts = {
     uploadId: string,
     position: number,
-    content: Blob,
+    content: Uint8Array,
 };
 
 export enum UploadStateEnum {
@@ -380,7 +380,7 @@ export async function getCurrentVideoPosition(tuuid: string, userId: string): Pr
     return await store.get([tuuid, userId]);
 }
 
-export async function getDownloadContent(fuuid: string, userId: string): Promise<Blob | null> {
+export async function getDownloadContent(fuuid: string, userId: string): Promise<Uint8Array | null> {
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
     let value = await store.get([fuuid, userId]) as DownloadJobType;
@@ -492,22 +492,24 @@ export async function updateDownloadJobState(fuuid: string, userId: string, stat
 }
 
 export async function saveDownloadPart(fuuid: string, position: number, part: Blob) {
+    let content = new Uint8Array(await part.arrayBuffer());
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
-    await store.put({fuuid, position, content: part});
+    await store.put({fuuid, position, content});
 }
 
 export async function saveDecryptedBlob(fuuid: string, decryptedBlob: Blob) {
+    let contentArray = new Uint8Array(await decryptedBlob.arrayBuffer());
+
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
     let cursor = await store.openCursor(IDBKeyRange.bound([fuuid, ''], [fuuid, '~']));
-
     // Save the decrypted file to all download jobs matching the fuuid
     while(cursor) {
         let value = cursor.value as DownloadIdbType;
         
         // Update the record
-        value.content = decryptedBlob;
+        value.content = contentArray;
         value.secretKey = null;  // Erase key
         value.state = DownloadStateEnum.DONE;
         await cursor.update(value);  // Replace value
@@ -558,7 +560,7 @@ export async function findDownloadPosition(fuuid: string): Promise<number | null
     if(!lastValue) return null;
 
     let position = lastValue.position;
-    let size = lastValue.content.size;
+    let size = lastValue.content.length;
     return position + size;
 }
 
@@ -772,8 +774,9 @@ export async function saveUploadJobAddCommand(uploadId: number, command: Collect
 
 export async function saveUploadPart(uploadId: number, position: number, part: Blob) {
     const db = await openDB();
+    let partArray = new Uint8Array(await part.arrayBuffer());
     const store = db.transaction(STORE_UPLOAD_PARTS, 'readwrite').store;
-    await store.put({uploadId, position, content: part});
+    await store.put({uploadId, position, content: partArray});
 }
 
 export async function getNextUploadReadyJob(userId: string): Promise<UploadJobType | null> {

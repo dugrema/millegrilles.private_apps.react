@@ -242,7 +242,8 @@ function CompletedTransfers() {
         if(!job) throw new Error('No job matches the file');
         let content = await getDownloadContent(fuuid, userId)
         if(!content) throw new Error(`Download content for ${fuuid} not found`);
-        downloadFile(job.filename, content);
+        let blob = new Blob([content]);
+        downloadFile(job.filename, blob);
     }, [downloadJobs, userId]);
 
     let removeHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{

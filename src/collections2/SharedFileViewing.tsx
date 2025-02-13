@@ -23,7 +23,7 @@ function SharedFileViewing() {
     let thumbnailBlob = useMemo(()=>{
         if(!file) return null;
         return file.thumbnail;
-    }, [file]) as Blob | null;
+    }, [file]);
 
     let setSharedContact = useUserBrowsingStore(state=>state.setSharedContact);
     let sharedWithUser = useUserBrowsingStore(state=>state.sharedWithUser);

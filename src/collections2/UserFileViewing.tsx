@@ -25,7 +25,7 @@ function UserFileViewing() {
     let thumbnailBlob = useMemo(()=>{
         if(!file) return null;
         return file.thumbnail;
-    }, [file]) as Blob | null;
+    }, [file]);
 
     let breacrumbOnClick = useCallback((tuuid: string | null)=>{
         if(tuuid) {

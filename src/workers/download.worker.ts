@@ -236,7 +236,7 @@ export class AppsDownloadWorker {
         // console.debug("Existing download content", content);
         if(content) {
             // Download already completed, return the file
-            return content;
+            return new Blob([content]);
         }
 
         // Add to IDB

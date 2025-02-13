@@ -131,7 +131,7 @@ export class UploadThreadWorker {
             let part = await getUploadPart(uploadId, position);
             if(!part) break;  // Done
 
-            let partSize = part.content.size;
+            let partSize = part.content.length;
 
             let putUrl = `${postUrl}/${position}`;
             if(THROTTLE_UPLOAD) await new Promise(resolve=>(setTimeout(resolve, THROTTLE_UPLOAD)));  // Throttle

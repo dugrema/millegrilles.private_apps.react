@@ -16,7 +16,7 @@ import { downloadFile } from "./transferUtils";
 import useTransferStore from "./transferStore";
 import ProgressBar from "./ProgressBar";
 
-export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Blob | null}) {
+export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Uint8Array | null}) {
     let {file, thumbnail} = props;
 
     let setLastOpenedFile = useUserBrowsingStore(state=>state.setLastOpenedFile);
@@ -40,7 +40,7 @@ export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null,
     return <FileMediaLayout file={file} thumbnail={thumbnail} selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} loadProgress={loadProgress} setLoadProgress={setLoadProgress} />;
 }
 
-function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, setLoadProgress: Dispatch<number | null>}) {
+function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Uint8Array | null, setLoadProgress: Dispatch<number | null>}) {
 
     let {file, thumbnail, selectedVideo, setSelectedVideo, loadProgress, setLoadProgress} = props;
     let workers = useWorkers();
@@ -63,7 +63,8 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Blob | null, s
     // Load blob URL
     useEffect(()=>{
         if(!thumbnail) return;
-        let blobUrl = URL.createObjectURL(thumbnail);
+        let blob = new Blob([thumbnail]);
+        let blobUrl = URL.createObjectURL(blob);
         // Introduce delay to allow full size to load first when possible (avoids flickering).
         setTimeout(()=>setBlobUrl(blobUrl), 500);
 
