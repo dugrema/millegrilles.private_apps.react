@@ -131,18 +131,12 @@ export class UploadEncryptionWorker {
 
             // Encrypt file
             // let stream = uploadJob.file.stream();
-            // @ts-ignore
-            if(uploadJob.file.readable) {
-                // @ts-ignore
-                var reader = uploadJob.file.readable.getReader();
-            } else {
-                // let stream = uploadJob.file.stream();
-                // var reader = stream.getReader();
+            // var reader = stream.getReader();
 
-                // iOS fails hard on .stream() for large files (tries to load all in memory)
-                // use this hack
-                var reader = sliceReader(uploadJob.file);
-            }
+            // iOS fails hard on .stream() for large files (tries to load all in memory)
+            // use this hack
+            let reader = sliceReader(uploadJob.file) as any;
+
             // let reader = stream.getReader();
             const iterReader = streamAsyncReaderIterable(reader);
 
