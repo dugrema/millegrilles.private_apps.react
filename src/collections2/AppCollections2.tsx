@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import HeaderMenu from "./Menu";
 import Footer from "../Footer";
@@ -25,6 +25,7 @@ function Collections2() {
             <InitializeUserStore />
             <FilehostManager />
             <TransferStoreSync />
+            <SaveCurrentLocation />
 
         </div>
     );
@@ -172,4 +173,16 @@ function TransferStoreSync() {
             <TransferTickerUpdate />
         </>
     )
+}
+
+function SaveCurrentLocation() {
+    let location = useLocation();
+    let userId = useUserBrowsingStore(state=>state.userId);
+    useEffect(()=>{
+        let pathname = location.pathname;
+        let search = location.search;
+        if(search) pathname += search;
+        localStorage.setItem(`location_${userId}`, pathname);
+    }, [location, userId]);
+    return <></>;
 }
