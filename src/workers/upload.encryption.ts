@@ -292,14 +292,18 @@ function suggestPartSize(fileSize: number | null) {
         return CONST_SIZE_1MB;
     } else if(fileSize < CONST_SIZE_1GB){       // 1GB
         // Recommend parts of 4% of the file size.
-        return Math.floor(fileSize / 25);
-    } else if(fileSize < 10 * CONST_SIZE_1GB){  // 10GB
-        // Recommend parts of 1% of the file size.
-        return Math.floor(fileSize / 100);
-    } else {                                    // >10GB
-        // For anything over 10 GB, clamp to 100MB per part
-        return 100 * CONST_SIZE_1MB;
+        return Math.floor(fileSize / 25);       // part up to 40 MB
+    } else {
+        // For anything over 1GB, clamp to 50MB per part (the upload temporarily puts it in RAM before moving it to a blob)
+        return 50 * CONST_SIZE_1MB;
     }
+    // } else if(fileSize < 10 * CONST_SIZE_1GB){  // 10GB
+    //     // Recommend parts of 1% of the file size.
+    //     return Math.floor(fileSize / 100);
+    // } else {                                    // >10GB
+    //     // For anything over 10 GB, clamp to 100MB per part
+    //     return 100 * CONST_SIZE_1MB;
+    // }
 }
 
 /**

@@ -110,70 +110,25 @@ export class UploadThreadWorker {
         const postUrl = `${filehostUrl}/files/${fuuid}`;
 
         // Iterate through parts to upload from IDB for this uploadId.
-        let position = 0;
-        this.abortController = new AbortController();
+        let abortController = new AbortController();
+        this.abortController = abortController;
         this.pauseUpload = false;
 
         let currentJob = this.currentJob;
         if(!currentJob) throw new Error("Current job not set");
         if(!callback) throw new Error("Callback not initialized");
-        let onUploadProgress = (e: AxiosProgressEvent) => {
-            if(!currentJob) throw new Error("Current job not set (inner)");
-            progressEventHandler(e, currentJob, position, callback);
-        };
 
         // Triger change on file state
         await updateUploadJobState(uploadId, UploadStateEnum.UPLOADING);
         callback(uploadId, currentJob.userId, false, 0, currentJob.size, true);
-        
-        while(true) {
-            // Get next part
-            let part = await getUploadPart(uploadId, position);
-            if(!part) break;  // Done
 
-            let partSize = part.content.length;
-
-            let putUrl = `${postUrl}/${position}`;
-            if(THROTTLE_UPLOAD) await new Promise(resolve=>(setTimeout(resolve, THROTTLE_UPLOAD)));  // Throttle
-            try {
-                await axios({
-                    method: 'PUT', 
-                    url: putUrl,
-                    withCredentials: true,
-                    data: part.content,
-                    signal: this.abortController.signal,
-                    onUploadProgress,
-                });
-            } catch(err) {
-                if(this.abortController.signal.aborted) {
-                    if(!this.pauseUpload) {
-                        // Upload cancelled - send DELETE command to filehost
-                        axios({method: 'POST', data: {'cancel': true}, url: postUrl, withCredentials: true})
-                            .catch(err=>console.warn("Error sending cancel command to filehost for cancelled upload", err));
-                    }
-                    // Update process progress (done)
-                    await callback(uploadId, currentJob.userId, true);
-                    return;
-                } else {
-                    let axiosErr = err as AxiosError;
-                    if(axiosErr.status === 412) {
-                        // The part is already uploaded. Just move on to next.
-                        console.debug("part %s already uploaded", position);
-                    } else {
-                        // Unhandled upload error
-                        throw err;
-                    }
-                }
-            }
-
-            // Increment position with current part size
-            position += partSize;
-        }
+        // Upload all file parts
+        let position = await this.uploadParts(postUrl, abortController.signal);
+        if(abortController.signal.aborted) return;  // Abort process
 
         // Compare uploaded size to expected file size
         if(position !== fileSize) {
             // Delete uploaded content from server (invalid).
-
             throw new Error('Mismatch in expected file size and uploaded parts');
         }
 
@@ -202,7 +157,6 @@ export class UploadThreadWorker {
                 console.debug("Marking file upload as done. Cleaning up.")
                 await updateUploadJobState(uploadId, UploadStateEnum.DONE);
                 await removeUploadParts(uploadId);
-
 
                 return true;
             } catch(err) {
@@ -245,6 +199,72 @@ export class UploadThreadWorker {
                 })
                 .catch(err=>console.error("Error finishing file upload: ", err));
         }
+    }
+
+    async uploadParts(postUrl: string, signal: AbortSignal): Promise<number | null> {
+        const callback = this.callback;
+        if(!callback) throw new Error('Callback not initialized');
+
+        let currentJob = this.currentJob;
+        if(!currentJob) throw new Error('No job to upload');
+        
+        let uploadId = currentJob.uploadId;
+
+        let position = 0;
+
+        let onUploadProgress = (e: AxiosProgressEvent) => {
+            if(!currentJob) throw new Error("Current job not set (inner)");
+            progressEventHandler(e, currentJob, position, callback);
+        };
+
+        while(true) {
+            // Get next part
+            let part = await getUploadPart(uploadId, position);
+            if(!part) break;  // Done
+
+            // Give the browser a chance to offload the part Uint8Array from memory by using a blob
+            let partSize = part.content.length;
+            let partDataBlob = new Blob([part.content]);
+            part = null;
+
+            let putUrl = `${postUrl}/${position}`;
+            if(THROTTLE_UPLOAD) await new Promise(resolve=>(setTimeout(resolve, THROTTLE_UPLOAD)));  // Throttle
+            try {
+                await axios({
+                    method: 'PUT', 
+                    url: putUrl,
+                    withCredentials: true,
+                    data: partDataBlob,
+                    signal,
+                    onUploadProgress,
+                });
+            } catch(err) {
+                if(signal.aborted) {
+                    if(!this.pauseUpload) {
+                        // Upload cancelled - send DELETE command to filehost
+                        axios({method: 'POST', data: {'cancel': true}, url: postUrl, withCredentials: true})
+                            .catch(err=>console.warn("Error sending cancel command to filehost for cancelled upload", err));
+                    }
+                    // Update process progress (done)
+                    await callback(uploadId, currentJob.userId, true);
+                    return null;
+                } else {
+                    let axiosErr = err as AxiosError;
+                    if(axiosErr.status === 412) {
+                        // The part is already uploaded. Just move on to next.
+                        console.debug("part %s already uploaded", position);
+                    } else {
+                        // Unhandled upload error
+                        throw err;
+                    }
+                }
+            }
+
+            // Increment position with current part size
+            position += partSize;
+        }
+
+        return position;
     }
 }
 
