@@ -69,8 +69,7 @@ export function SyncDownloads() {
                     let job = await getDownloadJob(userId, fuuid);
                     if(job) {
                         if(job.content) {
-                            let blob = new Blob([job.content]);
-                            downloadFile(job.filename, blob);
+                            downloadFile(job.filename, job.content);
                         } else {
                             console.error("No content to download found for fuuid:%s", fuuid)
                         }

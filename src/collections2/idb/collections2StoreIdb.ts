@@ -12,8 +12,9 @@ const STORE_VIDEO_PLAY = 'videoPlayback';
 const STORE_DOWNLOADS = 'downloads';
 const STORE_UPLOADS = 'uploads';
 export const STORE_DOWNLOAD_PARTS = 'downloadParts';
+export const STORE_DOWNLOAD_DECRYPTED_PARTS = 'downloadDecryptedParts';
 export const STORE_UPLOAD_PARTS = 'uploadParts';
-const DB_VERSION_CURRENT = 4;
+const DB_VERSION_CURRENT = 5;
 
 export type TuuidEncryptedMetadata = messageStruct.MessageDecryption & {
     data_chiffre: string,
@@ -149,8 +150,10 @@ export type DownloadIdbType = {
 export type DownloadIdbParts = {
     fuuid: string,
     position: number,
-    content: Uint8Array,
+    content: Blob,
 };
+
+export type DownloadDecryptedIdbParts = DownloadIdbParts;
 
 export enum DownloadStateEnum {
     INITIAL = 1,
@@ -275,6 +278,11 @@ function createObjectStores(db: IDBPDatabase, oldVersion?: number) {
 
         // @ts-ignore Fallthrough
         case 4: // Most recent
+            db.createObjectStore(STORE_DOWNLOAD_DECRYPTED_PARTS, {keyPath: ['fuuid', 'position']});
+            break;
+
+        // @ts-ignore Fallthrough
+        case 5: // Most recent
             break;
 
         default:
@@ -416,6 +424,8 @@ export async function removeDownloadParts(fuuid: string) {
     const db = await openDB();
     const storeParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
     storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
+    const storeDecryptedParts = db.transaction(STORE_DOWNLOAD_DECRYPTED_PARTS, 'readwrite').store;
+    storeDecryptedParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
 }
 
 export async function getNextDownloadJob(userId: string): Promise<DownloadIdbType | null> {
@@ -492,33 +502,76 @@ export async function updateDownloadJobState(fuuid: string, userId: string, stat
 }
 
 export async function saveDownloadPart(fuuid: string, position: number, part: Blob) {
-    let content = new Uint8Array(await part.arrayBuffer());
+    // let content = new Uint8Array(await part.arrayBuffer());
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
-    await store.put({fuuid, position, content});
+    await store.put({fuuid, position, content: part});
+}
+
+export async function saveDownloadDecryptedPart(fuuid: string, position: number, part: Blob) {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOAD_DECRYPTED_PARTS, 'readwrite').store;
+    await store.put({fuuid, position, content: part});
+}
+
+export async function getDecryptedBlob(fuuid: string): Promise<Blob | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOAD_DECRYPTED_PARTS, 'readonly').store;
+
+    // Iterate through file parts. The index ensures the parts are ordered properly
+    let cursor = await store.openCursor(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
+    let fileBlobs = [] as Blob[];
+    while(cursor) {
+        let value = cursor.value as DownloadDecryptedIdbParts;
+        fileBlobs.push(value.content);
+        cursor = await cursor.continue();
+    }
+
+    if(fileBlobs.length === 0) return null;
+    return new Blob(fileBlobs);
 }
 
 export async function saveDecryptedBlob(fuuid: string, decryptedBlob: Blob) {
     const db = await openDB();
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
     let cursor = await store.openCursor(IDBKeyRange.bound([fuuid, ''], [fuuid, '~']));
+    let userIds = [] as string[];
+
     // Save the decrypted file to all download jobs matching the fuuid
+
+    // This approach was working but seemed to cause a memory leak on the Blob.
+    // while(cursor) {
+    //     let value = cursor.value as DownloadIdbType;
+    //     // Update the record
+    //     value.content = decryptedBlob;
+    //     value.secretKey = null;  // Erase key
+    //     value.state = DownloadStateEnum.DONE;
+    //     console.debug("Replacing file value with decrypted content", value);
+    //     await cursor.update(value);  // Replace value
+    //     cursor = await cursor.continue();
+    // }
+
+    // console.debug("Saving decrypted fuuid:%s blob:%O", fuuid, decryptedBlob);
+
+    // Use less direct approach than with cursor.update. Avoids the memory leak on Firefox.
     while(cursor) {
         let value = cursor.value as DownloadIdbType;
-        
-        // Update the record
-        value.content = decryptedBlob;
-        value.secretKey = null;  // Erase key
-        value.state = DownloadStateEnum.DONE;
-        console.debug("Replacing file value with decrypted content", value);
-        await cursor.update(value);  // Replace value
-        
+        userIds.push(value.userId);
         cursor = await cursor.continue();
     }
 
+    for(let userId of userIds) {
+        let value = await store.get([fuuid, userId]);
+        if(value) {
+            value.content = decryptedBlob;
+            value.secretKey = null;  // Erase key
+            value.state = DownloadStateEnum.DONE;
+            await store.put(value);
+        }
+    }
+
     // Clear the stored parts
-    const storeParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
-    await storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
+    await removeDownloadParts(fuuid);
 }
 
 export async function saveDecryptionError(fuuid: string,) {
@@ -559,7 +612,7 @@ export async function findDownloadPosition(fuuid: string): Promise<number | null
     if(!lastValue) return null;
 
     let position = lastValue.position;
-    let size = lastValue.content.length;
+    let size = lastValue.content.size;
     return position + size;
 }
 
@@ -867,6 +920,9 @@ export async function cleanup() {
 
     let storeDownloadParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
     await storeDownloadParts.clear();
+
+    let storeDownloadDecryptedParts = db.transaction(STORE_DOWNLOAD_DECRYPTED_PARTS, 'readwrite').store;
+    await storeDownloadDecryptedParts.clear();
 
     let storeUploads = db.transaction(STORE_UPLOADS, 'readwrite').store;
     await storeUploads.clear();
