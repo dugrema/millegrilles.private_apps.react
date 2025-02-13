@@ -14,7 +14,7 @@ export type TuuidsBrowsingStoreRow = {
     dateFichier: number | null,
     taille: number | null,
     mimetype: string | null,
-    thumbnail: Blob | null,
+    thumbnail: Uint8Array | null,
     thumbnailDownloaded: boolean,
     loadStatus: number | null,
     path_cuuids?: string[] | null,
@@ -118,7 +118,7 @@ interface UserBrowsingStoreState {
     setBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,
     setDirectoryStatistics: (directoryStatistics: Collection2DirectoryStats[] | null) => void,
     setLastOpenedFile: (lastOpenedFile: string | null) => void,
-    updateThumbnail: (tuuid: string, thumbnail: Blob) => void,
+    updateThumbnail: (tuuid: string, thumbnail: Uint8Array) => void,
     deleteFilesDirectory: (files: string[]) => void,
     
     setSearchResults: (searchResults: Collection2SearchStore | null) => void,
@@ -136,7 +136,7 @@ interface UserBrowsingStoreState {
     setSharedCollection: (sharedCollection: Collections2SharedContactsSharedCollection | null) => void,
     setSharedCuuid: (sharedCuuid: string | null) => void,
     updateSharedCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
-    updateSharedThumbnail: (tuuid: string, thumbnail: Blob) => void,
+    updateSharedThumbnail: (tuuid: string, thumbnail: Uint8Array) => void,
 
     setModalCuuid: (modalNavCuuid: string | null) => void,
     setModalBreadcrumb: (username: string, breadcrumb: TuuidsBrowsingStoreRow[] | null) => void,

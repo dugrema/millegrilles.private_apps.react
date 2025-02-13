@@ -105,7 +105,8 @@ function FileRow(props: {value: TuuidsBrowsingStoreSearchRow, dateColumn?: strin
     useEffect(()=>{
         if(!value || !value.thumbnail) return;
 
-        let objectUrl = URL.createObjectURL(value.thumbnail);
+        let blob = new Blob([value.thumbnail]);
+        let objectUrl = URL.createObjectURL(blob);
         setThumbnail(objectUrl);
 
         return () => {

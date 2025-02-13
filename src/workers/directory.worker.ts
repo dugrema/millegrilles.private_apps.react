@@ -192,8 +192,7 @@ export class DirectoryWorker {
                                     let encryptedData = thumbnail.data_chiffre.slice(1);  // Remove multibase leading 'm'
                                     let thumbnailBytes = await encryption.decryptMessage(
                                         format, key.cle_secrete_base64, nonce, encryptedData, thumbnail.compression);
-                                    let thumbnailBlob = new Blob([thumbnailBytes]);
-                                    file.thumbnail = thumbnailBlob;
+                                    file.thumbnail = thumbnailBytes;
                                 }
                             } else {
                                 console.warn("Unsupported encryption format for thumbnail (%s)", format);

@@ -101,7 +101,7 @@ export type TuuidsIdbStoreRowType = {
     parent: string,  // For top level collections, this is the user_id. For all others this is the tuuid of the parent collection.
     path_cuuids?: string[] | null,
     fileData?: FileData,
-    thumbnail: Blob | null,
+    thumbnail: Uint8Array | null,
     thumbnailDownloaded?: boolean | null,  // True if high quality (small) image was downloaded to replace the inline thumbnail
     date_creation: number,
     derniere_modification: number,

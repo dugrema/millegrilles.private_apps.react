@@ -230,7 +230,8 @@ export function SyncMediaConversions() {
             for(let tuuid of tuuidsToLoadInner) {
                 let item = await loadTuuid(tuuid, userIdInner);
                 if(item) {
-                    let file = {tuuid, name: item.decryptedMetadata?.nom, size: item.fileData?.taille, thumbnail: item.thumbnail};
+                    let thumbnail = item.thumbnail?new Blob([item.thumbnail]):null;
+                    let file = {tuuid, name: item.decryptedMetadata?.nom, size: item.fileData?.taille, thumbnail};
                     mappedFiles.push(file);
                 } else {
                     remainingTuuid.push(tuuid);
@@ -250,9 +251,10 @@ export function SyncMediaConversions() {
                 // console.debug("Files", files);
                 // Map to update job file names
                 let filenamesMappedByTuuid = Object.values(files).map(item=>{
+                    let thumbnail = item.thumbnail?new Blob([item.thumbnail]):null;
                     let filename = item.decryptedMetadata?.nom || '';  // Setting '' will prevent multiple attemps to load the same file
                     let size = item.fileData?.taille;
-                    return {tuuid: item.tuuid, name: filename, size, thumbnail: item.thumbnail};
+                    return {tuuid: item.tuuid, name: filename, size, thumbnail};
                 });
                 // console.debug("Mapped filenames", filenamesMappedByTuuid);
                 setFileInfoConversionJobs(filenamesMappedByTuuid);

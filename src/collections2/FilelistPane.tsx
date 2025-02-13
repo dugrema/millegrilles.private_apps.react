@@ -320,7 +320,8 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
         if(!value || !value.thumbnail) return;
         if(!visible) return;
 
-        let objectUrl = URL.createObjectURL(value.thumbnail);
+        let thumbnailBlob = new Blob([value.thumbnail]);
+        const objectUrl = URL.createObjectURL(thumbnailBlob);
         setThumbnail(objectUrl);
 
         return () => {
@@ -461,15 +462,16 @@ function ThumbnailItem(props: FileItem) {
                         let imageBlob = await workers.directory.openFile(fuuid, secretKey, smallImageInfo);
                         
                         // Save high quality thumbnail to IDB
-                        file.thumbnail = imageBlob;
+                        let thumbnailContent = new Uint8Array(await imageBlob.arrayBuffer());
+                        file.thumbnail = thumbnailContent;
                         file.thumbnailDownloaded = true;
                         await updateFilesIdb([file]);
                         
                         // Reload on screen
                         if(!contactId) {
-                            updateThumbnail(tuuid, imageBlob);
+                            updateThumbnail(tuuid, thumbnailContent);
                         } else {
-                            updateSharedThumbnail(tuuid, imageBlob);
+                            updateSharedThumbnail(tuuid, thumbnailContent);
                         }
                     }
                 }
@@ -480,7 +482,8 @@ function ThumbnailItem(props: FileItem) {
     useEffect(()=>{
         if(!value || !value.thumbnail) return;
 
-        let objectUrl = URL.createObjectURL(value.thumbnail);
+        let blob = new Blob([value.thumbnail]);
+        let objectUrl = URL.createObjectURL(blob);
         setThumbnail(objectUrl);
 
         return () => {
