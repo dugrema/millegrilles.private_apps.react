@@ -130,9 +130,20 @@ export class UploadEncryptionWorker {
             let partSize = suggestPartSize(fileSize);
 
             // Encrypt file
-            let stream = uploadJob.file.stream();
+            // let stream = uploadJob.file.stream();
             // @ts-ignore
-            let reader = stream.getReader();
+            if(uploadJob.file.readable) {
+                // @ts-ignore
+                var reader = uploadJob.file.readable.getReader();
+            } else {
+                // let stream = uploadJob.file.stream();
+                // var reader = stream.getReader();
+
+                // iOS fails hard on .stream() for large files (tries to load all in memory)
+                // use this hack
+                var reader = sliceReader(uploadJob.file);
+            }
+            // let reader = stream.getReader();
             const iterReader = streamAsyncReaderIterable(reader);
 
             let key = uploadJob.secret?.secret;
@@ -314,4 +325,30 @@ export async function* streamAsyncReaderIterable(reader: ReadableStream) {
         // @ts-ignore
         reader.releaseLock();
     }
+}
+
+/** Simulated reader using blob.slice. Used instead of File.stream() on iOS. */
+function sliceReader(file: File, opts?: {bufferSize?: number}) {
+    const bufferSize = opts?.bufferSize || (64 * 1024);  // 64 kB by default
+  
+    var position = 0;
+    var done = false;
+    const read = async (len: number) => {
+      let bufferInner = len || bufferSize;
+  
+      // console.debug("sliceReader Read invoque, position %d, done %s", position, done)
+      done = position === file.size;
+      if(done) return {done, value: null};
+  
+      let positionEnd = Math.min(position + bufferInner, file.size);
+      let blob = file.slice(position, positionEnd);
+      let arrayBuffer = new Uint8Array(await blob.arrayBuffer());
+  
+      // Prepare next iteration
+      position = positionEnd;
+      return {done: false, value: arrayBuffer}
+    }
+    const releaseLock = () => {return}
+  
+    return {read, releaseLock}
 }
