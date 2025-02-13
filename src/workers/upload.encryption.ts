@@ -131,12 +131,13 @@ export class UploadEncryptionWorker {
 
             // Encrypt file
             let stream = uploadJob.file.stream();
+            // @ts-ignore
+            let reader = stream.getReader();
+            const iterReader = streamAsyncReaderIterable(reader);
 
             let key = uploadJob.secret?.secret;
             if(!key) throw new Error('Secret key not generated');
 
-            // let hasher = await createBLAKE2b();
-            // hasher.init();
             let hasher = new digest.WrappedHasher('base64', 'blake2s-256');
             await hasher.init();
         
@@ -147,7 +148,7 @@ export class UploadEncryptionWorker {
             let chunksSize = 0;
             let blobs = [] as Blob[];       // List of blobs to include in the current part
             let blobsSize = 0;              // Current part size
-            for await (let chunk of stream) {
+            for await (let chunk of iterReader) {
                 encryptedPosition += chunk.length;
                 if(this.jobCancelled) {
                     // Job has been cancelled. Done here and go pick up next job. Cleanup is not this worker's responsibility.
@@ -293,5 +294,24 @@ function suggestPartSize(fileSize: number | null) {
     } else {                                    // >10GB
         // For anything over 10 GB, clamp to 100MB per part
         return 100 * CONST_SIZE_1MB;
+    }
+}
+
+/**
+ * Transform reader to async iterable (for await ... of). Works on all current browsers.
+ * Note : Chromium on PC and Firefox can already use stream() as async iterable.
+ * @param {*} reader 
+ */
+export async function* streamAsyncReaderIterable(reader: ReadableStream) {
+    try {
+        while(true) {
+            // @ts-ignore
+            const result = await reader.read();
+            if(result.value) yield result.value;  // Yield
+            if(result.done) return;               // Done
+        }
+    } finally {
+        // @ts-ignore
+        reader.releaseLock();
     }
 }
