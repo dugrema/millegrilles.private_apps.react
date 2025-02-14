@@ -199,7 +199,7 @@ export type UploadIdbType = {
 export type UploadIdbParts = {
     uploadId: string,
     position: number,
-    content: Uint8Array,
+    content: Blob,
 };
 
 export enum UploadStateEnum {
@@ -829,9 +829,9 @@ export async function saveUploadJobAddCommand(uploadId: number, command: Collect
 
 export async function saveUploadPart(uploadId: number, position: number, part: Blob) {
     const db = await openDB();
-    let partArray = new Uint8Array(await part.arrayBuffer());
+    // let partArray = new Uint8Array(await part.arrayBuffer());
     const store = db.transaction(STORE_UPLOAD_PARTS, 'readwrite').store;
-    await store.put({uploadId, position, content: partArray});
+    await store.put({uploadId, position, content: part});
 }
 
 export async function getNextUploadReadyJob(userId: string): Promise<UploadJobType | null> {

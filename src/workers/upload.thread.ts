@@ -223,7 +223,7 @@ export class UploadThreadWorker {
             if(!part) break;  // Done
 
             // Give the browser a chance to offload the part Uint8Array from memory by using a blob
-            let partSize = part.content.length;
+            let partSize = part.content.size;
             let partDataBlob = new Blob([part.content]);
             part = null;
 
