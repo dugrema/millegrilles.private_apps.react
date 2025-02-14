@@ -1,6 +1,5 @@
 import { DownloadJobType } from './download.worker';
 import { DownloadStateEnum, findDownloadPosition, removeDownloadParts, updateDownloadJobState } from '../collections2/idb/collections2StoreIdb';
-import { getIterableStream } from '../collections2/transferUtils';
 
 export type DownloadWorkerCallbackType = (
     fuuid: string, 
@@ -132,11 +131,6 @@ export class DownloadThreadWorker {
 
 }
 
-// const CONST_SIZE_1MB = 1024 * 1024;
-// const CONST_SIZE_1GB = 1024 * 1024 * 1024;
-// // Soft limits for chunks and blobs (will get exceeded).
-// const CHUNK_SOFT_LIMIT = 1024 * 256;            // Soft limit for chunks in memory
-
 /**
  * Stream the response to the Download parts table. 
  * Uses small buffers and blobs to save the content part by part and support resuming.
@@ -145,17 +139,13 @@ export class DownloadThreadWorker {
  */
 async function streamResponse(job: DownloadJobType, response: Response, initialPosition: number, statusCallback: (position: number, totalSize: number | null)=>void) {
     if(!response.body) throw new Error('No body to stream');
-    let stream = getIterableStream(response.body);
+    // let stream = getIterableStream(response.body);
     
     let contentLength = job.size;  // This is the decrypted size. Good approximation but not always exact for the download.
     let contentLengthString = response.headers.get('Content-Length');
     if(typeof(contentLengthString) === 'string') {
         contentLength = Number.parseInt(contentLengthString);  // This is the exact encrypted file size.
     }
-
-    // Determine size of parts - dynamic, depends on file size
-    // let softPartSize = suggestPartSize(contentLength);
-    // console.debug("File size: %d, Part size: %d", contentLength, softPartSize);
 
     let position = initialPosition;
 
@@ -180,84 +170,22 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
         // @ts-ignore
         writeFileHandle = await fileHandle.createWritable({keepExistingData: true});
 
-        for await (const chunk of stream) {
-            // syncFileHandle.write(chunk, {at: position});
-            await writeFileHandle.write(chunk);
-            position += chunk.length;
+        let reader = response.body.getReader();
+        let streamResult = await reader.read();
+        while(!streamResult.done) {
+            if(streamResult.value) {
+                await writeFileHandle.write(streamResult.value);
+                position += streamResult.value.length;
+            }
+            streamResult = await reader.read();
         }
-
-        // Note: closing handle in finally block
-
-        // let chunks = [] as Uint8Array[];
-        // let chunksSize = 0;
-
-        // let blobPosition = position;    // Position for the next part
-        // let blobs = [] as Blob[];       // List of blobs to include in the current part
-        // let blobsSize = 0;              // Current part size
-        // for await (const chunk of stream) {
-        //     position += chunk.length;
-        //     chunksSize += chunk.length;
-            
-        //     chunks.push(chunk);
-
-        //     if(chunksSize > CHUNK_SOFT_LIMIT) {
-        //         // Concatenate into blob (gives a chance to offload memory)
-        //         let blob = new Blob(chunks);
-        //         blobs.push(blob);
-        //         blobsSize += blob.size;
-
-        //         // Reset chunks
-        //         chunksSize = 0;
-        //         chunks = [];
-        //     }
-
-        //     if(blobsSize > softPartSize) {
-        //         // Save to file parts
-        //         let partBlob = new Blob(blobs);  // Concatenate all blobs into one part
-        //         await saveDownloadPart(job.fuuid, blobPosition, partBlob);
-
-        //         // Reset blobs
-        //         let blobSize = partBlob.size;
-        //         // console.debug("Parts blob %d", blobSize);
-        //         blobPosition += blobSize;   // Increment start position for next blob
-        //         blobsSize = 0;
-        //         blobs = [];
-        //     }
-        // }
-
-        // if(chunks.length > 0) {
-        //     // Final blob
-        //     blobs.push(new Blob(chunks));
-        // }
-
-        // if(blobs.length > 0) {
-        //     // Save final part
-        //     let partBlob = new Blob(blobs);
-        //     await saveDownloadPart(job.fuuid, blobPosition, partBlob);
-        // }
 
         // Done
         statusCallback(position, contentLength);
     } finally {
         clearInterval(interval);
-        writeFileHandle?.close()
-            .catch((err: any)=>console.error("Error closing download write handle", err));
+        if(writeFileHandle) {
+            await writeFileHandle.close();
+        }
     }
 }
-
-// function suggestPartSize(fileSize: number | null) {
-//     if(!fileSize) {
-//         // Unknown file size. Default to 1MB parts.
-//         return CONST_SIZE_1MB;
-//     }
-
-//     if(fileSize < 100 * CONST_SIZE_1MB) {       // 100MB
-//         return CONST_SIZE_1MB;
-//     } else if(fileSize < 10 * CONST_SIZE_1GB){  // 10GB
-//         // Recommend parts of 1% of the file size. Gives good granularity for resuming.
-//         return Math.floor(fileSize / 100);
-//     } else {                                    // >10GB
-//         // For anything over 10 GB, clamp to 100MB per part
-//         return 100 * CONST_SIZE_1MB;
-//     }
-// }
