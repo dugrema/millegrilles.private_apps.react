@@ -1,5 +1,5 @@
 import { encryptionMgs4 } from 'millegrilles.cryptography';
-import { DownloadIdbParts, DownloadIdbType, getDecryptedBlob, openDB, saveDecryptedBlob, saveDecryptionError, saveDownloadDecryptedPart, STORE_DOWNLOAD_PARTS } from '../collections2/idb/collections2StoreIdb';
+import { DownloadIdbParts, DownloadIdbType, getDecryptedBlob, openDB, removeDownload, saveDecryptedBlob, saveDecryptionError, saveDownloadDecryptedPart, STORE_DOWNLOAD_PARTS} from '../collections2/idb/collections2StoreIdb';
 import { getIterableStream } from '../collections2/transferUtils';
 
 export type DecryptionWorkerCallbackType = (
@@ -52,6 +52,7 @@ export class DownloadDecryptionWorker {
 
         this.currentJob = downloadJob;
         let fuuid = downloadJob.fuuid;
+        let userId = downloadJob.userId;
         this.cancelled = false;
 
         let decryptedPosition = 0, decryptedPartPosition = 0;
@@ -76,9 +77,12 @@ export class DownloadDecryptionWorker {
             
             let position = 0;
             while(part) {
-                if(this.cancelled) return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
+                if(this.cancelled) {
+                    console.info("Decryption cancelled by user");
+                    return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
+                }
 
-                // console.debug("Decrypt ", part);
+                console.debug("Decrypt ", part);
                 let content = part.content;
 
                 // Open reader for blob, iterate through content.
@@ -90,7 +94,10 @@ export class DownloadDecryptionWorker {
                 let chunkSize = 0;
                 let partBlobs = [] as Blob[];
                 for await (const chunk of stream) {
-                    if(this.cancelled) return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
+                    if(this.cancelled) {
+                        console.info("Decryption cancelled by user");
+                        return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
+                    }
 
                     let output = await decipher.update(chunk);
                     if(output && output.length > 0) {
@@ -141,7 +148,13 @@ export class DownloadDecryptionWorker {
             this.currentJob = null;  // Remove job before callback - allows chaining to next job
             await callback(downloadJob.fuuid, downloadJob.userId, true, downloadJob.size, downloadJob.size);
         } catch(err) {
-            await saveDecryptionError(fuuid);
+            console.error("Error decrypting file", err);
+            try {
+                await saveDecryptionError(fuuid);
+            } catch(err) {
+                console.warn("Error marking download for fuuid %sin error(2): %O, removing download", fuuid, err);
+                await removeDownload(fuuid, userId);
+            }
             await callback(downloadJob.fuuid, downloadJob.userId, true);
             throw err
         } finally {

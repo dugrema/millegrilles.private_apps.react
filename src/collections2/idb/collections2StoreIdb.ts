@@ -574,8 +574,15 @@ export async function saveDecryptedBlob(fuuid: string, decryptedBlob: Blob) {
     await removeDownloadParts(fuuid);
 }
 
-export async function saveDecryptionError(fuuid: string,) {
+export async function saveDecryptionError(fuuid: string) {
     const db = await openDB();
+
+    // Clear the stored parts
+    const storeParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
+    await storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
+    const storeDecryptedParts = db.transaction(STORE_DOWNLOAD_DECRYPTED_PARTS, 'readwrite').store;
+    await storeDecryptedParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
+
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
     let cursor = await store.openCursor(IDBKeyRange.bound([fuuid, ''], [fuuid, '~']));
 
@@ -585,15 +592,11 @@ export async function saveDecryptionError(fuuid: string,) {
         
         // Update the record
         // value.secretKey = null;  // Erase key
-        value.state = DownloadStateEnum.ERROR;
+        value.state = DownloadStateEnum.PAUSED;  // Note: ERROR just resumes, need a new ERROR type
         await cursor.update(value);  // Replace value
         
         cursor = await cursor.continue();
     }
-
-    // Clear the stored parts
-    const storeParts = db.transaction(STORE_DOWNLOAD_PARTS, 'readwrite').store;
-    await storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
 }
 
 /**
