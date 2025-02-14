@@ -30,6 +30,12 @@ function SettingsPage() {
             </section>
 
             <section>
+                <h2 className='text-xl font-bold pt-6'>Disk usage</h2>
+                <StoragePersistence />
+            </section>
+            
+
+            <section>
                 <h2 className='text-xl font-bold pt-6'>Test area</h2>
                 <TestArea />
             </section>
@@ -170,6 +176,34 @@ function Cleanup() {
 async function loadEstimate(setStorageUsage: (usage: number | null)=>void) {
     let estimate = await navigator.storage.estimate();
     setStorageUsage(estimate.usage || null);
+}
+
+function StoragePersistence() {
+
+    let [persistenceState, setPersistenceState] = useState(false);
+
+    useEffect(()=>{
+        navigator.storage.persisted()
+            .then(isPersisted=>{
+                setPersistenceState(isPersisted);
+            })
+            .catch(err=>console.error("Error loading browser persistence state"));
+    }, [setPersistenceState]);
+
+    let persistenceCallback = useCallback(async () => {
+        let result = await navigator.storage.persist();
+        if(!result) throw Error("Persistence not granted");
+        setPersistenceState(true);
+    }, [setPersistenceState]);
+
+    return (
+        <>
+            <p>Activate storage persistence</p>
+            <p>Current state: {persistenceState?'Active':'Inactive'}</p>
+            <p>This is useful to process larger files - it increases the amount of disk space the browser can use.</p>
+            <ActionButton onClick={persistenceCallback} disabled={persistenceState}>Allow disk usage</ActionButton>
+        </>
+    )
 }
 
 /** Used to test features. */
