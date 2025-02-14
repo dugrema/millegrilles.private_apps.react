@@ -59,8 +59,9 @@ export class AppsDownloadWorker {
         // This is a shared worker. Only create instances if not already done.
         if(!this.downloadWorker) {
             try {
-                let downloadThreadWorker = new Worker(new URL('./download.worker_thread.ts', import.meta.url));
+                let downloadThreadWorker = new Worker(new URL('download.worker_thread.ts', import.meta.url));
                 this.downloadWorker = wrap(downloadThreadWorker);
+                console.info("Spawned download thread subworker");
             } catch(err) {
                 // Support using class directly if starting a Dedicated Worker from another worker fails (e.g. on iOS).
                 console.warn("Error starting a Dedicated WebWorker, using direct instanciation", err);
@@ -73,6 +74,7 @@ export class AppsDownloadWorker {
             try {
                 let decryptionWorker = new Worker(new URL('./download.worker_decryption.ts', import.meta.url));
                 this.decryptionWorker = wrap(decryptionWorker);
+                console.info("Spawned download decryption subworker");
             } catch(err) {
                 // Support using class directly if starting a Dedicated Worker from another worker fails (e.g. on iOS).
                 console.warn("Error starting a Dedicated WebWorker, using direct instanciation", err);

@@ -52,28 +52,28 @@ export async function initWorkers(
     let directory = wrap(directoryWorker) as Remote<DirectoryWorker>;
 
     let download = null as Remote<AppsDownloadWorker> | null;
-    if(!!window.SharedWorker) {
-        // Use shared workers.
-        let downloadWorker = new SharedWorker(new URL('./download.shared.ts', import.meta.url));
-        download = wrap(downloadWorker.port, downloadWorker) as Remote<AppsDownloadWorker>;
-    } else {
+    // if(!!window.SharedWorker) {
+    //     // Use shared workers.
+    //     let downloadWorker = new SharedWorker(new URL('./download.shared.ts', import.meta.url));
+    //     download = wrap(downloadWorker.port, downloadWorker) as Remote<AppsDownloadWorker>;
+    // } else {
         // Use a dedicated worker. 
         // Will cause unpredictable behaviour between tabs for certain functionality, especially file uploads/downloads.
         let downloadWorker = new Worker(new URL('./download.dedicated.ts', import.meta.url));
         download = wrap(downloadWorker) as Remote<AppsDownloadWorker>;
-    }
+    // }
 
     let upload = null as Remote<AppsUploadWorker> | null;
-    if(!!window.SharedWorker) {
-        // Use shared workers.
-        let uploadWorker = new SharedWorker(new URL('./upload.shared.ts', import.meta.url));
-        upload = wrap(uploadWorker.port, uploadWorker) as Remote<AppsUploadWorker>;
-    } else {
+    // if(!!window.SharedWorker) {
+    //     // Use shared workers.
+    //     let uploadWorker = new SharedWorker(new URL('./upload.shared.ts', import.meta.url));
+    //     upload = wrap(uploadWorker.port, uploadWorker) as Remote<AppsUploadWorker>;
+    // } else {
         // Use a dedicated worker. 
         // Will cause unpredictable behaviour between tabs for certain functionality, especially file uploads/downloads.
         let uploadWorker = new Worker(new URL('./upload.dedicated.ts', import.meta.url));
         upload = wrap(uploadWorker) as Remote<AppsUploadWorker>;
-    }
+    // }
 
     // Set-up the workers
     let serverUrl = new URL(window.location.href);

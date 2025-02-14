@@ -134,7 +134,7 @@ export class UploadEncryptionWorker {
             // var reader = stream.getReader();
 
             // iOS fails hard on .stream() for large files (tries to load all in memory)
-            // use this hack
+            // use this slow hack
             let reader = sliceReader(uploadJob.file) as any;
 
             // let reader = stream.getReader();
