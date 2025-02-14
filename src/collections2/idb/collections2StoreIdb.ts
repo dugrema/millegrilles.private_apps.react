@@ -395,21 +395,26 @@ export async function getDownloadContent(fuuid: string, userId?: string): Promis
     // return value?.content;
 
     let root = await navigator.storage.getDirectory();
-    let downloadDirectory = await root.getDirectoryHandle('downloads');
     try {
-        let fileHandle = await downloadDirectory.getFileHandle(`${fuuid}.decrypted`);
-        let file = await fileHandle.getFile();
-        return file;
-    } catch(err) {
-        // File does not exist, try the decrypted in place version
+        let downloadDirectory = await root.getDirectoryHandle('downloads');
         try {
-            let fileHandle = await downloadDirectory.getFileHandle(fuuid);
+            let fileHandle = await downloadDirectory.getFileHandle(`${fuuid}.decrypted`);
             let file = await fileHandle.getFile();
             return file;
         } catch(err) {
-            // File not found
-            return null;
+            // File does not exist, try the decrypted in place version
+            try {
+                let fileHandle = await downloadDirectory.getFileHandle(fuuid);
+                let file = await fileHandle.getFile();
+                return file;
+            } catch(err) {
+                // File not found
+                return null;
+            }
         }
+    } catch(err) {
+        console.debug("Downloads directory not created yet");
+        return null;
     }
 }
 
