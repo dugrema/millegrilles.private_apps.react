@@ -181,6 +181,7 @@ async function loadEstimate(setStorageUsage: (usage: number | null)=>void) {
 function StoragePersistence() {
 
     let [persistenceState, setPersistenceState] = useState(false);
+    let [estimate, setEstimate] = useState(null as StorageEstimate | null);
 
     useEffect(()=>{
         navigator.storage.persisted()
@@ -196,11 +197,42 @@ function StoragePersistence() {
         setPersistenceState(true);
     }, [setPersistenceState]);
 
+    useEffect(()=>{
+
+        navigator.storage.estimate()
+            .then(setEstimate)
+            .catch(err=>console.error("Error loading estimate", err));
+
+        let interval = setInterval(()=>{
+            navigator.storage.estimate()
+            .then(setEstimate)
+            .catch(err=>console.error("Error loading estimate", err));
+        }, 1_500)
+
+        return () => {
+            clearInterval(interval);
+        }
+    }, [setEstimate]);
+
+    let storageElem = useMemo(()=>{
+        let usage = <>N/A</>;
+        if(estimate?.usage) {
+            usage = <Formatters.FormatteurTaille value={estimate.usage} />;
+        }
+        let quota = <>N/A</>;
+        if(estimate?.quota) {
+            quota = <Formatters.FormatteurTaille value={estimate.quota} />;
+        }
+        return <div><p>Usage: {usage}</p><p>Quota: {quota}</p></div>;
+    }, [estimate])
+
     return (
         <>
             <p>Activate storage persistence</p>
             <p>Current state: {persistenceState?'Active':'Inactive'}</p>
             <p>This is useful to process larger files - it increases the amount of disk space the browser can use.</p>
+            <p>Storage estimate:</p>
+            {storageElem}
             <ActionButton onClick={persistenceCallback} disabled={persistenceState}>Allow disk usage</ActionButton>
         </>
     )
