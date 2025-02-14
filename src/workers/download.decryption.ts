@@ -1,5 +1,6 @@
 import { encryptionMgs4 } from 'millegrilles.cryptography';
 import { DownloadIdbType, removeDownload, saveDecryptionError, setDownloadJobComplete } from '../collections2/idb/collections2StoreIdb';
+import { sliceReader, streamAsyncReaderIterable } from './upload.encryption';
 // import { getIterableStream } from '../collections2/transferUtils';
 // import { DownloadIdbParts, DownloadIdbType, getDecryptedBlob, openDB, removeDownload, saveDecryptedBlob, saveDecryptionError, saveDownloadDecryptedPart, setDownloadJobComplete, STORE_DOWNLOAD_PARTS} from '../collections2/idb/collections2StoreIdb';
 // import { getIterableStream } from '../collections2/transferUtils';
@@ -15,11 +16,13 @@ export type DecryptionWorkerCallbackType = (
 // const CONST_CHUNK_SOFT_LIMIT = 1024 * 1024;
 
 export class DownloadDecryptionWorker {
+    dedicated: boolean
     callback: DecryptionWorkerCallbackType | null
     currentJob: DownloadIdbType | null
     cancelled: boolean
 
-    constructor() {
+    constructor(opts?: {dedicated: boolean}) {
+        this.dedicated = opts?.dedicated===undefined?true:opts?.dedicated;
         this.callback = null;
         this.currentJob = null;
         this.cancelled = false;
@@ -57,82 +60,92 @@ export class DownloadDecryptionWorker {
         let userId = downloadJob.userId;
         this.cancelled = false;
 
-        // let decryptedPosition = 0, decryptedPartPosition = 0;
-        let decryptedPosition = 0;
-        let interval = setInterval(()=>{
-            // console.debug("Decrypt position %s/%s", decryptedPosition, downloadJob.size);
-            if(callback && downloadJob.size) {
-                callback(downloadJob.fuuid, downloadJob.userId, false, decryptedPosition, downloadJob.size);
-            }
-        }, 750);
+        // // let decryptedPosition = 0, decryptedPartPosition = 0;
+        // let decryptedPosition = 0;
+        // let interval = setInterval(()=>{
+        //     // console.debug("Decrypt position %s/%s", decryptedPosition, downloadJob.size);
+        //     if(callback && downloadJob.size) {
+        //         callback(downloadJob.fuuid, downloadJob.userId, false, decryptedPosition, downloadJob.size);
+        //     }
+        // }, 750);
 
-        // @ts-ignore
-        let syncFileHandle = null as FileSystemSyncAccessHandle | null;
+        // // @ts-ignore
+        // let syncFileHandle = null as FileSystemSyncAccessHandle | null;
+        // // @ts-ignore
+        // let writeFileHandle = null as FileSystemWritableFileStream | null;
         try {
-            // Decrypt file
-            let secretKey = downloadJob.secretKey;
-            let nonce = downloadJob.nonce;
-            let decipher = await encryptionMgs4.getMgs4Decipher(secretKey, nonce);
+            // // Decrypt file
+            // let secretKey = downloadJob.secretKey;
+            // let nonce = downloadJob.nonce;
+            // let decipher = await encryptionMgs4.getMgs4Decipher(secretKey, nonce);
 
             // Open handle to the filesystem
             let root = await navigator.storage.getDirectory();
             let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
             // console.debug("Download directory", downloadDirectory);
             let fileHandle = await downloadDirectory.getFileHandle(fuuid);
-            
-            let fileObject = await fileHandle.getFile();
-            let fileSize = fileObject.size;
 
-            // @ts-ignore
-            syncFileHandle = await fileHandle.createSyncAccessHandle();
-            // let arrayBuffer = new ArrayBuffer(64*1024);
-            // let buffer = new DataView(arrayBuffer);
-            let buffer = new Uint8Array(64*1024);
+            if(this.dedicated) {
+                await this.decryptInPlace(downloadJob, fileHandle);
+            } else {
+                await this.decryptCopy(downloadJob, fileHandle);
+                // Remove the encrypted file. The new fuuid.decrypted file has been created.
+                await downloadDirectory.removeEntry(fuuid);
+            }
 
-            // Read the encrypted content then write the decrypted content back in place (same file).
-            // Avoids having to use double the disk space to decrypt the file.
-            let positionReading = 0;
-            let chunkCount = 0;
-            while(positionReading < fileSize) {
-                if(decryptedPosition > positionReading) throw new Error("Overlap in reading/writing positions");
-                if(this.cancelled) {
-                    console.info("Decryption cancelled by user");
-                    return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
-                }
+            // let fileObject = await fileHandle.getFile();
+            // let fileSize = fileObject.size;
 
-                let readLen = syncFileHandle.read(buffer, {at: positionReading});
+            // // @ts-ignore
+            // syncFileHandle = await fileHandle.createSyncAccessHandle();
+            // // let arrayBuffer = new ArrayBuffer(64*1024);
+            // // let buffer = new DataView(arrayBuffer);
+            // let buffer = new Uint8Array(64*1024);
+
+            // // Read the encrypted content then write the decrypted content back in place (same file).
+            // // Avoids having to use double the disk space to decrypt the file.
+            // let positionReading = 0;
+            // let chunkCount = 0;
+            // while(positionReading < fileSize) {
+            //     if(decryptedPosition > positionReading) throw new Error("Overlap in reading/writing positions");
+            //     if(this.cancelled) {
+            //         console.info("Decryption cancelled by user");
+            //         return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
+            //     }
+
+            //     let readLen = syncFileHandle.read(buffer, {at: positionReading});
                 
-                let cleartext = await decipher.update(buffer.slice(0, readLen));
-                if(cleartext) {
-                    let writeLen = syncFileHandle.write(cleartext, {at: decryptedPosition});
-                    decryptedPosition += writeLen;    // Move write position
-                }
+            //     let cleartext = await decipher.update(buffer.slice(0, readLen));
+            //     if(cleartext) {
+            //         let writeLen = syncFileHandle.write(cleartext, {at: decryptedPosition});
+            //         decryptedPosition += writeLen;    // Move write position
+            //     }
 
-                if(chunkCount++ >= 50) {
-                    chunkCount = 0;
-                    // Throttle a bit to let other promises execute (e.g. callback)
-                    await new Promise(resolve=>setTimeout(resolve, 0));
-                }
+            //     if(chunkCount++ >= 50) {
+            //         chunkCount = 0;
+            //         // Throttle a bit to let other promises execute (e.g. callback)
+            //         await new Promise(resolve=>setTimeout(resolve, 0));
+            //     }
 
-                positionReading += readLen;         // Move read position
-            }
+            //     positionReading += readLen;         // Move read position
+            // }
 
-            // console.debug("Position reading: %s, file size: %s", positionReading, fileSize);
+            // // console.debug("Position reading: %s, file size: %s", positionReading, fileSize);
 
-            // Finalize decryption
-            let finalChunk = await decipher.finalize();
-            if(finalChunk) {
-                syncFileHandle.write(finalChunk, {at: decryptedPosition});
-                decryptedPosition += finalChunk.length;
-            }
-            // Additional validation of output
-            if(decryptedPosition > positionReading) throw new Error("Error decrypting file - clear content longer than encrypted");
+            // // Finalize decryption
+            // let finalChunk = await decipher.finalize();
+            // if(finalChunk) {
+            //     syncFileHandle.write(finalChunk, {at: decryptedPosition});
+            //     decryptedPosition += finalChunk.length;
+            // }
+            // // Additional validation of output
+            // if(decryptedPosition > positionReading) throw new Error("Error decrypting file - clear content longer than encrypted");
 
-            // Close file
-            syncFileHandle.truncate(decryptedPosition);  // Truncate - the decrypted file is smaller than the encrypted version
-            syncFileHandle.flush();
-            syncFileHandle.close();
-            syncFileHandle = null;
+            // // Close file
+            // syncFileHandle.truncate(decryptedPosition);  // Truncate - the decrypted file is smaller than the encrypted version
+            // syncFileHandle.flush();
+            // syncFileHandle.close();
+            // syncFileHandle = null;
 
             // console.debug("File decrypted OK");
             await setDownloadJobComplete(fuuid);
@@ -226,12 +239,158 @@ export class DownloadDecryptionWorker {
             await callback(downloadJob.fuuid, downloadJob.userId, true);
             throw err
         } finally {
-            clearInterval(interval);
+            // clearInterval(interval);
             this.currentJob = null;
             this.cancelled = false;
-            // Close file if not already done
+            // // Close file if not already done
+            // syncFileHandle?.flush();
+            // syncFileHandle?.close();
+            // writeFileHandle?.close().catch((err: any)=>console.error("Error closing decrypt write handle", err));
+        }
+    }
+
+    /**
+     * Decrypts the file over the downloaded encrypted content. Minimizes the amount of space required.
+     * Only available in Dedicated Workers (firefox).
+     * @param downloadJob 
+     * @param fileHandle 
+     * @returns 
+     */
+    async decryptInPlace(downloadJob: DownloadIdbType, fileHandle: FileSystemFileHandle) {
+        
+        let fileObject = await fileHandle.getFile();
+        let fileSize = fileObject.size;
+
+        // console.debug("Decrypting file", downloadJob);
+
+        let callback = this.callback;
+        if(!callback) throw new Error('Callback not wired');
+
+        // Decrypt file
+        if(!downloadJob.secretKey) throw new Error('Secret key not provided');
+        if(!downloadJob.nonce) throw new Error('Decryption information (nonce) is missing');
+        let secretKey = downloadJob.secretKey;
+        let nonce = downloadJob.nonce;
+        let decipher = await encryptionMgs4.getMgs4Decipher(secretKey, nonce);
+
+        // let arrayBuffer = new ArrayBuffer(64*1024);
+        // let buffer = new DataView(arrayBuffer);
+        let buffer = new Uint8Array(64*1024);
+
+        // @ts-ignore
+        let syncFileHandle = null as FileSystemSyncAccessHandle | null;
+
+        let decryptedPosition = 0;
+        let interval = setInterval(()=>{
+            // console.debug("Decrypt position %s/%s", decryptedPosition, downloadJob.size);
+            if(callback && downloadJob.size) {
+                callback(downloadJob.fuuid, downloadJob.userId, false, decryptedPosition, downloadJob.size);
+            }
+        }, 750);
+
+        try {
+            // @ts-ignore
+            syncFileHandle = await fileHandle.createSyncAccessHandle();
+
+            // Read the encrypted content then write the decrypted content back in place (same file).
+            // Avoids having to use double the disk space to decrypt the file.
+            let positionReading = 0;
+            let chunkCount = 0;
+            
+            while(positionReading < fileSize) {
+                if(decryptedPosition > positionReading) throw new Error("Overlap in reading/writing positions");
+                if(this.cancelled) {
+                    console.info("Decryption cancelled by user");
+                    return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
+                }
+
+                let readLen = syncFileHandle.read(buffer, {at: positionReading});
+                
+                let cleartext = await decipher.update(buffer.slice(0, readLen));
+                if(cleartext) {
+                    let writeLen = syncFileHandle.write(cleartext, {at: decryptedPosition});
+                    decryptedPosition += writeLen;    // Move write position
+                }
+
+                if(chunkCount++ >= 50) {
+                    chunkCount = 0;
+                    // Throttle a bit to let other promises execute (e.g. callback)
+                    await new Promise(resolve=>setTimeout(resolve, 0));
+                }
+
+                positionReading += readLen;         // Move read position
+            }
+
+            // console.debug("Position reading: %s, file size: %s", positionReading, fileSize);
+
+            // Finalize decryption
+            let finalChunk = await decipher.finalize();
+            if(finalChunk) {
+                syncFileHandle.write(finalChunk, {at: decryptedPosition});
+                decryptedPosition += finalChunk.length;
+            }
+            // Additional validation of output
+            if(decryptedPosition > positionReading) throw new Error("Error decrypting file - clear content longer than encrypted");
+
+            // Close file
+            syncFileHandle.truncate(decryptedPosition);  // Truncate - the decrypted file is smaller than the encrypted version
+        } finally {
+            clearInterval(interval);
             syncFileHandle?.flush();
             syncFileHandle?.close();
+        }
+    }
+
+    async decryptCopy(downloadJob: DownloadIdbType, fileHandle: FileSystemFileHandle) {
+        let callback = this.callback;
+        if(!callback) throw new Error('Callback not wired');
+
+        // Decrypt file
+        if(!downloadJob.secretKey) throw new Error('Secret key not provided');
+        if(!downloadJob.nonce) throw new Error('Decryption information (nonce) is missing');
+        let secretKey = downloadJob.secretKey;
+        let nonce = downloadJob.nonce;
+        let decipher = await encryptionMgs4.getMgs4Decipher(secretKey, nonce);
+
+        let root = await navigator.storage.getDirectory();
+        let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
+
+        // @ts-ignore
+        let fileObject = await fileHandle.getFile();
+        let reader = sliceReader(fileObject) as any;
+        let fileStreamReader = streamAsyncReaderIterable(reader);
+        let outputFileHandle = await downloadDirectory.getFileHandle(downloadJob.fuuid + '.decrypted', {create: true});
+        // @ts-ignore
+        let outputWriter = await outputFileHandle.createWritable({keepExistingData: false});
+
+        let decryptedPosition = 0;
+        let interval = setInterval(()=>{
+            // console.debug("Decrypt position %s/%s", decryptedPosition, downloadJob.size);
+            if(callback && downloadJob.size) {
+                callback(downloadJob.fuuid, downloadJob.userId, false, decryptedPosition, downloadJob.size);
+            }
+        }, 750);
+
+        try {
+            for await(let chunk of fileStreamReader) {
+                if(this.cancelled) throw new Error('Cancelled');
+
+                let cleartext = await decipher.update(chunk);
+                if(cleartext) {
+                    await outputWriter.write(cleartext);
+                    decryptedPosition += cleartext.length;
+                }
+            }
+
+            // Finalize decryption
+            let finalChunk = await decipher.finalize();
+            if(finalChunk) {
+                await outputWriter.write(finalChunk);
+                decryptedPosition += finalChunk.length;
+            }
+        } finally {
+            clearInterval(interval);
+            await outputWriter.close();
         }
     }
 

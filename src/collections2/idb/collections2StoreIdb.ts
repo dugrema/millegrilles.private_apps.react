@@ -388,11 +388,29 @@ export async function getCurrentVideoPosition(tuuid: string, userId: string): Pr
     return await store.get([tuuid, userId]);
 }
 
-export async function getDownloadContent(fuuid: string, userId: string): Promise<Blob | null> {
-    const db = await openDB();
-    const store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
-    let value = await store.get([fuuid, userId]) as DownloadJobType;
-    return value?.content;
+export async function getDownloadContent(fuuid: string, userId?: string): Promise<Blob | null> {
+    // const db = await openDB();
+    // const store = db.transaction(STORE_DOWNLOADS, 'readonly').store;
+    // let value = await store.get([fuuid, userId]) as DownloadJobType;
+    // return value?.content;
+
+    let root = await navigator.storage.getDirectory();
+    let downloadDirectory = await root.getDirectoryHandle('downloads');
+    try {
+        let fileHandle = await downloadDirectory.getFileHandle(`${fuuid}.decrypted`);
+        let file = await fileHandle.getFile();
+        return file;
+    } catch(err) {
+        // File does not exist, try the decrypted in place version
+        try {
+            let fileHandle = await downloadDirectory.getFileHandle(fuuid);
+            let file = await fileHandle.getFile();
+            return file;
+        } catch(err) {
+            // File not found
+            return null;
+        }
+    }
 }
 
 export async function addDownload(download: DownloadIdbType) {
@@ -435,7 +453,16 @@ export async function removeDownloadStorageEntry(fuuid: string) {
     let root = await navigator.storage.getDirectory();
     try {
         let downloadDirectory = await root.getDirectoryHandle('downloads');
-        await downloadDirectory.removeEntry(fuuid);
+        try {
+            await downloadDirectory.removeEntry(`${fuuid}.decrypted`);
+        } catch(err) {
+            console.info("Error deleting download file %s", fuuid + '.decrypted')
+        }
+        try {
+            await downloadDirectory.removeEntry(fuuid);
+        } catch(err) {
+            console.info("Error deleting download file %s", fuuid)
+        }
     } catch(err) {
         console.warn("Error deleting download file entry: ", err);
     }

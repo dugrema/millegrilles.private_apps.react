@@ -77,7 +77,7 @@ export class AppsDownloadWorker {
                 // Support using class directly if starting a Dedicated Worker from another worker fails (e.g. on iOS).
                 console.warn("Error starting a Dedicated WebWorker, using direct instanciation", err);
                 let {DownloadDecryptionWorker}  = await import('./download.decryption');
-                this.decryptionWorker = new DownloadDecryptionWorker();
+                this.decryptionWorker = new DownloadDecryptionWorker({dedicated: false});
             }
             await this.decryptionWorker.setup(this.decryptionStateCallbackProxy);
         }
@@ -229,6 +229,7 @@ export class AppsDownloadWorker {
     async addDownloadFromFile(tuuid: string, userId: string): Promise<Blob | null> {
         if(!this.downloadWorker || !this.decryptionWorker) throw new Error('Dedicated workers not initialized');
         
+        // console.debug("addDownloadFromFile tuuid:%s userId:%s", tuuid, userId);
         let entry = await createDownloadEntryFromFile(tuuid, userId);
         // console.debug("New download entry", entry);
 

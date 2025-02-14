@@ -165,26 +165,26 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
     let interval = setInterval(()=>statusCallback(position, contentLength), 750);
 
     // @ts-ignore
-    let syncFileHandle = null as FileSystemSyncAccessHandle | null;
+    let writeFileHandle = null as FileSystemWritableFileStream | null;
     try {
         let root = await navigator.storage.getDirectory();
         let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
         let fileHandle = await downloadDirectory.getFileHandle(job.fuuid, {create: true});
         let fileObject = await fileHandle.getFile();
 
-        // @ts-ignore
-        syncFileHandle = await fileHandle.createSyncAccessHandle();
+        // syncFileHandle = await fileHandle.createSyncAccessHandle();
         if(position > 0) {
             let fileSize = fileObject.size;
             if(fileSize !== position) throw new Error("File position downloading and actual mismatch");
         }
+        // @ts-ignore
+        writeFileHandle = await fileHandle.createWritable({keepExistingData: true});
 
         for await (const chunk of stream) {
-            syncFileHandle.write(chunk, {at: position});
+            // syncFileHandle.write(chunk, {at: position});
+            await writeFileHandle.write(chunk);
             position += chunk.length;
         }
-
-        syncFileHandle.truncate(position);
 
         // Note: closing handle in finally block
 
@@ -240,8 +240,8 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
         statusCallback(position, contentLength);
     } finally {
         clearInterval(interval);
-        syncFileHandle?.flush();
-        syncFileHandle?.close();
+        writeFileHandle?.close()
+            .catch((err: any)=>console.error("Error closing download write handle", err));
     }
 }
 

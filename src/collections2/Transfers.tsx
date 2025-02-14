@@ -5,7 +5,7 @@ import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore from "./userBrowsingStore";
 import useTransferStore, { DownloadJobStoreType, TransferActivity, UploadJobStoreType } from "./transferStore";
-import { DownloadStateEnum, getDownloadJob, getDownloadJobs, getUploadJob, getUploadJobs, updateUploadJobState, UploadStateEnum } from "./idb/collections2StoreIdb";
+import { DownloadStateEnum, getDownloadContent, getDownloadJob, getDownloadJobs, getUploadJob, getUploadJobs, updateUploadJobState, UploadStateEnum } from "./idb/collections2StoreIdb";
 import { downloadFile } from "./transferUtils";
 
 function Transfers() {
@@ -69,11 +69,14 @@ export function SyncDownloads() {
                     let job = await getDownloadJob(userId, fuuid);
                     if(job) {
 
-                        // Load file from storage
-                        let root = await navigator.storage.getDirectory();
-                        let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
-                        let fileHandle = await downloadDirectory.getFileHandle(fuuid);
-                        downloadFile(job.filename, await fileHandle.getFile());
+                        // // Load file from storage
+                        // let root = await navigator.storage.getDirectory();
+                        // let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
+                        // let fileHandle = await downloadDirectory.getFileHandle(fuuid);
+                        let content = await getDownloadContent(fuuid, userId)
+                        if(content) {
+                            downloadFile(job.filename, content);
+                        }
                         // if(job.content) {
                         //     downloadFile(job.filename, job.content);
                         // } else {

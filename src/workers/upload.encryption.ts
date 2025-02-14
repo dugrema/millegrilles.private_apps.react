@@ -326,7 +326,7 @@ export async function* streamAsyncReaderIterable(reader: ReadableStream) {
 }
 
 /** Simulated reader using blob.slice. Used instead of File.stream() on iOS. */
-function sliceReader(file: File, opts?: {bufferSize?: number}) {
+export function sliceReader(file: File, opts?: {bufferSize?: number}) {
     const bufferSize = opts?.bufferSize || (64 * 1024);  // 64 kB by default
   
     var position = 0;
