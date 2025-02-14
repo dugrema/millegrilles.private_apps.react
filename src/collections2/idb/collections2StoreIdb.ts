@@ -426,6 +426,19 @@ export async function removeDownloadParts(fuuid: string) {
     storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
     const storeDecryptedParts = db.transaction(STORE_DOWNLOAD_DECRYPTED_PARTS, 'readwrite').store;
     storeDecryptedParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
+   
+    await removeDownloadStorageEntry(fuuid);
+}
+
+export async function removeDownloadStorageEntry(fuuid: string) {
+    // Remove from filesystem
+    let root = await navigator.storage.getDirectory();
+    try {
+        let downloadDirectory = await root.getDirectoryHandle('downloads');
+        await downloadDirectory.removeEntry(fuuid);
+    } catch(err) {
+        console.warn("Error deleting download file entry: ", err);
+    }
 }
 
 export async function getNextDownloadJob(userId: string): Promise<DownloadIdbType | null> {
@@ -574,6 +587,22 @@ export async function saveDecryptedBlob(fuuid: string, decryptedBlob: Blob) {
     await removeDownloadParts(fuuid);
 }
 
+export async function setDownloadJobComplete(fuuid: string) {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
+    let cursor = await store.openCursor(IDBKeyRange.bound([fuuid, ''], [fuuid, '~']));
+
+    // Sett all download jobs on this fuuid to done.
+    while(cursor) {
+        let value = cursor.value as DownloadIdbType;
+        // Update the record
+        value.secretKey = null;  // Erase key
+        value.state = DownloadStateEnum.DONE;
+        await cursor.update(value);  // Replace value
+        cursor = await cursor.continue();
+    }
+}
+
 export async function saveDecryptionError(fuuid: string) {
     const db = await openDB();
 
@@ -582,6 +611,8 @@ export async function saveDecryptionError(fuuid: string) {
     await storeParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
     const storeDecryptedParts = db.transaction(STORE_DOWNLOAD_DECRYPTED_PARTS, 'readwrite').store;
     await storeDecryptedParts.delete(IDBKeyRange.bound([fuuid, 0], [fuuid, Number.MAX_SAFE_INTEGER]));
+
+    await removeDownloadStorageEntry(fuuid);
 
     const store = db.transaction(STORE_DOWNLOADS, 'readwrite').store;
     let cursor = await store.openCursor(IDBKeyRange.bound([fuuid, ''], [fuuid, '~']));
@@ -657,10 +688,8 @@ export async function removeUserDownloads(userId: string, opts?: {state?: Downlo
         while(cursorUserJobs) {
             let value = cursorUserJobs.value as DownloadIdbType;
             
-            if(state !== DownloadStateEnum.DONE) {
-                // Need to cleanup the downloaded file parts table.
-                fuuids.add(value.fuuid);
-            }
+            // Need to cleanup the downloaded file parts table.
+            fuuids.add(value.fuuid);
             
             await cursorUserJobs.delete();  // Remove the download entry
             cursorUserJobs = await cursorUserJobs.continue();
@@ -690,6 +719,11 @@ export async function removeUserDownloads(userId: string, opts?: {state?: Downlo
             }
             cursorParts = await cursorParts.continue();
         }
+
+        fuuids.forEach(fuuid=>{
+            removeDownloadStorageEntry(fuuid as string)
+                .catch(err=>console.error("Error deleting downloaded file %s: %O", fuuid, err));
+        })
     }
 }
 
@@ -932,4 +966,18 @@ export async function cleanup() {
 
     let storeUploadParts = db.transaction(STORE_UPLOAD_PARTS, 'readwrite').store;
     await storeUploadParts.clear();
+
+    try {
+        let root = await navigator.storage.getDirectory();
+        let downloadDirectory = await root.getDirectoryHandle('downloads');
+        // @ts-ignore
+        for await(let filename of downloadDirectory.values()) {
+            // console.debug("Deleting downloaded file ", filename);
+            await downloadDirectory.removeEntry(filename.name);
+        }
+        // console.debug("Deleting downloads directory");
+        await root.removeEntry('downloads');
+    } catch(err) {
+        console.warn("Error deleting download directory entry: ", err);
+    }
 }

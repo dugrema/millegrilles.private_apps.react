@@ -163,59 +163,85 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
     statusCallback(position, contentLength);
     // Regular feedback
     let interval = setInterval(()=>statusCallback(position, contentLength), 750);
-    
+
+    // @ts-ignore
+    let syncFileHandle = null as FileSystemSyncAccessHandle | null;
     try {
-        let chunks = [] as Uint8Array[];
-        let chunksSize = 0;
+        let root = await navigator.storage.getDirectory();
+        let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
+        let fileHandle = await downloadDirectory.getFileHandle(job.fuuid, {create: true});
+        // @ts-ignore
+        syncFileHandle = await fileHandle.createSyncAccessHandle();
+        if(position > 0) {
+            let fileSize = syncFileHandle.getSize();
+            if(fileSize != position) throw new Error("File position downloading and actual mismatch");
+            // Place the file at the correct position to resume the download
+            let emptyBuffer = new DataView(new ArrayBuffer(0));;
+            syncFileHandle.read(emptyBuffer, {at: position});
+        }
 
-        let blobPosition = position;    // Position for the next part
-        let blobs = [] as Blob[];       // List of blobs to include in the current part
-        let blobsSize = 0;              // Current part size
         for await (const chunk of stream) {
+            syncFileHandle.write(chunk, {at: position});
             position += chunk.length;
-            chunksSize += chunk.length;
+        }
+
+        syncFileHandle.truncate(position);
+
+        // Note: closing handle in finally block
+
+        // let chunks = [] as Uint8Array[];
+        // let chunksSize = 0;
+
+        // let blobPosition = position;    // Position for the next part
+        // let blobs = [] as Blob[];       // List of blobs to include in the current part
+        // let blobsSize = 0;              // Current part size
+        // for await (const chunk of stream) {
+        //     position += chunk.length;
+        //     chunksSize += chunk.length;
             
-            chunks.push(chunk);
+        //     chunks.push(chunk);
 
-            if(chunksSize > CHUNK_SOFT_LIMIT) {
-                // Concatenate into blob (gives a chance to offload memory)
-                let blob = new Blob(chunks);
-                blobs.push(blob);
-                blobsSize += blob.size;
+        //     if(chunksSize > CHUNK_SOFT_LIMIT) {
+        //         // Concatenate into blob (gives a chance to offload memory)
+        //         let blob = new Blob(chunks);
+        //         blobs.push(blob);
+        //         blobsSize += blob.size;
 
-                // Reset chunks
-                chunksSize = 0;
-                chunks = [];
-            }
+        //         // Reset chunks
+        //         chunksSize = 0;
+        //         chunks = [];
+        //     }
 
-            if(blobsSize > softPartSize) {
-                // Save to file parts
-                let partBlob = new Blob(blobs);  // Concatenate all blobs into one part
-                await saveDownloadPart(job.fuuid, blobPosition, partBlob);
+        //     if(blobsSize > softPartSize) {
+        //         // Save to file parts
+        //         let partBlob = new Blob(blobs);  // Concatenate all blobs into one part
+        //         await saveDownloadPart(job.fuuid, blobPosition, partBlob);
 
-                // Reset blobs
-                let blobSize = partBlob.size;
-                // console.debug("Parts blob %d", blobSize);
-                blobPosition += blobSize;   // Increment start position for next blob
-                blobsSize = 0;
-                blobs = [];
-            }
-        }
+        //         // Reset blobs
+        //         let blobSize = partBlob.size;
+        //         // console.debug("Parts blob %d", blobSize);
+        //         blobPosition += blobSize;   // Increment start position for next blob
+        //         blobsSize = 0;
+        //         blobs = [];
+        //     }
+        // }
 
-        if(chunks.length > 0) {
-            // Final blob
-            blobs.push(new Blob(chunks));
-        }
+        // if(chunks.length > 0) {
+        //     // Final blob
+        //     blobs.push(new Blob(chunks));
+        // }
 
-        if(blobs.length > 0) {
-            // Save final part
-            let partBlob = new Blob(blobs);
-            await saveDownloadPart(job.fuuid, blobPosition, partBlob);
-        }
+        // if(blobs.length > 0) {
+        //     // Save final part
+        //     let partBlob = new Blob(blobs);
+        //     await saveDownloadPart(job.fuuid, blobPosition, partBlob);
+        // }
 
         // Done
         statusCallback(position, contentLength);
     } finally {
+        syncFileHandle?.flush();
+        syncFileHandle?.close();
         clearInterval(interval);
     }
 }

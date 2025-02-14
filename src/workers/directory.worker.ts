@@ -389,6 +389,31 @@ export class DirectoryWorker {
 
         return outputBlob;
     }
+
+    async testFileSystem1() {
+        let root = await navigator.storage.getDirectory();
+        let test1Directory = await root.getDirectoryHandle('test1', {create: true});
+        console.debug('Directory 1: ', test1Directory);
+        // @ts-ignore
+        for await(let [key, value] of test1Directory.entries())  {
+            console.debug("Directory1 entries: name:%s, value:%O", key, value);
+        }
+        let fileHandle = await test1Directory.getFileHandle('afile.bin', {create: true});
+        // @ts-ignore
+        let syncHandle = await fileHandle.createSyncAccessHandle();
+        let buffer = new DataView(new ArrayBuffer(syncHandle.getSize()));;
+        let readBytes = syncHandle.read(buffer);
+        console.debug("Bytes read: ", readBytes);
+        let output = new TextDecoder().decode(buffer);
+        console.debug("Content of file: ", output);
+
+        let bytesWritten = syncHandle.write(new TextEncoder().encode('tada'), {at: 0});
+        syncHandle.truncate(bytesWritten);
+        console.debug("Bytes written", bytesWritten);
+
+        syncHandle.flush();
+        syncHandle.close();
+    }
 }
 
 var worker = new DirectoryWorker();

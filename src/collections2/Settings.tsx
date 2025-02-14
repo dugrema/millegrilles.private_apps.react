@@ -10,8 +10,8 @@ import useUserBrowsingStore from "./userBrowsingStore";
 
 function SettingsPage() {
     return (
-        <>
-            <section className='pt-12'>
+        <div className='fixed top-10 md:top-12 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
+            <section>
                 <h1 className='text-xl font-bold'>Settings</h1>
             </section>
 
@@ -39,7 +39,7 @@ function SettingsPage() {
                 <h2 className='text-xl font-bold pt-6'>Test area</h2>
                 <TestArea />
             </section>
-        </>
+        </div>
     )
 }
 
@@ -244,6 +244,8 @@ function TestArea() {
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
 
+    let [downloadFiles, setDownloadFiles] = useState(null as number | null);
+
     let downloadWorkerCallback = useCallback(async () => {
         if(!workers || !ready) throw new Error('workers not initialized');
         
@@ -254,10 +256,31 @@ function TestArea() {
         await testBounds('zSEfXUA2auCgqVJ1Lrxv9yF9vgq9se7CDGhMdFNynV43EAitCuZuAXMsyCNz75uiKG3ibgrvkdLP4WHtjAxrmZMtM6k4Ji')
     }, [workers, ready])
 
+    let fsCreateList = useCallback(async () =>{
+        await workers?.directory.testFileSystem1();
+    }, [workers]);
+
+    let fsListDownloads = useCallback(async () =>{
+        let root = await navigator.storage.getDirectory();
+        let downloads = await root.getDirectoryHandle('downloads');
+        console.debug("Downloads", downloads);
+        let count = 0;
+        // @ts-ignore
+        for await(let entry of downloads.values()) {
+            console.debug("File entry: ", entry);
+            count++;
+        }
+        setDownloadFiles(count);
+    }, [workers, setDownloadFiles]);
+
     return (
         <>
             <p>Download worker presence</p>
             <ActionButton onClick={downloadWorkerCallback}>Download test</ActionButton>
+            <p>File system</p>
+            <p>Downloads: {downloadFiles}</p>
+            <ActionButton onClick={fsCreateList}>Create / list</ActionButton>
+            <ActionButton onClick={fsListDownloads}>List downloads</ActionButton>
         </>
     )
 }

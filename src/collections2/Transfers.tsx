@@ -68,11 +68,17 @@ export function SyncDownloads() {
                     // console.debug("Trigger download of ", fuuid);
                     let job = await getDownloadJob(userId, fuuid);
                     if(job) {
-                        if(job.content) {
-                            downloadFile(job.filename, job.content);
-                        } else {
-                            console.error("No content to download found for fuuid:%s", fuuid)
-                        }
+
+                        // Load file from storage
+                        let root = await navigator.storage.getDirectory();
+                        let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
+                        let fileHandle = await downloadDirectory.getFileHandle(fuuid);
+                        downloadFile(job.filename, await fileHandle.getFile());
+                        // if(job.content) {
+                        //     downloadFile(job.filename, job.content);
+                        // } else {
+                        //     console.error("No content to download found for fuuid:%s", fuuid)
+                        // }
                     } else {
                         console.warn("No job found to download fuuid:%s", fuuid);
                     }

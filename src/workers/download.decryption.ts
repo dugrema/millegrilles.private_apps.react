@@ -1,5 +1,5 @@
 import { encryptionMgs4 } from 'millegrilles.cryptography';
-import { DownloadIdbParts, DownloadIdbType, getDecryptedBlob, openDB, removeDownload, saveDecryptedBlob, saveDecryptionError, saveDownloadDecryptedPart, STORE_DOWNLOAD_PARTS} from '../collections2/idb/collections2StoreIdb';
+import { DownloadIdbParts, DownloadIdbType, getDecryptedBlob, openDB, removeDownload, saveDecryptedBlob, saveDecryptionError, saveDownloadDecryptedPart, setDownloadJobComplete, STORE_DOWNLOAD_PARTS} from '../collections2/idb/collections2StoreIdb';
 import { getIterableStream } from '../collections2/transferUtils';
 
 export type DecryptionWorkerCallbackType = (
@@ -55,96 +55,152 @@ export class DownloadDecryptionWorker {
         let userId = downloadJob.userId;
         this.cancelled = false;
 
-        let decryptedPosition = 0, decryptedPartPosition = 0;
+        // let decryptedPosition = 0, decryptedPartPosition = 0;
+        let decryptedPosition = 0;
         let interval = setInterval(()=>{
-            // console.debug("Decrypt position %d/%d", decryptedPosition, downloadJob.size);
+            console.debug("Decrypt position %d/%d", decryptedPosition, downloadJob.size);
             if(callback && downloadJob.size) {
                 callback(downloadJob.fuuid, downloadJob.userId, false, decryptedPosition, downloadJob.size);
             }
         }, 750);
 
+        // @ts-ignore
+        let syncFileHandle = null as FileSystemSyncAccessHandle | null;
         try {
             // Decrypt file
             let secretKey = downloadJob.secretKey;
             let nonce = downloadJob.nonce;
             let decipher = await encryptionMgs4.getMgs4Decipher(secretKey, nonce);
 
-            // Open a cursor and iterate through all parts in order
-            const db = await openDB();
-            let store = db.transaction(STORE_DOWNLOAD_PARTS, 'readonly').store;
+            // Open handle to the filesystem
+            let root = await navigator.storage.getDirectory();
+            let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
+            console.debug("Download directory", downloadDirectory);
+            let fileHandle = await downloadDirectory.getFileHandle(fuuid);
+            // @ts-ignore
+            syncFileHandle = await fileHandle.createSyncAccessHandle();
+            let fileSize = syncFileHandle.getSize();
+            // let arrayBuffer = new ArrayBuffer(64*1024);
+            // let buffer = new DataView(arrayBuffer);
+            let buffer = new Uint8Array(64*1024);
 
-            let part = await store.get([fuuid, 0]) as DownloadIdbParts;
-            
-            let position = 0;
-            while(part) {
+            // Read the encrypted content then write the decrypted content back in place (same file).
+            // Avoids having to use double the disk space to decrypt the file.
+            let positionReading = 0;
+            while(positionReading < fileSize) {
+                if(decryptedPosition > positionReading) throw new Error("Overlap in reading/writing positions");
                 if(this.cancelled) {
                     console.info("Decryption cancelled by user");
                     return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
                 }
 
-                console.debug("Decrypt ", part);
-                let content = part.content;
-
-                // Open reader for blob, iterate through content.
-                // @ts-ignore
-                let stream = getIterableStream(content.stream());
-
-                // Buffer with chunks and blobs.
-                let chunks = [] as Uint8Array[];
-                let chunkSize = 0;
-                let partBlobs = [] as Blob[];
-                for await (const chunk of stream) {
-                    if(this.cancelled) {
-                        console.info("Decryption cancelled by user");
-                        return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
-                    }
-
-                    let output = await decipher.update(chunk);
-                    if(output && output.length > 0) {
-                        decryptedPosition += output.length;  // Use decrypted position
-                        chunkSize += output.length;
-                        chunks.push(output);
-                    }
-                    if(chunkSize > CONST_CHUNK_SOFT_LIMIT) {
-                        // Offload chunks to blob
-                        partBlobs.push(new Blob(chunks));
-                        // Reset chunks
-                        chunkSize = 0;
-                        chunks = [];
-                    }
+                let readLen = syncFileHandle.read(buffer, {at: positionReading});
+                
+                let cleartext = await decipher.update(buffer.slice(0, readLen));
+                if(cleartext) {
+                    let writeLen = syncFileHandle.write(cleartext, {at: decryptedPosition});
+                    decryptedPosition += writeLen;    // Move write position
                 }
 
-                if(chunks.length > 0) {
-                    // Last chunk
-                    partBlobs.push(new Blob(chunks));
-                }
-
-                // Concatenate all blobs into one larger part blob
-                // Save the blob to decrypted table
-                let partBlob = new Blob(partBlobs);
-                await saveDownloadDecryptedPart(fuuid, decryptedPartPosition, partBlob);
-                decryptedPartPosition += partBlob.size;
-
-                position += content.size;
-
-                // New transaction
-                store = db.transaction(STORE_DOWNLOAD_PARTS, 'readonly').store;
-                part = await store.get([fuuid, position]);
+                positionReading += readLen;         // Move read position
             }
 
-            let finalize = await decipher.finalize();
-            if(finalize && finalize.length > 0) {
-                await saveDownloadDecryptedPart(fuuid, decryptedPosition, new Blob([finalize]))
+            console.debug("Position reading: %s, file size: %s", positionReading, fileSize);
+
+            // Finalize decryption
+            let finalChunk = await decipher.finalize();
+            if(finalChunk) {
+                syncFileHandle.write(finalChunk, {at: decryptedPosition});
+                decryptedPosition += finalChunk.length;
             }
+            // Additional validation of output
+            if(decryptedPosition > positionReading) throw new Error("Error decrypting file - clear content longer than encrypted");
 
-            // Concatenate all decrypted parts from IDB into a single blob
-            let decryptedFileBlob = await getDecryptedBlob(fuuid);
+            // Close file
+            syncFileHandle.truncate(decryptedPosition);  // Truncate - the decrypted file is smaller than the encrypted version
+            syncFileHandle.flush();
+            syncFileHandle.close();
+            syncFileHandle = null;
 
-            if(!decryptedFileBlob || (decryptedFileBlob.size === 0 && downloadJob.size)) {
-                throw new Error('Decrypted file %s size is 0 (empty)');
-            }
+            console.debug("File decrypted OK");
+            await setDownloadJobComplete(fuuid);
+    
+            // // Open a cursor and iterate through all parts in order
+            // const db = await openDB();
+            // let store = db.transaction(STORE_DOWNLOAD_PARTS, 'readonly').store;
 
-            await saveDecryptedBlob(fuuid, decryptedFileBlob);
+            // let part = await store.get([fuuid, 0]) as DownloadIdbParts;
+            
+            // let position = 0;
+            // while(part) {
+            //     if(this.cancelled) {
+            //         console.info("Decryption cancelled by user");
+            //         return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
+            //     }
+
+            //     console.debug("Decrypt ", part);
+            //     let content = part.content;
+
+            //     // Open reader for blob, iterate through content.
+            //     // @ts-ignore
+            //     let stream = getIterableStream(content.stream());
+
+            //     // Buffer with chunks and blobs.
+            //     let chunks = [] as Uint8Array[];
+            //     let chunkSize = 0;
+            //     let partBlobs = [] as Blob[];
+            //     for await (const chunk of stream) {
+            //         if(this.cancelled) {
+            //             console.info("Decryption cancelled by user");
+            //             return;  // Job is cancelled. Just abort processing, cleanup is done from caller.
+            //         }
+
+            //         let output = await decipher.update(chunk);
+            //         if(output && output.length > 0) {
+            //             decryptedPosition += output.length;  // Use decrypted position
+            //             chunkSize += output.length;
+            //             chunks.push(output);
+            //         }
+            //         if(chunkSize > CONST_CHUNK_SOFT_LIMIT) {
+            //             // Offload chunks to blob
+            //             partBlobs.push(new Blob(chunks));
+            //             // Reset chunks
+            //             chunkSize = 0;
+            //             chunks = [];
+            //         }
+            //     }
+
+            //     if(chunks.length > 0) {
+            //         // Last chunk
+            //         partBlobs.push(new Blob(chunks));
+            //     }
+
+            //     // Concatenate all blobs into one larger part blob
+            //     // Save the blob to decrypted table
+            //     let partBlob = new Blob(partBlobs);
+            //     await saveDownloadDecryptedPart(fuuid, decryptedPartPosition, partBlob);
+            //     decryptedPartPosition += partBlob.size;
+
+            //     position += content.size;
+
+            //     // New transaction
+            //     store = db.transaction(STORE_DOWNLOAD_PARTS, 'readonly').store;
+            //     part = await store.get([fuuid, position]);
+            // }
+
+            // let finalize = await decipher.finalize();
+            // if(finalize && finalize.length > 0) {
+            //     await saveDownloadDecryptedPart(fuuid, decryptedPosition, new Blob([finalize]))
+            // }
+
+            // // Concatenate all decrypted parts from IDB into a single blob
+            // let decryptedFileBlob = await getDecryptedBlob(fuuid);
+
+            // if(!decryptedFileBlob || (decryptedFileBlob.size === 0 && downloadJob.size)) {
+            //     throw new Error('Decrypted file %s size is 0 (empty)');
+            // }
+
+            // await saveDecryptedBlob(fuuid, decryptedFileBlob);
             this.currentJob = null;  // Remove job before callback - allows chaining to next job
             await callback(downloadJob.fuuid, downloadJob.userId, true, downloadJob.size, downloadJob.size);
         } catch(err) {
@@ -161,6 +217,9 @@ export class DownloadDecryptionWorker {
             clearInterval(interval);
             this.currentJob = null;
             this.cancelled = false;
+            // Close file if not already done
+            syncFileHandle?.flush();
+            syncFileHandle?.close();
         }
     }
 
