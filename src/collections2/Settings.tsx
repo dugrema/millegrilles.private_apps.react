@@ -150,12 +150,15 @@ function Cleanup() {
     }, []);
 
     useEffect(()=>{
-        loadEstimate(setStorageUsage).catch(err=>console.error("Error loading storage usage", err));
-        let interval = setInterval(()=>{
+        // @ts-ignore
+        if(navigator.storage.estimate) {
             loadEstimate(setStorageUsage).catch(err=>console.error("Error loading storage usage", err));
-        }, 3_000);
-        return () => {
-            clearInterval(interval);
+            let interval = setInterval(()=>{
+                loadEstimate(setStorageUsage).catch(err=>console.error("Error loading storage usage", err));
+            }, 3_000);
+            return () => {
+                clearInterval(interval);
+            }
         }
     }, []);
 
@@ -198,20 +201,23 @@ function StoragePersistence() {
     }, [setPersistenceState]);
 
     useEffect(()=>{
-
-        navigator.storage.estimate()
-            .then(setEstimate)
-            .catch(err=>console.error("Error loading estimate", err));
-
-        let interval = setInterval(()=>{
+        // @ts-ignore
+        if(navigator.storage.estimate) {
             navigator.storage.estimate()
-            .then(setEstimate)
-            .catch(err=>console.error("Error loading estimate", err));
-        }, 1_500)
+                .then(setEstimate)
+                .catch(err=>console.error("Error loading estimate", err));
 
-        return () => {
-            clearInterval(interval);
+            let interval = setInterval(()=>{
+                navigator.storage.estimate()
+                .then(setEstimate)
+                .catch(err=>console.error("Error loading estimate", err));
+            }, 1_500)
+
+            return () => {
+                clearInterval(interval);
+            }
         }
+
     }, [setEstimate]);
 
     let storageElem = useMemo(()=>{
@@ -257,20 +263,34 @@ function TestArea() {
     }, [workers, ready])
 
     let fsCreateList = useCallback(async () =>{
-        await workers?.directory.testFileSystem1();
+        let error = await workers?.directory.testFileSystem1();
+        if(error) {
+            console.error("Error: ", error);
+            throw new Error(error);
+        }
     }, [workers]);
 
     let fsListDownloads = useCallback(async () =>{
+        if(!navigator.storage.getDirectory) throw new Error('getDirectory not supported');
+
+        console.debug("Getting root directory")
         let root = await navigator.storage.getDirectory();
-        let downloads = await root.getDirectoryHandle('downloads');
-        console.debug("Downloads", downloads);
-        let count = 0;
-        // @ts-ignore
-        for await(let entry of downloads.values()) {
-            console.debug("File entry: ", entry);
-            count++;
+        console.debug("Root directory", root);
+
+        try {
+            let downloads = await root.getDirectoryHandle('downloads');
+            console.debug("Downloads", downloads);
+            let count = 0;
+            // @ts-ignore
+            for await(let entry of downloads.values()) {
+                console.debug("File entry: ", entry);
+                count++;
+            }
+            setDownloadFiles(count);
+        } catch(err) {
+            console.error("Error getting downloads", err);
+            throw new Error(`Error getting downloads: ${err}`);
         }
-        setDownloadFiles(count);
     }, [workers, setDownloadFiles]);
 
     return (

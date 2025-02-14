@@ -170,10 +170,12 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
         let root = await navigator.storage.getDirectory();
         let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
         let fileHandle = await downloadDirectory.getFileHandle(job.fuuid, {create: true});
+        let fileObject = await fileHandle.getFile();
+
         // @ts-ignore
         syncFileHandle = await fileHandle.createSyncAccessHandle();
         if(position > 0) {
-            let fileSize = syncFileHandle.getSize();
+            let fileSize = fileObject.size;
             if(fileSize != position) throw new Error("File position downloading and actual mismatch");
             // Place the file at the correct position to resume the download
             let emptyBuffer = new DataView(new ArrayBuffer(0));;

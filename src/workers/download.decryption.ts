@@ -58,7 +58,7 @@ export class DownloadDecryptionWorker {
         // let decryptedPosition = 0, decryptedPartPosition = 0;
         let decryptedPosition = 0;
         let interval = setInterval(()=>{
-            console.debug("Decrypt position %d/%d", decryptedPosition, downloadJob.size);
+            // console.debug("Decrypt position %s/%s", decryptedPosition, downloadJob.size);
             if(callback && downloadJob.size) {
                 callback(downloadJob.fuuid, downloadJob.userId, false, decryptedPosition, downloadJob.size);
             }
@@ -77,9 +77,12 @@ export class DownloadDecryptionWorker {
             let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
             console.debug("Download directory", downloadDirectory);
             let fileHandle = await downloadDirectory.getFileHandle(fuuid);
+            
+            let fileObject = await fileHandle.getFile();
+            let fileSize = fileObject.size;
+
             // @ts-ignore
             syncFileHandle = await fileHandle.createSyncAccessHandle();
-            let fileSize = syncFileHandle.getSize();
             // let arrayBuffer = new ArrayBuffer(64*1024);
             // let buffer = new DataView(arrayBuffer);
             let buffer = new Uint8Array(64*1024);
@@ -215,7 +218,7 @@ export class DownloadDecryptionWorker {
             try {
                 await saveDecryptionError(fuuid);
             } catch(err) {
-                console.warn("Error marking download for fuuid %sin error(2): %O, removing download", fuuid, err);
+                console.warn("Error marking download for fuuid %s in error(2): %O, removing download", fuuid, err);
                 await removeDownload(fuuid, userId);
             }
             await callback(downloadJob.fuuid, downloadJob.userId, true);
