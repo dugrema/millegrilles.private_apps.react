@@ -1,5 +1,5 @@
 import { DownloadJobType } from './download.worker';
-import { DownloadStateEnum, findDownloadPosition, removeDownloadParts, saveDownloadPart, updateDownloadJobState } from '../collections2/idb/collections2StoreIdb';
+import { DownloadStateEnum, findDownloadPosition, removeDownloadParts, updateDownloadJobState } from '../collections2/idb/collections2StoreIdb';
 import { getIterableStream } from '../collections2/transferUtils';
 
 export type DownloadWorkerCallbackType = (
@@ -132,10 +132,10 @@ export class DownloadThreadWorker {
 
 }
 
-const CONST_SIZE_1MB = 1024 * 1024;
-const CONST_SIZE_1GB = 1024 * 1024 * 1024;
-// Soft limits for chunks and blobs (will get exceeded).
-const CHUNK_SOFT_LIMIT = 1024 * 256;            // Soft limit for chunks in memory
+// const CONST_SIZE_1MB = 1024 * 1024;
+// const CONST_SIZE_1GB = 1024 * 1024 * 1024;
+// // Soft limits for chunks and blobs (will get exceeded).
+// const CHUNK_SOFT_LIMIT = 1024 * 256;            // Soft limit for chunks in memory
 
 /**
  * Stream the response to the Download parts table. 
@@ -176,7 +176,7 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
         syncFileHandle = await fileHandle.createSyncAccessHandle();
         if(position > 0) {
             let fileSize = fileObject.size;
-            if(fileSize != position) throw new Error("File position downloading and actual mismatch");
+            if(fileSize !== position) throw new Error("File position downloading and actual mismatch");
             // Place the file at the correct position to resume the download
             let emptyBuffer = new DataView(new ArrayBuffer(0));;
             syncFileHandle.read(emptyBuffer, {at: position});
@@ -248,19 +248,19 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
     }
 }
 
-function suggestPartSize(fileSize: number | null) {
-    if(!fileSize) {
-        // Unknown file size. Default to 1MB parts.
-        return CONST_SIZE_1MB;
-    }
+// function suggestPartSize(fileSize: number | null) {
+//     if(!fileSize) {
+//         // Unknown file size. Default to 1MB parts.
+//         return CONST_SIZE_1MB;
+//     }
 
-    if(fileSize < 100 * CONST_SIZE_1MB) {       // 100MB
-        return CONST_SIZE_1MB;
-    } else if(fileSize < 10 * CONST_SIZE_1GB){  // 10GB
-        // Recommend parts of 1% of the file size. Gives good granularity for resuming.
-        return Math.floor(fileSize / 100);
-    } else {                                    // >10GB
-        // For anything over 10 GB, clamp to 100MB per part
-        return 100 * CONST_SIZE_1MB;
-    }
-}
+//     if(fileSize < 100 * CONST_SIZE_1MB) {       // 100MB
+//         return CONST_SIZE_1MB;
+//     } else if(fileSize < 10 * CONST_SIZE_1GB){  // 10GB
+//         // Recommend parts of 1% of the file size. Gives good granularity for resuming.
+//         return Math.floor(fileSize / 100);
+//     } else {                                    // >10GB
+//         // For anything over 10 GB, clamp to 100MB per part
+//         return 100 * CONST_SIZE_1MB;
+//     }
+// }

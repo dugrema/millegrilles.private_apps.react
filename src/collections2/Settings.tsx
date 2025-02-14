@@ -1,4 +1,4 @@
-import { ChangeEvent, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import ActionButton from "../resources/ActionButton";
 import { cleanup, testBounds } from "./idb/collections2StoreIdb";
@@ -102,7 +102,7 @@ function FilehostConfiguration() {
         // Save the filehost to local storage and trigger a reconnection
         localStorage.setItem(`filehost_${userId}`, current);
         setFilehostId(current);
-    }, [current, setFilehostId]);
+    }, [current, userId, setFilehostId]);
 
     useEffect(()=>{
         if(!userId) return;
@@ -291,7 +291,7 @@ function TestArea() {
             console.error("Error getting downloads", err);
             throw new Error(`Error getting downloads: ${err}`);
         }
-    }, [workers, setDownloadFiles]);
+    }, [setDownloadFiles]);
 
     return (
         <>

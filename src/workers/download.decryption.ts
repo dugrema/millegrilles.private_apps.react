@@ -1,6 +1,8 @@
 import { encryptionMgs4 } from 'millegrilles.cryptography';
-import { DownloadIdbParts, DownloadIdbType, getDecryptedBlob, openDB, removeDownload, saveDecryptedBlob, saveDecryptionError, saveDownloadDecryptedPart, setDownloadJobComplete, STORE_DOWNLOAD_PARTS} from '../collections2/idb/collections2StoreIdb';
-import { getIterableStream } from '../collections2/transferUtils';
+import { DownloadIdbType, removeDownload, saveDecryptionError, setDownloadJobComplete } from '../collections2/idb/collections2StoreIdb';
+// import { getIterableStream } from '../collections2/transferUtils';
+// import { DownloadIdbParts, DownloadIdbType, getDecryptedBlob, openDB, removeDownload, saveDecryptedBlob, saveDecryptionError, saveDownloadDecryptedPart, setDownloadJobComplete, STORE_DOWNLOAD_PARTS} from '../collections2/idb/collections2StoreIdb';
+// import { getIterableStream } from '../collections2/transferUtils';
 
 export type DecryptionWorkerCallbackType = (
     fuuid: string, 
@@ -10,7 +12,7 @@ export type DecryptionWorkerCallbackType = (
     size?: number | null
 ) => Promise<void>;
 
-const CONST_CHUNK_SOFT_LIMIT = 1024 * 1024;
+// const CONST_CHUNK_SOFT_LIMIT = 1024 * 1024;
 
 export class DownloadDecryptionWorker {
     callback: DecryptionWorkerCallbackType | null
@@ -75,7 +77,7 @@ export class DownloadDecryptionWorker {
             // Open handle to the filesystem
             let root = await navigator.storage.getDirectory();
             let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
-            console.debug("Download directory", downloadDirectory);
+            // console.debug("Download directory", downloadDirectory);
             let fileHandle = await downloadDirectory.getFileHandle(fuuid);
             
             let fileObject = await fileHandle.getFile();
@@ -115,7 +117,7 @@ export class DownloadDecryptionWorker {
                 positionReading += readLen;         // Move read position
             }
 
-            console.debug("Position reading: %s, file size: %s", positionReading, fileSize);
+            // console.debug("Position reading: %s, file size: %s", positionReading, fileSize);
 
             // Finalize decryption
             let finalChunk = await decipher.finalize();
@@ -132,7 +134,7 @@ export class DownloadDecryptionWorker {
             syncFileHandle.close();
             syncFileHandle = null;
 
-            console.debug("File decrypted OK");
+            // console.debug("File decrypted OK");
             await setDownloadJobComplete(fuuid);
     
             // // Open a cursor and iterate through all parts in order
