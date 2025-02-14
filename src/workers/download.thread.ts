@@ -154,7 +154,7 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
     }
 
     // Determine size of parts - dynamic, depends on file size
-    let softPartSize = suggestPartSize(contentLength);
+    // let softPartSize = suggestPartSize(contentLength);
     // console.debug("File size: %d, Part size: %d", contentLength, softPartSize);
 
     let position = initialPosition;

@@ -87,6 +87,7 @@ export class DownloadDecryptionWorker {
             // Read the encrypted content then write the decrypted content back in place (same file).
             // Avoids having to use double the disk space to decrypt the file.
             let positionReading = 0;
+            let chunkCount = 0;
             while(positionReading < fileSize) {
                 if(decryptedPosition > positionReading) throw new Error("Overlap in reading/writing positions");
                 if(this.cancelled) {
@@ -100,6 +101,12 @@ export class DownloadDecryptionWorker {
                 if(cleartext) {
                     let writeLen = syncFileHandle.write(cleartext, {at: decryptedPosition});
                     decryptedPosition += writeLen;    // Move write position
+                }
+
+                if(chunkCount++ >= 50) {
+                    chunkCount = 0;
+                    // Throttle a bit to let other promises execute (e.g. callback)
+                    await new Promise(resolve=>setTimeout(resolve, 0));
                 }
 
                 positionReading += readLen;         // Move read position

@@ -635,19 +635,30 @@ export async function saveDecryptionError(fuuid: string) {
  * @param fuuid File parts to look for.
  */
 export async function findDownloadPosition(fuuid: string): Promise<number | null> {
-    const db = await openDB();
-    const store = db.transaction(STORE_DOWNLOAD_PARTS, 'readonly').store;
+    let root = await navigator.storage.getDirectory();
+    let downloadDirectory = await root.getDirectoryHandle('downloads');
+    try {
+        let currentDownload = await downloadDirectory.getFileHandle(fuuid);
+        let file = await currentDownload.getFile();
+        return file.size;
+    } catch(err) {
+        // File does not exist
+        return null;
+    }
 
-    // Open the index in reverse. We want the last value (it is sorted by position).
-    // Ignore the position 0 (open: true).
-    let cursor = await store.openCursor(IDBKeyRange.lowerBound([fuuid, 0], true), 'prev');
-    let lastValue = cursor?.value as DownloadIdbParts;
+    // const db = await openDB();
+    // const store = db.transaction(STORE_DOWNLOAD_PARTS, 'readonly').store;
 
-    if(!lastValue) return null;
+    // // Open the index in reverse. We want the last value (it is sorted by position).
+    // // Ignore the position 0 (open: true).
+    // let cursor = await store.openCursor(IDBKeyRange.lowerBound([fuuid, 0], true), 'prev');
+    // let lastValue = cursor?.value as DownloadIdbParts;
 
-    let position = lastValue.position;
-    let size = lastValue.content.size;
-    return position + size;
+    // if(!lastValue) return null;
+
+    // let position = lastValue.position;
+    // let size = lastValue.content.size;
+    // return position + size;
 }
 
 export async function getDownloadJobs(userId: string): Promise<DownloadJobType[]> {
