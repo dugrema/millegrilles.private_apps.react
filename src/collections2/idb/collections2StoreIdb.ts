@@ -636,8 +636,8 @@ export async function saveDecryptionError(fuuid: string) {
  */
 export async function findDownloadPosition(fuuid: string): Promise<number | null> {
     let root = await navigator.storage.getDirectory();
-    let downloadDirectory = await root.getDirectoryHandle('downloads');
     try {
+        let downloadDirectory = await root.getDirectoryHandle('downloads');
         let currentDownload = await downloadDirectory.getFileHandle(fuuid);
         let file = await currentDownload.getFile();
         return file.size;
