@@ -177,9 +177,6 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
         if(position > 0) {
             let fileSize = fileObject.size;
             if(fileSize !== position) throw new Error("File position downloading and actual mismatch");
-            // Place the file at the correct position to resume the download
-            let emptyBuffer = new DataView(new ArrayBuffer(0));;
-            syncFileHandle.read(emptyBuffer, {at: position});
         }
 
         for await (const chunk of stream) {
@@ -242,9 +239,9 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
         // Done
         statusCallback(position, contentLength);
     } finally {
+        clearInterval(interval);
         syncFileHandle?.flush();
         syncFileHandle?.close();
-        clearInterval(interval);
     }
 }
 
