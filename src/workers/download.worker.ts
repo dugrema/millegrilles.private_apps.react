@@ -103,11 +103,6 @@ export class AppsDownloadWorker {
         }
     }
 
-    async unregister(stateCallback: DownloadStateCallback) {
-        console.debug("unregister ", stateCallback);
-        //TODO
-    }
-
     async downloadCallback(fuuid: string, userId: string, done: boolean, position?: number | null, size?: number | null) {
         // console.debug("Download worker callback fuuid: %s, userId: %s, done: %O, position: %d, size: %d", fuuid, userId, done, position, size);
         if(done) {
@@ -141,12 +136,6 @@ export class AppsDownloadWorker {
         }
     }
     
-    // async stopWorker() {
-    //     let interval = this.intervalMaintenance;
-    //     this.intervalMaintenance = null;
-    //     if(interval) clearInterval(interval);
-    // }
-
     /** The filehost connection is maintained by DirectoryWorker. */
     async setFilehost(filehost: FilehostDirType | null) {
         console.info("Setting filehost URL for download: ", filehost?.url);
@@ -357,27 +346,6 @@ export class AppsDownloadWorker {
     maintain() {
         this.triggerJobs()
             .catch(err=>console.error("Error triggering jobs", err));
-        this.maintainCallbacks()
-            .catch(err=>console.error("Error maintaining callbacks", err));
-    }
-
-    // HACK: Remove callbacks that no longer respond
-    // TODO: Find way to unregister the callbacks directly, or at least a proper test.
-    async maintainCallbacks() {
-        // console.debug("Callback check, count %d", this.stateCallbacks.length);
-        // let list = [] as DownloadStateCallback[];
-        // for await(let cb of this.stateCallbacks) {
-        //     // console.debug("Callback found");
-        //     await new Promise((resolve) => {
-        //         setTimeout(resolve, 100);
-        //         cb({}).then(()=>{
-        //             list.push(cb);  // Keep
-        //             resolve(null);
-        //         })
-        //     });
-        // }
-        // this.stateCallbacks = list;  // Update liste to keep
-        // console.debug("Callback check, count after %d", this.stateCallbacks.length);
     }
 
     /** Allows any process to use the shared worker to trigger a list reload. */
@@ -392,7 +360,6 @@ export class AppsDownloadWorker {
         this.fuuidsReady = null;
         return fuuidsReady;
     }
-
 }
 
 export type DownloadJobType = DownloadIdbType & {

@@ -14,7 +14,7 @@ export type AppWorkers = {
     connection: Remote<AppsConnectionWorker>,
     encryption: Remote<AppsEncryptionWorker>,
     directory: Remote<DirectoryWorker>,
-    download: Remote<AppsDownloadWorker>,
+    download: Remote<AppsDownloadWorker> | AppsDownloadWorker,
     upload: Remote<AppsUploadWorker>,
     sharedTransfer: Remote<SharedTransferHandler> | null,
 };
@@ -53,11 +53,13 @@ export async function initWorkers(
     let directoryWorker = new Worker(new URL('./directory.worker.ts', import.meta.url));
     let directory = wrap(directoryWorker) as Remote<DirectoryWorker>;
 
-    let downloadWorker = new Worker(new URL('./download.dedicated.ts', import.meta.url));
-    let download = wrap(downloadWorker) as Remote<AppsDownloadWorker>;
-
     let uploadWorker = new Worker(new URL('./upload.dedicated.ts', import.meta.url));
     let upload = wrap(uploadWorker) as Remote<AppsUploadWorker>;
+
+    // let downloadWorker = new Worker(new URL('./download.dedicated.ts', import.meta.url));
+    // let download = wrap(downloadWorker) as Remote<AppsDownloadWorker>;
+    // Using this approach for safari on iOS16.7+. Spawns 2 sub-workers so the impact is limited.
+    let download = new AppsDownloadWorker();
 
     // Optional - a Shared Transfer worker, distributes updates across browser tabs.
     let sharedTransferHandler = null as Remote<SharedTransferHandler> | null;
