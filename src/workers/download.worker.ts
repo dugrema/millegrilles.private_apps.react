@@ -58,8 +58,15 @@ export class AppsDownloadWorker {
         this.stateCallback = stateCallback;
         this.sharedMode = sharedMode;
 
-        // This is a shared worker. Only create instances if not already done.
-        if(!this.downloadWorker) {
+        let spawnSupported = false;
+        try {
+            spawnSupported = !!Worker;
+        } catch(err) {
+            console.info("Spawning sub-workers is not supported");
+        }
+
+        if(spawnSupported) {
+            // Try spawning dedicated sub-workers
             try {
                 let downloadThreadWorker = new Worker(new URL('download.worker_thread.ts', import.meta.url));
                 this.downloadWorker = wrap(downloadThreadWorker);
@@ -67,12 +74,8 @@ export class AppsDownloadWorker {
             } catch(err) {
                 // Support using class directly if starting a Dedicated Worker from another worker fails (e.g. on iOS).
                 console.warn("Error starting a Dedicated WebWorker, using direct instanciation", err);
-                let {DownloadThreadWorker}  = await import('./download.thread');
-                this.downloadWorker = new DownloadThreadWorker();
             }
-            await this.downloadWorker.setup(this.downloadStateCallbackProxy);
-        }
-        if(!this.decryptionWorker) {
+            
             try {
                 let decryptionWorker = new Worker(new URL('./download.worker_decryption.ts', import.meta.url));
                 this.decryptionWorker = wrap(decryptionWorker);
@@ -80,11 +83,20 @@ export class AppsDownloadWorker {
             } catch(err) {
                 // Support using class directly if starting a Dedicated Worker from another worker fails (e.g. on iOS).
                 console.warn("Error starting a Dedicated WebWorker, using direct instanciation", err);
-                let {DownloadDecryptionWorker}  = await import('./download.decryption');
-                this.decryptionWorker = new DownloadDecryptionWorker({dedicated: false});
             }
-            await this.decryptionWorker.setup(this.decryptionStateCallbackProxy);
         }
+
+        if(!this.downloadWorker) {
+            let {DownloadThreadWorker}  = await import('./download.thread');
+            this.downloadWorker = new DownloadThreadWorker();
+        }
+        if(!this.decryptionWorker) {
+            let {DownloadDecryptionWorker}  = await import('./download.decryption');
+            this.decryptionWorker = new DownloadDecryptionWorker({dedicated: true});
+        }
+
+        await this.downloadWorker.setup(this.downloadStateCallbackProxy);
+        await this.decryptionWorker.setup(this.decryptionStateCallbackProxy);
 
         if(!this.intervalMaintenance) {
             this.intervalMaintenance = setInterval(()=>this.maintain(), 20_000);
