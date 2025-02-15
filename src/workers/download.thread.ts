@@ -51,7 +51,7 @@ export class DownloadThreadWorker {
     }
 
     async isBusy(): Promise<boolean> {
-        // if(!!this.currentJob) return true;
+        if(!!this.currentJob) return true;
 
         // Use site level lock in the browser as second level check
         let busy = await navigator.locks.request(CONST_WORKER_DOWNLOAD_LOCK, {ifAvailable: true}, async lock => {

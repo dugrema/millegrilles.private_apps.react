@@ -39,7 +39,7 @@ export class DownloadDecryptionWorker {
     }
 
     async isBusy() {
-        // if(!!this.currentJob) return true;
+        if(!!this.currentJob) return true;
 
         // Use site level lock in the browser as second level check
         let busy = await navigator.locks.request(CONST_WORKER_DECRYPTION_LOCK, {ifAvailable: true}, async lock => {

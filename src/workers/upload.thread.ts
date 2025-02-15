@@ -3,6 +3,8 @@ import { getUploadPart, removeUploadParts, updateUploadJobState, UploadStateEnum
 import { UploadJobType } from './upload.worker';
 import { THROTTLE_UPLOAD } from './encryptionUtils';
 
+const CONST_WORKER_UPLOAD_LOCK = 'worker_upload';
+
 export type UploadWorkerCallbackType = (
     uploadId: number, 
     userId: string, 
@@ -65,10 +67,29 @@ export class UploadThreadWorker {
     }
 
     async isBusy(): Promise<boolean> {
-        return !!this.currentJob;
+        if(!!this.currentJob) return true;
+
+        // Use site level lock in the browser as second level check
+        let busy = await navigator.locks.request(CONST_WORKER_UPLOAD_LOCK, {ifAvailable: true}, async lock => {
+            // console.debug("Lock check: %s, %O", lock?.name, lock?.mode);
+            if(!lock) return true;  // Busy
+            return false;
+        });
+
+        return busy;
     }
 
     async processJob() {
+        await navigator.locks.request(CONST_WORKER_UPLOAD_LOCK, {ifAvailable: true}, async lock => {
+            // console.debug("Lock check before job: %s, %O", lock?.name, lock?.mode);
+            if(!lock) throw new Error('Busy');  // Busy
+
+            // Run the job, the lock is exclusive and will prevent dedicated workers in other tables from processing.
+            await this._processJob();
+        });
+    }
+
+    async _processJob() {
         let currentJob = this.currentJob;
         let callback = this.callback;
 
