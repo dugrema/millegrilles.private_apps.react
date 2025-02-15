@@ -13,6 +13,7 @@ export class SharedTransferHandler {
     uploadCallbacks: UploadStateCallback[]
     downloadCallbacks: DownloadStateCallback[]
     intervalMaintain: ReturnType<typeof setInterval>
+    uploadsSendCommand: number[] | null    // List of uploads that need the connectionWorker to send the add file command.
 
     constructor() {
         this.uploadWorkers = [];
@@ -20,6 +21,7 @@ export class SharedTransferHandler {
         this.uploadCallbacks = [];
         this.downloadCallbacks = [];
         this.intervalMaintain = setInterval(()=>this.maintain(), 10_000);
+        this.uploadsSendCommand = null;
     }
 
     async addCallbacks(uploadStateCallback: UploadStateCallback, downloadStateCallback: DownloadStateCallback) 
@@ -30,6 +32,22 @@ export class SharedTransferHandler {
 
     async uploadStateCallback(state: UploadStateUpdateType) {
         // console.debug("Shared upload state update: ", state);
+
+        // Intercept shared content
+        let sharedContent = state.sharedContent;
+        if(sharedContent) {
+            delete state.sharedContent;  // Content consumed
+            if(sharedContent.uploadsSendCommand) {
+                console.debug("Interception send command", sharedContent.uploadsSendCommand);
+                if(this.uploadsSendCommand) {
+                    // Concatenate
+                    this.uploadsSendCommand = [...this.uploadsSendCommand, ...sharedContent.uploadsSendCommand];
+                } else {
+                    this.uploadsSendCommand = sharedContent.uploadsSendCommand;
+                }
+            }
+        }
+
         for(let cb of this.uploadCallbacks) {
             cb(state);  // Note: no error check or await, this may hang if port is closed. Will be handled in maintenance().
         }
@@ -40,6 +58,13 @@ export class SharedTransferHandler {
         for(let cb of this.downloadCallbacks) {
             cb(state);  // Note: no error check or await, this may hang if port is closed. Will be handled in maintenance().
         }
+    }
+
+    /** Consume the list of uploadIds that need the AddFile command from the connection worker. */
+    async getUploadsSendCommand() {
+        let uploadsSendCommand = this.uploadsSendCommand;
+        this.uploadsSendCommand = null;
+        return uploadsSendCommand;
     }
 
     async maintain() {

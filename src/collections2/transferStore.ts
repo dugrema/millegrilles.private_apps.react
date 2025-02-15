@@ -52,12 +52,17 @@ export enum UploadWorkerType {
 
 export type UploadTransferProgress = {workerType: UploadWorkerType, uploadId: number, state: UploadStateEnum, position: number, totalSize: number};
 
+export type UploadStateUpdateSharedType = {
+    uploadsSendCommand?: number[],
+};
+
 /** Used to update the download state from the worker. */
 export type UploadStateUpdateType = {
     activity?: TransferActivity | null,             // Overall upload state.
     transferPercent?: number | null,                // Overall progress of uploads. Excludes Paused and also Done since before last reset/100%.
     activeTransfers?: UploadTransferProgress[],     // State of transfers in workers (upload, encryption).
     listChanged?: boolean,                          // Transfers added/removed.
+    sharedContent?: UploadStateUpdateSharedType,    // Content meant to be intercepted by the shared worker
 };
 
 export type UploadJobStoreType = {

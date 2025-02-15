@@ -1,6 +1,6 @@
 import { proxy, Remote, wrap } from "comlink";
 import { getNextUploadReadyJob, getUploadJob, removeUserUploads, updateUploadJobState, UploadIdbType, UploadStateEnum } from "../collections2/idb/collections2StoreIdb";
-import { UploadStateUpdateType, UploadTransferProgress, UploadWorkerType } from "../collections2/transferStore";
+import { UploadStateUpdateSharedType, UploadStateUpdateType, UploadTransferProgress, UploadWorkerType } from "../collections2/transferStore";
 import { FilehostDirType } from "./directory.worker";
 import { UploadThreadWorker, UploadWorkerCallbackType } from "./upload.thread";
 import { EncryptionWorkerCallbackType, UploadEncryptionWorker } from "./upload.encryption";
@@ -21,6 +21,7 @@ export class AppsUploadWorker {
     listChanged: boolean
     uploadsSendCommand: number[] | null    // List of uploads that need the connectionWorker to send the add file command.
     pauseUploads: boolean
+    sharedMode: boolean
 
     constructor() {
         this.currentUserId = null;
@@ -45,10 +46,12 @@ export class AppsUploadWorker {
         this.listChanged = true;
         this.uploadsSendCommand = null;
         this.pauseUploads = false;
+        this.sharedMode = false;
     }
 
-    async setup(stateCallback: UploadStateCallback, caPem: string) {
+    async setup(stateCallback: UploadStateCallback, caPem: string, sharedMode: boolean) {
         this.stateCallback = stateCallback;
+        this.sharedMode = sharedMode;
         // console.debug("UPLOAD callback count: ", this.stateCallbacks.length);
 
         // This is a shared worker. Only create instances if not already done.
@@ -115,14 +118,14 @@ export class AppsUploadWorker {
     async encryptionCallback(uploadId: number, userId: string, done: boolean, position?: number | null, size?: number | null, stateChanged?: boolean | null) {
         // console.debug("Encryption worker callback uploadId: %d, userId: %s, done: %O, position: %d, size: %d", uploadId, userId, done, position, size);
         if(done) {
-            // Start next download job (if any). Also does a produceState()
             this.encryptionStatus = null;
             this.listChanged = true;
             
-            // Add uploadId to list of AddFile command to send
+            // Add uploadId to list of AddFile command to send. In shared mode, this is handled by the shared worker.
             if(this.uploadsSendCommand) this.uploadsSendCommand.push(uploadId);
             else this.uploadsSendCommand = [uploadId];
             
+            // Start next download job (if any). Also does a produceState()
             this.triggerJobs().catch(err=>console.error("encryptionCallback Error on triggerJobs", err));
             await this.triggerListChanged();
         } else {
@@ -297,6 +300,16 @@ export class AppsUploadWorker {
         if(this.listChanged) update.listChanged = true;
         this.listChanged = false;
         
+        if(this.sharedMode) {
+            // Additional content for the shared worker
+            let sharedContent = {} as UploadStateUpdateSharedType;
+            if(this.uploadsSendCommand) {
+                sharedContent.uploadsSendCommand = this.uploadsSendCommand;
+                this.uploadsSendCommand = null;
+            }
+            update.sharedContent = sharedContent;
+        }
+
         this.stateCallback(update).catch(err=>console.error("Error on upload produceState callback", err));
     }
 

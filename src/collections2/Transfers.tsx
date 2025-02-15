@@ -150,33 +150,41 @@ export function SyncUploads() {
 
     useEffect(()=>{
         if(!workers || !ready || !userId || !jobsReady) return;  // Nothing to do
-        let {connection, upload} = workers;
-        workers.upload.getUploadsSendCommand()
-            .then( async uploadIds => {
-                // console.debug("Uploads send command: %O", uploadIds);
-                if(!uploadIds || !userId) return;  // Nothing to do
-                for(let uploadId of uploadIds) {
-                    // console.debug("Trigger send upload command of %d", uploadId);
-                    let job = await getUploadJob(uploadId);
-                    if(job) {
-                        // console.debug("Send command for upload job", job);
-                        if(job.addCommand && job.keyCommand) {
-                            // Send Add File command and set upload to ready.
-                            await connection.collection2AddFile(job.addCommand, job.keyCommand);
-                            await updateUploadJobState(job.uploadId, UploadStateEnum.READY);
-                            await upload.triggerListChanged();
-                        } else {
-                            console.warn("Error on jobId:%s, no add/key commands present", job.uploadId);
-                        }
-                    } else {
-                        console.warn("No job found to download fuuid:%s", uploadId);
-                    }
-                }
+        let {connection, upload, sharedTransfer} = workers;
+        
+        // Select the shared worker when present. This ensures only one active process handles the job.
+        let promise = null;
+        if(sharedTransfer) {
+            promise = sharedTransfer.getUploadsSendCommand();
+        } else {
+            promise = upload.getUploadsSendCommand();
+        }
 
-                // Make sure the worker picks up the new jobs from IDB
-                await upload.triggerJobs();
-            })
-            .catch(err=>console.error("Error getting fuuids to download", err));
+        promise.then( async uploadIds => {
+            // console.debug("Uploads send command: %O", uploadIds);
+            if(!uploadIds || !userId) return;  // Nothing to do
+            for(let uploadId of uploadIds) {
+                // console.debug("Trigger send upload command of %d", uploadId);
+                let job = await getUploadJob(uploadId);
+                if(job) {
+                    // console.debug("Send command for upload job", job);
+                    if(job.addCommand && job.keyCommand) {
+                        // Send Add File command and set upload to ready.
+                        await connection.collection2AddFile(job.addCommand, job.keyCommand);
+                        await updateUploadJobState(job.uploadId, UploadStateEnum.READY);
+                        await upload.triggerListChanged();
+                    } else {
+                        console.warn("Error on jobId:%s, no add/key commands present", job.uploadId);
+                    }
+                } else {
+                    console.warn("No job found to download fuuid:%s", uploadId);
+                }
+            }
+
+            // Make sure the worker picks up the new jobs from IDB
+            await upload.triggerJobs();
+        })
+        .catch(err=>console.error("Error getting fuuids to download", err));
     }, [workers, ready, jobsReady, userId]);
 
     // Pause or resume uploads
