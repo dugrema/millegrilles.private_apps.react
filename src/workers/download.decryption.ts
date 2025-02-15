@@ -121,6 +121,9 @@ export class DownloadDecryptionWorker {
      */
     async decryptInPlace(downloadJob: DownloadIdbType, fileHandle: FileSystemFileHandle) {
         
+        // @ts-ignore
+        if(!fileHandle.createSyncAccessHandle) throw new Error('Sync access to file not available');
+
         let fileObject = await fileHandle.getFile();
         let fileSize = fileObject.size;
 

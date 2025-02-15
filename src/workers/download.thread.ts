@@ -136,7 +136,7 @@ export class DownloadThreadWorker {
             this.currentJob = null;  // Remove job before callback - allows chaining to next job
             await callback(currentJob.fuuid, currentJob.userId, true, positionOuter, positionOuter);
         } catch(err) {
-            console.error("Download job error: ", err);
+            console.error("Download job error: ", ''+err);
             if(this.abortController?.signal.aborted) {
                 // Download has been cancelled - not an error
             } else {
@@ -175,27 +175,46 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
     // Regular feedback
     let interval = setInterval(()=>statusCallback(position, contentLength), 750);
 
+    // Using sync handle preferably when available (dedicated worker). 
+    // Falling back to write handle (not avaiable on iOS).
     // @ts-ignore
     let writeFileHandle = null as FileSystemWritableFileStream | null;
+    // @ts-ignore
+    let syncFileHandle = null as FileSystemSyncAccessHandle | null;
     try {
         let root = await navigator.storage.getDirectory();
         let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
         let fileHandle = await downloadDirectory.getFileHandle(job.fuuid, {create: true});
         let fileObject = await fileHandle.getFile();
 
-        // syncFileHandle = await fileHandle.createSyncAccessHandle();
         if(position > 0) {
             let fileSize = fileObject.size;
             if(fileSize !== position) throw new Error("File position downloading and actual mismatch");
         }
         // @ts-ignore
-        writeFileHandle = await fileHandle.createWritable({keepExistingData: true});
+        if(!!fileHandle.createSyncAccessHandle) {
+            // @ts-ignore
+            syncFileHandle = await fileHandle.createSyncAccessHandle();
+        }
+        // @ts-ignore
+        else if(!!fileHandle.createWritable) {
+            // @ts-ignore
+            writeFileHandle = await fileHandle.createWritable({keepExistingData: true});
+        } else {
+            throw new Error('No write method available');
+        }
+
+        console.debug("Writable created");
 
         let reader = response.body.getReader();
         let streamResult = await reader.read();
         while(!streamResult.done) {
             if(streamResult.value) {
-                await writeFileHandle.write(streamResult.value);
+                if(syncFileHandle) {
+                    syncFileHandle.write(streamResult.value, {at: position});
+                } else if(writeFileHandle) {
+                    await writeFileHandle.write(streamResult.value);
+                }
                 position += streamResult.value.length;
             }
             streamResult = await reader.read();
@@ -205,6 +224,10 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
         statusCallback(position, contentLength);
     } finally {
         clearInterval(interval);
+        if(syncFileHandle) {
+            syncFileHandle.flush();
+            syncFileHandle.close();
+        }
         if(writeFileHandle) {
             await writeFileHandle.close();
         }
