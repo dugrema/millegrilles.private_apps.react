@@ -13,7 +13,8 @@ export class SharedTransferHandler {
     uploadCallbacks: UploadStateCallback[]
     downloadCallbacks: DownloadStateCallback[]
     intervalMaintain: ReturnType<typeof setInterval>
-    uploadsSendCommand: number[] | null    // List of uploads that need the connectionWorker to send the add file command.
+    uploadsSendCommand: number[] | null     // List of uploads that need the connectionWorker to send the add file command.
+    fuuidsReady: string[] | null            // List of files for which the download just completed
 
     constructor() {
         this.uploadWorkers = [];
@@ -22,6 +23,7 @@ export class SharedTransferHandler {
         this.downloadCallbacks = [];
         this.intervalMaintain = setInterval(()=>this.maintain(), 10_000);
         this.uploadsSendCommand = null;
+        this.fuuidsReady = null;
     }
 
     async addCallbacks(uploadStateCallback: UploadStateCallback, downloadStateCallback: DownloadStateCallback) 
@@ -38,13 +40,8 @@ export class SharedTransferHandler {
         if(sharedContent) {
             delete state.sharedContent;  // Content consumed
             if(sharedContent.uploadsSendCommand) {
-                console.debug("Interception send command", sharedContent.uploadsSendCommand);
-                if(this.uploadsSendCommand) {
-                    // Concatenate
-                    this.uploadsSendCommand = [...this.uploadsSendCommand, ...sharedContent.uploadsSendCommand];
-                } else {
-                    this.uploadsSendCommand = sharedContent.uploadsSendCommand;
-                }
+                // console.debug("Intercepting send command", sharedContent.uploadsSendCommand);
+                this.uploadsSendCommand = [...this.uploadsSendCommand || [], ...sharedContent.uploadsSendCommand];
             }
         }
 
@@ -55,6 +52,17 @@ export class SharedTransferHandler {
 
     async downloadStateCallback(state: DownloadStateUpdateType) {
         // console.debug("Shared download state update: ", state);
+
+        // Intercept shared content
+        let sharedContent = state.sharedContent;
+        if(sharedContent) {
+            delete state.sharedContent;  // Content consumed
+            if(sharedContent.fuuidsReady) {
+                // console.debug("Intercepting send command", sharedContent.uploadsSendCommand);
+                this.fuuidsReady = [...this.fuuidsReady || [], ...sharedContent.fuuidsReady];
+            }
+        }
+
         for(let cb of this.downloadCallbacks) {
             cb(state);  // Note: no error check or await, this may hang if port is closed. Will be handled in maintenance().
         }
@@ -65,6 +73,13 @@ export class SharedTransferHandler {
         let uploadsSendCommand = this.uploadsSendCommand;
         this.uploadsSendCommand = null;
         return uploadsSendCommand;
+    }
+
+    /** Consume the list of fuuids that are ready to be automatically downloaded. */
+    async getFuuidsReady() {
+        let fuuidsReady = this.fuuidsReady;
+        this.fuuidsReady = null;
+        return fuuidsReady;
     }
 
     async maintain() {

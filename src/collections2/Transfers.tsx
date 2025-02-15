@@ -61,33 +61,38 @@ export function SyncDownloads() {
 
     useEffect(()=>{
         if(!workers || !ready || !userId || !jobsDirty) return;  // Nothing to do
-        workers.download.getFuuidsReady()
-            .then( async fuuidsReady => {
-                if(!fuuidsReady || !userId) return;  // Nothing to do
-                for(let fuuid of fuuidsReady) {
-                    // console.debug("Trigger download of ", fuuid);
-                    let job = await getDownloadJob(userId, fuuid);
-                    if(job) {
 
-                        // // Load file from storage
-                        // let root = await navigator.storage.getDirectory();
-                        // let downloadDirectory = await root.getDirectoryHandle('downloads', {create: true});
-                        // let fileHandle = await downloadDirectory.getFileHandle(fuuid);
+        let {download, sharedTransfer} = workers;
+
+        // Select the shared worker when present. This ensures only one active process handles the job.
+        let promise = null;
+        if(sharedTransfer) {
+            promise = sharedTransfer.getFuuidsReady();
+        } else {
+            promise = download.getFuuidsReady();
+        }
+
+        promise.then( async fuuidsReady => {
+            if(!fuuidsReady || !userId) return;  // Nothing to do
+            for(let fuuid of fuuidsReady) {
+                // console.debug("Trigger download of ", fuuid);
+                let job = await getDownloadJob(userId, fuuid);
+                if(job) {
+                    // Load file from storage
+                    if(job.state === DownloadStateEnum.DONE) {
                         let content = await getDownloadContent(fuuid, userId)
                         if(content) {
                             downloadFile(job.filename, content);
                         }
-                        // if(job.content) {
-                        //     downloadFile(job.filename, job.content);
-                        // } else {
-                        //     console.error("No content to download found for fuuid:%s", fuuid)
-                        // }
                     } else {
-                        console.warn("No job found to download fuuid:%s", fuuid);
+                        console.warn("Download %s requested but not ready", job.filename);
                     }
+                } else {
+                    console.warn("No job found to download fuuid:%s", fuuid);
                 }
-            })
-            .catch(err=>console.error("Error getting fuuids to download", err));
+            }
+        })
+        .catch(err=>console.error("Error getting fuuids to download", err));
     }, [workers, ready, jobsDirty, userId]);
 
     return <></>;

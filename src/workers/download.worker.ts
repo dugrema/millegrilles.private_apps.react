@@ -5,7 +5,7 @@ import { DecryptionWorkerCallbackType, DownloadDecryptionWorker } from './downlo
 import { addDownload, DownloadIdbType, DownloadStateEnum, FileVideoData, getDownloadContent, getDownloadJob, getNextDecryptionJob, getNextDownloadJob, removeDownload, restartNextJobInError, updateDownloadJobState } from '../collections2/idb/collections2StoreIdb';
 import { createDownloadEntryFromFile, createDownloadEntryFromVideo } from '../collections2/transferUtils';
 import { FilehostDirType } from './directory.worker';
-import { DownloadStateUpdateType, DownloadTransferProgress, DownloadWorkerType } from '../collections2/transferStore';
+import { DownloadStateUpdateSharedType, DownloadStateUpdateType, DownloadTransferProgress, DownloadWorkerType } from '../collections2/transferStore';
 
 export type DownloadStateCallback = (state: DownloadStateUpdateType)=>Promise<void>;
 
@@ -24,6 +24,7 @@ export class AppsDownloadWorker {
     fuuidsReady: string[] | null    // List of files for which the download just completed
     triggerDebounceTimeout: ReturnType<typeof setTimeout> | null;
     pauseDownloads: boolean
+    sharedMode: boolean
 
     constructor() {
         this.currentUserId = null;
@@ -50,10 +51,12 @@ export class AppsDownloadWorker {
 
         this.triggerDebounceTimeout = null;
         this.pauseDownloads = false;
+        this.sharedMode = false;
     }
 
-    async setup(stateCallback: DownloadStateCallback) {
+    async setup(stateCallback: DownloadStateCallback, sharedMode: boolean) {
         this.stateCallback = stateCallback;
+        this.sharedMode = sharedMode;
 
         // This is a shared worker. Only create instances if not already done.
         if(!this.downloadWorker) {
@@ -316,6 +319,7 @@ export class AppsDownloadWorker {
             console.warn("Download state callback not initialized");
             return;
         }
+
         let stateList = [] as DownloadTransferProgress[];
         if(this.downloadStatus) stateList.push(this.downloadStatus);
         if(this.decryptionStatus) stateList.push(this.decryptionStatus);
@@ -324,7 +328,17 @@ export class AppsDownloadWorker {
         // Reset listChanged
         if(this.listChanged) update.listChanged = true;
         this.listChanged = false;
-        
+
+        if(this.sharedMode) {
+            // Additional content for the shared worker
+            let sharedContent = {} as DownloadStateUpdateSharedType;
+            if(this.fuuidsReady) {
+                sharedContent.fuuidsReady = this.fuuidsReady;
+                this.fuuidsReady = null;
+            }
+            update.sharedContent = sharedContent;
+        }
+
         this.stateCallback(update);
     }
 

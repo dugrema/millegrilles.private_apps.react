@@ -79,13 +79,13 @@ export async function initWorkers(
         await download.setup(proxy((state)=>{
             if(!sharedTransferHandler) throw new Error('sharedTransferHandler null');
             return sharedTransferHandler.downloadStateCallback(state);
-        }));
+        }), true);
         await upload.setup(proxy((state)=>{
             if(!sharedTransferHandler) throw new Error('sharedTransferHandler null');
             return sharedTransferHandler.uploadStateCallback(state);
         }), ca, true);
     } else {
-        await download.setup(downloadStateCallback);
+        await download.setup(downloadStateCallback, false);
         await upload.setup(uploadStateCallback, ca, false);
     }
     await upload.setEncryptionKeys(chiffrage);

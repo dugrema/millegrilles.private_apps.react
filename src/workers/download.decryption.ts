@@ -1,6 +1,8 @@
 import { encryptionMgs4 } from 'millegrilles.cryptography';
 import { DownloadIdbType, removeDownload, saveDecryptionError, setDownloadJobComplete } from '../collections2/idb/collections2StoreIdb';
 
+const CONST_WORKER_DECRYPTION_LOCK = 'worker_decryption';
+
 export type DecryptionWorkerCallbackType = (
     fuuid: string, 
     userId: string, 
@@ -37,10 +39,29 @@ export class DownloadDecryptionWorker {
     }
 
     async isBusy() {
-        return !!this.currentJob;
+        // if(!!this.currentJob) return true;
+
+        // Use site level lock in the browser as second level check
+        let busy = await navigator.locks.request(CONST_WORKER_DECRYPTION_LOCK, {ifAvailable: true}, async lock => {
+            // console.debug("Lock check: %s, %O", lock?.name, lock?.mode);
+            if(!lock) return true;  // Busy
+            return false;
+        });
+
+        return busy;
     }
 
     async decryptContent(downloadJob: DownloadIdbType) {
+        await navigator.locks.request(CONST_WORKER_DECRYPTION_LOCK, {ifAvailable: true}, async lock => {
+            // console.debug("Lock check before job: %s, %O", lock?.name, lock?.mode);
+            if(!lock) throw new Error('Busy');  // Busy
+
+            // Run the job, the lock is exclusive and will prevent dedicated workers in other tables from processing.
+            await this._decryptContent(downloadJob);
+        });
+    }
+
+    async _decryptContent(downloadJob: DownloadIdbType) {
         if(this.currentJob) throw new Error('Busy');
         if(downloadJob.format !== 'mgs4') {
             throw new Error('Unsupported encryption format: ' + downloadJob.format);

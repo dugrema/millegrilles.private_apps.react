@@ -187,9 +187,9 @@ export class UploadThreadWorker {
         // successfully uploaded. The flag in IDB remains VERIFYING until then. 
         // Manual cleanup may be necessary upon failure. This allows retrying the upload.
         let result = await Promise.race([processFilePromise, timeoutPromise]);
-        console.debug("Race result: ", result);
+        // console.debug("Race result: ", result);
         if(!result) {
-            console.debug("Timeout waiting for file response, moving to next upload");
+            console.info("Timeout waiting for file verification, moving to next upload");
 
             // Attach a job complete callback and error handler on the dangling download process
             let userId = currentJob.userId;

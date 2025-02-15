@@ -20,12 +20,17 @@ export enum DownloadWorkerType {
 
 export type DownloadTransferProgress = {workerType: DownloadWorkerType, fuuid: string, state: DownloadStateEnum, position: number, totalSize: number};
 
+export type DownloadStateUpdateSharedType = {
+    fuuidsReady?: string[],
+};
+
 /** Used to update the download state from the worker. */
 export type DownloadStateUpdateType = {
-    activity?: TransferActivity | null,     // Overall download state.
-    transferPercent?: number | null,        // Overall progress of downloads. Excludes Paused and also Done since before last reset/100%.
+    activity?: TransferActivity | null,             // Overall download state.
+    transferPercent?: number | null,                // Overall progress of downloads. Excludes Paused and also Done since before last reset/100%.
     activeTransfers?: DownloadTransferProgress[],   // State of transfers in workers (download, decryption).
-    listChanged?: boolean,                  // Transfers added/removed.
+    listChanged?: boolean,                          // Transfers added/removed.
+    sharedContent?: DownloadStateUpdateSharedType,  // Content meant to be intercepted by the shared worker
 };
 
 export type DownloadJobStoreType = {
