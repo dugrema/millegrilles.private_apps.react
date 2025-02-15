@@ -284,10 +284,10 @@ export function ButtonBar(props: ButtonBarProps) {
                     className={'varbtn mx-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 ' + (viewMode===ViewMode.Thumbnails?'bg-slate-500':'bg-slate-700')}>
                         <img src={GridIcon} alt='Grid view' title='Grid view' className='w-6 inline-block' />
                 </button>
-                <button onClick={viewModeOnClick} value={ViewMode.Carousel} disabled={true}
+                {/* <button onClick={viewModeOnClick} value={ViewMode.Carousel} disabled={true}
                     className={'varbtn ml-0 px-2 py-2 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-900 ' + (viewMode===ViewMode.Carousel?'bg-slate-500':'bg-slate-700')}>
                         <img src={ImageIcon} alt='Carousel view' title='Carousel view' className='w-6 inline-block' />
-                </button>
+                </button> */}
 
                 {props.disableEdit?
                 <></>    

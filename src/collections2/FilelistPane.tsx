@@ -370,11 +370,13 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
                         <Formatters.FormatteurTaille value={value.taille || undefined} />
                     </p>
                     <p className='col-span-2 px-1 text-xs text-xs lg:text-sm truncate'>{value.mimetype}</p>
-                    <p className='col-span-3 text-right md:col-span-2 md:text-left px-1 text-xs lg:text-sm'>
+                    <p className='col-span-3 text-right md:col-span-2 md:text-left px-1 text-xs lg:text-sm overflow-hidden'>
                         {visitsElem?
                             visitsElem
                             :
-                            <Formatters.FormatterDate value={dateValue || undefined} />
+                            <span className='text-nowrap text-clip'>
+                                <Formatters.FormatterDate value={dateValue || undefined} />
+                            </span>
                         }
                     </p>
                 </>
