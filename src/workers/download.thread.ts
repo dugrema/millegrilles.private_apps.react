@@ -208,10 +208,17 @@ async function streamResponse(job: DownloadJobType, response: Response, initialP
 
         let reader = response.body.getReader();
         let streamResult = await reader.read();
+        let blockMarker = 0;
+
         while(!streamResult.done) {
             if(streamResult.value) {
                 if(syncFileHandle) {
                     syncFileHandle.write(streamResult.value, {at: position});
+                    if(blockMarker++ > 50) {
+                        blockMarker = 0;
+                        // Yield to other processes
+                        await new Promise(resolve=>setTimeout(resolve, 0));
+                    }
                 } else if(writeFileHandle) {
                     await writeFileHandle.write(streamResult.value);
                 }
