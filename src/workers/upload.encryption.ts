@@ -204,7 +204,6 @@ export class UploadEncryptionWorker {
                 if(blobsSize > partSize) {
                     // Save blob to IDB
                     let blob = new Blob(blobs);
-                    console.info("save part position %s of size %s", position, blob.size);
                     await saveUploadPart(uploadJob.uploadId, position, blob);
 
                     if(THROTTLE_UPLOAD) await new Promise(resolve=>(setTimeout(resolve, THROTTLE_UPLOAD)));  // Throttle
@@ -232,7 +231,6 @@ export class UploadEncryptionWorker {
             if(blobs.length > 0) {
                 // Save blob to IDB
                 let blob = new Blob(blobs);
-                console.info("save last part position %s of size %s", position, blob.size);
                 await saveUploadPart(uploadJob.uploadId, position, blob);
                 position += blob.size;
             }

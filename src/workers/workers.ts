@@ -1,5 +1,5 @@
 import {certificates} from "millegrilles.cryptography";
-import { createEndpoint, proxy, Remote, wrap } from 'comlink';
+import { proxy, Remote, wrap } from 'comlink';
 
 import { ConnectionCallbackParameters } from 'millegrilles.reactdeps.typescript';
 
