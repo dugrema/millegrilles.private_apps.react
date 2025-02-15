@@ -17,7 +17,7 @@ export class AppsDownloadWorker {
     intervalMaintenance: ReturnType<typeof setInterval> | null
     downloadStateCallbackProxy: DownloadWorkerCallbackType
     decryptionStateCallbackProxy: DecryptionWorkerCallbackType
-    stateCallbacks: DownloadStateCallback[]
+    stateCallback: DownloadStateCallback | null
     downloadStatus: DownloadTransferProgress | null
     decryptionStatus: DownloadTransferProgress | null
     listChanged: boolean
@@ -42,7 +42,7 @@ export class AppsDownloadWorker {
         }
         this.decryptionStateCallbackProxy = proxy(decryptionCb);
 
-        this.stateCallbacks = [];
+        this.stateCallback = null;
         this.downloadStatus = null;
         this.decryptionStatus = null;
         this.listChanged = true;
@@ -53,8 +53,7 @@ export class AppsDownloadWorker {
     }
 
     async setup(stateCallback: DownloadStateCallback) {
-        this.stateCallbacks.push(stateCallback);
-        // console.debug("Callback count: ", this.stateCallbacks.length);
+        this.stateCallback = stateCallback;
 
         // This is a shared worker. Only create instances if not already done.
         if(!this.downloadWorker) {
@@ -313,7 +312,7 @@ export class AppsDownloadWorker {
     }
 
     async produceState() {
-        if(this.stateCallbacks.length === 0) {
+        if(!this.stateCallback) {
             console.warn("Download state callback not initialized");
             return;
         }
@@ -326,9 +325,7 @@ export class AppsDownloadWorker {
         if(this.listChanged) update.listChanged = true;
         this.listChanged = false;
         
-        for (let cb of this.stateCallbacks) {
-            cb(update);
-        }
+        this.stateCallback(update);
     }
 
     maintain() {
@@ -342,18 +339,18 @@ export class AppsDownloadWorker {
     // TODO: Find way to unregister the callbacks directly, or at least a proper test.
     async maintainCallbacks() {
         // console.debug("Callback check, count %d", this.stateCallbacks.length);
-        let list = [] as DownloadStateCallback[];
-        for await(let cb of this.stateCallbacks) {
-            // console.debug("Callback found");
-            await new Promise((resolve) => {
-                setTimeout(resolve, 100);
-                cb({}).then(()=>{
-                    list.push(cb);  // Keep
-                    resolve(null);
-                })
-            });
-        }
-        this.stateCallbacks = list;  // Update liste to keep
+        // let list = [] as DownloadStateCallback[];
+        // for await(let cb of this.stateCallbacks) {
+        //     // console.debug("Callback found");
+        //     await new Promise((resolve) => {
+        //         setTimeout(resolve, 100);
+        //         cb({}).then(()=>{
+        //             list.push(cb);  // Keep
+        //             resolve(null);
+        //         })
+        //     });
+        // }
+        // this.stateCallbacks = list;  // Update liste to keep
         // console.debug("Callback check, count after %d", this.stateCallbacks.length);
     }
 

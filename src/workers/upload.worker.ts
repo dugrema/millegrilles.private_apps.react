@@ -15,7 +15,7 @@ export class AppsUploadWorker {
     intervalMaintenance: ReturnType<typeof setInterval> | null
     uploadStateCallbackProxy: UploadWorkerCallbackType
     encryptionStateCallbackProxy: EncryptionWorkerCallbackType
-    stateCallbacks: UploadStateCallback[]
+    stateCallback: UploadStateCallback | null
     uploadStatus: UploadTransferProgress | null
     encryptionStatus: UploadTransferProgress | null
     listChanged: boolean
@@ -39,7 +39,7 @@ export class AppsUploadWorker {
         }
         this.encryptionStateCallbackProxy = proxy(encryptionCb);
 
-        this.stateCallbacks = [];
+        this.stateCallback = null;
         this.uploadStatus = null;
         this.encryptionStatus = null;
         this.listChanged = true;
@@ -48,7 +48,7 @@ export class AppsUploadWorker {
     }
 
     async setup(stateCallback: UploadStateCallback, caPem: string) {
-        this.stateCallbacks.push(stateCallback);
+        this.stateCallback = stateCallback;
         // console.debug("UPLOAD callback count: ", this.stateCallbacks.length);
 
         // This is a shared worker. Only create instances if not already done.
@@ -284,7 +284,7 @@ export class AppsUploadWorker {
     }
 
     async produceState() {
-        if(this.stateCallbacks.length === 0) {
+        if(!this.stateCallback) {
             console.warn("Upload state callback not initialized");
             return;
         }
@@ -297,10 +297,7 @@ export class AppsUploadWorker {
         if(this.listChanged) update.listChanged = true;
         this.listChanged = false;
         
-        for (let cb of this.stateCallbacks) {
-            cb(update)
-                .catch(err=>console.error("Error on upload produceState callback", err));
-        }
+        this.stateCallback(update).catch(err=>console.error("Error on upload produceState callback", err));
     }
 
     maintain() {
@@ -314,18 +311,18 @@ export class AppsUploadWorker {
     // TODO: Find way to unregister the callbacks directly, or at least a proper test.
     async maintainCallbacks() {
         // console.debug("Callback check, count %d", this.stateCallbacks.length);
-        let list = [] as UploadStateCallback[];
-        for await(let cb of this.stateCallbacks) {
-            // console.debug("Callback found");
-            await new Promise((resolve) => {
-                setTimeout(resolve, 100);
-                cb({}).then(()=>{
-                    list.push(cb);  // Keep
-                    resolve(null);
-                })
-            });
-        }
-        this.stateCallbacks = list;  // Update liste to keep
+        // let list = [] as UploadStateCallback[];
+        // for await(let cb of this.stateCallbacks) {
+        //     // console.debug("Callback found");
+        //     await new Promise((resolve) => {
+        //         setTimeout(resolve, 100);
+        //         cb({}).then(()=>{
+        //             list.push(cb);  // Keep
+        //             resolve(null);
+        //         })
+        //     });
+        // }
+        // this.stateCallbacks = list;  // Update liste to keep
         // console.debug("Callback check, count after %d", this.stateCallbacks.length);
     }
 

@@ -1,5 +1,5 @@
 import {certificates} from "millegrilles.cryptography";
-import { Remote, wrap } from 'comlink';
+import { createEndpoint, proxy, Remote, wrap } from 'comlink';
 
 import { ConnectionCallbackParameters } from 'millegrilles.reactdeps.typescript';
 
@@ -8,6 +8,7 @@ import { AppsEncryptionWorker } from './encryption';
 import { DirectoryWorker } from './directory.worker';
 import { AppsDownloadWorker, DownloadStateCallback } from './download.worker';
 import { AppsUploadWorker, UploadStateCallback } from "./upload.worker";
+import { SharedTransferHandler } from "./sharedTransfer.worker";
 
 export type AppWorkers = {
     connection: Remote<AppsConnectionWorker>,
@@ -15,6 +16,7 @@ export type AppWorkers = {
     directory: Remote<DirectoryWorker>,
     download: Remote<AppsDownloadWorker>,
     upload: Remote<AppsUploadWorker>,
+    sharedTransfer: Remote<SharedTransferHandler> | null,
 };
 
 const SOCKETIO_PATH = '/millegrilles/socket.io';
@@ -51,29 +53,18 @@ export async function initWorkers(
     let directoryWorker = new Worker(new URL('./directory.worker.ts', import.meta.url));
     let directory = wrap(directoryWorker) as Remote<DirectoryWorker>;
 
-    let download = null as Remote<AppsDownloadWorker> | null;
-    // if(!!window.SharedWorker) {
-    //     // Use shared workers.
-    //     let downloadWorker = new SharedWorker(new URL('./download.shared.ts', import.meta.url));
-    //     download = wrap(downloadWorker.port, downloadWorker) as Remote<AppsDownloadWorker>;
-    // } else {
-        // Use a dedicated worker. 
-        // Will cause unpredictable behaviour between tabs for certain functionality, especially file uploads/downloads.
-        let downloadWorker = new Worker(new URL('./download.dedicated.ts', import.meta.url));
-        download = wrap(downloadWorker) as Remote<AppsDownloadWorker>;
-    // }
+    let downloadWorker = new Worker(new URL('./download.dedicated.ts', import.meta.url));
+    let download = wrap(downloadWorker) as Remote<AppsDownloadWorker>;
 
-    let upload = null as Remote<AppsUploadWorker> | null;
-    // if(!!window.SharedWorker) {
-    //     // Use shared workers.
-    //     let uploadWorker = new SharedWorker(new URL('./upload.shared.ts', import.meta.url));
-    //     upload = wrap(uploadWorker.port, uploadWorker) as Remote<AppsUploadWorker>;
-    // } else {
-        // Use a dedicated worker. 
-        // Will cause unpredictable behaviour between tabs for certain functionality, especially file uploads/downloads.
-        let uploadWorker = new Worker(new URL('./upload.dedicated.ts', import.meta.url));
-        upload = wrap(uploadWorker) as Remote<AppsUploadWorker>;
-    // }
+    let uploadWorker = new Worker(new URL('./upload.dedicated.ts', import.meta.url));
+    let upload = wrap(uploadWorker) as Remote<AppsUploadWorker>;
+
+    // Optional - a Shared Transfer worker, distributes updates across browser tabs.
+    let sharedTransferHandler = null as Remote<SharedTransferHandler> | null;
+    if(!!window.SharedWorker) {
+        let sharedTransferWorker = new SharedWorker(new URL('./sharedTransfer.shared.ts', import.meta.url));
+        sharedTransferHandler = wrap(sharedTransferWorker.port, sharedTransferWorker) as Remote<SharedTransferHandler>;
+    }
 
     // Set-up the workers
     let serverUrl = new URL(window.location.href);
@@ -81,19 +72,25 @@ export async function initWorkers(
     await connection.initialize(serverUrl.href, ca, callback, {reconnectionDelay: 7500});
     await encryption.initialize(ca);
     await encryption.setEncryptionKeys(chiffrage);
-    try {
-        await download.setup(downloadStateCallback);
-    } catch(err) {
-        console.error("Error wiring download callback", err);
-    }
-    try {
-        await upload.setup(uploadStateCallback, ca);
-        await upload.setEncryptionKeys(chiffrage);
-    } catch(err) {
-        console.error("Error wiring upload callback", err);
-    }
 
-    workers = {connection, encryption, directory, download, upload};
+    if(sharedTransferHandler) {
+        // Wire transfer callbacks through the shared transfer handler.
+        await sharedTransferHandler.addCallbacks(uploadStateCallback, downloadStateCallback);
+        await download.setup(proxy((state)=>{
+            if(!sharedTransferHandler) throw new Error('sharedTransferHandler null');
+            return sharedTransferHandler.downloadStateCallback(state);
+        }));
+        await upload.setup(proxy((state)=>{
+            if(!sharedTransferHandler) throw new Error('sharedTransferHandler null');
+            return sharedTransferHandler.uploadStateCallback(state);
+        }), ca);
+    } else {
+        await download.setup(downloadStateCallback);
+        await upload.setup(uploadStateCallback, ca);
+    }
+    await upload.setEncryptionKeys(chiffrage);
+
+    workers = {connection, encryption, directory, download, upload, sharedTransfer: sharedTransferHandler};
 
     return {idmg, ca, chiffrage, workers};
 }
