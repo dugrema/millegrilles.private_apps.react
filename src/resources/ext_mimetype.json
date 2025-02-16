@@ -191,6 +191,7 @@
 	"mime": "message/rfc822",
 	"mjf": "audio/x-vnd.audioexplosion.mjuicemediafile",
 	"mjpg": "video/x-motion-jpeg",
+	"mkv": "video/x-matroska",
 	"mm": "application/base64",
 	"mme": "application/base64",
 	"mod": "audio/x-mod",

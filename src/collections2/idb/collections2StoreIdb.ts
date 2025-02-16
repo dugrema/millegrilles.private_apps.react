@@ -793,7 +793,7 @@ export async function addUploadFile(userId: string, cuuid: string, file: File, o
     // iOS uses character combining. Fix with normalize().
     let filename = file.name.normalize();
 
-    let mimetype = '';  //file.type;
+    let mimetype = file.type;
     if(!mimetype || mimetype === 'application/octet-stream') {
         // Try to detect the mimetype by using the file extension.
         let extension = filename.split('.').pop();
