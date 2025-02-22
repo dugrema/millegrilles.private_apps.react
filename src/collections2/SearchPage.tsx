@@ -29,11 +29,16 @@ function SearchPage() {
         return searchParams.get('search');
     }, [searchParams]);
 
+    // Run the search when all parameters are present
     let {data} = useSearchResults();
 
     useEffect(()=>{
-        if(query && data) setSearchResults({query, searchResults: data});
-        else setSearchResults(null);
+        if(query && data) {
+            console.debug("Search results: %O", data);
+            setSearchResults({query, searchResults: data});
+        } else {
+            setSearchResults(null);
+        }
     }, [query, data, setSearchResults]);
 
     let [searchInput, setSearchInput] = useState(query || '');
