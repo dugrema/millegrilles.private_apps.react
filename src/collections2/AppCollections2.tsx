@@ -136,6 +136,7 @@ async function maintainFilehosts(workers: AppWorkers, filehostId: string | null,
             await workers.directory.setFilehostList(list);
             let localUrl = new URL(window.location.href);
             localUrl.pathname = ''
+            localUrl.search = ''
             await workers.directory.selectFilehost(localUrl.href, filehostId);
 
             // Generate an authentication message

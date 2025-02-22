@@ -34,7 +34,7 @@ function SearchPage() {
 
     useEffect(()=>{
         if(query && data) {
-            console.debug("Search results: %O", data);
+            // console.debug("Search results: %O", data);
             setSearchResults({query, searchResults: data});
         } else {
             setSearchResults(null);
@@ -127,7 +127,7 @@ function SearchResultSection(props: {data: Collections2SearchResults | null, pag
         // Extract basic statistic}s
         let docs = data.search_results?.docs;
         let itemCount = docs?.length || 0;
-        let pages = Math.floor(itemCount / CONST_PAGE_SIZE) + 1;
+        let pages = Math.ceil(itemCount / CONST_PAGE_SIZE);
 
         return pages;
     }, [data]);
@@ -322,9 +322,9 @@ async function parseSearchResults(workers: AppWorkers, userId: string, sharedCuu
     }
 
     if(!files) {
-        console.debug("Load files for page %d: %O", page, pageDocs)
+        // console.debug("Load files for page %d: %O", page, pageDocs)
         let tuuids = pageDocs.map(item=>item.id);
-        let response = await workers.connection.getFilesByTuuid(tuuids);
+        let response = await workers.connection.getFilesByTuuid(tuuids, {shared: true});
         files = response.files;
         keys = response.keys;
     }
