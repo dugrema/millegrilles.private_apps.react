@@ -15,11 +15,11 @@ function SearchPage() {
     let workers = useWorkers();
 
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let username = useConnectionStore(state=>state.username);
     let userId = useUserBrowsingStore(state=>state.userId);
     let searchResults = useUserBrowsingStore(state=>state.searchResults);
     let setSearchResults = useUserBrowsingStore(state=>state.setSearchResults);
-    let updateSearchListing = useUserBrowsingStore(state=>state.updateSearchListing);
+    let searchResultsPosition = useUserBrowsingStore(state=>state.searchResultsPosition);
+    let setSearchResultsPosition = useUserBrowsingStore(state=>state.setSearchResultsPosition);
 
     let [pageLoaded, setPageLoaded] = useState(false);
     let [searchParams, setSearchParams] = useSearchParams();
@@ -44,6 +44,7 @@ function SearchPage() {
     let searchHandler = useCallback(async()=>{
         // Reset search variables
         setSearchResults(null);
+        setSearchResultsPosition(1);
         
         if(!searchInput) {
             setSearchParams(params=>{params.delete('search'); return params;});
@@ -75,9 +76,7 @@ function SearchPage() {
         } 
     }, [
         workers, ready, userId, searchInput, searchResults, setSearchInput, pageLoaded, setPageLoaded, 
-        query, setSearchParams, setSearchResults, updateSearchListing, username, 
-        
-    ]);
+        query, setSearchParams]);
 
     return (
         <>
@@ -108,11 +107,13 @@ function SearchResultSection(props: {data: Collections2SearchResults | null}) {
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useUserBrowsingStore(state=>state.userId);
+    let searchResultsPosition = useUserBrowsingStore(state=>state.searchResultsPosition);
+    let setSearchResultsPosition = useUserBrowsingStore(state=>state.setSearchResultsPosition);
 
     let navigate = useNavigate();
     let navSectionRef = useRef(null);
     
-    let [page, setPage] = useState(1);
+    let [page, setPage] = useState(searchResultsPosition || 1);
     let [list, setList] = useState(null as TuuidsBrowsingStoreSearchRow[] | null);
     let [sharedCuuids, setSharedCuuids] = useState(null as {[tuuid: string]: Collections2SharedContactsSharedCollection} | null);
 
@@ -155,7 +156,7 @@ function SearchResultSection(props: {data: Collections2SearchResults | null}) {
             .then(results=>{
                 setList(results || null);
             })
-    }, [workers, ready, userId, sharedCuuids, data, page]);
+    }, [workers, ready, userId, sharedCuuids, data, page, setSearchResultsPosition]);
 
     let onClickRow = useCallback((tuuid: string, typeNode: string)=>{
         if(!list) {
@@ -190,10 +191,13 @@ function PageSelectors(props: {page: number, pageCount: number, setPage: Dispatc
 
     let {page, setPage, pageCount} = props;
 
+    let setSearchResultsPosition = useUserBrowsingStore(state=>state.setSearchResultsPosition);
+
     let onClick = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
         let pageNo = Number.parseInt(e.currentTarget.value);
         setPage(pageNo);
-    }, [setPage]);
+        setSearchResultsPosition(pageNo);
+    }, [setPage, setSearchResultsPosition]);
 
     let pageElems = useMemo(()=>{
         let pageElems = [] as JSX.Element[];
