@@ -344,7 +344,7 @@ async function loadFileData(workers: AppWorkers, userId: string, sharedCuuids: {
     if(!docs || !files || !keys) throw new Error('docs/files/keys not provided');
 
     // Process file list. This decrypts them and saves the result to IDB.
-    let decryptedFiles = await workers.directory.processDirectoryChunk(workers.encryption, userId, files, keys);
+    let decryptedFiles = await workers.directory.processDirectoryChunk(workers.encryption, userId, files, keys, {shared: true});
 
     // Convert data format
     let storeFiles = filesIdbToBrowsing(decryptedFiles);
