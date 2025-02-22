@@ -611,10 +611,10 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as Collections2SyncDirectoryResponse;
     }
 
-    async searchFiles(query: string) {
+    async searchFiles(query: string, initialBatchSize?: number) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest(
-            {query}, 
+            {query, intitial_batch_size: initialBatchSize}, 
             DOMAINE_GROSFICHIERS, 'searchIndexV2'
         ) as Collections2SearchResults;
     }

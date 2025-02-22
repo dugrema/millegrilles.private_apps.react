@@ -26,10 +26,11 @@ export type TuuidsBrowsingStoreRow = {
 export type TuuidsBrowsingStoreSearchRow = TuuidsBrowsingStoreRow & {score: number, contactId?: string | null};
 
 export type Collection2SearchStore = {
-    query: string,
-    searchResults: Collections2SearchResults | null,
-    stats: {files: number, directories: number},
-    resultDate: Date,
+    query?: string,
+    searchResults?: Collections2SearchResults | null,
+    stats?: {files: number, directories: number},
+    resultDate?: Date,
+    error?: any,
 }
 
 export type Collection2SharedWithUser = {

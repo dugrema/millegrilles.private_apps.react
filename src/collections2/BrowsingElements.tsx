@@ -8,12 +8,11 @@ import { downloadFile, generateFileUploads } from "./transferUtils";
 
 import ActionButton from "../resources/ActionButton";
 
-import FileAddIcon from '../resources/icons/file-dock-svgrepo-com.svg';
 import FolderAddIcon from '../resources/icons/folder-add-fill-svgrepo-com.svg';
 import InfoIcon from '../resources/icons/info-svgrepo-com.svg';
 import ListIcon from '../resources/icons/list-pointers-svgrepo-com.svg';
 import GridIcon from '../resources/icons/grid-4-svgrepo-com.svg';
-import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
+// import ImageIcon from '../resources/icons/image-1-svgrepo-com.svg';
 import CopyIcon from '../resources/icons/copy-svgrepo-com.svg';
 import CutIcon from '../resources/icons/cut-svgrepo-com.svg';
 import ShareIcon from '../resources/icons/share-1-svgrepo-com.svg';
