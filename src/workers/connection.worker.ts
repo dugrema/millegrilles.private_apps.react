@@ -816,7 +816,7 @@ export class AppsConnectionWorker extends ConnectionWorker {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendCommand(
             addCommand, 
-            DOMAINE_GROSFICHIERS, 'nouvelleVersion', {attachments: {"cle": keyCommand}}
+            DOMAINE_GROSFICHIERS, 'nouvelleVersion', {attachments: {"cle": keyCommand}, timeout: 45_000}
         ) as Collections2ConvertVideoResponse;
     }
 
