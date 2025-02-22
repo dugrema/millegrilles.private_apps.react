@@ -34,7 +34,7 @@ function SearchPage() {
 
     useEffect(()=>{
         if(query && data) {
-            console.debug("Search results: %O", data);
+            // console.debug("Search results: %O", data);
             setSearchResults({query, searchResults: data});
         } else {
             setSearchResults(null);
@@ -322,7 +322,7 @@ async function parseSearchResults(workers: AppWorkers, userId: string, sharedCuu
     }
 
     if(!files) {
-        console.debug("Load files for page %d: %O", page, pageDocs)
+        // console.debug("Load files for page %d: %O", page, pageDocs)
         let tuuids = pageDocs.map(item=>item.id);
         let response = await workers.connection.getFilesByTuuid(tuuids, {shared: true});
         files = response.files;
