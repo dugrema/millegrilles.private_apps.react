@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 
 import useConnectionStore from "../connectionStore";
@@ -28,10 +28,6 @@ function BrowsingDeleted() {
 
     let [tuuid, setTuuid] = useState(null as string | null);
     let [pageNo, setPageNo] = useState(1);
-    let changePage = useCallback((page: number)=>{
-        setPageNo(page);
-        setSelectionMode(false);
-    }, [setPageNo]);
 
     let userId = useUserBrowsingStore(state=>state.userId);
 
@@ -53,10 +49,15 @@ function BrowsingDeleted() {
     let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
     let setSelectionPosition = useUserBrowsingStore(state=>state.setSelectionPosition);
 
+    let changePage = useCallback((page: number)=>{
+        setPageNo(page);
+        setSelectionMode(false);
+    }, [setPageNo, setSelectionMode]);
+
     let onClickBreadcrumb = useCallback((tuuid?: string | null)=>{
         setTuuid(tuuid || null);
         changePage(1);
-    }, [setTuuid, changePage, setSelectionMode]);
+    }, [setTuuid, changePage]);
 
     let onClickRow = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, tuuid:string, typeNode:string, range: TuuidsBrowsingStoreRow[] | null)=>{
         let ctrl = e?.ctrlKey || false;
@@ -103,7 +104,7 @@ function BrowsingDeleted() {
                 setTuuid(tuuid);
             }
         }
-    }, [navigate, selectionMode, selection, deletedFilesPage, setSelectionMode, setSelection, setSelectionPosition, changePage, setTuuid]);
+    }, [navigate, selectionMode, selection, setSelectionMode, setSelection, setSelectionPosition, changePage, setTuuid]);
 
     let [sortKey, sortOrder] = useMemo(()=>{
         if(!tuuid) return ['modificationDesc', 1];
@@ -120,6 +121,7 @@ function BrowsingDeleted() {
             </section>
 
             <section className='fixed top-32 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
+                {error?<p>Error {''+error}</p>:<></>}
                 {isLoading?
                     <>Loading ...</>
                 :
@@ -332,7 +334,7 @@ function Breadcrumb(props: BreadcrumbProps) {
                     )
                 }
             })
-    }, [breadcrumb, onClick, onClickHandler]);
+    }, [breadcrumb, onClickHandler]);
 
     return (
         <nav aria-label='breadcrumb' className='w-screen leading-3 pr-2 line-clamp-2'>
