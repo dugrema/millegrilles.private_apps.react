@@ -33,7 +33,7 @@ function BrowsingDeleted() {
 
     // Data loader
     let {data: deletedFilesPage, error, isLoading} = useGetDeletedFiles({userId, page: pageNo, cuuid: tuuid});
-    // console.debug("Data loader data: %O, error: %O, isLoading: %s", deletedFilesPage, error, isLoading);
+    console.debug("Data loader data: %O, error: %O, isLoading: %s", deletedFilesPage, error, isLoading);
 
     let pageCount = useMemo(()=>{
         let stats = deletedFilesPage?.stats;
@@ -263,7 +263,7 @@ async function fetchDeletedFilesPage(workers: AppWorkers | null, ready: boolean,
     let startIdx = (page - 1) * CONST_PAGE_SIZE;
 
     let response = await workers.connection.syncDeletedFiles(startIdx, params.cuuid, CONST_PAGE_SIZE);
-    // console.debug("fetchDeletedFilesPage Data: ", response);
+    console.debug("fetchDeletedFilesPage Data: ", response);
     if(!response.ok) throw new Error(`Error during sync: ${response.err}`);
 
     let responseFiles = response.files;
