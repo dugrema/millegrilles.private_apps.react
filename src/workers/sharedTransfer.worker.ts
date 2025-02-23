@@ -39,10 +39,10 @@ export class SharedTransferHandler {
         let sharedContent = state.sharedContent;
         if(sharedContent) {
             delete state.sharedContent;  // Content consumed
-            if(sharedContent.uploadsSendCommand) {
-                // console.debug("Intercepting send command", sharedContent.uploadsSendCommand);
-                this.uploadsSendCommand = [...this.uploadsSendCommand || [], ...sharedContent.uploadsSendCommand];
-            }
+            // if(sharedContent.uploadsSendCommand) {
+            //     // console.debug("Intercepting send command", sharedContent.uploadsSendCommand);
+            //     this.uploadsSendCommand = [...this.uploadsSendCommand || [], ...sharedContent.uploadsSendCommand];
+            // }
         }
 
         for(let cb of this.uploadCallbacks) {
@@ -69,11 +69,12 @@ export class SharedTransferHandler {
     }
 
     /** Consume the list of uploadIds that need the AddFile command from the connection worker. */
-    async getUploadsSendCommand() {
-        let uploadsSendCommand = this.uploadsSendCommand;
-        this.uploadsSendCommand = null;
-        return uploadsSendCommand;
-    }
+    // async getUploadsSendCommand() {
+    //     // Find next upload at ACK stage
+    //     let uploadsSendCommand = this.uploadsSendCommand;
+    //     this.uploadsSendCommand = null;
+    //     return uploadsSendCommand;
+    // }
 
     /** Consume the list of fuuids that are ready to be automatically downloaded. */
     async getFuuidsReady() {

@@ -26,7 +26,8 @@
         {"domain": "GrosFichiers", "action": "getInfoStatistiques"},
         {"domain": "GrosFichiers", "action": "getJwtStreaming"},
         {"domain": "GrosFichiers", "action": "requeteJobsVideo"},
-        {"domain": "CoreTopologie", "action": "getFilehosts", "exchange": "1.public"}
+        {"domain": "CoreTopologie", "action": "getFilehosts", "exchange": "1.public"},
+        {"domain": "GrosFichiers", "action": "verifierAccesFuuids"}
     ],
     "commands": [
         {"domain": "SenseursPassifs", "action": "challengeAppareil"},

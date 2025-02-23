@@ -5,7 +5,7 @@ import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore from "./userBrowsingStore";
 import useTransferStore, { DownloadJobStoreType, TransferActivity, UploadJobStoreType } from "./transferStore";
-import { DownloadStateEnum, getDownloadContent, getDownloadJob, getDownloadJobs, getUploadJob, getUploadJobs, updateUploadJobState, UploadStateEnum } from "./idb/collections2StoreIdb";
+import { DownloadStateEnum, getBatchRetryUploadSendCommand, getDownloadContent, getDownloadJob, getDownloadJobs, getNextUploadSendCommand, getUploadJob, getUploadJobs, updateUploadJobState, UploadIdbType, UploadStateEnum } from "./idb/collections2StoreIdb";
 import { downloadFile } from "./transferUtils";
 
 function Transfers() {
@@ -155,41 +155,73 @@ export function SyncUploads() {
 
     useEffect(()=>{
         if(!workers || !ready || !userId || !jobsReady) return;  // Nothing to do
-        let {connection, upload, sharedTransfer} = workers;
+        let {connection, upload} = workers;
         
-        // Select the shared worker when present. This ensures only one active process handles the job.
-        let promise = null;
-        if(sharedTransfer) {
-            promise = sharedTransfer.getUploadsSendCommand();
-        } else {
-            promise = upload.getUploadsSendCommand();
-        }
-
-        promise.then( async uploadIds => {
-            // console.debug("Uploads send command: %O", uploadIds);
-            if(!uploadIds || !userId) return;  // Nothing to do
-            for(let uploadId of uploadIds) {
-                // console.debug("Trigger send upload command of %d", uploadId);
-                let job = await getUploadJob(uploadId);
-                if(job) {
-                    // console.debug("Send command for upload job", job);
-                    if(job.addCommand && job.keyCommand) {
-                        // Send Add File command and set upload to ready.
-                        await connection.collection2AddFile(job.addCommand, job.keyCommand);
-                        await updateUploadJobState(job.uploadId, UploadStateEnum.READY);
-                        await upload.triggerListChanged();
-                    } else {
-                        console.warn("Error on jobId:%s, no add/key commands present", job.uploadId);
+        let workersInner = workers, userIdInner = userId;
+        let runMaintenance = false;
+        let maintenanceInterval = setInterval(()=>{
+            if(!runMaintenance) return;
+            runMaintenance = false; // Prevent interval from triggerring other maintenance
+            Promise.resolve().then(async ()=>{
+                // console.debug("Run upload stuck in SendCommand state maintenance");
+                let jobs = await getBatchRetryUploadSendCommand(userIdInner);
+                if(jobs && jobs.length > 0) {
+                    for await (let job of jobs) {
+                        // console.debug("Checking if SendCommand for job %O has been completed", job);
+                        let {fuuid, addCommand, keyCommand} = job;
+                        if(fuuid && addCommand && keyCommand) {
+                            let response = await workersInner.connection.collection2CheckUserAccessFuuids([fuuid]);
+                            let exists = response.fuuids?response.fuuids.length===1:false;
+                            // console.debug("Fuuid exists?: %s, %O", exists, response);
+                            if(exists) {
+                                // Move on to next state
+                            } else {
+                                // Re-send command and keep going
+                                await connection.collection2AddFile(addCommand, keyCommand);
+                            }
+                            await updateUploadJobState(job.uploadId, UploadStateEnum.READY);
+                            await upload.triggerListChanged();
+                        }
                     }
                 } else {
-                    console.warn("No job found to download fuuid:%s", uploadId);
+                    console.debug("No upload stuck in SendCommand state");
                 }
+            }).catch(err=>{
+                console.error("Error during recovery of uploads in SendCommand state", err);
+            }).finally(()=>{
+                runMaintenance = true;
+            })
+        }, 20_000);
+
+        // Select the shared worker when present. This ensures only one active process handles the job.
+        Promise.resolve().then(async () => {
+            let job = await getNextUploadSendCommand(userIdInner);
+            while(job) {
+                console.debug("Send command for upload job", job);
+                if(job.addCommand && job.keyCommand) {
+                    // Send Add File command and set upload to ready.
+                    await connection.collection2AddFile(job.addCommand, job.keyCommand);
+                    await updateUploadJobState(job.uploadId, UploadStateEnum.READY);
+                    await upload.triggerListChanged();
+                } else {
+                    console.warn("Error on jobId:%s, no add/key commands present", job.uploadId);
+                }
+                // Get next uploadId to process
+                job = await getNextUploadSendCommand(userIdInner);
             }
 
             // Make sure the worker picks up the new jobs from IDB
             await upload.triggerJobs();
         })
-        .catch(err=>console.error("Error getting fuuids to download", err));
+        .catch(err=>console.error("Error processing file creation command", err))
+        .finally(()=>{
+            runMaintenance = true;
+        });
+
+        return () => {
+            // Stop maintenance interval
+            clearInterval(maintenanceInterval);
+        }
     }, [workers, ready, jobsReady, userId]);
 
     // Pause or resume uploads

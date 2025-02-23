@@ -310,6 +310,8 @@ export type Collections2AddFileCommand = {
     verification?: string | null,
 };
 
+export type Collection2UserAccessToFuuidsResponse = MessageResponse & {fuuids: string[], access_tous: boolean, user_id: string};
+
 export class AppsConnectionWorker extends ConnectionWorker {
 
     async authenticate(reconnect?: boolean) {
@@ -818,6 +820,11 @@ export class AppsConnectionWorker extends ConnectionWorker {
             addCommand, 
             DOMAINE_GROSFICHIERS, 'nouvelleVersion', {attachments: {"cle": keyCommand}, timeout: 45_000}
         ) as Collections2ConvertVideoResponse;
+    }
+
+    async collection2CheckUserAccessFuuids(fuuids: string[]) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest({fuuids}, DOMAINE_GROSFICHIERS, 'verifierAccesFuuids') as Collection2UserAccessToFuuidsResponse;
     }
 
     async collection2SubscribeCollectionEvents(cuuid: string | null, cb: SubscriptionCallback): Promise<void> {

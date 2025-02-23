@@ -180,6 +180,7 @@ export type UploadIdbType = {
     state: UploadStateEnum,
     processDate: number,            // Time added/errored in millisecs.
     retry: number,
+    commandRetry?: number | null,   // Retries on sending commands
     uploadUrl: string | null,       // Filehost url for the upload
 
     // Decrypted metadata for reference on screen
@@ -842,6 +843,53 @@ export async function getUploadJob(uploadId: number): Promise<UploadJobType | nu
     const db = await openDB();
     const store = db.transaction(STORE_UPLOADS, 'readonly').store;
     return await store.get(uploadId);
+}
+
+export async function getNextUploadSendCommand(userId: string, retry?: boolean): Promise<UploadIdbType | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_UPLOADS, 'readwrite').store;
+    let stateIndex = store.index('state');
+    let cursor = await stateIndex.openCursor(
+        IDBKeyRange.bound([userId, UploadStateEnum.SENDCOMMAND, 0], [userId, UploadStateEnum.SENDCOMMAND, Number.MAX_SAFE_INTEGER]));
+    while(cursor) {
+        let value = cursor.value as UploadIdbType;
+        if(value.commandRetry) {
+            if(retry) {
+                throw new Error('TODO - Retry send addFile command');
+            } else {
+                // Skip entry
+            }
+        } else {
+            // Take value
+            await cursor.update({...value, commandRetry: 1});
+            return value;
+        }
+        
+        cursor = await cursor.continue();
+    }
+
+    return null;
+}
+
+export async function getBatchRetryUploadSendCommand(userId: string): Promise<UploadIdbType[] | null> {
+    const db = await openDB();
+    const store = db.transaction(STORE_UPLOADS, 'readwrite').store;
+    let stateIndex = store.index('state');
+    let cursor = await stateIndex.openCursor(
+        IDBKeyRange.bound([userId, UploadStateEnum.SENDCOMMAND, 0], [userId, UploadStateEnum.SENDCOMMAND, Number.MAX_SAFE_INTEGER]));
+    let commands = [] as UploadIdbType[];
+    while(cursor) {
+        let value = cursor.value as UploadIdbType;
+        if(value.commandRetry) {
+            // Take value
+            await cursor.update({...value, commandRetry: value.commandRetry + 1});
+            commands.push(value);
+        }
+        if(commands.length > 50) break;  // Max batch size
+        cursor = await cursor.continue();
+    }
+
+    return commands;
 }
 
 export async function updateUploadJobState(uploadId: number, state: UploadStateEnum, opts?: {uploadUrl?: string}) {
