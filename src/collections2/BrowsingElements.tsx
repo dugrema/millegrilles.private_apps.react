@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
-import { ChangeEvent, DragEvent, MouseEvent, useCallback, useMemo, useRef, useState } from "react";
+import { ChangeEvent, Dispatch, DragEvent, MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
@@ -443,4 +443,43 @@ function LoadingStatus() {
     return (
         <></>
     );
+}
+
+export function PageSelectors(props: {page: number, pageCount: number, setPage: Dispatch<number>}) {
+
+    let {page, setPage, pageCount} = props;
+
+    let setSearchResultsPosition = useUserBrowsingStore(state=>state.setSearchResultsPosition);
+
+    let onClick = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
+        let pageNo = Number.parseInt(e.currentTarget.value);
+        setPage(pageNo);
+        setSearchResultsPosition(pageNo);
+    }, [setPage, setSearchResultsPosition]);
+
+    let pageElems = useMemo(()=>{
+        let pageElems = [] as JSX.Element[];
+        for(let p=1; p<=pageCount; p++) {
+
+            let className: string
+            if(p === page) {
+                className = 'varbtn w-8 inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900';
+            } else {
+                className='varbtn w-8 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800';
+            }
+
+            pageElems.push(
+                <button key={`page-${p}`} onClick={onClick} value={''+p} className={className}>{p}</button>
+            );
+        }
+        return pageElems;
+    }, [page, pageCount, onClick]);
+
+    if(pageCount <= 1) return <></>;
+
+    return (
+        <div className='w-full text-center pt-6'>
+            {pageElems}
+        </div>
+    )
 }

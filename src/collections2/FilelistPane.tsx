@@ -24,7 +24,7 @@ export type FileListPaneOnClickRowType = (
 ) => void;
 
 type FileListPaneProps = {
-    files: TuuidsBrowsingStoreRow[] | null,
+    files: TuuidsBrowsingStoreRow[] | null | undefined,
     sortKey?: string | null,
     sortOrder?: number | null,
     dateColumn?: string | null,

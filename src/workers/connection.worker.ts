@@ -603,10 +603,10 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as Collections2SyncDirectoryResponse;
     }
 
-    async syncDeletedFiles(skip: number, cuuid?: string | null) {
+    async syncDeletedFiles(skip: number, cuuid?: string | null, limit?: number | null) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest(
-            {skip, cuuid, deleted: true}, 
+            {skip, limit_count: limit, cuuid, deleted: true}, 
             DOMAINE_GROSFICHIERS, 'syncDirectory'
         ) as Collections2SyncDirectoryResponse;
     }
