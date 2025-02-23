@@ -51,7 +51,7 @@ export function Modals(props: ModalProps) {
     let closeModal = useCallback(()=>setModal(null), [setModal]);
 
     // Modals with file browsing
-    if(modal === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={closeModal} modalType={modal} title='Copy files' shared={shared} />;
+    if(modal === ModalEnum.Copy) return <ModalBrowseAction workers={workers} ready={ready} close={closeModal} modalType={modal} title='Copy files' shared={shared} includeDeleted={includeDeleted} />;
     if(modal === ModalEnum.Cut) return <ModalBrowseAction workers={workers} ready={ready} close={closeModal} modalType={modal} title='Move files' shared={shared} includeDeleted={includeDeleted} />;
 
     // Other actions

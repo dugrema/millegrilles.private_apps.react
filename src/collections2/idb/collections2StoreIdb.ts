@@ -107,6 +107,7 @@ export type TuuidsIdbStoreRowType = {
     date_creation: number,
     derniere_modification: number,
     lastCompleteSyncSec?: number,  // For directories only, last complete sync of content
+    supprime?: boolean | null,
 };
 
 export type LoadDirectoryResultType = {

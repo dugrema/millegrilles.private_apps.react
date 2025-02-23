@@ -21,6 +21,7 @@ export type TuuidsBrowsingStoreRow = {
     ownerUserId: string | null,
     contactId?: string | null,
     visits?: {[filehostId: string]: number},
+    supprime?: boolean | null,
 }
 
 export type TuuidsBrowsingStoreSearchRow = TuuidsBrowsingStoreRow & {score: number, contactId?: string | null};
@@ -62,6 +63,7 @@ export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsi
             thumbnailDownloaded: item.thumbnailDownloaded || false,
             ownerUserId: item.ownerUserId,
             path_cuuids: item.path_cuuids,
+            supprime: item.fileData?.supprime,
         } as TuuidsBrowsingStoreRow;
     });
 }

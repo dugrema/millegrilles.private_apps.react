@@ -4,7 +4,7 @@ import useSWR from "swr";
 import useConnectionStore from "../connectionStore";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from "./userBrowsingStore";
-import { Breadcrumb, ModalEnum, PageSelectors } from "./BrowsingElements";
+import { ModalEnum, PageSelectors } from "./BrowsingElements";
 import FilelistPane from "./FilelistPane";
 
 import CopyIcon from '../resources/icons/copy-svgrepo-com.svg';
@@ -21,27 +21,23 @@ function BrowsingDeleted() {
 
     let navigate = useNavigate();
 
-    // let [modal, setModal] = useState(null as ModalEnum | null);
+    let setModal = useUserBrowsingStore(state=>state.setModal);
     let onModal = useCallback((modal: ModalEnum)=>{
-        throw new Error('todo onModal()')
-        // setModal(modal)
-    }, []);
-    // let closeModal = useCallback(()=>setModal(null), [setModal]);
+        setModal(modal)
+    }, [setModal]);
 
-    let [breadcrumbTuuids, setBreadcrumbTuuids] = useState(null as string[] | null);
-    let [tuuid, rootTuuid] = useMemo(()=>{
-        if(!breadcrumbTuuids || breadcrumbTuuids.length === 0) return [null, null];
-        let rootTuuid = breadcrumbTuuids[0]
-        let tuuid = breadcrumbTuuids[breadcrumbTuuids.length-1]
-        return [tuuid, rootTuuid];
-    }, [breadcrumbTuuids]);
+    let [tuuid, setTuuid] = useState(null as string | null);
     let [pageNo, setPageNo] = useState(1);
+    let changePage = useCallback((page: number)=>{
+        setPageNo(page);
+        setSelectionMode(false);
+    }, [setPageNo]);
 
     let userId = useUserBrowsingStore(state=>state.userId);
 
     // Data loader
     let {data: deletedFilesPage, error, isLoading} = useGetDeletedFiles({userId, page: pageNo, cuuid: tuuid});
-    console.debug("Data loader data: %O, error: %O, isLoading: %s", deletedFilesPage, error, isLoading);
+    // console.debug("Data loader data: %O, error: %O, isLoading: %s", deletedFilesPage, error, isLoading);
 
     let pageCount = useMemo(()=>{
         let stats = deletedFilesPage?.stats;
@@ -50,8 +46,6 @@ function BrowsingDeleted() {
         return Math.ceil(items / CONST_PAGE_SIZE);
     }, [pageNo, deletedFilesPage]) as number;
 
-    // let filesDict = useUserBrowsingStore(state=>state.currentDirectory);
-
     // Selecting files
     let selection = useUserBrowsingStore(state=>state.selection);
     let setSelection = useUserBrowsingStore(state=>state.setSelection);
@@ -59,36 +53,10 @@ function BrowsingDeleted() {
     let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
     let setSelectionPosition = useUserBrowsingStore(state=>state.setSelectionPosition);
 
-    // let files = useMemo(()=>{
-    //     // console.debug("Files dict", filesDict);
-    //     if(!filesDict) return null;
-    //     let filesValues = Object.values(filesDict);
-
-    //     // filesValues.sort(sortByName);
-
-    //     return filesValues;
-    // }, [filesDict]) as TuuidsBrowsingStoreRow[] | null;
-
     let onClickBreadcrumb = useCallback((tuuid?: string | null)=>{
-        if(!tuuid) {
-            setBreadcrumbTuuids(null);
-            return;
-        }
-
-        if(breadcrumbTuuids) {
-            let breadcrumbUpdated = [];
-            for(let tuuidItem of breadcrumbTuuids) {
-                breadcrumbUpdated.push(tuuidItem);
-                if(tuuidItem === tuuid) {
-                    break;  // Done
-                }
-            }
-            setBreadcrumbTuuids(breadcrumbUpdated);
-        } else {
-            setBreadcrumbTuuids(null);
-        }
-
-    }, [breadcrumbTuuids, setBreadcrumbTuuids]);
+        setTuuid(tuuid || null);
+        changePage(1);
+    }, [setTuuid, changePage, setSelectionMode]);
 
     let onClickRow = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, tuuid:string, typeNode:string, range: TuuidsBrowsingStoreRow[] | null)=>{
         let ctrl = e?.ctrlKey || false;
@@ -131,19 +99,11 @@ function BrowsingDeleted() {
             if(typeNode === 'Fichier') {
                 navigate('/apps/collections2/f/' + tuuid);
             } else {
-                setPageNo(1);
-                if(tuuid) {
-                    if(!breadcrumbTuuids) {
-                        setBreadcrumbTuuids([tuuid]);
-                    } else {
-                        setBreadcrumbTuuids([...breadcrumbTuuids, tuuid]);
-                    }
-                } else {
-                    setBreadcrumbTuuids(null);
-                }
+                changePage(1);
+                setTuuid(tuuid);
             }
         }
-    }, [navigate, selectionMode, selection, breadcrumbTuuids, setSelectionMode, setSelection, setSelectionPosition, setPageNo]);
+    }, [navigate, selectionMode, selection, deletedFilesPage, setSelectionMode, setSelection, setSelectionPosition, changePage, setTuuid]);
 
     let [sortKey, sortOrder] = useMemo(()=>{
         if(!tuuid) return ['modificationDesc', 1];
@@ -153,19 +113,21 @@ function BrowsingDeleted() {
     return (
         <>
             <section className='fixed top-12'>
-                <Breadcrumb root={{tuuid: rootTuuid, name: 'Trash'}} onClick={onClickBreadcrumb} />
-
+                <Breadcrumb breadcrumb={deletedFilesPage?.breadcrumb} onClick={onClickBreadcrumb} />
                 <div className='pt-2'>
-                    <ButtonBar onModal={onModal} inSubdirectory={!!tuuid} />                    
+                    <ButtonBar onModal={onModal} inSubdirectory={!!tuuid} deletedFiles={deletedFilesPage} />                    
                 </div>
             </section>
 
             <section className='fixed top-32 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
-                <FilelistPane files={deletedFilesPage?.list} sortKey={sortKey} sortOrder={sortOrder} dateColumn='modification' onClickRow={onClickRow} />
-                <PageSelectors page={pageNo} setPage={setPageNo} pageCount={pageCount} />
+                {isLoading?
+                    <>Loading ...</>
+                :
+                    <FilelistPane files={deletedFilesPage?.list} sortKey={sortKey} sortOrder={sortOrder} dateColumn='modification' onClickRow={onClickRow} />
+                }
+                <PageSelectors page={pageNo} setPage={changePage} pageCount={pageCount} />
             </section>
 
-            {/* <DirectorySyncHandler tuuid={tuuid} /> */}
             <Modals includeDeleted={true} />
         </>
     );
@@ -173,136 +135,15 @@ function BrowsingDeleted() {
 
 export default BrowsingDeleted;
 
-// function DirectorySyncHandler(props: {tuuid?: string | null | undefined}) {
-
-//     let {tuuid} = props;
-
-//     let workers = useWorkers();
-//     let username = useConnectionStore(state=>state.username);
-//     let ready = useConnectionStore(state=>state.connectionAuthenticated);
-//     let userId = useUserBrowsingStore(state=>state.userId);
-//     let updateCurrentDirectory = useUserBrowsingStore(state=>state.updateCurrentDirectoryDeleted);
-//     let setCuuid = useUserBrowsingStore(state=>state.setCuuidDeleted);
-//     let setBreadcrumb = useUserBrowsingStore(state=>state.setBreadcrumb);
-//     let setDirectoryStatistics = useUserBrowsingStore(state=>state.setDirectoryStatistics);
-//     let deleteFilesDirectory = useUserBrowsingStore(state=>state.deleteFilesDirectory);
-    
-//     useEffect(()=>{
-//         if(!workers || !ready || !userId) return;
-//         let tuuidValue = tuuid || null;
-
-//         // Signal to cancel sync
-//         let cancelled = false;
-//         let cancelledSignal = () => cancelled;
-//         let cancel = () => {cancelled = true};
-
-//         // Change the current directory in the store. 
-//         setCuuid(tuuidValue);
-
-//         // Clear screen
-//         updateCurrentDirectory(null);
-//         setDirectoryStatistics(null);
-
-//         // Register directory change listener
-//         //TODO
-
-//         // Sync
-//         synchronizeDirectory(workers, userId, username, tuuidValue, cancelledSignal, updateCurrentDirectory, setBreadcrumb)
-//             .catch(err=>console.error("Error loading directory: %O", err));
-
-//         return () => {
-//             // This will stop the processing of events in flight for the previous directory (they will be ignored).
-//             cancel();
-
-//             // Unregister directory change listener
-//             //TODO
-//         }
-//     }, [workers, ready, userId, username, tuuid, setCuuid, setBreadcrumb, updateCurrentDirectory, setDirectoryStatistics, deleteFilesDirectory]);
-
-//     return <></>;
-// }
-
-// async function synchronizeDirectory(
-//     workers: AppWorkers, userId: string, username: string, tuuid: string | null, 
-//     cancelledSignal: ()=>boolean, 
-//     updateCurrentDirectory: (files: TuuidsBrowsingStoreRow[] | null) => void,
-//     setBreadcrumb: (username: string, dirs: TuuidsBrowsingStoreRow[] | null) => void) 
-// {
-//     // Sync folder from server
-//     let complete = false;
-//     let skip = 0;
-//     while(!complete) {
-//         if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 1`)
-//         // console.debug("Sync tuuid %s skip %d", tuuid, skip);
-//         let response = await workers.connection.syncDeletedFiles(skip, tuuid, CONST_PAGE_SIZE);
-
-//         // console.debug("Directory loaded: %O", response);
-//         if(!response.ok) throw new Error(`Error during sync: ${response.err}`);
-//         complete = response.complete;
-        
-//         if(!tuuid) {
-//             setBreadcrumb(username, null);
-//         } else if(response.breadcrumb) {
-//             let breadcrumb = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.breadcrumb, response.keys, {noidb: true});
-//             let currentDirIdb = breadcrumb.filter(item=>item.tuuid === tuuid).pop();
-
-//             let storeFiles = filesIdbToBrowsing(breadcrumb);
-
-//             let breadcrumbByTuuid = {} as {[tuuid: string]: TuuidsBrowsingStoreRow};
-//             for(let dir of storeFiles) {
-//                 breadcrumbByTuuid[dir.tuuid] = dir;
-//             }
-//             // Create breadcrumb in reverse order
-//             let orderedBreadcrumb = [breadcrumbByTuuid[tuuid]];
-//             if(currentDirIdb?.path_cuuids) {
-//                 for(let cuuid of currentDirIdb.path_cuuids) {
-//                     let dirValue = breadcrumbByTuuid[cuuid];
-//                     orderedBreadcrumb.push(dirValue);
-//                 }
-//             }
-//             // Put breadcrumb in proper order
-//             orderedBreadcrumb = orderedBreadcrumb.reverse();
-
-//             // console.debug("breadcrumb: %O, StoreFiles: %O", breadcrumb, storeFiles);
-//             setBreadcrumb(username, orderedBreadcrumb);
-//         }
-
-//         if(response.files) { 
-//             skip += response.files.length; 
-
-//             let responseFiles = response.files;
-//             if(tuuid) {
-//                 // Filter out directly deleted files from subfolder (supprime === true && supprime_indirect === false)
-//                 responseFiles = responseFiles.filter(item=>item.supprime_indirect);
-//             }
-
-//             // Process and save to IDB
-//             let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, responseFiles, response.keys, {noidb: true});
-//             // console.debug("Decrypted files", files);
-
-//             if(cancelledSignal()) throw new Error(`Sync of ${tuuid} has been cancelled - 2`)
-//             // Save files in store
-//             let storeFiles = filesIdbToBrowsing(files);
-//             // console.debug("Store files", storeFiles);
-//             updateCurrentDirectory(storeFiles);
-//         } else if(response.keys) {
-//             console.warn("Keys received with no files");
-//         }
-//         else { 
-//             complete = true; 
-//         }
-
-//     }
-// }
-
 type ButtonBarProps = {
     onModal: (modalName: ModalEnum) => void,
     inSubdirectory: boolean,
+    deletedFiles: FetchDeteledFilesPageReturnType | null | undefined,
 }
 
 export function ButtonBar(props: ButtonBarProps) {
 
-    let {onModal, inSubdirectory} = props;
+    let {onModal, inSubdirectory, deletedFiles} = props;
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
@@ -334,6 +175,13 @@ export function ButtonBar(props: ButtonBarProps) {
 
     let copyHandler = useCallback(()=>onModal(ModalEnum.Copy), [onModal]);
 
+    let itemCount = useMemo(()=>{
+        let stats = deletedFiles?.stats;
+        if(!stats) return null;
+        let itemCount = stats.reduce((acc, item)=>acc + item.count, 0);
+        return itemCount;
+    }, [deletedFiles]) as number;
+
     return (
         <div className='grid grid-cols-2 md:grid-cols-3 pt-1'>
             <div className='col-span-2'>
@@ -350,7 +198,7 @@ export function ButtonBar(props: ButtonBarProps) {
                 </button>
             </div>
             <div className='text-sm'>
-                <p>TODO</p>
+                {itemCount!==null?<>{itemCount} deleted items</>:<>Loading ...</>}
             </div>
         </div>        
     );
@@ -413,24 +261,92 @@ async function fetchDeletedFilesPage(workers: AppWorkers | null, ready: boolean,
     let startIdx = (page - 1) * CONST_PAGE_SIZE;
 
     let response = await workers.connection.syncDeletedFiles(startIdx, params.cuuid, CONST_PAGE_SIZE);
-    console.debug("fetchDeletedFilesPage Data: ", response);
+    // console.debug("fetchDeletedFilesPage Data: ", response);
     if(!response.ok) throw new Error(`Error during sync: ${response.err}`);
 
     let responseFiles = response.files;
     if(!responseFiles) throw new Error('No files provided');
 
     let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, responseFiles, response.keys, {noidb: true});
-    console.debug("Decrypted deleted files", files);
+    // console.debug("Decrypted deleted files", files);
     let storeFiles = filesIdbToBrowsing(files);
-    console.debug("Store structured files", storeFiles);
+    // console.debug("Store structured files", storeFiles);
 
     let breadcrumb: TuuidsBrowsingStoreRow[] | null = null;
     let responseBreadcrumb = response.breadcrumb;
     if(responseBreadcrumb) {
         let decryptedBreadcrumb = await workers.directory.processDirectoryChunk(workers.encryption, userId, responseBreadcrumb, response.keys, {noidb: true});
         breadcrumb = filesIdbToBrowsing(decryptedBreadcrumb);
-        console.debug("Response breadcrumb", breadcrumb);
+        // console.debug("Response breadcrumb", breadcrumb);
     }
 
     return {list: storeFiles, breadcrumb, stats: response.stats};
+}
+
+type BreadcrumbProps = {
+    breadcrumb: TuuidsBrowsingStoreRow[] | null | undefined,
+    onClick?: (tuuid: string | null) => void,
+};
+
+function Breadcrumb(props: BreadcrumbProps) {
+
+    let { breadcrumb, onClick } = props;
+
+    let onClickHandler = useCallback((e: MouseEvent<HTMLLIElement | HTMLParagraphElement>)=>{
+        if(!onClick) return;
+        let value = e.currentTarget.dataset.tuuid || null;
+        onClick(value);
+    }, [onClick])
+
+    let breadcrumbMapped = useMemo(()=>{
+        if(!breadcrumb) return <></>;
+
+        let lastIdx = breadcrumb.length - 1;
+        let breadcrumbMapped = breadcrumb.filter(item=>{
+            if(!item) {
+                console.warn("Breacrumb with null items");
+                lastIdx -= 1;
+                return false;
+            }
+            return true;
+        });
+
+        // The breadcrumb is provided with last item first
+        breadcrumbMapped.reverse();
+
+        return breadcrumbMapped
+            .map((item, idx)=>{
+                if(idx === lastIdx) {
+                    return (
+                        <div key={item.tuuid} className='inline pl-1 md:pl-2 text-sm bg-slate-700 bg-opacity-50 font-bold pr-2'>
+                            {item.nom}
+                        </div>
+                    )
+                } else {
+                    return (
+                        <div key={item.tuuid} 
+                            className='inline cursor-pointer pl-1 md:pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
+                                <span onClick={onClickHandler} data-tuuid={item.tuuid}>{item.nom}</span>
+                                <span className="pointer-events-none ml-2 text-slate-800">/</span>
+                        </div>
+                    )
+                }
+            })
+    }, [breadcrumb, onClick, onClickHandler]);
+
+    return (
+        <nav aria-label='breadcrumb' className='w-screen leading-3 pr-2 line-clamp-2'>
+            {breadcrumb?
+                <div className='inline cursor-pointer items-center pl-1 md:pl-2 text-sm bg-slate-700 hover:bg-slate-600 active:bg-slate-500 bg-opacity-50 transition-colors duration-300'>
+                    <span className='' onClick={onClickHandler}>Trash</span>
+                    <span className="pointer-events-none ml-2 text-slate-400 font-bold">&gt;</span>
+                </div>
+            :
+                <div className='inline p-1 md:p-2 text-sm bg-slate-700 bg-opacity-50'>
+                    Trash
+                </div>
+            }
+            {breadcrumbMapped}
+        </nav>
+    );
 }
