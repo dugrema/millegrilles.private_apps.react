@@ -222,7 +222,7 @@ export function ButtonBar(props: ButtonBarProps) {
     let [dragOverFileButton, setDragOverFileButton] = useState(false);
 
     let cssDragFileButton = useMemo(()=>{
-        if(dragOverFileButton) return ' bg-violet-500';
+        if(dragOverFileButton) return 'bg-violet-500';
         return 'bg-slate-700';
     }, [dragOverFileButton]);
 
@@ -238,6 +238,7 @@ export function ButtonBar(props: ButtonBarProps) {
     let fileDragOverHandler = useCallback((e: DragEvent<HTMLButtonElement>)=>{
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
+        e.dataTransfer.effectAllowed = 'copy';
         setDragOverFileButton(true);
     }, [setDragOverFileButton]);
     let fileDropHandler = useCallback((e: DragEvent<HTMLButtonElement>)=>{

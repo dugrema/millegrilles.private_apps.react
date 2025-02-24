@@ -3,7 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import HeaderMenu from "./Menu";
 import Footer from "../Footer";
 import useUserBrowsingStore from "./userBrowsingStore";
-import { useEffect } from "react";
+import { DragEvent, useCallback, useEffect } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { openDB } from "./idb/collections2StoreIdb";
@@ -11,8 +11,15 @@ import { messageStruct } from "millegrilles.cryptography";
 import { SyncDownloads, SyncUploads, TransferTickerUpdate } from "./Transfers";
 
 function Collections2() {
+
+    let dragOverHandler = useCallback((e: DragEvent<HTMLElement>)=>{
+        e.preventDefault();
+        e.dataTransfer.effectAllowed = 'none';
+        e.dataTransfer.dropEffect = 'none';
+    }, []);
+
     return (
-        <div className='px-2'>
+        <div className='px-2' onDragOver={dragOverHandler}>
             
             {/* Visual components */}
             <HeaderMenu title='Collections' backLink={true} />
