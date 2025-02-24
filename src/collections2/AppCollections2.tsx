@@ -3,7 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import HeaderMenu from "./Menu";
 import Footer from "../Footer";
 import useUserBrowsingStore from "./userBrowsingStore";
-import { DragEvent, useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { openDB } from "./idb/collections2StoreIdb";

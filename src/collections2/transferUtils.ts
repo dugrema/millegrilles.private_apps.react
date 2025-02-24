@@ -170,7 +170,7 @@ export async function generateFileUploads(workers: AppWorkers, userId: string, c
 
         let keyCommandSigned = await workers.connection.createRoutedMessage(
             messageStruct.MessageKind.Command, keyCommand, {domaine: 'MaitreDesCles', action: 'ajouterCleDomaines'});
-        console.debug("Key command signed", keyCommandSigned);
+        // console.debug("Key command signed", keyCommandSigned);
 
         let uploadId = await addUploadFile(userId, cuuid, file, {secret, keyCommand: keyCommandSigned, destinationPath: breadcrumb});
         await workers.upload.addUpload(uploadId, file);

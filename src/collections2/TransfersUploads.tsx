@@ -53,7 +53,7 @@ function TransfersUploads() {
     useEffect(()=>{
         if(!workers || !ready || !userId) return;
         let currentlyPaused = localStorage.getItem(`pauseUploading_${userId}`) === 'true';
-        console.debug("Currently paused: ", currentlyPaused);
+        // console.debug("Currently paused: ", currentlyPaused);
         setAllPaused(currentlyPaused);
     }, [workers, ready, setAllPaused, userId]);
 

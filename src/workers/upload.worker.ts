@@ -107,7 +107,6 @@ export class AppsUploadWorker {
             let upload = {workerType: UploadWorkerType.UPLOAD, uploadId, state: UploadStateEnum.UPLOADING, position, totalSize: size} as UploadTransferProgress;
             this.uploadStatus = upload;
             if(stateChanged) {
-                console.warn("Trigger list changed");
                 await this.triggerListChanged();
             } else {
                 await this.produceState();

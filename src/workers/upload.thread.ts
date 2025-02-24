@@ -175,7 +175,7 @@ export class UploadThreadWorker {
                     throw new Error('Unsupported response status for file uploda POST verification: ' + response.status);
                 }
 
-                console.debug("Marking file upload as done. Cleaning up.")
+                // console.debug("Marking file upload as done. Cleaning up.")
                 await updateUploadJobState(uploadId, UploadStateEnum.DONE);
                 await removeUploadParts(uploadId);
 

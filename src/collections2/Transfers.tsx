@@ -5,7 +5,7 @@ import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore from "./userBrowsingStore";
 import useTransferStore, { DownloadJobStoreType, TransferActivity, UploadJobStoreType } from "./transferStore";
-import { DownloadStateEnum, getBatchRetryUploadSendCommand, getDownloadContent, getDownloadJob, getDownloadJobs, getNextUploadSendCommand, getUploadJob, getUploadJobs, updateUploadJobState, UploadIdbType, UploadStateEnum } from "./idb/collections2StoreIdb";
+import { DownloadStateEnum, getBatchRetryUploadSendCommand, getDownloadContent, getDownloadJob, getDownloadJobs, getNextUploadSendCommand, getUploadJobs, updateUploadJobState, UploadStateEnum } from "./idb/collections2StoreIdb";
 import { downloadFile } from "./transferUtils";
 
 function Transfers() {
@@ -184,7 +184,7 @@ export function SyncUploads() {
                         }
                     }
                 } else {
-                    console.debug("No upload stuck in SendCommand state");
+                    // console.debug("No upload stuck in SendCommand state");
                 }
             }).catch(err=>{
                 console.error("Error during recovery of uploads in SendCommand state", err);
@@ -197,7 +197,7 @@ export function SyncUploads() {
         Promise.resolve().then(async () => {
             let job = await getNextUploadSendCommand(userIdInner);
             while(job) {
-                console.debug("Send command for upload job", job);
+                // console.debug("Send command for upload job", job);
                 if(job.addCommand && job.keyCommand) {
                     // Send Add File command and set upload to ready.
                     await connection.collection2AddFile(job.addCommand, job.keyCommand);
