@@ -12,14 +12,8 @@ import { SyncDownloads, SyncUploads, TransferTickerUpdate } from "./Transfers";
 
 function Collections2() {
 
-    let dragOverHandler = useCallback((e: DragEvent<HTMLElement>)=>{
-        e.preventDefault();
-        e.dataTransfer.effectAllowed = 'none';
-        e.dataTransfer.dropEffect = 'none';
-    }, []);
-
     return (
-        <div className='px-2' onDragOver={dragOverHandler}>
+        <div className='px-2'>
             
             {/* Visual components */}
             <HeaderMenu title='Collections' backLink={true} />

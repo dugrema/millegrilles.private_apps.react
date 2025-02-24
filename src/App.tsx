@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { DragEvent, useCallback } from 'react';
 import { createBrowserRouter, RouterProvider, Link } from "react-router-dom";
 
 import { ErrorPage } from './ErrorBoundary';
@@ -108,9 +108,16 @@ function App() {
     //     window.location.href = '/auth/deconnecter_usager';
     // }, []);
 
+    // Prevent drag-and-drop oustide supported areas
+    let dragOverHandler = useCallback((e: DragEvent<HTMLElement>)=>{
+        e.preventDefault();
+        e.dataTransfer.effectAllowed = 'none';
+        e.dataTransfer.dropEffect = 'none';
+    }, []);
+
     return (
         <>
-            <div className="App-background text-slate-300">
+            <div className="App-background text-slate-300" onDragOver={dragOverHandler}>
                 <RouterProvider router={router} />
             </div>
             <InitializeWorkers />

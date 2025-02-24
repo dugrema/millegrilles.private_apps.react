@@ -126,6 +126,7 @@ function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
     // Drag and drop files on the Add File button
     let fileDragEnterHandler = useCallback((e: DragEvent<HTMLDivElement>)=>{
         e.preventDefault();
+        e.stopPropagation();
         setDragOverFileButton(true);
     }, [setDragOverFileButton]);
     let fileDragLeaveHandler = useCallback((e: DragEvent<HTMLDivElement>)=>{
@@ -134,11 +135,13 @@ function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
     }, [setDragOverFileButton]);
     let fileDragOverHandler = useCallback((e: DragEvent<HTMLDivElement>)=>{
         e.preventDefault();
+        e.stopPropagation();
         e.dataTransfer.dropEffect = 'copy';
         setDragOverFileButton(true);
     }, [setDragOverFileButton]);
     let fileDropHandler = useCallback((e: DragEvent<HTMLDivElement>)=>{
         e.preventDefault();
+        e.stopPropagation();
         setDragOverFileButton(false);
 
         let files = e.dataTransfer.files;

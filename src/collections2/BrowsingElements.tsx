@@ -229,6 +229,7 @@ export function ButtonBar(props: ButtonBarProps) {
     // Drag and drop files on the Add File button
     let fileDragEnterHandler = useCallback((e: DragEvent<HTMLButtonElement>)=>{
         e.preventDefault();
+        e.stopPropagation();
         setDragOverFileButton(true);
     }, [setDragOverFileButton]);
     let fileDragLeaveHandler = useCallback((e: DragEvent<HTMLButtonElement>)=>{
@@ -237,12 +238,14 @@ export function ButtonBar(props: ButtonBarProps) {
     }, [setDragOverFileButton]);
     let fileDragOverHandler = useCallback((e: DragEvent<HTMLButtonElement>)=>{
         e.preventDefault();
+        e.stopPropagation();
         e.dataTransfer.dropEffect = 'copy';
         e.dataTransfer.effectAllowed = 'copy';
         setDragOverFileButton(true);
     }, [setDragOverFileButton]);
     let fileDropHandler = useCallback((e: DragEvent<HTMLButtonElement>)=>{
         e.preventDefault();
+        e.stopPropagation();
         setDragOverFileButton(false);
 
         let files = e.dataTransfer.files;
