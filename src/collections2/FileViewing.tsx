@@ -65,8 +65,7 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Uint8Array | n
         let blob = new Blob([thumbnail]);
         let blobUrl = URL.createObjectURL(blob);
         // Introduce delay to allow full size to load first when possible (avoids flickering).
-        setTimeout(()=>setBlobUrl(blobUrl), 500);
-
+        setTimeout(()=>setBlobUrl(blobUrl), 250);
         return () => {
             URL.revokeObjectURL(blobUrl);
         }
@@ -79,11 +78,32 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Uint8Array | n
         // Load the full size image if available
         let images = file?.fileData?.images;
         if(images) {
+            if(file.fileData?.anime && file.fileData.mimetype?.startsWith('image')) {
+                // Animated image (e.g animated gif), download the original
+                let fuuids_versions = file.fileData?.fuuids_versions;
+                if(fuuids_versions && fuuids_versions.length > 0) {
+                    let fuuid = fuuids_versions[0]
+                    let secretKey = file.secretKey;
+                    let {nonce, format} = file.fileData;
+
+                    if(secretKey && nonce && format) {
+                        workers.directory.openFile(fuuid, secretKey, {nonce, format})
+                        .then(imageBlob=>{
+                            let imageBlobUrl = URL.createObjectURL(imageBlob);
+                            setFullSizeBlobUrl(imageBlobUrl);
+                        })
+                        .catch(err=>console.error("Error loading full size image", err));
+                        return;  // Loading original image
+                    }
+                }
+            }
+
             // Find image with greatest resolution
             let maxImage = Object.values(images).reduce((acc, item)=>{
                 if(!acc?.resolution || acc?.resolution < item.resolution) return item;
                 return acc;
             }, null as FileImageData | null);
+
             if(maxImage) {
                 // Download image
                 let fuuid = maxImage.hachage;
