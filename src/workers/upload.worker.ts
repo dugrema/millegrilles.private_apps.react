@@ -352,6 +352,26 @@ export class AppsUploadWorker {
         return uploadsSendCommand;
     }
 
+    // TODO - figure out issue with connectionWorker scope
+    // async sendAddFileCommands(connectionWorker: Remote<AppsConnectionWorker>, userId: string, retrying?: boolean) {
+    //     let job = await getNextUploadSendCommand(userId);
+    //     while(job) {
+    //         console.debug("Send command for upload job", job);
+    //         if(job.addCommand && job.keyCommand) {
+    //             // Send Add File command and set upload to ready.
+    //             await connectionWorker.collection2AddFile(job.addCommand, job.keyCommand);
+    //             await updateUploadJobState(job.uploadId, UploadStateEnum.READY);
+    //             await this.triggerListChanged();
+    //         } else {
+    //             console.warn("Error on jobId:%s, no add/key commands present", job.uploadId);
+    //         }
+    //         // Get next uploadId to process
+    //         job = await getNextUploadSendCommand(userId);
+    //     }
+
+    //     // Make sure the worker picks up the new jobs from IDB
+    //     await this.triggerJobs();
+    // }
 }
 
 export type UploadJobType = UploadIdbType & {
