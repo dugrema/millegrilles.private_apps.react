@@ -293,6 +293,12 @@ const CONST_STATUS_UPLOAD_ENCRYPTION_DONE = [
     UploadStateEnum.GENERATING, 
     UploadStateEnum.SENDCOMMAND, 
     UploadStateEnum.READY, 
+    // Include subsequent states to "double-count"
+    UploadStateEnum.UPLOADING, 
+    UploadStateEnum.VERIFYING, 
+];
+
+const CONST_STATUS_UPLOADING = [
     UploadStateEnum.UPLOADING, 
     UploadStateEnum.VERIFYING, 
 ];
@@ -480,7 +486,7 @@ export function TransferTickerUpdate() {
             // Total bytes uploading, excluding completed uploads
             let total = uploadJobs
                 .filter(item=>CONST_STATUS_UPLOAD_JOB_TOTAL.includes(item.state))
-                .map(item=>item.size)
+                .map(item=>item.size || item.clearSize)
                 .reduce((acc, item)=>{
                     if(acc && item) return acc + item;
                     if(item) return item;
@@ -501,36 +507,57 @@ export function TransferTickerUpdate() {
                         if(item) return item;
                         return acc;
                     }, 0);
-                if(totalCompleted) totalBytesUploading += totalCompleted;
+                
+                if(totalCompleted) {
+                    totalBytesUploading += totalCompleted;
+                    bytesPosition += totalCompleted;
+                }
 
-                // Current progress when adding jobs DONE that started in the current session
-                let currentDone = uploadJobs
-                    .filter(item=>{
-                        return item.state === UploadStateEnum.DONE && item.processDate >= startTimestamp;
-                    })
-                    .map(item=>item.size)
-                    .reduce((acc, item)=>{
-                        if(acc && item) return acc + item;
-                        if(item) return item;
-                        return acc;
-                    }, 0);
-                if(currentDone) bytesPosition += currentDone;
+                // // Current progress when adding jobs DONE that started in the current session
+                // let currentDone = uploadJobs
+                //     .filter(item=>{
+                //         return item.state === UploadStateEnum.DONE && item.processDate >= startTimestamp;
+                //     })
+                //     .map(item=>item.size)
+                //     .reduce((acc, item)=>{
+                //         if(acc && item) return acc + item;
+                //         if(item) return item;
+                //         return acc;
+                //     }, 0);
+                // if(currentDone) {
+                //     bytesPosition += currentDone;
+                // }
             }
 
             // Jobs that are completely encrypted by not uploaded
             let currentEncrypted = uploadJobs
-                .filter(item=>item.state===UploadStateEnum.UPLOADING)
+                .filter(item=>CONST_STATUS_UPLOAD_ENCRYPTION_DONE.includes(item.state))
                 .map(item=>item.size)
                 .reduce((acc, item)=>{
                     if(acc && item) return acc + item;
                     if(item) return item;
                     return acc;
                 }, 0);
+
             if(currentEncrypted) {
-                // Downloaded but not decrypted files count for half the "byte work".
+                // Encrypted but not uploaded files count for half the "byte work".
                 bytesPosition += Math.floor(currentEncrypted / 2);
             }
 
+            // let currentUploading = uploadJobs
+            //     .filter(item=>CONST_STATUS_UPLOADING.includes(item.state))
+            //     .map(item=>item.size)
+            //     .reduce((acc, item)=>{
+            //         if(acc && item) return acc + item;
+            //         if(item) return item;
+            //         return acc;
+            //     }, 0);
+
+            // if(currentUploading) {
+            //     // Uploaded files count for half the "byte work".
+            //     bytesPosition += Math.floor(currentUploading / 2);
+            // }
+    
             // Check states
             uploadStates = uploadJobs.map(item=>item.state).reduce((acc, item)=>{
                 acc[item] += 1;
@@ -539,10 +566,12 @@ export function TransferTickerUpdate() {
         }
 
         if(uploadProgress && uploadProgress.length > 0) {
+            if(!uploadSessionStart) setUploadSessionStart(new Date());
+
             activity = TransferActivity.RUNNING;    // Workers active
 
             // Get current encryption position - count as half the bytes to process
-            let uploadWorkerPosition = uploadProgress
+            let encryptionWorkerPosition = uploadProgress
                 .filter(item=>item.state === UploadStateEnum.ENCRYPTING)
                 .map(item=>item.position)
                 .reduce((acc, item)=>{
@@ -551,21 +580,10 @@ export function TransferTickerUpdate() {
                     return acc
                 }, 0);
             // Encrypting is half the work
-            if(uploadWorkerPosition) bytesPosition += uploadWorkerPosition / 2;
-
-            // Counting all files already encrypted as half the bytes to process
-            let alreadyEncryptedBytes = uploadProgress
-                .filter(item=>CONST_STATUS_UPLOAD_ENCRYPTION_DONE.includes(item.state))
-                .map(item=>item.position)
-                .reduce((acc, item)=>{
-                    if(acc && item) return acc + item;
-                    if(item) return item;
-                    return acc
-                }, 0);
-            if(alreadyEncryptedBytes) bytesPosition += alreadyEncryptedBytes / 2;
+            if(encryptionWorkerPosition) bytesPosition += encryptionWorkerPosition / 2;
             
             // Get current upload position
-            let encryptedWorkerPosition = uploadProgress
+            let uploadWorkerPosition = uploadProgress
                 .filter(item=>item.state === UploadStateEnum.UPLOADING)
                 .map(item=>item.position)
                 .reduce((acc, item)=>{
@@ -575,7 +593,7 @@ export function TransferTickerUpdate() {
                 }, 0);
 
             // Uploading is half the work
-            if(encryptedWorkerPosition) bytesPosition += encryptedWorkerPosition / 2;
+            if(uploadWorkerPosition) bytesPosition += uploadWorkerPosition / 2;
         }
 
         if(uploadStates[UploadStateEnum.ERROR] > 0) {
@@ -584,7 +602,7 @@ export function TransferTickerUpdate() {
             activity = TransferActivity.PENDING;
         }
 
-        // console.debug("Download activity: %s, position: %s, total: %s, states: %O", activity, bytesPosition, totalBytesDownloading, downloadStates);
+        // console.debug("Upload activity: %s, position: %s, total: %s, states: %O", activity, bytesPosition, totalBytesUploading, uploadStates);
         let percent = null as number | null;
         if(typeof(bytesPosition) === 'number' && totalBytesUploading) {
             percent = Math.floor(bytesPosition / totalBytesUploading * 100);
@@ -609,9 +627,9 @@ export function TransferTickerUpdate() {
             uploadStates[UploadStateEnum.VERIFYING] === 0
         ) {
             // Reset download session start
-            setDownloadSessionStart(null);
+            setUploadSessionStart(null);
         }
-    }, [uploadJobs, uploadProgress, setUploadTicker, uploadSessionStart, setUploadSessionStart, setDownloadSessionStart]);
+    }, [uploadJobs, uploadProgress, setUploadTicker, uploadSessionStart, setUploadSessionStart]);
 
     return <></>;
 }
