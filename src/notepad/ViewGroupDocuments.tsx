@@ -228,7 +228,7 @@ function GroupEdit(props: GroupProps) {
             if(key) {
                 encryptedData = await workers.encryption.encryptMessageMgs4(cleartextData, {key: key.cleSecrete});
             } else {
-                encryptedData = await workers.encryption.encryptMessageMgs4(cleartextData);
+                encryptedData = await workers.encryption.encryptMessageMgs4(cleartextData, {domain: 'Documents'});
 
                 // Sign the new key command
                 if(encryptedData.cle && encryptedData.cle_id) {
