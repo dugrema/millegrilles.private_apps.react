@@ -106,7 +106,7 @@ export default function Chat() {
                 })
                 .catch(err=>console.error("Error creating new conversation encryption key", err));
         }
-    }, [workers, userId, setConversationKey, paramConversationId, setStoreMessages, ready, setNewConversation, conversationKey, setLastConversationMessagesUpdate])
+    }, [workers, userId, setConversationKey, paramConversationId, ready, setNewConversation, conversationKey, setLastConversationMessagesUpdate])
 
     let messages = useChatStore(state=>state.messages);
     let appendCurrentResponse = useChatStore(state=>state.appendCurrentResponse);
@@ -288,11 +288,13 @@ export default function Chat() {
                 </ViewHistory>
             </section>
             
-            <div className='fixed bottom-0 w-full pl-2 pr-6 mb-8 grid grid-cols-3'>
-                <div><ModelPickList onChange={modelOnChange} /></div>
+            <div className='grid grid-cols-3 fixed bottom-0 w-full pl-2 pr-6 mb-8'>
+                <ModelPickList onChange={modelOnChange} />
+                
                 <textarea value={chatInput} onChange={chatInputOnChange} onKeyDown={textareaOnKeyDown} 
                     placeholder='Entrez votre question ici. Exemple : Donne-moi une liste de films sortis en 1980.'
-                    className='text-black w-full rounded-md h-28 sm:h-16 col-span-2' />
+                    className='text-black w-full rounded-md h-28 sm:h-16 col-span-3' />
+                
                 <div className='w-full text-center col-span-3'>
                     <button disabled={waiting || !ready || !relayAvailable} 
                         className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900' onClick={submitHandler}>
@@ -467,7 +469,7 @@ function ModelPickList(props: {onChange: (e: ChangeEvent<HTMLSelectElement>)=>vo
     return (
         <>
             <label htmlFor='selectModel'>Model</label>
-            <select id='selectModel' className='text-black' onChange={onChange}>
+            <select id='selectModel' className='text-black col-span-2' onChange={onChange}>
                 {modelElems}
             </select>
         </>
