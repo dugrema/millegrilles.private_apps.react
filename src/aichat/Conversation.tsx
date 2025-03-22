@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { proxy } from 'comlink';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -350,7 +351,7 @@ type MessageRowProps = {value: StoreChatMessage};
 // Src : https://flowbite.com/docs/components/chat-bubble/
 function ChatBubble(props: MessageRowProps) {
 
-    let {query_role: role, content, message_date: messageDate} = props.value;
+    const {query_role: role, content, message_date: messageDate} = props.value;
 
     let messageDateStr = useMemo(()=>{
         if(!messageDate) return '';
@@ -376,7 +377,9 @@ function ChatBubble(props: MessageRowProps) {
                         <span className="text-sm font-normal text-gray-300">{messageDateStr}</span>
                     </div>
                     <div className="flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl">
-                        <Markdown className="text-sm font-normal text-gray-900 dark:text-white">{content}</Markdown>
+                        <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
+                            <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
+                        </div>
                     </div>
                 </div>
             </div>        
@@ -390,7 +393,9 @@ function ChatBubble(props: MessageRowProps) {
                         <span className="text-sm font-normal text-gray-300">{messageDateStr}</span>
                     </div>
                     <div className="flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-s-xl rounded-ee-xl">
-                        <Markdown className="text-sm font-normal text-gray-900 dark:text-white">{content}</Markdown>
+                        <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
+                            <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
+                        </div>
                     </div>
                 </div>
             </div>        
