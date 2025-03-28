@@ -28,7 +28,7 @@ export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null,
         if(!file) return false;
         if(file.fileData?.video || file.fileData?.images) return true;
         let mimetype = file.fileData?.mimetype;
-        if(mimetype) return isVideoMimetype(mimetype);
+        if(mimetype) return isVideoMimetype(mimetype) || supportsAudioFormat(mimetype);
         return false;
     }, [file, thumbnail]);
 
@@ -178,16 +178,17 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
     let [jwt, setJwt] = useState('');
     let [videoReady, setVideoReady] = useState(false);
 
-    let [isVideoFile, isPdf] = useMemo(()=>{
+    let [isVideoFile, isAudioFile, isPdf] = useMemo(()=>{
         let mimetype = file?.fileData?.mimetype;
         if(file?.fileData?.video) {
             // Check that there is at least 1 available video
-            return [Object.keys(file.fileData.video).length > 0, false];
+            return [Object.keys(file.fileData.video).length > 0, false, false];
         } else if(mimetype) {
-            if(supportsVideoFormat(mimetype)) return [true, false];
-            else if(mimetype === 'application/pdf') return [false, true];
+            if(mimetype === 'application/pdf') return [false, false, true];
+            else if(supportsAudioFormat(mimetype)) return [false, true, false];
+            else if(supportsVideoFormat(mimetype)) return [true, false, false];
         }
-        return [false, false];
+        return [false, false, false];
     }, [file]);
 
     let fuuid = useMemo(()=>{
@@ -394,6 +395,8 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
                     Play video
             </button>
         );
+    } else if(isAudioFile) {
+        return <AudioPlayer file={file} />
     } else {
         return <></>;
     }
@@ -801,6 +804,62 @@ function VideoSelectionDetail(props: FileViewLayoutProps & {file: TuuidsIdbStore
     )
 }
 
+type AudioPlayProps = {
+    file: TuuidsIdbStoreRowType | null
+}
+
+export function AudioPlayer(props: AudioPlayProps) {
+
+    const {file} = props;
+    const workers = useWorkers();
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
+
+    const [audioBlob, setAudioBlob] = useState(null as string | null);
+
+    let [fuuid, fileData] = useMemo(()=>{
+        const fileData = file?.fileData;
+        if(!fileData) return [null, null];
+        const fuuids = fileData.fuuids_versions;
+        const fuuid = (fuuids&&fuuids.length>0)?fuuids[0]:null;
+        return [fuuid, fileData];
+    }, [file]);
+
+    useEffect(()=>{
+        if(!workers || !ready) return;
+        if(!file || !fuuid || !fileData) return;
+
+        const secretKey = file.secretKey;
+        const {nonce, format} = fileData;
+
+        if(secretKey && nonce && format) {
+            workers.directory.openFile(fuuid, secretKey, {nonce, format})
+            .then(audioBlob=>{
+                const audioBlobUrl = URL.createObjectURL(audioBlob);
+                setAudioBlob(audioBlobUrl);
+            })
+            .catch(err=>console.error("Error loading audio file", err));
+            return;  // Loading original image
+        }
+    }, [workers, ready, file, fuuid, fileData])
+
+    // Blob URL cleanup
+    useEffect(()=>{
+        if(!audioBlob) return;
+        return () => {
+            URL.revokeObjectURL(audioBlob);
+        }
+    }, [audioBlob]);
+
+    if(!audioBlob) return <p>Loading ...</p>;
+
+    return (
+        <div className='grid grid-cols-1'>
+            <p>Audio playback</p>
+            <audio controls src={audioBlob} />
+        </div>
+    );
+}
+
 /**
  * 
  * @param videoType Video type string. Example: 'video/webm; codecs="vp9, vorbis"'
@@ -812,6 +871,12 @@ export function supportsVideoFormat(videoType: string): CanPlayTypeResult {
     const canPlayType = video.canPlayType(videoType)
     // Returns 'probably', 'maybe', ''
     return canPlayType
+}
+
+export function supportsAudioFormat(audioType: string): boolean {
+    const audio = document.createElement('audio');
+    const canPlayType = audio.canPlayType(audioType);
+    return ['probably', 'maybe'].includes(canPlayType);
 }
 
 /**
