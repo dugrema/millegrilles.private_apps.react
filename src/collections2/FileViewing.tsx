@@ -185,8 +185,8 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
             return [Object.keys(file.fileData.video).length > 0, false, false];
         } else if(mimetype) {
             if(mimetype === 'application/pdf') return [false, false, true];
+            else if(supportsVideoFormat(mimetype)) return [true, true, false];  // Return true for video and audio
             else if(supportsAudioFormat(mimetype)) return [false, true, false];
-            else if(supportsVideoFormat(mimetype)) return [true, false, false];
         }
         return [false, false, false];
     }, [file]);
