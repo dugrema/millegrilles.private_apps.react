@@ -10,7 +10,7 @@ import useChatStore, { ChatStoreConversationKey, ChatMessage as StoreChatMessage
 import useConnectionStore from '../connectionStore';
 import { ChatAvailable } from './ChatSummaryHistory';
 import { ChatMessage, ConversationKey, getConversation, getConversationMessages, saveConversation, saveMessagesSync } from './aichatStoreIdb';
-import { MessageResponse, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
+import { Formatters, MessageResponse, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
 import { messageStruct, multiencoding } from 'millegrilles.cryptography';
 import { getDecryptedKeys, saveDecryptedKey } from '../MillegrillesIdb';
 import { SendChatMessageCommand } from '../workers/connection.worker';
@@ -361,19 +361,24 @@ type MessageRowProps = {value: StoreChatMessage};
 // Src : https://flowbite.com/docs/components/chat-bubble/
 function ChatBubble(props: MessageRowProps) {
 
-    const {query_role: role, content, message_date: messageDate} = props.value;
+    const {query_role: role, content, message_date: messageDate, model} = props.value;
 
-    let messageDateStr = useMemo(()=>{
-        if(!messageDate) return '';
-        let d = new Date(messageDate);
-        let dateString = d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
-        return dateString;
+    const messageDateSecs = useMemo(()=>{
+        if(!messageDate) return undefined;
+        return messageDate / 1000;
     }, [messageDate]);
+
+    // let messageDateStr = useMemo(()=>{
+    //     if(!messageDate) return '';
+    //     let d = new Date(messageDate);
+    //     let dateString = d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
+    //     return dateString;
+    // }, [messageDate]);
 
     let [roleName, bubbleSide] = useMemo(()=>{
         switch(role) {
-            case 'user': return ['toé', 'right'];
-            case 'assistant': return ['l\'autre', 'left'];
+            case 'user': return ['User', 'right'];
+            case 'assistant': return ['Assistant', 'left'];
             default: return ['N/D', 'right'];
         };
     }, [role]);
@@ -384,7 +389,14 @@ function ChatBubble(props: MessageRowProps) {
                 <div className="flex flex-col gap-1 pr-20">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
-                        <span className="text-sm font-normal text-gray-300">{messageDateStr}</span>
+                        <span className="text-sm font-normal text-gray-300">
+                            <Formatters.FormatterDate value={messageDateSecs} />
+                        </span>
+                        {
+                            model?
+                            <span className='text-sm font-normal text-gray-400'>{model}</span>
+                            :<></>
+                        }
                     </div>
                     <div className="flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl">
                         <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
@@ -400,7 +412,9 @@ function ChatBubble(props: MessageRowProps) {
                 <div className="flex flex-col gap-1 w-full pl-20 items-end">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
-                        <span className="text-sm font-normal text-gray-300">{messageDateStr}</span>
+                        <span className="text-sm font-normal text-gray-300">
+                            <Formatters.FormatterDate value={messageDateSecs} />
+                        </span>
                     </div>
                     <div className="flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-s-xl rounded-ee-xl">
                         <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
