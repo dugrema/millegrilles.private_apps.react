@@ -21,6 +21,7 @@ import { ModalBrowseAction } from './FileAttachment';
 import { TuuidsBrowsingStoreRow } from '../collections2/userBrowsingStore';
 import { ThumbnailItem } from '../collections2/FilelistPane';
 import { loadTuuid } from '../collections2/idb/collections2StoreIdb';
+import { InitializeUserStore } from '../collections2/AppCollections2';
 
 const CONST_DEFAULT_MODEL = 'llama3.2:3b-instruct-q8_0';
 
@@ -624,7 +625,12 @@ function FileAttachments(props: FileAttachmentsProps) {
             <div className='inline absolute'>
                 <AttachmentThumbnails files={files} removeFiles={removeFiles} />
             </div>
-            {show?<ModalBrowseAction selectFiles={addFileCb} close={close} />:<></>}
+            {show?
+                <>
+                    <ModalBrowseAction selectFiles={addFileCb} close={close} />
+                    <InitializeUserStore />
+                </>
+            :<></>}
         </>
     )
 }

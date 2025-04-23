@@ -34,7 +34,7 @@ function Collections2() {
 
 export default Collections2;
 
-function InitializeUserStore() {
+export function InitializeUserStore() {
     let setUserId = useUserBrowsingStore(state=>state.setUserId);
 
     let workers = useWorkers();
