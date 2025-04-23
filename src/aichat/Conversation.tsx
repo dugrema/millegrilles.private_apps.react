@@ -41,7 +41,7 @@ export default function Chat() {
     let setLastConversationMessagesUpdate = useChatStore(state=>state.setLastConversationMessagesUpdate);
     let lastConversationMessagesUpdate = useChatStore(state=>state.lastConversationMessagesUpdate);
 
-    let [model, setModel] = useState(CONST_DEFAULT_MODEL);
+    let [model, setModel] = useState('');
     let modelOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setModel(e.currentTarget.value), [setModel]);
 
     let {conversationId: paramConversationId} = useParams();
@@ -133,10 +133,18 @@ export default function Chat() {
                 let storeMessageList: StoreChatMessage[] = chatMessages.filter(item=>item.query_role && item.content)
                 storeMessageList.sort(sortMessagesByDate);
                 setStoreMessages(storeMessageList);
+
+                // Reuse model of last assistant message
+                const model = storeMessageList.reduce((acc, item)=>{
+                    if(item.model) return item.model;
+                    return acc;
+                }, CONST_DEFAULT_MODEL);
+                console.debug("Re-setting model", model);
+                setModel(model);
             })
             .catch(err=>console.error("Error loading messages ", err));
 
-    }, [userId, setStoreMessages, lastConversationMessagesUpdate, conversationId]);
+    }, [userId, setStoreMessages, lastConversationMessagesUpdate, conversationId, setModel]);
 
     let chatCallback = useMemo(() => {
         if(!conversationId) return null;
@@ -289,7 +297,7 @@ export default function Chat() {
             </section>
             
             <div className='grid grid-cols-3 fixed bottom-0 w-full pl-2 pr-6 mb-8'>
-                <ModelPickList onChange={modelOnChange} />
+                <ModelPickList value={model} onChange={modelOnChange} />
                 
                 <textarea value={chatInput} onChange={chatInputOnChange} onKeyDown={textareaOnKeyDown} 
                     placeholder='Entrez votre question ici. Exemple : Donne-moi une liste de films sortis en 1980.'
@@ -446,9 +454,9 @@ function sortMessagesByDate(a: StoreChatMessage, b: StoreChatMessage) {
     return a.message_id.localeCompare(b.message_id);
 }
 
-function ModelPickList(props: {onChange: (e: ChangeEvent<HTMLSelectElement>)=>void}) {
+function ModelPickList(props: {value: string, onChange: (e: ChangeEvent<HTMLSelectElement>)=>void}) {
 
-    let {onChange} = props;
+    let {value, onChange} = props;
 
     let models = useChatStore(state=>state.models);
 
@@ -469,7 +477,7 @@ function ModelPickList(props: {onChange: (e: ChangeEvent<HTMLSelectElement>)=>vo
     return (
         <>
             <label htmlFor='selectModel'>Model</label>
-            <select id='selectModel' className='text-black col-span-2' onChange={onChange}>
+            <select id='selectModel' className='text-black col-span-2' value={value} onChange={onChange}>
                 {modelElems}
             </select>
         </>

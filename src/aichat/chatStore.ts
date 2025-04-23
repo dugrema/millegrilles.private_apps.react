@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { ConversationKey } from './aichatStoreIdb';
 
-export type ChatMessage = {message_id: string, query_role: string, content: string, message_date?: number};
+export type ChatMessage = {message_id: string, query_role: string, content: string, message_date?: number, model?: string | null};
 
 export type ChatStoreConversationKey = ConversationKey & {
     secret: Uint8Array,
