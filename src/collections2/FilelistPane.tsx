@@ -263,7 +263,8 @@ function sortBySize(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
 type FileItem = {
     value: TuuidsBrowsingStoreRow, 
     dateColumn?: string | null, 
-    onClick:(e: MouseEvent<HTMLButtonElement | HTMLDivElement>, value: TuuidsBrowsingStoreRow | null)=>void
+    onClick:(e: MouseEvent<HTMLButtonElement | HTMLDivElement>, value: TuuidsBrowsingStoreRow | null)=>void,
+    size?: number | null,
 };
 
 function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
@@ -390,7 +391,7 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
 
 export function ThumbnailItem(props: FileItem) {
 
-    let {value, onClick} = props;
+    let {value, onClick, size} = props;
     let {contactId} = useParams();
     let { ref, visible } = useVisibility({});
     let workers = useWorkers();
@@ -416,6 +417,11 @@ export function ThumbnailItem(props: FileItem) {
     let onclickHandler = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
         onClick(e, value)
     }, [value, onClick]);
+
+    const [sizeEffective, textBreak] = useMemo(()=>{
+        if(!size) return [200, 'break-all'];
+        return [size, 'truncate'];
+    }, [size]);
 
     let [selectionCss, imageCss] = useMemo(()=>{
         if(selectionMode) {
@@ -499,10 +505,10 @@ export function ThumbnailItem(props: FileItem) {
     }, [value, setThumbnail]);
 
     return (
-        <button ref={ref} className={`inline-block m-1 relative ${selectionCss}`} onClick={onclickHandler} value={value.tuuid}>
-            <p className='text-sm break-all font-bold absolute align-center bottom-0 bg-slate-800 w-full bg-opacity-70 px-1 pb-1'>{value.nom}</p>
-            <div className='w-40 sm:w-full object-cover'>
-                <img src={imgSrc} alt={'File ' + value.nom} width={200} height={200} className={imageCss} />
+        <button ref={ref} className={`top-1 inline-block m-1 relative ${selectionCss}`} onClick={onclickHandler} value={value.tuuid}>
+            <p className={`text-sm ${textBreak} font-bold absolute align-center bottom-0 bg-slate-800 w-full bg-opacity-70 px-1 pb-1`}>{value.nom}</p>
+            <div className={`sm:w-full object-cover`}>
+                <img src={imgSrc} alt={'File ' + value.nom} width={sizeEffective} height={sizeEffective} className={imageCss} />
             </div>
         </button>
     );

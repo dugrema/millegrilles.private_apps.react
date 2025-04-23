@@ -330,12 +330,6 @@ export default function Chat() {
         }
     }, [submitHandler])
 
-    let clearHandler = useCallback(()=>{
-        clearConversation();
-        setChatInput('');
-        navigate('/apps/aichat/newConversation');
-    }, [navigate, clearConversation, setChatInput]);
-
     useEffect(()=>{
         // Clear conversation on exit
         return () => {
@@ -372,7 +366,7 @@ export default function Chat() {
 
     return (
         <>
-            <section className='fixed top-8 bottom-56 sm:bottom-48 overflow-y-auto pl-4 pr-4 w-full'>
+            <section className='fixed top-8 mb-10 bottom-64 sm:bottom-52 overflow-y-auto px-4 w-full'>
                 <h1>Conversation</h1>
                 <ViewHistory triggerScrolldown={lastUpdate}>
                     <div className='font-bold'><ChatAvailable ignoreOk={true} naClassname='text-red-500' /></div>
@@ -394,10 +388,6 @@ export default function Chat() {
                     <button disabled={waiting || !ready || !relayAvailable} 
                         className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900' onClick={submitHandler}>
                             Send
-                    </button>
-                    <button disabled={waiting} 
-                        className='varbtn w-24 bg-slate-700 hover:bg-slate-600 active:bg-slate-500' onClick={clearHandler}>
-                            Clear
                     </button>
                     <Link to='/apps/aichat' 
                         className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
@@ -630,9 +620,10 @@ function FileAttachments(props: FileAttachmentsProps) {
 
     return (
         <>
-            <p>File attachments</p>
-            <button onClick={open} className='btn bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>Select</button>
-            <AttachmentThumbnails files={files} removeFiles={removeFiles} />
+            <button onClick={open} className='varbtn w-20 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 mb-8'>Add file</button>
+            <div className='inline absolute'>
+                <AttachmentThumbnails files={files} removeFiles={removeFiles} />
+            </div>
             {show?<ModalBrowseAction selectFiles={addFileCb} close={close} />:<></>}
         </>
     )
@@ -651,9 +642,9 @@ function AttachmentThumbnails(props: {files: TuuidsBrowsingStoreRow[] | null, re
     const fileElems = useMemo(()=>{
         if(!files) return <></>;
         return files.map(item=>{
-            return <ThumbnailItem key={item.tuuid} onClick={onClick} value={item} />
+            return <ThumbnailItem key={item.tuuid} size={60} onClick={onClick} value={item} />
         })
     }, [files]);
 
-    return <>{fileElems}</>;
+    return <div className='inline-block w-96 truncate'>{fileElems}</div>;
 }
