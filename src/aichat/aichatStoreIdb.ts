@@ -37,6 +37,7 @@ export type ChatMessage = {
     query_role?: string, 
     content?: string, 
     message_date?: number, 
+    model?: string,
 };
 
 export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
