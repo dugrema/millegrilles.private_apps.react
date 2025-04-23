@@ -21,12 +21,23 @@ const DOMAINE_AI_LANGUAGE = 'AiLanguage';
 const DOMAINE_OLLAMA_RELAI = 'ollama_relai';
 const DOMAINE_GROSFICHIERS = 'GrosFichiers';
 
+export type FileAttachment = {
+    tuuid: string,
+    mimetype: string,
+    fuuid: string,
+    keyId: string,
+    nonce?: string,
+    header?: string,
+    format: string,
+}
+
 export type SendChatMessageCommand = { 
     conversation_id: string,
     model: string, 
     role: string, 
     encrypted_content: EncryptionBase64Result,
     new?: boolean,
+    attachments?: FileAttachment[] | null,
 };
 
 export type ActivationCodeResponse = MessageResponse & {

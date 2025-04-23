@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, MutableRefObject, Dispatch } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, MutableRefObject, Dispatch, MouseEvent } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { proxy } from 'comlink';
@@ -14,11 +14,21 @@ import { ChatMessage, ConversationKey, getConversation, getConversationMessages,
 import { Formatters, MessageResponse, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
 import { messageStruct, multiencoding } from 'millegrilles.cryptography';
 import { getDecryptedKeys, saveDecryptedKey } from '../MillegrillesIdb';
-import { SendChatMessageCommand } from '../workers/connection.worker';
+import { FileAttachment, SendChatMessageCommand } from '../workers/connection.worker';
 import SyncConversationMessages from './SyncConversationMessages';
 import { EncryptionBase64Result } from '../workers/encryptionUtils';
+import { ModalBrowseAction } from './FileAttachment';
+import { TuuidsBrowsingStoreRow } from '../collections2/userBrowsingStore';
+import { ThumbnailItem } from '../collections2/FilelistPane';
+import { loadTuuid } from '../collections2/idb/collections2StoreIdb';
 
 const CONST_DEFAULT_MODEL = 'llama3.2:3b-instruct-q8_0';
+
+
+type ContentToEncryptType = {
+    messageHistory?: {role: string, content: string}[] | null,
+    attachmentKeys?: {[key: string]: string},
+}
 
 
 export default function Chat() {
@@ -118,6 +128,8 @@ export default function Chat() {
     let [chatInput, setChatInput] = useState('');
     let [waiting, setWaiting] = useState(false);
     let [lastUpdate, setLastUpdate] = useState(0);
+    const [fileAttachments, setFileAttachments] = useState(null as TuuidsBrowsingStoreRow[] | null);
+
 
     let chatInputOnChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
         let value = e.currentTarget.value;
@@ -189,9 +201,6 @@ export default function Chat() {
         if(!workers) throw new Error('workers not initialized');
         if(!conversationKey) throw new Error('Encryption key is not initialized');
 
-        let messageHistory = messages.map(item=>{
-            return {role: item.query_role, content: item.content};
-        });
         // let newMessage = {'message_id': 'current', 'role': 'user', 'content': chatInput};
         pushUserQuery(chatInput);
         setChatInput('');  // Reset input
@@ -201,9 +210,76 @@ export default function Chat() {
             if(!conversationKey) throw new Error("Encryption key not initialized");
             if(!conversationId) throw new Error("ConversationId not initialized");
 
-            let encryptedMessageHistory = null as null | EncryptionBase64Result;
+            let attachmentKeys = null as {[key: string]: string} | null;
+            let attachments = null as FileAttachment[] | null;
+            if(fileAttachments && userId) {
+                attachmentKeys = {} as {[keyId: string]: string};
+                attachments = [];
+
+                for await (const attachment of fileAttachments) {
+                    const tuuid = attachment.tuuid;
+                    const fileToAttach = await loadTuuid(attachment.tuuid, userId);
+                    if(!fileToAttach) {
+                        console.error("Unknown tuuid: %s", tuuid);
+                        continue;
+                    }
+
+                    let keyId = fileToAttach.keyId;
+                    if(!keyId || !fileToAttach.secretKey) {
+                        console.error("Missing decryption key for %s", tuuid);
+                        continue;
+                    }
+
+                    const secretKeyBase64 = multiencoding.encodeBase64Nopad(fileToAttach.secretKey);
+                    attachmentKeys[keyId] = secretKeyBase64;
+
+                    const images = fileToAttach.fileData?.images;
+                    let fuuid = null as string | null;
+                    const versions = fileToAttach.fileData?.fuuids_versions;
+                    if(versions) fuuid = versions[0];
+                    const selectedFile = {
+                        tuuid: attachment.tuuid,
+                        fuuid, 
+                        mimetype: attachment.mimetype,
+                        keyId, 
+                        nonce: fileToAttach?.fileData?.nonce,
+                        format: fileToAttach?.fileData?.format,
+                    } as FileAttachment;
+                    if(images) {
+                        // Find highest resolution file
+                        let res = 0;
+                        for(const img of Object.values(images)) {
+                            if(img.resolution > res) {
+                                res = img.resolution;
+                                selectedFile.fuuid = img.hachage;
+                                selectedFile.mimetype = img.mimetype;
+                                if(img.nonce) selectedFile.nonce = img.nonce;
+                                else if(img.header) {
+                                    selectedFile.header = img.header
+                                    selectedFile.nonce = undefined;
+                                }
+                                else throw new Error('File without decryption nonce/header');
+                                if(img.format) selectedFile.format = img.format;
+                                selectedFile.keyId = img.cle_id || selectedFile.keyId;
+                            }
+                        }
+                    }
+                    attachments.push(selectedFile);
+                }
+            }
+
+            const contentToEncrypt = {} as ContentToEncryptType;
             if(messages && messages.length > 0) {
-                encryptedMessageHistory = await workers.encryption.encryptMessageMgs4ToBase64(messageHistory, conversationKey?.secret);
+                contentToEncrypt.messageHistory = messages.map(item=>{
+                    return {role: item.query_role, content: item.content};
+                });
+            }
+            if(attachmentKeys) contentToEncrypt.attachmentKeys = attachmentKeys;
+    
+            let encryptedMessageHistory = null as null | EncryptionBase64Result;
+            if(Object.keys(contentToEncrypt).length > 0) {
+                console.debug("Encrypting content: ", contentToEncrypt);
+                encryptedMessageHistory = await workers.encryption.encryptMessageMgs4ToBase64(contentToEncrypt, conversationKey?.secret);
                 encryptedMessageHistory.cle_id = conversationKey.cle_id;
                 delete encryptedMessageHistory.digest;  // Remove digest, no need for it
             }
@@ -215,28 +291,34 @@ export default function Chat() {
                 conversation_id: conversationId, 
                 model,
                 role: 'user', 
-                encrypted_content: encryptedUserMessage
+                encrypted_content: encryptedUserMessage,
             };
+            if(attachments) command.attachments = attachments;
+
             if(newConversation) command.new = true;
-            // console.debug("Chat message ", command);
+            console.debug("Chat message ", command);
 
             // let attachment = {history: encryptedMessageHistory, key: {signature: conversationKey.signature}};
             setWaiting(true);
-                if(!workers) throw new Error("Workers not initialized");
-                if(!chatCallback) throw new Error("Chat callback not initialized");
-                let ok = await workers.connection.sendChatMessage(
-                    command, encryptedMessageHistory, conversationKey.signature, conversationKey.encrypted_keys,
-                    // @ts-ignore
-                    chatCallback, 
-                    userMessageCallback
-                );
-                if(!ok) console.error("Error sending chat message");
-                navigate(`/apps/aichat/conversation/${conversationId}`);
-            })
-            .catch(err=>console.error("Error sending message ", err))
-            .finally(()=>setWaiting(false))
-    }, [workers, conversationId, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, 
-        pushUserQuery, userMessageCallback, newConversation, model, navigate]
+            if(!workers) throw new Error("Workers not initialized");
+            if(!chatCallback) throw new Error("Chat callback not initialized");
+            let ok = await workers.connection.sendChatMessage(
+                command, encryptedMessageHistory, conversationKey.signature, conversationKey.encrypted_keys,
+                // @ts-ignore
+                chatCallback, 
+                userMessageCallback
+            );
+            if(!ok) {
+                console.error("Error sending chat message");
+            } else {
+                setFileAttachments(null);
+            }
+            navigate(`/apps/aichat/conversation/${conversationId}`);
+        })
+        .catch(err=>console.error("Error sending message ", err))
+        .finally(()=>setWaiting(false))
+    }, [workers, userId, conversationId, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, 
+        pushUserQuery, userMessageCallback, newConversation, model, navigate, fileAttachments, setFileAttachments]
     );
 
     // Submit on ENTER in the textarea
@@ -297,14 +379,18 @@ export default function Chat() {
                 </ViewHistory>
             </section>
             
-            <div className='grid grid-cols-3 fixed bottom-0 w-full pl-2 pr-6 mb-8'>
+            <div className='grid grid-cols-1 md:grid-cols-3 fixed bottom-0 w-full pl-2 pr-6 mb-8'>
                 <ModelPickList value={model} onChange={modelOnChange} />
                 
                 <textarea value={chatInput} onChange={chatInputOnChange} onKeyDown={textareaOnKeyDown} 
                     placeholder='Entrez votre question ici. Exemple : Donne-moi une liste de films sortis en 1980.'
-                    className='text-black w-full rounded-md h-28 sm:h-16 col-span-3' />
-                
-                <div className='w-full text-center col-span-3'>
+                    className='text-black rounded-md h-28 sm:h-16 col-span-12' />
+
+                <div className='w-full col-span-12'>
+                    <FileAttachments files={fileAttachments} setFiles={setFileAttachments} />
+                </div>
+
+                <div className='text-center col-span-12'>
                     <button disabled={waiting || !ready || !relayAvailable} 
                         className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900' onClick={submitHandler}>
                             Send
@@ -356,7 +442,7 @@ function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNod
 
     return (
         <div className='text-left w-full pr-4'>
-            {messages.map((item, idx)=>(<ChatBubble key={''+item.message_id} value={item} />))}
+            {messages.map(item=>(<ChatBubble key={''+item.message_id} value={item} />))}
             {currentResponse?
                 <ChatBubble setVisible={setCurrentVisible} value={{query_role: 'assistant', content: currentResponse, message_id: 'currentresponse'}} />
                 :''
@@ -509,9 +595,65 @@ function ModelPickList(props: {value: string, onChange: (e: ChangeEvent<HTMLSele
     return (
         <>
             <label htmlFor='selectModel'>Model</label>
-            <select id='selectModel' className='text-black col-span-2' value={value} onChange={onChange}>
+            <select id='selectModel' className='text-black col-span-2 w-full' value={value} onChange={onChange}>
                 {modelElems}
             </select>
         </>
     )
+}
+
+type FileAttachmentsProps = {files: TuuidsBrowsingStoreRow[] | null, setFiles: (files: TuuidsBrowsingStoreRow[] | null)=>void};
+
+function FileAttachments(props: FileAttachmentsProps) {
+
+    const {files, setFiles} = props;
+
+    const [show, setShow] = useState(false);
+    const open = useCallback(()=>setShow(true), [setShow]);
+    const close = useCallback(()=>setShow(false), [setShow]);
+
+    const removeFiles = useCallback((tuuids: string[])=>{
+        if(files) {
+            console.debug("Files : %O, remove %O", files, tuuids);
+            setFiles(files.filter(item=>!tuuids.includes(item.tuuid)));
+        }
+    }, [files, setFiles]);
+
+    const addFileCb = useCallback((newFiles: TuuidsBrowsingStoreRow[] | null)=>{
+        if(newFiles && newFiles.length > 0) {
+            console.debug("Adding files ", newFiles);
+            const currentFiles = files || [];
+            const list = [...currentFiles, ...newFiles];
+            setFiles(list);
+        }
+    }, [files, setFiles]);
+
+    return (
+        <>
+            <p>File attachments</p>
+            <button onClick={open} className='btn bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>Select</button>
+            <AttachmentThumbnails files={files} removeFiles={removeFiles} />
+            {show?<ModalBrowseAction selectFiles={addFileCb} close={close} />:<></>}
+        </>
+    )
+}
+
+function AttachmentThumbnails(props: {files: TuuidsBrowsingStoreRow[] | null, removeFiles: (tuuids: string[])=>void}) {
+
+    const {files, removeFiles} = props;
+
+    const onClick = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, value: TuuidsBrowsingStoreRow | null)=>{
+        if(files && value) {
+            removeFiles([value.tuuid]);
+        }
+    }, [files, removeFiles]);
+
+    const fileElems = useMemo(()=>{
+        if(!files) return <></>;
+        return files.map(item=>{
+            return <ThumbnailItem key={item.tuuid} onClick={onClick} value={item} />
+        })
+    }, [files]);
+
+    return <>{fileElems}</>;
 }

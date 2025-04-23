@@ -461,7 +461,7 @@ export function ModalBrowseAction(props: ModalInformationProps & {title: string,
                                 <p>To:</p>
                                 <ModalBreadcrumb />
                             </div>
-                            <div className='h-20 lg:min-h-96 lg:h-auto overflow-y-scroll'>
+                            <div className='h-44 lg:h-96 overflow-y-scroll'>
                                 <FilelistPane files={files} onClickRow={onClickRow} columnNameOnly={true} />
                             </div>
                         </div>

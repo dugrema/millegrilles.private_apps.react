@@ -388,7 +388,7 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
     )
 }
 
-function ThumbnailItem(props: FileItem) {
+export function ThumbnailItem(props: FileItem) {
 
     let {value, onClick} = props;
     let {contactId} = useParams();
