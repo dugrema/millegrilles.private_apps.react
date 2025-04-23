@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, MutableRefObject, Dispatch } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { proxy } from 'comlink';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useVisibility } from 'reactjs-visibility';
 
 import useWorkers from '../workers/workers';
 import useChatStore, { ChatStoreConversationKey, ChatMessage as StoreChatMessage } from './chatStore';
@@ -121,7 +122,7 @@ export default function Chat() {
     let chatInputOnChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
         let value = e.currentTarget.value;
         setChatInput(value);
-        setLastUpdate(new Date().getTime());
+        // setLastUpdate(new Date().getTime());
     }, [setChatInput, setLastUpdate]);
 
     useEffect(()=>{
@@ -332,22 +333,32 @@ function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNod
 
     let messages = useChatStore(state=>state.messages);
     let currentResponse = useChatStore(state=>state.currentResponse);
+    let [currentVisible, setCurrentVisible] = useState(true);
+    const [loaded, setLoaded] = useState(false);  // Used to load most recent message once
 
     let refBottom = useRef(null);
 
     useEffect(()=>{
-        if(!refBottom || !messages) return;
+        if(!refBottom || !messages || !currentVisible) return;
         // @ts-ignore
         refBottom.current?.scrollIntoView({behavior: 'smooth'});
 
         // Note: currentResponse is needed to make the screen update during the response.
-    }, [refBottom, messages, currentResponse, triggerScrolldown]);
+    }, [refBottom, messages, currentResponse, triggerScrolldown, currentVisible]);
+
+    // Initial message load
+    useEffect(()=>{
+        if(!refBottom || !messages || loaded) return;
+        setLoaded(true);
+        // @ts-ignore
+        refBottom.current?.scrollIntoView({behavior: 'smooth'});
+    }, [refBottom, messages, loaded, setLoaded])
 
     return (
         <div className='text-left w-full pr-4'>
-            {messages.map((item, idx)=>(<ChatBubble key={''+idx} value={item} />))}
+            {messages.map((item, idx)=>(<ChatBubble key={''+item.message_id} value={item} />))}
             {currentResponse?
-                <ChatBubble value={{query_role: 'assistant', content: currentResponse, message_id: 'currentresponse'}} />
+                <ChatBubble setVisible={setCurrentVisible} value={{query_role: 'assistant', content: currentResponse, message_id: 'currentresponse'}} />
                 :''
             }
             {props.children}
@@ -356,12 +367,19 @@ function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNod
     )
 }
 
-type MessageRowProps = {value: StoreChatMessage};
+type MessageRowProps = {value: StoreChatMessage, setVisible?: Dispatch<boolean> | null};
 
 // Src : https://flowbite.com/docs/components/chat-bubble/
 function ChatBubble(props: MessageRowProps) {
 
+    const {setVisible} = props;
     const {query_role: role, content, message_date: messageDate, model} = props.value;
+
+    const { ref, visible } = useVisibility({});
+
+    useEffect(()=>{
+        if(setVisible) setVisible(!!visible);
+    }, [visible, setVisible])
 
     const messageDateSecs = useMemo(()=>{
         if(!messageDate) return undefined;
@@ -385,7 +403,7 @@ function ChatBubble(props: MessageRowProps) {
 
     if(bubbleSide === 'left') {
         return (
-            <div className="flex items-start gap-2.5 pb-2">
+            <div ref={ref} className="flex items-start gap-2.5 pb-2">
                 <div className="flex flex-col gap-1 pr-20">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
@@ -408,7 +426,7 @@ function ChatBubble(props: MessageRowProps) {
         )
     } else {
         return (
-            <div className="flex items-start gap-2.5 pb-2">
+            <div ref={ref} className="flex items-start gap-2.5 pb-2">
                 <div className="flex flex-col gap-1 w-full pl-20 items-end">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
