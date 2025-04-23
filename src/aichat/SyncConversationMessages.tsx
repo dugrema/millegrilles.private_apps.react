@@ -156,7 +156,7 @@ type ChatExchangeEvent = {
 async function handleChatExchangeEvent(workers: AppWorkers, userId: string, event: SubscriptionMessage, updateTrigger: ()=>void) {
     let exchangeMessage = event.message as ChatExchangeEvent;
 
-    console.debug("Exchange message: ", exchangeMessage);
+    // console.debug("Exchange message: ", exchangeMessage);
 
     // Check is messages already exist
     let conversationId = exchangeMessage.conversation_id;
@@ -220,7 +220,7 @@ async function handleChatExchangeEvent(workers: AppWorkers, userId: string, even
             assistant_reply.decrypted = true;
             // delete assistant_reply.query_encrypted;
         }
-        console.debug("Decrypted content\nUser: %O\nAssistant: %O", user_query, assistant_reply);
+        // console.debug("Decrypted content\nUser: %O\nAssistant: %O", user_query, assistant_reply);
     }
 
     if(!existingIds.has(userQueryMessageId)) {

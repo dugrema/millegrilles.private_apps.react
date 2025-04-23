@@ -140,7 +140,7 @@ export default function Chat() {
                     if(item.model) return item.model;
                     return acc;
                 }, CONST_DEFAULT_MODEL);
-                console.debug("Re-setting model", model);
+                // console.debug("Re-setting model", model);
                 setModel(model);
             })
             .catch(err=>console.error("Error loading messages ", err));
@@ -218,7 +218,7 @@ export default function Chat() {
                 encrypted_content: encryptedUserMessage
             };
             if(newConversation) command.new = true;
-            console.debug("Chat message ", command);
+            // console.debug("Chat message ", command);
 
             // let attachment = {history: encryptedMessageHistory, key: {signature: conversationKey.signature}};
             setWaiting(true);
