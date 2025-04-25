@@ -229,7 +229,7 @@ export default function Chat() {
     
             let encryptedMessageHistory = null as null | EncryptionBase64Result;
             if(Object.keys(contentToEncrypt).length > 0) {
-                console.debug("Encrypting content: ", contentToEncrypt);
+                // console.debug("Encrypting content: ", contentToEncrypt);
                 encryptedMessageHistory = await workers.encryption.encryptMessageMgs4ToBase64(contentToEncrypt, conversationKey?.secret);
                 encryptedMessageHistory.cle_id = conversationKey.cle_id;
                 delete encryptedMessageHistory.digest;  // Remove digest, no need for it
@@ -247,7 +247,7 @@ export default function Chat() {
             if(attachments) command.attachments = attachments;
 
             if(newConversation) command.new = true;
-            console.debug("Chat message ", command);
+            // console.debug("Chat message ", command);
 
             // let attachment = {history: encryptedMessageHistory, key: {signature: conversationKey.signature}};
             setWaiting(true);
@@ -635,14 +635,23 @@ async function prepareAttachments(userId: string, fileAttachments: TuuidsBrowsin
         let fuuid = null as string | null;
         const versions = fileToAttach.fileData?.fuuids_versions;
         if(versions) fuuid = versions[0];
+        const mimetype = attachment.mimetype;
         const selectedFile = {
             tuuid: attachment.tuuid,
             fuuid, 
-            mimetype: attachment.mimetype,
+            mimetype,
             keyId, 
             nonce: fileToAttach?.fileData?.nonce,
             format: fileToAttach?.fileData?.format,
         } as FileAttachment;
+
+        if(mimetype === 'application/pdf') {
+            // Include the pdf file itself
+            attachments.push({...selectedFile});  // Copy the content, it will be modified if a preview is available
+            selectedFile.fuuid = '';  // Flag to ignore this file further down
+        }
+        
+        // Note : the image will always be included when available (e.g. PDF preview)
         if(images) {
             // Find highest resolution file
             let res = 0;
@@ -662,7 +671,11 @@ async function prepareAttachments(userId: string, fileAttachments: TuuidsBrowsin
                 }
             }
         }
-        attachments.push(selectedFile);
+        
+        // Add the file if it has not already been done
+        if(selectedFile.fuuid) {
+            attachments.push(selectedFile);
+        }
     }
     
     return {attachmentKeys, attachments};
