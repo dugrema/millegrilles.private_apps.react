@@ -214,59 +214,9 @@ export default function Chat() {
             let attachmentKeys = null as {[key: string]: string} | null;
             let attachments = null as FileAttachment[] | null;
             if(fileAttachments && userId) {
-                attachmentKeys = {} as {[keyId: string]: string};
-                attachments = [];
-
-                for await (const attachment of fileAttachments) {
-                    const tuuid = attachment.tuuid;
-                    const fileToAttach = await loadTuuid(attachment.tuuid, userId);
-                    if(!fileToAttach) {
-                        console.error("Unknown tuuid: %s", tuuid);
-                        continue;
-                    }
-
-                    let keyId = fileToAttach.keyId;
-                    if(!keyId || !fileToAttach.secretKey) {
-                        console.error("Missing decryption key for %s", tuuid);
-                        continue;
-                    }
-
-                    const secretKeyBase64 = multiencoding.encodeBase64Nopad(fileToAttach.secretKey);
-                    attachmentKeys[keyId] = secretKeyBase64;
-
-                    const images = fileToAttach.fileData?.images;
-                    let fuuid = null as string | null;
-                    const versions = fileToAttach.fileData?.fuuids_versions;
-                    if(versions) fuuid = versions[0];
-                    const selectedFile = {
-                        tuuid: attachment.tuuid,
-                        fuuid, 
-                        mimetype: attachment.mimetype,
-                        keyId, 
-                        nonce: fileToAttach?.fileData?.nonce,
-                        format: fileToAttach?.fileData?.format,
-                    } as FileAttachment;
-                    if(images) {
-                        // Find highest resolution file
-                        let res = 0;
-                        for(const img of Object.values(images)) {
-                            if(img.resolution > res) {
-                                res = img.resolution;
-                                selectedFile.fuuid = img.hachage;
-                                selectedFile.mimetype = img.mimetype;
-                                if(img.nonce) selectedFile.nonce = img.nonce;
-                                else if(img.header) {
-                                    selectedFile.header = img.header
-                                    selectedFile.nonce = undefined;
-                                }
-                                else throw new Error('File without decryption nonce/header');
-                                if(img.format) selectedFile.format = img.format;
-                                selectedFile.keyId = img.cle_id || selectedFile.keyId;
-                            }
-                        }
-                    }
-                    attachments.push(selectedFile);
-                }
+                const result = await prepareAttachments(userId, fileAttachments);
+                attachmentKeys = result.attachmentKeys;
+                attachments = result.attachments;
             }
 
             const contentToEncrypt = {} as ContentToEncryptType;
@@ -605,14 +555,14 @@ function FileAttachments(props: FileAttachmentsProps) {
 
     const removeFiles = useCallback((tuuids: string[])=>{
         if(files) {
-            console.debug("Files : %O, remove %O", files, tuuids);
+            // console.debug("Files : %O, remove %O", files, tuuids);
             setFiles(files.filter(item=>!tuuids.includes(item.tuuid)));
         }
     }, [files, setFiles]);
 
     const addFileCb = useCallback((newFiles: TuuidsBrowsingStoreRow[] | null)=>{
         if(newFiles && newFiles.length > 0) {
-            console.debug("Adding files ", newFiles);
+            // console.debug("Adding files ", newFiles);
             const currentFiles = files || [];
             const list = [...currentFiles, ...newFiles];
             setFiles(list);
@@ -653,4 +603,67 @@ function AttachmentThumbnails(props: {files: TuuidsBrowsingStoreRow[] | null, re
     }, [files]);
 
     return <div className='inline-block w-96 truncate'>{fileElems}</div>;
+}
+
+type PrepareAttachmentsResult = {
+    attachmentKeys: {[keyId: string]: string},
+    attachments: FileAttachment[]
+}
+
+async function prepareAttachments(userId: string, fileAttachments: TuuidsBrowsingStoreRow[]): Promise<PrepareAttachmentsResult> {
+    const attachmentKeys = {} as {[keyId: string]: string};
+    const attachments = [] as FileAttachment[];
+
+    for await (const attachment of fileAttachments) {
+        const tuuid = attachment.tuuid;
+        const fileToAttach = await loadTuuid(attachment.tuuid, userId);
+        if(!fileToAttach) {
+            console.error("Unknown tuuid: %s", tuuid);
+            continue;
+        }
+
+        let keyId = fileToAttach.keyId;
+        if(!keyId || !fileToAttach.secretKey) {
+            console.error("Missing decryption key for %s", tuuid);
+            continue;
+        }
+
+        const secretKeyBase64 = multiencoding.encodeBase64Nopad(fileToAttach.secretKey);
+        attachmentKeys[keyId] = secretKeyBase64;
+
+        const images = fileToAttach.fileData?.images;
+        let fuuid = null as string | null;
+        const versions = fileToAttach.fileData?.fuuids_versions;
+        if(versions) fuuid = versions[0];
+        const selectedFile = {
+            tuuid: attachment.tuuid,
+            fuuid, 
+            mimetype: attachment.mimetype,
+            keyId, 
+            nonce: fileToAttach?.fileData?.nonce,
+            format: fileToAttach?.fileData?.format,
+        } as FileAttachment;
+        if(images) {
+            // Find highest resolution file
+            let res = 0;
+            for(const img of Object.values(images)) {
+                if(img.resolution > res) {
+                    res = img.resolution;
+                    selectedFile.fuuid = img.hachage;
+                    selectedFile.mimetype = img.mimetype;
+                    if(img.nonce) selectedFile.nonce = img.nonce;
+                    else if(img.header) {
+                        selectedFile.header = img.header
+                        selectedFile.nonce = undefined;
+                    }
+                    else throw new Error('File without decryption nonce/header');
+                    if(img.format) selectedFile.format = img.format;
+                    selectedFile.keyId = img.cle_id || selectedFile.keyId;
+                }
+            }
+        }
+        attachments.push(selectedFile);
+    }
+    
+    return {attachmentKeys, attachments};
 }
