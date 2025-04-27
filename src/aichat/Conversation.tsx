@@ -203,8 +203,11 @@ export default function Chat() {
         if(!conversationKey) throw new Error('Encryption key is not initialized');
 
         // let newMessage = {'message_id': 'current', 'role': 'user', 'content': chatInput};
-        pushUserQuery(chatInput);
-        setChatInput('');  // Reset input
+        const tuuids = fileAttachments?.map(item=>item.tuuid);
+        pushUserQuery(chatInput, tuuids);
+        // Reset inputs
+        setChatInput('');
+        setFileAttachments(null);
         
         Promise.resolve().then(async () => {
             if(!workers) throw new Error("Workers not initialized"); 
@@ -261,8 +264,6 @@ export default function Chat() {
             );
             if(!ok) {
                 console.error("Error sending chat message");
-            } else {
-                setFileAttachments(null);
             }
             navigate(`/apps/aichat/conversation/${conversationId}`);
         })

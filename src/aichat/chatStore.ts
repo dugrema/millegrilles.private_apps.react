@@ -26,7 +26,7 @@ interface ChatStoreState {
     models: LanguageModelType[],
     appendCurrentResponse: (conversation_id: string, chunk: string) => void,
     pushAssistantResponse: (message_id: string) => void,
-    pushUserQuery: (query: string) => void,
+    pushUserQuery: (query: string, tuuids?: string[] | null) => void,
     clear: () => void,
     setRelayAvailable: (available: null | boolean) => void,
     setMessages: (messages: ChatMessage[]) => void,
@@ -70,10 +70,10 @@ const useChatStore = create<ChatStoreState>()(
                     ] 
                 };
             }),
-            pushUserQuery: (query) => set((state) => ({ 
+            pushUserQuery: (query, tuuids) => set((state) => ({ 
                 messages: [
                     ...state.messages, 
-                    {message_id: 'currentquery', query_role: 'user', content: query, message_date: Math.floor(new Date().getTime())}
+                    {message_id: 'currentquery', query_role: 'user', content: query, message_date: Math.floor(new Date().getTime()), tuuids}
                 ]
             })),
             clear: () => set(() => ({
