@@ -18,9 +18,9 @@ import { FileAttachment, SendChatMessageCommand } from '../workers/connection.wo
 import SyncConversationMessages from './SyncConversationMessages';
 import { EncryptionBase64Result } from '../workers/encryptionUtils';
 import { ModalBrowseAction } from './FileAttachment';
-import { TuuidsBrowsingStoreRow } from '../collections2/userBrowsingStore';
+import { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from '../collections2/userBrowsingStore';
 import { ThumbnailItem } from '../collections2/FilelistPane';
-import { loadTuuid } from '../collections2/idb/collections2StoreIdb';
+import { loadTuuid, TuuidsIdbStoreRowType } from '../collections2/idb/collections2StoreIdb';
 import { InitializeUserStore } from '../collections2/AppCollections2';
 
 const CONST_DEFAULT_MODEL = 'llama3.2:3b-instruct-q8_0';
@@ -400,9 +400,15 @@ type MessageRowProps = {value: StoreChatMessage, setVisible?: Dispatch<boolean> 
 function ChatBubble(props: MessageRowProps) {
 
     const {setVisible} = props;
-    const {query_role: role, content, message_date: messageDate, model} = props.value;
+    const {query_role: role, content, message_date: messageDate, model, tuuids} = props.value;
 
     const { ref, visible } = useVisibility({});
+
+    const workers = useWorkers();
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
+    const userId = useChatStore(state=>state.userId);
+
+    const [attachedFiles, setAttachedFiles] = useState(null as TuuidsBrowsingStoreRow[] | null);
 
     useEffect(()=>{
         if(setVisible) setVisible(!!visible);
@@ -427,6 +433,53 @@ function ChatBubble(props: MessageRowProps) {
             default: return ['N/D', 'right'];
         };
     }, [role]);
+
+    useEffect(()=>{
+        if(!tuuids) {
+            setAttachedFiles(null);
+            return;
+        };
+        if(!workers || !ready || !userId) return;
+        console.debug("Message tuuids: %O", tuuids);
+        Promise.resolve().then(async () => {
+            let files = [] as TuuidsIdbStoreRowType[];
+            const missing = [] as string[];
+
+            // Use already loaded files from IDB when possible. Flag missing tuuids.
+            for await(const tuuid of tuuids) {
+                const file = await loadTuuid(tuuid, userId);
+                console.debug("Loaded tuuid %s: %O", tuuid, file);
+                if(file) files.push(file);
+                else missing.push(tuuid);
+            }
+
+            if(missing.length > 0) {
+                // Load missing tuuids
+                const response = await workers.connection.getFilesByTuuid(missing, {shared: true});
+                const responseFiles = response.files;
+                const keys = response.keys;
+                if(!responseFiles) throw new Error("Files not provided");
+                if(!keys) throw new Error("Keys not provided");
+            
+                // Load files - checks IDB when required. Note that this does not load the detailed thumbnail.
+                const decryptedFiles = await workers.directory.processDirectoryChunk(
+                    workers.encryption, userId, responseFiles, keys, {shared: true});
+
+                if(decryptedFiles.length > 0) {
+                    files = [...files, ...decryptedFiles];
+                }
+            }
+
+            if(files.length > 0) {
+                setAttachedFiles(filesIdbToBrowsing(files));
+                console.debug("Attached files: ", attachedFiles);
+            } else {
+                setAttachedFiles(null);
+            }
+        })
+        .catch(err=>console.error("Error loading file attachments", err));
+
+    }, [workers, ready, userId, tuuids, setAttachedFiles]);
 
     if(bubbleSide === 'left') {
         return (
@@ -464,6 +517,9 @@ function ChatBubble(props: MessageRowProps) {
                     <div className="flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-s-xl rounded-ee-xl">
                         <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
                             <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
+                        </div>
+                        <div>
+                            <AttachmentThumbnailsView files={attachedFiles} />
                         </div>
                     </div>
                 </div>
@@ -573,7 +629,7 @@ function FileAttachments(props: FileAttachmentsProps) {
         <>
             <button onClick={open} className='varbtn w-20 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 mb-8'>Add file</button>
             <div className='inline absolute'>
-                <AttachmentThumbnails files={files} removeFiles={removeFiles} />
+                <AttachmentThumbnailsEdit files={files} removeFiles={removeFiles} />
             </div>
             {show?
                 <>
@@ -585,7 +641,29 @@ function FileAttachments(props: FileAttachmentsProps) {
     )
 }
 
-function AttachmentThumbnails(props: {files: TuuidsBrowsingStoreRow[] | null, removeFiles: (tuuids: string[])=>void}) {
+function AttachmentThumbnailsView(props: {files: TuuidsBrowsingStoreRow[] | null}) {
+
+    const {files} = props;
+
+    const onClick = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, value: TuuidsBrowsingStoreRow | null)=>{
+        
+    }, [files]);
+
+    const fileElems = useMemo(()=>{
+        if(!files) return <></>;
+        return files.map(item=>{
+            return (
+                <a href={`/apps/collections2/f/${item.tuuid}`} target="_blank">
+                    <ThumbnailItem key={item.tuuid} size={200} onClick={onClick} value={item} />
+                </a>
+            )
+        })
+    }, [files]);
+
+    return <div className='inline-block w-96 truncate'>{fileElems}</div>;
+}
+
+function AttachmentThumbnailsEdit(props: {files: TuuidsBrowsingStoreRow[] | null, removeFiles: (tuuids: string[])=>void}) {
 
     const {files, removeFiles} = props;
 
