@@ -106,9 +106,9 @@ function BrowsingDeleted() {
         }
     }, [navigate, selectionMode, selection, setSelectionMode, setSelection, setSelectionPosition, changePage, setTuuid]);
 
-    let [sortKey, sortOrder] = useMemo(()=>{
-        if(!tuuid) return ['modificationDesc', 1];
-        return ['name', 1];
+    let sortKey = useMemo(()=>{
+        if(!tuuid) return {key: 'modificationDesc', order: 1};
+        return {key: 'name', order: 1};
     }, [tuuid]);
 
     return (
@@ -125,7 +125,7 @@ function BrowsingDeleted() {
                 {isLoading?
                     <>Loading ...</>
                 :
-                    <FilelistPane files={deletedFilesPage?.list} sortKey={sortKey} sortOrder={sortOrder} dateColumn='modification' onClickRow={onClickRow} />
+                    <FilelistPane files={deletedFilesPage?.list} sort={sortKey} dateColumn='modification' onClickRow={onClickRow} />
                 }
                 <PageSelectors page={pageNo} setPage={changePage} pageCount={pageCount} />
             </section>

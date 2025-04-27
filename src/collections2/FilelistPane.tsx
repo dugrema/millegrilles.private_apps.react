@@ -1,5 +1,5 @@
 import { DragEvent, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
-import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
+import useUserBrowsingStore, { SortKey, TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import { useVisibility } from 'reactjs-visibility';
 import useWorkers from "../workers/workers";
@@ -25,8 +25,8 @@ export type FileListPaneOnClickRowType = (
 
 type FileListPaneProps = {
     files: TuuidsBrowsingStoreRow[] | null | undefined,
-    sortKey?: string | null,
-    sortOrder?: number | null,
+    sort?: SortKey,
+    setSort?: (key: string, order: number)=>void,
     dateColumn?: string | null,
     onClickRow: FileListPaneOnClickRowType,
     columnNameOnly?: boolean | null,
@@ -34,7 +34,7 @@ type FileListPaneProps = {
 
 function FilelistPane(props: FileListPaneProps) {
 
-    let { files, sortKey, sortOrder, dateColumn, onClickRow, columnNameOnly } = props;
+    let { files, sort, setSort, dateColumn, onClickRow, columnNameOnly } = props;
     let viewMode = useUserBrowsingStore(state=>state.viewMode);
     let lastOpenedFile = useUserBrowsingStore(state=>state.lastOpenedFile);
     let setLastOpenedFile = useUserBrowsingStore(state=>state.setLastOpenedFile);
@@ -45,21 +45,23 @@ function FilelistPane(props: FileListPaneProps) {
         if(!files) return null;
 
         let sortedFiles = [...files];
+        const sortKey = sort?.key;
+        const sortOrder = sort?.order;
         if(!sortKey || sortKey === 'name') {
             sortedFiles.sort(sortByName)
         } else if(sortKey === 'modification') {
-            sortedFiles.sort(sortByModification);
-        } else if(sortKey === 'modification-desc') {
             sortedFiles.sort(sortByModificationDesc);
         } else if(sortKey === 'size') {
             sortedFiles.sort(sortBySize);
+        } else if(sortKey === 'type') {
+            sortedFiles.sort(sortByType);
         }
         if(sortOrder && sortOrder < 0) {
             sortedFiles = sortedFiles.reverse();
         }
 
         return sortedFiles;
-    }, [files, sortKey, sortOrder]);
+    }, [files, sort]);
 
     let onClickRowHandler = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, item: TuuidsBrowsingStoreRow | null)=>{
         e.preventDefault();
@@ -96,7 +98,7 @@ function FilelistPane(props: FileListPaneProps) {
     if(viewMode === ViewMode.Thumbnails) return <ThumbnailView onClick={onClickRowHandler} files={sortedFiles} />;
     if(viewMode === ViewMode.Carousel) throw new Error('todo');
 
-    return <ListView onClick={onClickRowHandler} files={sortedFiles} dateColumn={dateColumn} columnNameOnly={columnNameOnly} />;
+    return <ListView onClick={onClickRowHandler} files={sortedFiles} sortKey={sort} setSort={setSort} dateColumn={dateColumn} columnNameOnly={columnNameOnly} />;
 }
 
 export default FilelistPane;
@@ -107,8 +109,8 @@ type ViewProps = {
     onClick: (e: MouseEvent<HTMLButtonElement | HTMLDivElement>, item: TuuidsBrowsingStoreRow | null)=>void    
 }
 
-function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
-    let { files, dateColumn, onClick, columnNameOnly } = props;
+function ListView(props: ViewProps & {columnNameOnly?: boolean | null, sortKey?: SortKey, setSort?: (key: string, order: number)=>void}) {
+    let { files, dateColumn, onClick, columnNameOnly, sortKey, setSort } = props;
 
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
@@ -122,6 +124,34 @@ function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
         if(dragOverFileButton) return ' bg-slate-600';
         return '';
     }, [dragOverFileButton]);
+
+    const sortNameChange = useCallback(()=>{
+        if(!sortKey || !setSort) return;
+        let order = 1;
+        if(sortKey.key === 'name' && sortKey.order === 1) order = -1;  // Descending
+        setSort("name", order);
+    }, [sortKey, setSort]);
+
+    const sortSizeChange = useCallback(()=>{
+        if(!sortKey || !setSort) return;
+        let order = 1;
+        if(sortKey.key === 'size' && sortKey.order === 1) order = -1;  // Descending
+        setSort("size", order);
+    }, [sortKey, setSort]);
+
+    const sortTypeChange = useCallback(()=>{
+        if(!sortKey || !setSort) return;
+        let order = 1;
+        if(sortKey.key === 'type' && sortKey.order === 1) order = -1;  // Descending
+        setSort("type", order);
+    }, [sortKey, setSort]);
+
+    const sortDateChange = useCallback(()=>{
+        if(!sortKey || !setSort) return;
+        let order = 1;
+        if(sortKey.key === 'modification' && sortKey.order === 1) order = -1;  // Descending
+        setSort("modification", order);
+    }, [sortKey, setSort]);
 
     // Drag and drop files on the Add File button
     let fileDragEnterHandler = useCallback((e: DragEvent<HTMLDivElement>)=>{
@@ -168,10 +198,10 @@ function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
                 {/* Fixed header */}
                 <div className='fixed w-full pr-4'>
                     <div className='grid grid-cols-12 bg-slate-800 text-sm select-none mx-2 px-1'>
-                        <div className='col-span-7 px-1'>Name</div>
-                        {columnNameOnly?<></>:<p className='col-span-1 px-1'>Size</p>}
-                        {columnNameOnly?<></>:<p className='col-span-2 px-1'>Type</p>}
-                        {columnNameOnly?<></>:<p className='col-span-2 px-1'>Date</p>}
+                        <div className='col-span-7 px-1' onClick={sortNameChange}>Name<SortIndicator name="name" sort={sortKey}/></div>
+                        {columnNameOnly?<></>:<p className='col-span-1 px-1' onClick={sortSizeChange}>Size<SortIndicator name="size" sort={sortKey}/></p>}
+                        {columnNameOnly?<></>:<p className='col-span-2 px-1' onClick={sortTypeChange}>Type<SortIndicator name="type" sort={sortKey}/></p>}
+                        {columnNameOnly?<></>:<p className='col-span-2 px-1' onClick={sortDateChange}>Date<SortIndicator name="modification" sort={sortKey}/></p>}
                     </div>
                 </div>
                 {/* Padding to push content below header */}
@@ -180,6 +210,20 @@ function ListView(props: ViewProps & {columnNameOnly?: boolean | null}) {
                 {mappedFiles}
         </div>
     );
+}
+
+type SortIndicatorProps = {
+    name: string,
+    sort?: SortKey,
+}
+
+function SortIndicator(props: SortIndicatorProps) {
+    const {name, sort} = props;
+    if(name !== sort?.key) {
+        return <></>;
+    }
+    if(sort.order < 0) return <span className="pl-1">&#11167;</span>;
+    return <span className="pl-1">&#11165;</span>;
 }
 
 function ThumbnailView(props: ViewProps) {
@@ -215,26 +259,40 @@ export function sortByName(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow)
     return a.nom.localeCompare(b.nom);
 }
 
-function sortByModification(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
-    if(a === b) return 0;
-    if(a.modification === b.modification) {
-        if(a.nom === b.nom) {
-            return a.tuuid.localeCompare(b.tuuid);
-        }
-        return a.nom.localeCompare(b.nom);
-    }
-    return a.modification - b.modification
-}
+// function sortByModification(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
+//     if(a === b) return 0;
+//     if(a.modification === b.modification) {
+//         if(a.nom === b.nom) {
+//             return a.tuuid.localeCompare(b.tuuid);
+//         }
+//         return a.nom.localeCompare(b.nom);
+//     }
+//     return a.modification - b.modification
+// }
 
 function sortByModificationDesc(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
     if(a === b) return 0;
-    if(a.modification === b.modification) {
+
+    // NodeType (Directory at top)
+    if(a.type_node !== b.type_node) {
+        // Fichier goes lower, Collection/Repertoire are equivalent
+        if(a.type_node === 'Fichier') return 1;
+        else return -1;
+    }
+
+    const dateA = a.dateFichier || a.modification;
+    const dateB = b.dateFichier || b.modification;
+
+    // Compare date
+    if(dateA === dateB) {
+        // Same date, sort by name / tuuid (same as name sort)
         if(a.nom === b.nom) {
             return a.tuuid.localeCompare(b.tuuid);
         }
         return a.nom.localeCompare(b.nom);
     }
-    return b.modification - a.modification
+
+    return dateA - dateB;    
 }
 
 function sortBySize(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
@@ -242,6 +300,7 @@ function sortBySize(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
     // Directories/Collections do not have a size. Show first.
     if(!b.taille) return 1;
     if(!a.taille) return -1;
+
     // NodeType (Directory at top)
     if(a.type_node !== b.type_node) {
         // Fichier goes lower, Collection/Repertoire are equivalent
@@ -257,7 +316,32 @@ function sortBySize(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
         }
         return a.nom.localeCompare(b.nom);
     }
+    
     return a.taille - b.taille;
+}
+
+function sortByType(a: TuuidsBrowsingStoreRow, b: TuuidsBrowsingStoreRow) {
+    if(a === b) return 0;
+
+    const typeA = a.mimetype || '';
+    const typeB = b.mimetype || '';
+
+    // NodeType (Directory at top)
+    if(a.type_node !== b.type_node) {
+        // Fichier goes lower, Collection/Repertoire are equivalent
+        if(a.type_node === 'Fichier') return 1;
+        else return -1;
+    }
+
+    // Compare type
+    if(typeA === typeB) {
+        // Same date, sort by name / tuuid (same as name sort)
+        if(a.nom === b.nom) {
+            return a.tuuid.localeCompare(b.tuuid);
+        }
+        return a.nom.localeCompare(b.nom);
+    }
+    return typeA?.localeCompare(typeB);
 }
 
 type FileItem = {
@@ -341,18 +425,18 @@ function FileRow(props: FileItem & {columnNameOnly?: boolean | null}) {
         if(selectionMode) {
             // Disable text select (copy/paste)
             if(selection?.includes(value.tuuid)) {
-                return 'grid grid-cols-6 md:grid-cols-12 mx-2 odd:bg-violet-600 even:bg-violet-500 hover:bg-violet-800 odd:bg-opacity-70 even:bg-opacity-70 text-sm cursor-pointer select-none';
+                return 'grid grid-cols-6 md:grid-cols-12 ml-2 mr-4 odd:bg-violet-600 even:bg-violet-500 hover:bg-violet-800 odd:bg-opacity-70 even:bg-opacity-70 text-sm cursor-pointer select-none';
             }
-            return 'grid grid-cols-6 md:grid-cols-12 mx-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer select-none';
+            return 'grid grid-cols-6 md:grid-cols-12 ml-2 mr-4 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer select-none';
         }
 
         if(lastOpenedFile === value.tuuid) {
             // Highlight the file that was just opened (back in containing folder)
-            return 'grid grid-cols-6 md:grid-cols-12 mx-2 bg-slate-500 hover:bg-violet-800 bg-opacity-80 text-sm cursor-pointer';
+            return 'grid grid-cols-6 md:grid-cols-12 ml-2 mr-4 bg-slate-500 hover:bg-violet-800 bg-opacity-80 text-sm cursor-pointer';
         }
 
         // Allow text select
-        return 'grid grid-cols-6 md:grid-cols-12 mx-2 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer';
+        return 'grid grid-cols-6 md:grid-cols-12 ml-2 mr-4 odd:bg-slate-700 even:bg-slate-600 hover:bg-violet-800 odd:bg-opacity-40 even:bg-opacity-40 text-sm cursor-pointer';
     }, [value, selection, selectionMode, lastOpenedFile]);
 
     return (

@@ -13,34 +13,36 @@ import { Modals } from './Modals';
 
 function ViewUserFileBrowsing() {
 
-    let { tuuid } = useParams();
+    const { tuuid } = useParams();
 
     // let [modal, setModal] = useState(null as ModalEnum | null);
     
-    let navSectionRef = useRef(null);
+    const navSectionRef = useRef(null);
 
-    let userId = useUserBrowsingStore(state=>state.userId);
-    let filesDict = useUserBrowsingStore(state=>state.currentDirectory);
-    let cuuid = useUserBrowsingStore(state=>state.currentCuuid);
-    let setCuuid = useUserBrowsingStore(state=>state.setCuuid);
-    let setModal = useUserBrowsingStore(state=>state.setModal);
-    let navigate = useNavigate();
+    const userId = useUserBrowsingStore(state=>state.userId);
+    const filesDict = useUserBrowsingStore(state=>state.currentDirectory);
+    const cuuid = useUserBrowsingStore(state=>state.currentCuuid);
+    const setCuuid = useUserBrowsingStore(state=>state.setCuuid);
+    const setModal = useUserBrowsingStore(state=>state.setModal);
+    const navigate = useNavigate();
+    const browsingSort = useUserBrowsingStore(state=>state.browsingSort);
 
     // Selecting files
-    let selection = useUserBrowsingStore(state=>state.selection);
-    let setSelection = useUserBrowsingStore(state=>state.setSelection);
-    let selectionMode = useUserBrowsingStore(state=>state.selectionMode);
-    let setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
-    let setSelectionPosition = useUserBrowsingStore(state=>state.setSelectionPosition);
+    const selection = useUserBrowsingStore(state=>state.selection);
+    const setSelection = useUserBrowsingStore(state=>state.setSelection);
+    const selectionMode = useUserBrowsingStore(state=>state.selectionMode);
+    const setSelectionMode = useUserBrowsingStore(state=>state.setSelectionMode);
+    const setSelectionPosition = useUserBrowsingStore(state=>state.setSelectionPosition);
+    const setBrowsingSort = useUserBrowsingStore(state=>state.setBrowsingSort);
 
-    let files = useMemo(()=>{
+    const files = useMemo(()=>{
         if(!filesDict) return null;
-        let filesValues = Object.values(filesDict);
+        const filesValues = Object.values(filesDict);
 
         return filesValues;
     }, [filesDict]) as TuuidsBrowsingStoreRow[] | null;
 
-    let onClickRow = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, tuuid:string, typeNode:string, range: TuuidsBrowsingStoreRow[] | null)=>{
+    const onClickRow = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, tuuid:string, typeNode:string, range: TuuidsBrowsingStoreRow[] | null)=>{
         let ctrl = e?.ctrlKey || false;
         let shift = e?.shiftKey || false;
         let effectiveSelectionMode = selectionMode;
@@ -156,7 +158,7 @@ function ViewUserFileBrowsing() {
             </section>
 
             <section ref={navSectionRef} className='fixed top-20 md:top-36 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
-                <FilelistPane files={files} onClickRow={onClickRow} />
+                <FilelistPane files={files} sort={browsingSort} setSort={setBrowsingSort} onClickRow={onClickRow} />
             </section>
 
             <DirectorySyncHandler tuuid={cuuid} onLoad={onLoadHandler} />

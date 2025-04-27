@@ -45,6 +45,11 @@ export enum ViewMode {
     Carousel,
 }
 
+export type SortKey = {
+    key: string,
+    order: number,
+}
+
 export function filesIdbToBrowsing(files: TuuidsIdbStoreRowType[]): TuuidsBrowsingStoreRow[] {
     return files.filter(item=>item.decryptedMetadata).map(item=>{
         let decryptedMetadata = item.decryptedMetadata;
@@ -85,6 +90,7 @@ interface UserBrowsingStoreState {
     breadcrumb: TuuidsBrowsingStoreRow[] | null,
     directoryStatistics: Collection2DirectoryStats[] | null,
     lastOpenedFile: string | null,  // Used to highlight the file that was opened when going back to parent directory view
+    browsingSort: SortKey,
     
     // Search
     searchResults: Collection2SearchStore | null,  // Complete set on results that can be displayed
@@ -131,6 +137,7 @@ interface UserBrowsingStoreState {
     setSelectionMode: (selectionMode: boolean) => void,
     setSelection: (selection: string[] | null) => void,
     setSelectionPosition: (selectionPosition: string | null) => void,
+    setBrowsingSort: (key: string, order: number) => void,
 
     setSharedWithUser: (sharedWithUser: Collection2SharedWithUser | null) => void,
     setSharedContact: (sharedContact: Collections2SharedContactsUser | null) => void,
@@ -163,6 +170,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             breadcrumb: null,
             directoryStatistics: null,
             lastOpenedFile: null,
+            browsingSort: {key: 'name', order: 1} as SortKey,
 
             searchResults: null,
             searchResultsPosition: 0,
@@ -306,6 +314,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             setSelectionMode: (selectionMode) => set(()=>({selectionMode, selection: null})),
             setSelection: (selection) => set(()=>({selection})),
             setSelectionPosition: (selectionPosition) => set(()=>({selectionPosition})),
+            setBrowsingSort: (key: string, order: number) => set(()=>({browsingSort: {key, order}})),
 
             setSharedWithUser: (sharedWithUser) => set(()=>({sharedWithUser})),
             setSharedContact: (sharedContact) => set(()=>({sharedContact})),
