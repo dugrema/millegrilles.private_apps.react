@@ -788,7 +788,9 @@ function ThinkBlock(props: ThinkBlockProps) {
 
     if(!show) {
 
-        if(!value || value.trim() === '') {
+        if(!value) return <></>;  // Not a thinking model.
+
+        if(value.trim() === '') {
             return <p className="px-6 pb-4 text-gray-700">No thoughts.</p>
         }
         
