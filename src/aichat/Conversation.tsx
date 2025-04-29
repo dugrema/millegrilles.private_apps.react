@@ -435,6 +435,21 @@ function ChatBubble(props: MessageRowProps) {
         };
     }, [role]);
 
+    const [contentBlock, thinkBlock] = useMemo(()=>{
+        const THINK_OPEN_SIZE = '<think>'.length;
+        const THINK_CLOSE_SIZE = '</think>'.length;
+        if(content.startsWith('<think>')) {
+            const posEnd = content.indexOf('</think>');
+            if(posEnd < 0) {
+                return [null, content.slice(THINK_OPEN_SIZE)];
+            }
+            const thinkBlock = content.slice(THINK_OPEN_SIZE, posEnd);
+            const contentBlock = content.slice(posEnd + THINK_CLOSE_SIZE);
+            return [contentBlock, thinkBlock];
+        }
+        return [content, null];
+    }, [content]);
+
     useEffect(()=>{
         if(!tuuids) {
             setAttachedFiles(null);
@@ -498,9 +513,13 @@ function ChatBubble(props: MessageRowProps) {
                         }
                     </div>
                     <div className="flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl">
-                        <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
-                            <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
-                        </div>
+                        <ThinkBlock value={thinkBlock} done={!!contentBlock} />
+                        {contentBlock?
+                            <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
+                                <Markdown remarkPlugins={[remarkGfm]}>{contentBlock}</Markdown>
+                            </div>
+                            :<></>
+                        }
                     </div>
                 </div>
             </div>        
@@ -758,4 +777,39 @@ async function prepareAttachments(userId: string, fileAttachments: TuuidsBrowsin
     }
     
     return {attachmentKeys, attachments};
+}
+
+type ThinkBlockProps = {value: string | null, done: boolean}
+
+function ThinkBlock(props: ThinkBlockProps) {
+    const {value, done} = props;
+
+    const [show, setShow] = useState(false);
+
+    if(!show) {
+
+        if(!value || value.trim() === '') {
+            return <p className="px-6 pb-4 text-gray-700">No thoughts.</p>
+        }
+        
+        return (
+            <div className='px-6 pb-4'>
+                <button className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center' onClick={()=>setShow(true)}>
+                    {done?
+                        <span>Thoughts</span>:
+                        <span>Thinking ...</span>
+                    }
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="text-sm px-6 pb-2 font-normal text-gray-700 dark:text-white markdown mb-6 bg-slate-200"  onClick={()=>setShow(false)}>
+            <button className='btn inline-block bg-slate-300 hover:bg-slate-600 active:bg-slate-500 text-center' onClick={()=>setShow(true)}>
+                Hide
+            </button>
+            <Markdown remarkPlugins={[remarkGfm]}>{value}</Markdown>
+        </div>
+    )
 }
