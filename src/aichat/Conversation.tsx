@@ -500,7 +500,7 @@ function ChatBubble(props: MessageRowProps) {
     if(bubbleSide === 'left') {
         return (
             <div ref={ref} className="flex items-start gap-2.5 pb-2">
-                <div className="flex flex-col gap-1 pr-20">
+                <div className="flex flex-col gap-1 pr-5 lg:pr-20">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
                         <span className="text-sm font-normal text-gray-300">
@@ -527,7 +527,7 @@ function ChatBubble(props: MessageRowProps) {
     } else {
         return (
             <div ref={ref} className="flex items-start gap-2.5 pb-2">
-                <div className="flex flex-col gap-1 w-full pl-20 items-end">
+                <div className="flex flex-col gap-1 w-full lg:pl-20 items-end">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
                         <span className="text-sm font-normal text-gray-300">
@@ -680,7 +680,7 @@ function AttachmentThumbnailsView(props: {files: TuuidsBrowsingStoreRow[] | null
         })
     }, [files]);
 
-    return <div className='inline-block w-96 truncate'>{fileElems}</div>;
+    return <div className='inline-block sm:w-96 truncate'>{fileElems}</div>;
 }
 
 function AttachmentThumbnailsEdit(props: {files: TuuidsBrowsingStoreRow[] | null, removeFiles: (tuuids: string[])=>void}) {
