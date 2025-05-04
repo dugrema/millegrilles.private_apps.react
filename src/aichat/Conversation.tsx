@@ -1,6 +1,9 @@
 import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, MutableRefObject, Dispatch, MouseEvent } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import remarkRehype from 'remark-rehype';
+import rehypeKatex from 'rehype-katex';
 import { proxy } from 'comlink';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useVisibility } from 'reactjs-visibility';
@@ -267,7 +270,7 @@ export default function Chat() {
             }
             navigate(`/apps/aichat/conversation/${conversationId}`);
         })
-        .catch(err=>console.error("Error sending message ", err))
+        .catch(err=>console.error("submitHandler Error sending message ", err))
         .finally(()=>setWaiting(false))
     }, [workers, userId, conversationId, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, 
         pushUserQuery, userMessageCallback, newConversation, model, navigate, fileAttachments, setFileAttachments]
@@ -497,6 +500,8 @@ function ChatBubble(props: MessageRowProps) {
 
     }, [workers, ready, userId, tuuids, setAttachedFiles]);
 
+    const plugins = [remarkMath, remarkGfm, remarkRehype, rehypeKatex];
+
     if(bubbleSide === 'left') {
         return (
             <div ref={ref} className="flex items-start gap-2.5 pb-2">
@@ -516,7 +521,7 @@ function ChatBubble(props: MessageRowProps) {
                         <ThinkBlock value={thinkBlock} done={!!contentBlock} />
                         {contentBlock?
                             <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
-                                <Markdown remarkPlugins={[remarkGfm]}>{contentBlock}</Markdown>
+                                <Markdown remarkPlugins={plugins}>{contentBlock}</Markdown>
                             </div>
                             :<></>
                         }
@@ -536,7 +541,7 @@ function ChatBubble(props: MessageRowProps) {
                     </div>
                     <div className="flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-s-xl rounded-ee-xl">
                         <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
-                            <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
+                            <Markdown remarkPlugins={plugins}>{content}</Markdown>
                         </div>
                         <div>
                             <AttachmentThumbnailsView files={attachedFiles} />

@@ -352,7 +352,8 @@ export class AppsConnectionWorker extends ConnectionWorker {
         );
         signedMessage.attachements = {history, signature, keys};
         await messageCallback(signedMessage);
-        return await this.connection.emitCallbackResponses(signedMessage, streamCallback, {domain: DOMAINE_OLLAMA_RELAI});
+        // Give long wait period - models can take a long time to load.
+        return await this.connection.emitCallbackResponses(signedMessage, streamCallback, {domain: DOMAINE_OLLAMA_RELAI, timeout: 75_000});
     }
 
     async getConversationKeys(keyIds: string[]) {
