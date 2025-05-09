@@ -1,37 +1,46 @@
 import { ChangeEvent, useCallback, useMemo, useState, FormEvent, useEffect, useRef, Dispatch } from "react";
-import ActionButton from "../resources/ActionButton";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import useSWR from 'swr';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import remarkRehype from 'remark-rehype';
+import rehypeKatex from 'rehype-katex';
+
+import ActionButton from "../resources/ActionButton";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow, TuuidsBrowsingStoreSearchRow } from "./userBrowsingStore";
 import { Collection2SearchResultsDoc, Collections2FileSyncRow, Collections2SearchResults, Collections2SharedContactsSharedCollection, DecryptedSecretKey } from "../workers/connection.worker";
 import SearchFilelistPane from "./SearchFileListPane";
-import useSWR from 'swr';
 import { PageSelectors } from "./BrowsingElements";
 
 const CONST_PAGE_SIZE = 25;
 
 function SearchPage() {
 
-    let workers = useWorkers();
+    const workers = useWorkers();
 
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let userId = useUserBrowsingStore(state=>state.userId);
-    let searchResults = useUserBrowsingStore(state=>state.searchResults);
-    let setSearchResults = useUserBrowsingStore(state=>state.setSearchResults);
-    let searchResultsPosition = useUserBrowsingStore(state=>state.searchResultsPosition);
-    let setSearchResultsPosition = useUserBrowsingStore(state=>state.setSearchResultsPosition);
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
+    const userId = useUserBrowsingStore(state=>state.userId);
+    const searchResults = useUserBrowsingStore(state=>state.searchResults);
+    const setSearchResults = useUserBrowsingStore(state=>state.setSearchResults);
+    const searchResultsPosition = useUserBrowsingStore(state=>state.searchResultsPosition);
+    const setSearchResultsPosition = useUserBrowsingStore(state=>state.setSearchResultsPosition);
+    const searchRagResponse = useUserBrowsingStore(state=>state.searchRagResponse);
+    const setSearchRagResponse = useUserBrowsingStore(state=>state.setSearchRagResponse);
     
-    let [page, setPage] = useState(searchResultsPosition || 1);
-    let [pageLoaded, setPageLoaded] = useState(false);
-    let [searchParams, setSearchParams] = useSearchParams();
-    let query = useMemo(()=>{
+    const [page, setPage] = useState(searchResultsPosition || 1);
+    const [pageLoaded, setPageLoaded] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+    
+    const query = useMemo(()=>{
         if(!searchParams) return null;
         return searchParams.get('search');
     }, [searchParams]);
 
     // Run the search when all parameters are present
-    let {data} = useSearchResults();
+    const {data} = useSearchResults();
 
     useEffect(()=>{
         if(query && data) {
@@ -42,30 +51,49 @@ function SearchPage() {
         }
     }, [query, data, setSearchResults]);
 
-    let [searchInput, setSearchInput] = useState(query || '');
-    let searchInputHandler = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
+    const [searchInput, setSearchInput] = useState(query || '');
+    const searchInputHandler = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
         let value = e.currentTarget.value;
         setSearchInput(value);
     }, [setSearchInput]);
 
-    let searchHandler = useCallback(async()=>{
+    const searchHandler = useCallback(async()=>{
         // Reset search variables
         setSearchResults(null);
         setSearchResultsPosition(1);
         setPage(1);
+        setSearchRagResponse(null);
         
         if(!searchInput) {
             setSearchParams(params=>{params.delete('search'); return params;});
         } else {
             setSearchParams(params=>{params.set('search', searchInput); return params;});
         }
-    }, [searchInput, setSearchParams, setSearchResults, setPage, setSearchResultsPosition]);
+    }, [searchInput, setSearchParams, setSearchResults, setPage, setSearchResultsPosition, setSearchRagResponse]);
 
-    let submitHandler = useCallback((e: FormEvent<HTMLFormElement>)=>{
+    const submitHandler = useCallback((e: FormEvent<HTMLFormElement>)=>{
         e.preventDefault();
         e.stopPropagation();
         searchHandler();
     }, [searchHandler]);
+
+    const queryRagHandler = useCallback(async ()=>{
+        if(!workers || !ready) throw new Error('Workers not initialized');
+
+        // Reset search variables
+        setSearchResults(null);
+        setSearchResultsPosition(1);
+        setPage(1);
+        setSearchParams(params=>{params.delete('search'); return params;});
+        setSearchRagResponse(null);
+
+        if(searchInput) {
+            let response = await workers.connection.queryRag(searchInput);
+            console.debug("RAG query response", response);
+            if(response.ok !== true) throw new Error("Error during RAG query: " + response.err);
+            setSearchRagResponse(response.response || null);
+        }
+    }, [workers, ready, searchInput, setSearchParams, setSearchResults, setPage, setSearchResultsPosition, setSearchRagResponse]);
 
     useEffect(()=>{
         if(pageLoaded || !workers || !ready || !userId) return;
@@ -92,9 +120,12 @@ function SearchPage() {
                 <form onSubmit={submitHandler}>
                     <div className='grid grid-cols-6 sm:grid-cols-12'>
                         <input type='text' value={searchInput} onChange={searchInputHandler} autoFocus
-                            className='col-span-4 sm:col-span-10 md:col-span-11 text-black h-6 text-slate-100 bg-slate-500' />
+                            className='col-span-4 sm:col-span-10 md:col-span-10 text-black h-6 text-slate-100 bg-slate-500' />
                         <ActionButton onClick={searchHandler} revertSuccessTimeout={3} className='ml-1 text-center col-span-2 md:col-span-1' mainButton={true}>
                             Search
+                        </ActionButton>
+                        <ActionButton onClick={queryRagHandler} revertSuccessTimeout={3} className='ml-1 text-center col-span-2 md:col-span-1'>
+                            RAG
                         </ActionButton>
                     </div>
                 </form>
@@ -102,6 +133,7 @@ function SearchPage() {
             </section>
 
             <SearchResultSection data={data} page={page} setPage={setPage} />
+            <SearchRagResponse value={searchRagResponse} />
         </>
     );
 }
@@ -344,4 +376,23 @@ async function loadFileData(workers: AppWorkers, userId: string, sharedCuuids: {
     }
 
     return null;
+}
+
+function SearchRagResponse(props: {value?: string | null}) {
+    const {value} = props;
+
+    let navSectionRef = useRef(null);
+
+    if(!value) return <></>;
+
+    const plugins = [remarkMath, remarkGfm, remarkRehype, rehypeKatex];
+
+    return (
+        <section ref={navSectionRef} className='fixed top-32 left-0 px-2 bottom-10 overflow-y-auto w-full'>
+            <h1 className='text-xl font-bold pb-2'>Response</h1>
+            <div className="text-sm font-normal text-gray-300 markdown">
+                <Markdown remarkPlugins={plugins}>{value}</Markdown>
+            </div>
+        </section>
+    )
 }

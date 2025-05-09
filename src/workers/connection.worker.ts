@@ -40,6 +40,8 @@ export type SendChatMessageCommand = {
     attachments?: FileAttachment[] | null,
 };
 
+export type AiLanguageQueryRag = MessageResponse & {response?: string | null};
+
 export type ActivationCodeResponse = MessageResponse & {
     code?: number | string,
     csr?: string,
@@ -414,6 +416,11 @@ export class AppsConnectionWorker extends ConnectionWorker {
     async deleteChatConversation(conversationId: string) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendCommand({conversation_id: conversationId}, DOMAINE_AI_LANGUAGE, 'deleteChatConversation');
+    }
+
+    async queryRag(query: string): Promise<AiLanguageQueryRag> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest({query}, DOMAINE_OLLAMA_RELAI, 'queryRag', {timeout: 90_000});
     }
 
     async subscribeChatConversationEvents(cb: SubscriptionCallback): Promise<void> {

@@ -96,6 +96,7 @@ interface UserBrowsingStoreState {
     searchResults: Collection2SearchStore | null,  // Complete set on results that can be displayed
     searchResultsPosition: number,  // Current position of the displayed search results in searchListing. Required because there can be duplicated results due to shared files.
     searchListing: {[tuuid: string]: TuuidsBrowsingStoreSearchRow} | null,  // Currently loaded search results
+    searchRagResponse: string | null,
 
     // Selection
     selectionMode: boolean,
@@ -133,6 +134,7 @@ interface UserBrowsingStoreState {
     setSearchResults: (searchResults: Collection2SearchStore | null) => void,
     setSearchResultsPosition: (searchResultsPosition: number) => void,
     updateSearchListing: (listing: TuuidsBrowsingStoreSearchRow[] | null) => void,
+    setSearchRagResponse: (searchResults: string | null) => void,
 
     setSelectionMode: (selectionMode: boolean) => void,
     setSelection: (selection: string[] | null) => void,
@@ -175,6 +177,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
             searchResults: null,
             searchResultsPosition: 0,
             searchListing: null,
+            searchRagResponse: null,
             
             selectionMode: false,
             selection: null,
@@ -288,6 +291,7 @@ const useUserBrowsingStore = create<UserBrowsingStoreState>()(
 
             setSearchResults: (searchResults) => set(()=>({searchResults})),
             setSearchResultsPosition: (searchResultsPosition) => set(()=>({searchResultsPosition})),
+            setSearchRagResponse: (searchRagResponse) => set(()=>({searchRagResponse})),
 
             updateSearchListing: (listing) => set((state)=>{
                 if(!listing) {
