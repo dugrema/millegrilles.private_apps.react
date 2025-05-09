@@ -2,7 +2,7 @@ import '@solana/webcrypto-ed25519-polyfill';
 
 import { encryption, encryptionMgs4, multiencoding, keymaster, x25519, certificates } from 'millegrilles.cryptography';
 import { gzip, inflate } from 'pako';
-import { EncryptionBase64Result, EncryptionResult } from './encryptionUtils';
+import { EncryptionBase64Result, EncryptionBase64WithEncryptedKeysResult, EncryptionResult } from './encryptionUtils';
 
 export type EncryptionOptions = {
     base64?: boolean,
@@ -162,6 +162,21 @@ export class AppsEncryptionWorker {
             compression: info.compression,
         };
 
+        return infoBase64;
+    }
+
+    async encryptMessageMgs4ForDomain(cleartext: Object | string | Uint8Array, domain: string): Promise<EncryptionBase64WithEncryptedKeysResult>  {
+        const info = await this.encryptMessageMgs4(cleartext, {domain});
+        if(!info.cleSecrete || !info.cle) throw new Error("Secret key not provided");
+        const keys = await this.encryptSecretKey(info.cleSecrete)
+        const infoBase64: EncryptionBase64Result = {
+            format: info.format, 
+            nonce: multiencoding.encodeBase64(info.nonce), 
+            ciphertext_base64: multiencoding.encodeBase64(info.ciphertext),
+            digest: info.digest?(multiencoding.encodeBase64(info.digest)):undefined,
+            key: {signature: info.cle.signature, keys},
+            compression: info.compression,
+        } as EncryptionBase64WithEncryptedKeysResult;
         return infoBase64;
     }
 

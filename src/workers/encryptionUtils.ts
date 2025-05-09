@@ -25,6 +25,15 @@ export type EncryptionBase64Result = {
     compression?: string,
 };
 
+export type EncryptionBase64WithEncryptedKeysResult = {
+    format: string, 
+    nonce: string, 
+    ciphertext_base64: string, 
+    digest?: string,
+    key?: {signature: keymaster.DomainSignature, keys: {[key: string]: string}},
+    compression?: string,
+};
+
 export async function generateKeyFromCipher(cipher: any, domains: string[]): Promise<void> {
     // let keySignature = new keymaster.DomainSignature(domains, 1, secret.peer);
     // await keySignature.sign(cipher.key);

@@ -88,7 +88,10 @@ function SearchPage() {
         setSearchRagResponse(null);
 
         if(searchInput) {
-            let response = await workers.connection.queryRag(searchInput);
+            const encryptedMessage = await workers.encryption.encryptMessageMgs4ForDomain(searchInput, 'ollama_relai');
+            // console.debug("Encrypted message %O", encryptedMessage);
+
+            let response = await workers.connection.queryRag(encryptedMessage);
             console.debug("RAG query response", response);
             if(response.ok !== true) throw new Error("Error during RAG query: " + response.err);
             setSearchRagResponse(response.response || null);

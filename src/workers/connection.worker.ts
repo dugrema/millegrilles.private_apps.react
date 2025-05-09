@@ -10,7 +10,7 @@ import { DecryptionKey } from '../MillegrillesIdb';
 import { ChatMessage, Conversation } from '../aichat/aichatStoreIdb';
 import { LanguageModelType } from '../aichat/chatStore';
 import { FileAudioData, FileImageDict, FileSubtitleData, FileVideoDict, TuuidEncryptedMetadata } from '../collections2/idb/collections2StoreIdb';
-import { EncryptionBase64Result } from './encryptionUtils';
+import { EncryptionBase64Result, EncryptionBase64WithEncryptedKeysResult } from './encryptionUtils';
 
 const DOMAINE_CORETOPOLOGIE = 'CoreTopologie';
 const DOMAINE_DOCUMENTS = 'Documents';
@@ -418,9 +418,9 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendCommand({conversation_id: conversationId}, DOMAINE_AI_LANGUAGE, 'deleteChatConversation');
     }
 
-    async queryRag(query: string): Promise<AiLanguageQueryRag> {
+    async queryRag(encrypted_query: EncryptionBase64WithEncryptedKeysResult): Promise<AiLanguageQueryRag> {
         if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.sendRequest({query}, DOMAINE_OLLAMA_RELAI, 'queryRag', {timeout: 90_000});
+        return await this.connection.sendRequest({encrypted_query}, DOMAINE_OLLAMA_RELAI, 'queryRag', {timeout: 90_000});
     }
 
     async subscribeChatConversationEvents(cb: SubscriptionCallback): Promise<void> {
