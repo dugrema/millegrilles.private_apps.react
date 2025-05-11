@@ -52,7 +52,6 @@ function UrlConfiguration() {
 
     const removeUrlHandler = useCallback(async (idx: number)=>{
         if(!workers || !ready) throw new Error('workers not initialized');
-        const url = urls[idx];
         const updatedUrls = [...urls];
         updatedUrls.splice(idx, 1);
 
@@ -123,7 +122,7 @@ function UrlList(props: UrlListProps) {
                 </React.Fragment>
             )
         })
-    }, [value]);
+    }, [value, ready, removeHandler]);
 
     if(value.length === 0) return <p>No URLs are configured yet. Add one to the list (field above) to get started.</p>
 
@@ -190,7 +189,7 @@ function Models() {
     const [ragQueryModel, setRagQueryModel] = useState('');
     const [ragContextSize, setRagContextSize] = useState(4096 as number | string);
     const [ragDocumentSize, setRagDocumentSize] = useState(1000 as number | string);
-    const [ragOverlapSize, setRagOverlapSize] = useState(50 as number | string);
+    const [ragOverlapSize, setRagOverlapSize] = useState(250 as number | string);
 
     const defaultModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setDefaultModel(e.currentTarget.value), [setDefaultModel]);
     const ragEmbeddingModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setRagEmbeddingModel(e.currentTarget.value), [setRagEmbeddingModel]);
@@ -229,10 +228,6 @@ function Models() {
 
         if(responseRag.ok !== true) throw new Error('Error saving RAG parameters: ' + responseRag.err);
     }, [workers, ready, defaultModel, ragEmbeddingModel, ragQueryModel, ragContextSize, ragDocumentSize, ragOverlapSize]);
-
-    const resetRagIndexing = useCallback(async () => {
-        throw new Error('todo');
-    }, []);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -284,11 +279,11 @@ function Models() {
                     className='text-white bg-slate-500' />
 
                 <label htmlFor='rag-context'>RAG chunk size</label>
-                <input id='rag-context' type="number" value={ragDocumentSize} onChange={ragDocumentSizeOnChange}
+                <input id='rag-context' type="text" value={ragDocumentSize} onChange={ragDocumentSizeOnChange}
                     className='text-white bg-slate-500' />
 
                 <label htmlFor='rag-context'>RAG overlap size</label>
-                <input id='rag-context' type="number" value={ragOverlapSize} onChange={ragOverlapSizeOnChange}
+                <input id='rag-context' type="text" value={ragOverlapSize} onChange={ragOverlapSizeOnChange}
                     className='text-white bg-slate-500' />
 
                 <p>Note: changing of RAG chunk and overlap sizes only affects future documents. To apply to all, trigger reindexing in Coup D'Oeil.</p>

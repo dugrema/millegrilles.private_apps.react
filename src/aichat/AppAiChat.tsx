@@ -26,7 +26,7 @@ export default function AppAiChat() {
                 setIsAdmin(isAdmin);
             })
             .catch(err=>console.error("Error loading userId", err));
-    }, [ready, workers, setUserId]);
+    }, [ready, workers, setUserId, setIsAdmin]);
 
     return (
         <div>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, MutableRefObject, Dispatch, MouseEvent } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, Dispatch, MouseEvent } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -139,7 +139,7 @@ export default function Chat() {
         let value = e.currentTarget.value;
         setChatInput(value);
         // setLastUpdate(new Date().getTime());
-    }, [setChatInput, setLastUpdate]);
+    }, [setChatInput]);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -172,7 +172,7 @@ export default function Chat() {
             })
             .catch(err=>console.error("Error loading messages ", err));
 
-    }, [userId, setStoreMessages, lastConversationMessagesUpdate, conversationId, setModel]);
+    }, [userId, setStoreMessages, lastConversationMessagesUpdate, conversationId, defaultModel, setModel]);
 
     let chatCallback = useMemo(() => {
         if(!conversationId) return null;
@@ -509,7 +509,7 @@ function ChatBubble(props: MessageRowProps) {
         })
         .catch(err=>console.error("Error loading file attachments", err));
 
-    }, [workers, ready, userId, tuuids, setAttachedFiles]);
+    }, [workers, ready, userId, tuuids, attachedFiles, setAttachedFiles]);
 
     const plugins = [remarkMath, remarkGfm, remarkRehype, rehypeKatex];
 
@@ -623,7 +623,7 @@ function ModelPickList(props: {value: string, onChange: (e: ChangeEvent<HTMLSele
         return copyModels.map(item=>{
             return <option key={item.name} value={item.name}>{item.name}</option>
         });
-    }, [models]);
+    }, [models, defaultModel]);
 
     return (
         <>
@@ -683,18 +683,18 @@ function AttachmentThumbnailsView(props: {files: TuuidsBrowsingStoreRow[] | null
 
     const onClick = useCallback((e: MouseEvent<HTMLButtonElement | HTMLDivElement>, value: TuuidsBrowsingStoreRow | null)=>{
         
-    }, [files]);
+    }, []);
 
     const fileElems = useMemo(()=>{
         if(!files) return <></>;
         return files.map(item=>{
             return (
-                <a href={`/apps/collections2/f/${item.tuuid}`} target="_blank">
+                <a href={`/apps/collections2/f/${item.tuuid}`} target="_blank" rel="noreferrer">
                     <ThumbnailItem key={item.tuuid} size={200} onClick={onClick} value={item} />
                 </a>
             )
         })
-    }, [files]);
+    }, [files, onClick]);
 
     return <div className='inline-block sm:w-96 truncate'>{fileElems}</div>;
 }
@@ -714,7 +714,7 @@ function AttachmentThumbnailsEdit(props: {files: TuuidsBrowsingStoreRow[] | null
         return files.map(item=>{
             return <ThumbnailItem key={item.tuuid} size={60} onClick={onClick} value={item} />
         })
-    }, [files]);
+    }, [files, onClick]);
 
     return <div className='inline-block w-96 truncate'>{fileElems}</div>;
 }
