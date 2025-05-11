@@ -7,6 +7,9 @@ import useWorkers from "../workers/workers";
 
 function ChatSummaryHistory() {
 
+    const isAdmin = useChatStore(state=>state.isAdmin);
+
+
     return (
         <>
             <section>
@@ -16,6 +19,14 @@ function ChatSummaryHistory() {
                     className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
                         Start
                 </Link>
+                {isAdmin?
+                    <Link to='/apps/aichat/configuration'
+                        className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
+                            Configure
+                    </Link>
+                :
+                    <></>
+                }
             </section>
 
             <section>

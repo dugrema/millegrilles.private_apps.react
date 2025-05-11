@@ -9,16 +9,21 @@ import Footer from '../Footer';
 
 export default function AppAiChat() {
 
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let setUserId = useChatStore(state=>state.setUserId);
+    const workers = useWorkers();
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
+    const setUserId = useChatStore(state=>state.setUserId);
+    const setIsAdmin = useChatStore(state=>state.setIsAdmin);
 
     // Get the userId from the certificate
     useEffect(()=>{
         workers?.connection.getMessageFactoryCertificate()
             .then(certificate=>{
-                let userId = certificate.extensions?.userId;
+                const userId = certificate.extensions?.userId;
                 setUserId(''+userId);
+
+                const delegations = certificate.extensions?.adminGrants || [];
+                const isAdmin = delegations.includes("proprietaire")
+                setIsAdmin(isAdmin);
             })
             .catch(err=>console.error("Error loading userId", err));
     }, [ready, workers, setUserId]);

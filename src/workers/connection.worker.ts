@@ -109,6 +109,12 @@ export type ConversationSyncResponse = MessageResponse & {
 
 export type GetModelsResponse = MessageResponse & {models?: LanguageModelType[]}
 
+export type GetAiConfigurationResponse = MessageResponse & {
+    ollama_urls?: {urls?: string[]},
+    default?: {model_name?: string},
+    rag?: any,
+}
+
 export type DecryptedSecretKey = {
     cle_id: string,
     cle_secrete_base64: string,
@@ -376,6 +382,11 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendRequest({}, DOMAINE_OLLAMA_RELAI, 'getModels', {timeout: 3_000});
     }
 
+    async getConfiguration(): Promise<GetAiConfigurationResponse> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendRequest({}, DOMAINE_AI_LANGUAGE, 'getConfiguration', {timeout: 5_000});
+    }
+
     async syncConversations(
         streamCallback: (e: ConversationSyncResponse)=>Promise<void>, 
         lastSyncDate?: number | null,
@@ -392,6 +403,33 @@ export class AppsConnectionWorker extends ConnectionWorker {
             streamCallback, 
             {domain: DOMAINE_AI_LANGUAGE}
         );
+    }
+
+    async setOllamaUrls(urls: string[]) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({urls}, DOMAINE_AI_LANGUAGE, 'setOllamaUrls');
+    }
+
+    async setAiDefaults(defaultModel: string | null) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({model_name: defaultModel}, DOMAINE_AI_LANGUAGE, 'setDefaults');
+    }
+
+    async setAiRag(
+        modelEmbeddingName: string | null,
+        modelQueryName: string | null,
+        contextSize: number | null,
+        documentChunkSize: number | null,
+        documentOverlapSize: number | null) 
+    {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({
+            model_embedding_name: modelEmbeddingName,
+            model_query_name: modelQueryName,
+            context_len: contextSize,
+            document_chunk_len: documentChunkSize,
+            document_overlap_len: documentOverlapSize,
+        }, DOMAINE_AI_LANGUAGE, 'setRag');
     }
 
     async syncConversationMessages(

@@ -24,6 +24,7 @@ interface ChatStoreState {
     lastConversationsUpdate: number,  // Last time there was a conversation update (ms)
     lastConversationMessagesUpdate: number,  // Last time there was a conversation update (ms)
     models: LanguageModelType[],
+    isAdmin: boolean,
     appendCurrentResponse: (conversation_id: string, chunk: string) => void,
     pushAssistantResponse: (message_id: string) => void,
     pushUserQuery: (query: string, tuuids?: string[] | null) => void,
@@ -38,6 +39,7 @@ interface ChatStoreState {
     setLastConversationsUpdate: (lastConversationsUpdate: number) => void,
     setLastConversationMessagesUpdate: (lastConversationMessagesUpdate: number) => void,
     setModels: (models: LanguageModelType[]) => void,
+    setIsAdmin: (isAdmin: boolean) => void,
 };
 
 const useChatStore = create<ChatStoreState>()(
@@ -54,6 +56,8 @@ const useChatStore = create<ChatStoreState>()(
             lastConversationsUpdate: 1,
             lastConversationMessagesUpdate: 1,
             models: [],
+            isAdmin: false,
+
             appendCurrentResponse: (conversation_id, chunk) => set((state) => {
                 // Check that the conversation was not switched while receiving updates
                 if(state.conversationId !== conversation_id) throw new Error('Wrong conversation id');
@@ -110,6 +114,7 @@ const useChatStore = create<ChatStoreState>()(
             setLastConversationsUpdate: (lastConversationsUpdate) => set(()=>({lastConversationsUpdate})),
             setLastConversationMessagesUpdate: (lastConversationMessagesUpdate) => set(()=>({lastConversationMessagesUpdate})),
             setModels: (models) => set(()=>({models})),
+            setIsAdmin: (isAdmin) => set(()=>({isAdmin})),
         })
     ),
 );

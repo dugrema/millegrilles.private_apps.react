@@ -21,6 +21,7 @@ import createCollections2ReactBrowserChildren from './collections2/Collections2R
 const AppAiChat = React.lazy(()=>import('./aichat/AppAiChat'));
 const ChatSummaryHistory = React.lazy(()=>import('./aichat/ChatSummaryHistory'));
 const AiChatConversation = React.lazy(()=>import('./aichat/Conversation'));
+const AiChatConfigure = React.lazy(()=>import('./aichat/AiConfigure'));
 
 // Collections 2
 const AppCollections2 = React.lazy(()=>import('./collections2/AppCollections2'));
@@ -59,6 +60,7 @@ const router = createBrowserRouter([
             { path: "/apps/aichat", element: <ChatSummaryHistory /> },
             { path: "/apps/aichat/newConversation", element: <AiChatConversation /> },
             { path: "/apps/aichat/conversation/:conversationId", element: <AiChatConversation /> },
+            { path: "/apps/aichat/configuration", element: <AiChatConfigure /> },
         ]
   	},
     {
