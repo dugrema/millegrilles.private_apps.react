@@ -52,6 +52,7 @@ export default function Chat() {
     let setConversationReadyToSave = useChatStore(state=>state.setConversationReadyToSave);
     let newConversation = useChatStore(state=>state.newConversation);
     let setNewConversation = useChatStore(state=>state.setNewConversation);
+    const [defaultModel, setDefaultModel] = useState(CONST_DEFAULT_MODEL);
 
     let setLastConversationMessagesUpdate = useChatStore(state=>state.setLastConversationMessagesUpdate);
     let lastConversationMessagesUpdate = useChatStore(state=>state.lastConversationMessagesUpdate);
@@ -134,12 +135,22 @@ export default function Chat() {
     let [lastUpdate, setLastUpdate] = useState(0);
     const [fileAttachments, setFileAttachments] = useState(null as TuuidsBrowsingStoreRow[] | null);
 
-
     let chatInputOnChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
         let value = e.currentTarget.value;
         setChatInput(value);
         // setLastUpdate(new Date().getTime());
     }, [setChatInput, setLastUpdate]);
+
+    useEffect(()=>{
+        if(!workers || !ready) return;
+        workers.connection.getConfiguration()
+            .then(response=>{
+                console.debug("AI Configuration", response);
+                const defaultModel = response.default?.model_name || CONST_DEFAULT_MODEL;
+                setDefaultModel(defaultModel);
+            })
+            .catch(err=>console.error("Error loading configuration", err));
+    }, [workers, ready, setDefaultModel]);
 
     useEffect(()=>{
         if(!userId || !conversationId || !lastConversationMessagesUpdate) return;
@@ -155,7 +166,7 @@ export default function Chat() {
                 const model = storeMessageList.reduce((acc, item)=>{
                     if(item.model) return item.model;
                     return acc;
-                }, CONST_DEFAULT_MODEL);
+                }, defaultModel);
                 // console.debug("Re-setting model", model);
                 setModel(model);
             })
@@ -329,7 +340,7 @@ export default function Chat() {
             </section>
             
             <div className='grid grid-cols-1 md:grid-cols-3 fixed bottom-0 w-full pl-2 pr-6 mb-8'>
-                <ModelPickList value={model} onChange={modelOnChange} />
+                <ModelPickList value={model} onChange={modelOnChange} defaultModel={defaultModel} />
                 
                 <textarea value={chatInput} onChange={chatInputOnChange} onKeyDown={textareaOnKeyDown} 
                     placeholder='Entrez votre question ici. Exemple : Donne-moi une liste de films sortis en 1980.'
@@ -594,9 +605,9 @@ function sortMessagesByDate(a: StoreChatMessage, b: StoreChatMessage) {
     return a.message_id.localeCompare(b.message_id);
 }
 
-function ModelPickList(props: {value: string, onChange: (e: ChangeEvent<HTMLSelectElement>)=>void}) {
+function ModelPickList(props: {value: string, onChange: (e: ChangeEvent<HTMLSelectElement>)=>void, defaultModel: string}) {
 
-    let {value, onChange} = props;
+    let {value, onChange, defaultModel} = props;
 
     let models = useChatStore(state=>state.models);
 
@@ -606,8 +617,8 @@ function ModelPickList(props: {value: string, onChange: (e: ChangeEvent<HTMLSele
         copyModels.sort((a,b)=>a.name.localeCompare(b.name));
 
         // Move default model at top of list
-        copyModels = copyModels.filter(item=>item.name!==CONST_DEFAULT_MODEL);
-        copyModels.unshift({name: CONST_DEFAULT_MODEL});
+        copyModels = copyModels.filter(item=>item.name!==defaultModel);
+        copyModels.unshift({name: defaultModel});
 
         return copyModels.map(item=>{
             return <option key={item.name} value={item.name}>{item.name}</option>
