@@ -40,7 +40,13 @@ export type SendChatMessageCommand = {
     attachments?: FileAttachment[] | null,
 };
 
-export type AiLanguageQueryRag = MessageResponse & {response?: string | null};
+type AiLanguageResponseRef = {
+    id: string,
+    metadata?: {creationDate: string, moddate?: string, creator?: string, source?: string, title?: string, total_pages?: number},
+    page_content?: string,
+};
+
+export type AiLanguageQueryRag = MessageResponse & {ref?: AiLanguageResponseRef[], response?: string | null};
 
 export type ActivationCodeResponse = MessageResponse & {
     code?: number | string,

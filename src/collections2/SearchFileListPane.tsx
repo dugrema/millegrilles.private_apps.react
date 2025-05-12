@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TuuidsBrowsingStoreSearchRow } from "./userBrowsingStore";
 import { Formatters } from "millegrilles.reactdeps.typescript";
+
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkRehype from 'remark-rehype';
+import rehypeKatex from 'rehype-katex';
 
 import FolderIcon from '../resources/icons/folder-svgrepo-com-duotoneicon.svg';
 import FileIcon from '../resources/icons/file-svgrepo-com.svg';
@@ -43,7 +48,7 @@ function SearchFilelistPane(props: SearchFileListPaneProps) {
 
     return (
         <>
-            <div className='fixed w-full pr-4'>
+            <div className='w-full pr-4'>
                 <div className='grid grid-cols-6 md:grid-cols-12 bg-slate-800 text-sm px-1'>
                     <div className='col-span-6 px-1'>Name</div>
                     <p className='col-span-1 px-1'>Score</p>
@@ -52,7 +57,7 @@ function SearchFilelistPane(props: SearchFileListPaneProps) {
                     <p className='col-span-2 px-1'>Date</p>
                 </div>
             </div>
-            <div className='pb-10 md:pb-5'></div>
+            <div className='md:pb-5'></div>
             {mappedFiles}
         </>
     );
@@ -157,5 +162,25 @@ function FileRow(props: {value: TuuidsBrowsingStoreSearchRow, dateColumn?: strin
                 <Formatters.FormatterDate value={dateValue || undefined} />
             </p>
         </div>
+    )
+}
+
+export function SearchRagResponse(props: {value: string | null | undefined}) {
+    const {value} = props;
+
+    if(!value) return <></>;
+
+    const plugins = [remarkGfm, remarkRehype, rehypeKatex];
+
+    return (
+        <>
+            <section className=''>
+                <h1 className='text-xl font-bold pb-2'>Response</h1>
+                <div className="text-sm font-normal text-gray-300 markdown">
+                    <Markdown remarkPlugins={plugins}>{value}</Markdown>
+                </div>
+            </section>
+            <p className='py-2'>The following files were used as context for the answer.</p>
+        </>
     )
 }

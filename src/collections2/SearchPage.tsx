@@ -1,18 +1,13 @@
 import { ChangeEvent, useCallback, useMemo, useState, FormEvent, useEffect, useRef, Dispatch } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import useSWR from 'swr';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import remarkRehype from 'remark-rehype';
-import rehypeKatex from 'rehype-katex';
 
 import ActionButton from "../resources/ActionButton";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
-import useUserBrowsingStore, { filesIdbToBrowsing, TuuidsBrowsingStoreRow, TuuidsBrowsingStoreSearchRow } from "./userBrowsingStore";
-import { Collection2SearchResultsDoc, Collections2FileSyncRow, Collections2SearchResults, Collections2SharedContactsSharedCollection, DecryptedSecretKey } from "../workers/connection.worker";
-import SearchFilelistPane from "./SearchFileListPane";
+import useUserBrowsingStore, { Collection2SearchStore, filesIdbToBrowsing, TuuidsBrowsingStoreRow, TuuidsBrowsingStoreSearchRow } from "./userBrowsingStore";
+import { Collection2SearchResultsContent, Collection2SearchResultsDoc, Collections2FileSyncRow, Collections2SearchResults, Collections2SharedContactsSharedCollection, DecryptedSecretKey } from "../workers/connection.worker";
+import SearchFilelistPane, { SearchRagResponse } from "./SearchFileListPane";
 import { PageSelectors } from "./BrowsingElements";
 
 const CONST_PAGE_SIZE = 25;
@@ -27,8 +22,7 @@ function SearchPage() {
     const setSearchResults = useUserBrowsingStore(state=>state.setSearchResults);
     const searchResultsPosition = useUserBrowsingStore(state=>state.searchResultsPosition);
     const setSearchResultsPosition = useUserBrowsingStore(state=>state.setSearchResultsPosition);
-    const searchRagResponse = useUserBrowsingStore(state=>state.searchRagResponse);
-    const setSearchRagResponse = useUserBrowsingStore(state=>state.setSearchRagResponse);
+    const ragQuery = useMemo(()=>!!searchResults?.ragResponse,[searchResults]);
     
     const [page, setPage] = useState(searchResultsPosition || 1);
     const [pageLoaded, setPageLoaded] = useState(false);
@@ -46,10 +40,10 @@ function SearchPage() {
         if(query && data) {
             // console.debug("Search results: %O", data);
             setSearchResults({query, searchResults: data});
-        } else {
+        } else if(!ragQuery) {
             setSearchResults(null);
         }
-    }, [query, data, setSearchResults]);
+    }, [query, data, ragQuery, setSearchResults]);
 
     const [searchInput, setSearchInput] = useState(query || '');
     const searchInputHandler = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
@@ -62,14 +56,13 @@ function SearchPage() {
         setSearchResults(null);
         setSearchResultsPosition(1);
         setPage(1);
-        setSearchRagResponse(null);
         
         if(!searchInput) {
             setSearchParams(params=>{params.delete('search'); return params;});
         } else {
             setSearchParams(params=>{params.set('search', searchInput); return params;});
         }
-    }, [searchInput, setSearchParams, setSearchResults, setPage, setSearchResultsPosition, setSearchRagResponse]);
+    }, [searchInput, setSearchParams, setSearchResults, setPage, setSearchResultsPosition]);
 
     const submitHandler = useCallback((e: FormEvent<HTMLFormElement>)=>{
         e.preventDefault();
@@ -85,18 +78,72 @@ function SearchPage() {
         setSearchResultsPosition(1);
         setPage(1);
         setSearchParams(params=>{params.delete('search'); return params;});
-        setSearchRagResponse(null);
 
         if(searchInput) {
             const encryptedMessage = await workers.encryption.encryptMessageMgs4ForDomain(searchInput, 'ollama_relai');
             // console.debug("Encrypted message %O", encryptedMessage);
 
-            let response = await workers.connection.queryRag(encryptedMessage);
-            console.debug("RAG query response", response);
+            const response = await workers.connection.queryRag(encryptedMessage);
+            // console.debug("RAG query response", response);
             if(response.ok !== true) throw new Error("Error during RAG query: " + response.err);
-            setSearchRagResponse(response.response || null);
+
+            // Fetch keys for all references
+            const references = response.ref;
+            let searchResults = null;
+            if(references) {
+                const tuuids = [] as string[];
+                for(const itemId of references) {
+                    const tuuid = itemId.id.split('/')[0];
+                    if(!tuuids.includes(tuuid)) {
+                        tuuids.push(tuuid);
+                    }
+                }
+                // const tuuids = references
+                //     .filter(item=>item.id)              // Remove empty ids
+                //     .map(item=>item.id.split('/')[0]);  // extract Ids (format is tuuid/...)
+                searchResults = await workers.connection.getFilesByTuuid(tuuids);
+                // console.debug("Loaded references", searchResults);
+
+                // Fill in search results in order
+                const listSize = searchResults.files?.length || 0;
+                const mappedFiles = searchResults.files?.reduce((acc, item, idx)=>{
+                    const searchResult = {
+                        id: item.tuuid,
+                        user_id: userId,
+                        score: listSize-idx,
+                        fuuid : item.version_courante?.fuuid,
+                        cuuids: item.path_cuuids,
+                    } as Collection2SearchResultsDoc;
+                    return {...acc, [item.tuuid]: searchResult};
+                }, {} as {[tuuid: string]: Collection2SearchResultsDoc}) || {};
+                const docs = tuuids
+                    .filter(tuuid=>mappedFiles[tuuid])
+                    .map(tuuid=>mappedFiles[tuuid]);
+
+                const content = {
+                    docs,
+                    max_score: listSize,
+                    numFound: listSize,
+                    numFoundExact: listSize,
+                    start: 0,
+                } as Collection2SearchResultsContent;
+                // console.debug("Prepared search results content", content);
+                searchResults.search_results = content;
+            }
+
+            const storeResults = {
+                query: searchInput,
+                searchResults,
+                stats: {files: searchResults?.files?.length || 0, directories: 0},
+                resultDate: new Date(),
+                ragResponse: response.response,
+                error: null,
+            } as Collection2SearchStore;
+            
+            console.debug("RAG response and results:", storeResults);
+            setSearchResults(storeResults);
         }
-    }, [workers, ready, searchInput, setSearchParams, setSearchResults, setPage, setSearchResultsPosition, setSearchRagResponse]);
+    }, [workers, ready, searchInput, setSearchParams, setSearchResults, setPage, setSearchResultsPosition]);
 
     useEffect(()=>{
         if(pageLoaded || !workers || !ready || !userId) return;
@@ -136,7 +183,6 @@ function SearchPage() {
             </section>
 
             <SearchResultSection data={data} page={page} setPage={setPage} />
-            <SearchRagResponse value={searchRagResponse} />
         </>
     );
 }
@@ -145,25 +191,26 @@ export default SearchPage;
 
 function SearchResultSection(props: {data: Collections2SearchResults | null, page: number, setPage: Dispatch<number>}) {
 
-    let {data, page, setPage} = props;
+    const {data, page, setPage} = props;
 
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let userId = useUserBrowsingStore(state=>state.userId);
+    const workers = useWorkers();
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
+    const userId = useUserBrowsingStore(state=>state.userId);
+    const searchResults = useUserBrowsingStore(state=>state.searchResults);
 
-    let navigate = useNavigate();
-    let navSectionRef = useRef(null);
+    const navigate = useNavigate();
+    const navSectionRef = useRef(null);
     
-    let [list, setList] = useState(null as TuuidsBrowsingStoreSearchRow[] | null);
-    let [sharedCuuids, setSharedCuuids] = useState(null as {[tuuid: string]: Collections2SharedContactsSharedCollection} | null);
+    const [list, setList] = useState(null as TuuidsBrowsingStoreSearchRow[] | null);
+    const [sharedCuuids, setSharedCuuids] = useState(null as {[tuuid: string]: Collections2SharedContactsSharedCollection} | null);
 
-    let pageCount = useMemo(()=>{
+    const pageCount = useMemo(()=>{
         if(!data) return 0
 
         // Extract basic statistic}s
-        let docs = data.search_results?.docs;
-        let itemCount = docs?.length || 0;
-        let pages = Math.ceil(itemCount / CONST_PAGE_SIZE);
+        const docs = data.search_results?.docs;
+        const itemCount = docs?.length || 0;
+        const pages = Math.ceil(itemCount / CONST_PAGE_SIZE);
 
         return pages;
     }, [data]);
@@ -198,14 +245,14 @@ function SearchResultSection(props: {data: Collections2SearchResults | null, pag
             })
     }, [workers, ready, userId, sharedCuuids, data, page]);
 
-    let onClickRow = useCallback((tuuid: string, typeNode: string)=>{
+    const onClickRow = useCallback((tuuid: string, typeNode: string)=>{
         if(!list) {
             console.warn("No files provided");
             return;
         }
 
         if(typeNode === 'Fichier') {
-            let item = list.filter(item=>item.tuuid === tuuid).pop();
+            const item = list.filter(item=>item.tuuid === tuuid).pop();
             if(item && item.contactId) {
                 navigate(`/apps/collections2/c/${item.contactId}/f/${tuuid}`);
             } else {
@@ -221,6 +268,7 @@ function SearchResultSection(props: {data: Collections2SearchResults | null, pag
 
     return (
         <section ref={navSectionRef} className='fixed top-32 left-0 px-2 bottom-10 overflow-y-auto w-full'>
+            <SearchRagResponse value={searchResults?.ragResponse} />
             <SearchFilelistPane files={list} onClickRow={onClickRow} sortKey='score' sortOrder={-1}/>
             <PageSelectors page={page} setPage={setPage} pageCount={pageCount} />
         </section>
@@ -271,19 +319,23 @@ type UseSearchResultsType = {
  * @returns Search results
  */
 function useSearchResults(): UseSearchResultsType {
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    const workers = useWorkers();
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
 
-    let [searchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
+    const searchResults = useUserBrowsingStore(state=>state.searchResults);
 
-    let [fetcherKey, fetcherFunction] = useMemo(()=>{
-        let query = searchParams.get('search');
+    const [fetcherKey, fetcherFunction] = useMemo(()=>{
+        const query = searchParams.get('search');
         if(!workers || !ready || !searchParams || !workers || !query) return [null, null];
-        let fetcherFunction = async (query: string) => workers?.connection.searchFiles(query, CONST_PAGE_SIZE);
+        const fetcherFunction = async (query: string) => workers?.connection.searchFiles(query, CONST_PAGE_SIZE);
         return [query, fetcherFunction]
     }, [workers, ready, searchParams]);
+    
+    const { data, error, isLoading } = useSWR(fetcherKey, fetcherFunction);
 
-    let { data, error, isLoading } = useSWR(fetcherKey, fetcherFunction);
+    if(searchResults?.ragResponse) return {data: searchResults.searchResults || null, error: null, isLoading: false};
+
     return {data: data || null, error, isLoading};
 }
 
@@ -291,13 +343,13 @@ async function parseSearchResults(workers: AppWorkers, userId: string, sharedCuu
     data: Collections2SearchResults | null, page: number): Promise<TuuidsBrowsingStoreSearchRow[] | null> 
 {
     let pageDocs: Collection2SearchResultsDoc[] | null;
-    let docs = data?.search_results?.docs;
+    const docs = data?.search_results?.docs;
     if(!docs) throw new Error('No data to process');
 
     if(page === 1) {
         pageDocs = docs?.slice(0, CONST_PAGE_SIZE) || null;
     } else {
-        let startIdx = (page - 1) * CONST_PAGE_SIZE;
+        const startIdx = (page - 1) * CONST_PAGE_SIZE;
         pageDocs = docs?.slice(startIdx, startIdx + CONST_PAGE_SIZE) || null;
     }
 
@@ -320,8 +372,8 @@ async function parseSearchResults(workers: AppWorkers, userId: string, sharedCuu
 
     if(!files) {
         // console.debug("Load files for page %d: %O", page, pageDocs)
-        let tuuids = pageDocs.map(item=>item.id);
-        let response = await workers.connection.getFilesByTuuid(tuuids, {shared: true});
+        const tuuids = pageDocs.map(item=>item.id);
+        const response = await workers.connection.getFilesByTuuid(tuuids, {shared: true});
         files = response.files;
         keys = response.keys;
     }
@@ -329,7 +381,7 @@ async function parseSearchResults(workers: AppWorkers, userId: string, sharedCuu
     if(!files) throw new Error("Files not provided");
     if(!keys) throw new Error("Keys not provided");
 
-    let decryptedFiles = await loadFileData(workers, userId, sharedCuuids, pageDocs, files, keys);
+    const decryptedFiles = await loadFileData(workers, userId, sharedCuuids, pageDocs, files, keys);
 
     return decryptedFiles;
 }
@@ -379,23 +431,4 @@ async function loadFileData(workers: AppWorkers, userId: string, sharedCuuids: {
     }
 
     return null;
-}
-
-function SearchRagResponse(props: {value?: string | null}) {
-    const {value} = props;
-
-    let navSectionRef = useRef(null);
-
-    if(!value) return <></>;
-
-    const plugins = [remarkMath, remarkGfm, remarkRehype, rehypeKatex];
-
-    return (
-        <section ref={navSectionRef} className='fixed top-32 left-0 px-2 bottom-10 overflow-y-auto w-full'>
-            <h1 className='text-xl font-bold pb-2'>Response</h1>
-            <div className="text-sm font-normal text-gray-300 markdown">
-                <Markdown remarkPlugins={plugins}>{value}</Markdown>
-            </div>
-        </section>
-    )
 }
