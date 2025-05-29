@@ -34,6 +34,10 @@ type ContentToEncryptType = {
     attachmentKeys?: {[key: string]: string},
 }
 
+//** Default context size for Ollama */
+const DEFAULT_CONTEXT_SIZE = 4096;
+const MAX_HISTORY_LENGTH = 20;
+
 
 export default function Chat() {
 
@@ -238,7 +242,22 @@ export default function Chat() {
 
             const contentToEncrypt = {} as ContentToEncryptType;
             if(messages && messages.length > 0) {
-                contentToEncrypt.messageHistory = messages.map(item=>{
+                // Rough estimate of max tokens. This avoids sending data that will just be thrown away in the back-end.
+                const maxSize = 4 * DEFAULT_CONTEXT_SIZE;
+                // Truncate messages - keep at most the last 20
+                const messagesToSend = messages.slice(0, MAX_HISTORY_LENGTH);
+                let size = messages.reduce((acc, item)=>{
+                    return acc + item.content.length;
+                }, 0);
+                // Keep at least 2 messages, remove excess beyond that.
+                while(messagesToSend.length > 2 && size > maxSize) {
+                    const removedMessage = messagesToSend.shift();  // Remove oldest message
+                    if(removedMessage?.content) {
+                        size -= removedMessage.content.length;
+                    }
+                }
+                // console.debug("History size: %d, %O", size, messagesToSend);
+                contentToEncrypt.messageHistory = messagesToSend.map(item=>{
                     return {role: item.query_role, content: item.content};
                 });
             }
