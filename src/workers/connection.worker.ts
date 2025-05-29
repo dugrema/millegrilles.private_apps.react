@@ -356,7 +356,8 @@ export class AppsConnectionWorker extends ConnectionWorker {
         signature: keymaster.DomainSignature,
         keys: {[key: string]: string},
         streamCallback: (e: MessageResponse)=>Promise<void>, 
-        messageCallback: (e: messageStruct.MilleGrillesMessage)=>Promise<void>
+        messageCallback: (e: messageStruct.MilleGrillesMessage)=>Promise<void>,
+        setWaiting: (e: string)=>void,
     ): Promise<boolean> {
         if(!this.connection) throw new Error("Connection is not initialized");
         let signedMessage = await this.connection.createRoutedMessage(
@@ -365,9 +366,16 @@ export class AppsConnectionWorker extends ConnectionWorker {
             {domaine: DOMAINE_OLLAMA_RELAI, action: 'chat'},
         );
         signedMessage.attachements = {history, signature, keys};
+        if(!signedMessage.id) throw new Error('Message Id not generated');
+        setWaiting(signedMessage.id);
         await messageCallback(signedMessage);
         // Give long wait period - models can take a long time to load.
         return await this.connection.emitCallbackResponses(signedMessage, streamCallback, {domain: DOMAINE_OLLAMA_RELAI, timeout: 75_000});
+    }
+
+    async cancelChatMessage(chatId: string): Promise<MessageResponse> {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({chat_id: chatId}, DOMAINE_OLLAMA_RELAI, 'cancelChat', {timeout: 3_000});
     }
 
     async getConversationKeys(keyIds: string[]) {

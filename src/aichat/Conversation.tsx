@@ -40,31 +40,30 @@ const MAX_HISTORY_LENGTH = 20;
 
 
 export default function Chat() {
+    const workers = useWorkers();
+    const navigate = useNavigate();
 
-    let workers = useWorkers();
-    let navigate = useNavigate();
-
-    let relayAvailable = useChatStore(state=>state.relayAvailable);
-    let conversationId = useChatStore(state=>state.conversationId);
-    let conversationKey = useChatStore(state=>state.key);
-    let setConversationKey = useChatStore(state=>state.setConversationKey);
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let userId = useChatStore(state=>state.userId);
-    let applyCurrentUserCommand = useChatStore(state=>state.applyCurrentUserCommand);
-    let setStoreMessages = useChatStore(state=>state.setMessages);
-    let conversationReadyToSave = useChatStore(state=>state.conversationReadyToSave);
-    let setConversationReadyToSave = useChatStore(state=>state.setConversationReadyToSave);
-    let newConversation = useChatStore(state=>state.newConversation);
-    let setNewConversation = useChatStore(state=>state.setNewConversation);
+    const relayAvailable = useChatStore(state=>state.relayAvailable);
+    const conversationId = useChatStore(state=>state.conversationId);
+    const conversationKey = useChatStore(state=>state.key);
+    const setConversationKey = useChatStore(state=>state.setConversationKey);
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
+    const userId = useChatStore(state=>state.userId);
+    const applyCurrentUserCommand = useChatStore(state=>state.applyCurrentUserCommand);
+    const setStoreMessages = useChatStore(state=>state.setMessages);
+    const conversationReadyToSave = useChatStore(state=>state.conversationReadyToSave);
+    const setConversationReadyToSave = useChatStore(state=>state.setConversationReadyToSave);
+    const newConversation = useChatStore(state=>state.newConversation);
+    const setNewConversation = useChatStore(state=>state.setNewConversation);
     const [defaultModel, setDefaultModel] = useState(CONST_DEFAULT_MODEL);
 
-    let setLastConversationMessagesUpdate = useChatStore(state=>state.setLastConversationMessagesUpdate);
-    let lastConversationMessagesUpdate = useChatStore(state=>state.lastConversationMessagesUpdate);
+    const setLastConversationMessagesUpdate = useChatStore(state=>state.setLastConversationMessagesUpdate);
+    const lastConversationMessagesUpdate = useChatStore(state=>state.lastConversationMessagesUpdate);
 
-    let [model, setModel] = useState('');
-    let modelOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setModel(e.currentTarget.value), [setModel]);
+    const [model, setModel] = useState('');
+    const modelOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setModel(e.currentTarget.value), [setModel]);
 
-    let {conversationId: paramConversationId} = useParams();
+    const {conversationId: paramConversationId} = useParams();
 
     useEffect(()=>{
         if(relayAvailable === null) return;
@@ -128,18 +127,18 @@ export default function Chat() {
         }
     }, [workers, userId, setConversationKey, paramConversationId, ready, setNewConversation, conversationKey, setLastConversationMessagesUpdate])
 
-    let messages = useChatStore(state=>state.messages);
-    let appendCurrentResponse = useChatStore(state=>state.appendCurrentResponse);
-    let pushAssistantResponse = useChatStore(state=>state.pushAssistantResponse);
-    let pushUserQuery = useChatStore(state=>state.pushUserQuery);
-    let clearConversation = useChatStore(state=>state.clear);
+    const messages = useChatStore(state=>state.messages);
+    const appendCurrentResponse = useChatStore(state=>state.appendCurrentResponse);
+    const pushAssistantResponse = useChatStore(state=>state.pushAssistantResponse);
+    const pushUserQuery = useChatStore(state=>state.pushUserQuery);
+    const clearConversation = useChatStore(state=>state.clear);
 
-    let [chatInput, setChatInput] = useState('');
-    let [waiting, setWaiting] = useState(false);
-    let [lastUpdate, setLastUpdate] = useState(0);
+    const [chatInput, setChatInput] = useState('');
+    const [waiting, setWaiting] = useState(null as string | null);
+    const [lastUpdate, setLastUpdate] = useState(0);
     const [fileAttachments, setFileAttachments] = useState(null as TuuidsBrowsingStoreRow[] | null);
 
-    let chatInputOnChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
+    const chatInputOnChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
         let value = e.currentTarget.value;
         setChatInput(value);
         // setLastUpdate(new Date().getTime());
@@ -178,14 +177,14 @@ export default function Chat() {
 
     }, [userId, setStoreMessages, lastConversationMessagesUpdate, conversationId, defaultModel, setModel]);
 
-    let chatCallback = useMemo(() => {
+    const chatCallback = useMemo(() => {
         if(!conversationId) return null;
         return proxy(async (event: MessageResponse & SubscriptionMessage & {partition?: string, done?: boolean, message_id?: string}) => {
             let message = event.message as ChatResponse;
             if(!message) { // Status message
                 if(!event.ok) {
                     console.error("Erreur processing response, ", event);
-                    setWaiting(false);
+                    setWaiting(null);
                 }
                 return;
             }
@@ -203,7 +202,7 @@ export default function Chat() {
             let done = event.done;
             let message_id = event.message_id;
             if(done && message_id) {
-                setWaiting(false);
+                setWaiting(null);
                 pushAssistantResponse(message_id);
                 setConversationReadyToSave(true);
                 // Force one last screen update
@@ -211,11 +210,15 @@ export default function Chat() {
             };
     })}, [conversationId, appendCurrentResponse, setWaiting, pushAssistantResponse, setLastUpdate, setConversationReadyToSave]);
 
-    let userMessageCallback = useMemo(()=>proxy(async (event: messageStruct.MilleGrillesMessage)=>{
+    const userMessageCallback = useMemo(()=>proxy(async (event: messageStruct.MilleGrillesMessage)=>{
         applyCurrentUserCommand(event);
     }), [applyCurrentUserCommand]);
 
-    let submitHandler = useCallback(() => {
+    const setWaitingCallback = useMemo(()=>proxy(async (id: string)=>{
+        setWaiting(id);
+    }), [setWaiting]);
+
+    const submitHandler = useCallback(() => {
         if(!chatInput.trim()) return;  // No message, nothing to do
         if(!workers) throw new Error('workers not initialized');
         if(!conversationKey) throw new Error('Encryption key is not initialized');
@@ -286,14 +289,15 @@ export default function Chat() {
             // console.debug("Chat message ", command);
 
             // let attachment = {history: encryptedMessageHistory, key: {signature: conversationKey.signature}};
-            setWaiting(true);
+            // setWaiting(true);
             if(!workers) throw new Error("Workers not initialized");
             if(!chatCallback) throw new Error("Chat callback not initialized");
-            let ok = await workers.connection.sendChatMessage(
+            const ok = await workers.connection.sendChatMessage(
                 command, encryptedMessageHistory, conversationKey.signature, conversationKey.encrypted_keys,
                 // @ts-ignore
                 chatCallback, 
-                userMessageCallback
+                userMessageCallback,
+                setWaitingCallback,
             );
             if(!ok) {
                 console.error("Error sending chat message");
@@ -301,10 +305,24 @@ export default function Chat() {
             navigate(`/apps/aichat/conversation/${conversationId}`);
         })
         .catch(err=>console.error("submitHandler Error sending message ", err))
-        .finally(()=>setWaiting(false))
+        .finally(()=>setWaiting(null))
     }, [workers, userId, conversationId, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, 
         pushUserQuery, userMessageCallback, newConversation, model, navigate, fileAttachments, setFileAttachments]
     );
+
+    const cancelHandler = useCallback(()=>{
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!waiting) throw new Error('Not currently waiting on chat response');
+        console.debug("Cancel chat message id", waiting)
+        workers.connection.cancelChatMessage(waiting)
+            .then(response=>{
+                if(!response.ok) console.warn("Error cancelling chat: %s", response.err);
+            })
+            .catch(err=>console.error("Error cancelling chat", err))
+            .finally(()=>{
+                setWaiting(null);  // Turn off waiting state
+            });
+    }, [workers, ready, waiting]);
 
     // Submit on ENTER in the textarea
     let textareaOnKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>)=>{
@@ -370,10 +388,17 @@ export default function Chat() {
                 </div>
 
                 <div className='text-center col-span-12'>
-                    <button disabled={waiting || !ready || !relayAvailable} 
-                        className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900' onClick={submitHandler}>
-                            Send
-                    </button>
+                    {!waiting?
+                        <button disabled={!ready || !relayAvailable} 
+                            className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900' onClick={submitHandler}>
+                                Send
+                        </button>
+                        :
+                        <button disabled={!ready || !relayAvailable}
+                            className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center' onClick={cancelHandler}>
+                                Cancel
+                        </button>
+                    }
                     <Link to='/apps/aichat' 
                         className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
                             Back
