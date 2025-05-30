@@ -77,7 +77,7 @@ function UrlConfiguration() {
             <h2 className='text-lg font-bold'>Ollama urls</h2>
             <p>List of URLs to use for ollama instances. Note that using https implies using MilleGrilles client TLS authentication.</p>
 
-            <div className='grid grid-cols-1 lg:grid-cols-2'>
+            <div className='grid grid-cols-1 lg:grid-cols-2 pt-2'>
                 <p className='col-span-2'>Add URL to list</p>
                 <input type="text" value={url} onChange={urlOnChangeHandler} 
                     className='text-white bg-slate-500' />
@@ -88,6 +88,7 @@ function UrlConfiguration() {
                     </ActionButton>
                 </div>
             </div>
+
 
             <UrlList value={urls} removeItem={removeUrlHandler} />
 
@@ -128,8 +129,8 @@ function UrlList(props: UrlListProps) {
 
     return (
         <>
-            <p className='font-bold pt-4'>List of urls</p>
-            <div className='grid-cols-2'>
+            <h3 className='font-bold pt-4 pb-2'>List of urls</h3>
+            <div className='grid grid-cols-2'>
                 {mappedUrls}
             </div>
         </>
@@ -185,6 +186,7 @@ function Models() {
     const ready = useConnectionStore(state=>state.connectionAuthenticated);
 
     const [defaultModel, setDefaultModel] = useState('');
+    const [chatContextLength, setChatContextLength] = useState(4096 as number | string);
     const [ragEmbeddingModel, setRagEmbeddingModel] = useState('');
     const [ragQueryModel, setRagQueryModel] = useState('');
     const [ragContextSize, setRagContextSize] = useState(4096 as number | string);
@@ -192,6 +194,11 @@ function Models() {
     const [ragOverlapSize, setRagOverlapSize] = useState(250 as number | string);
 
     const defaultModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setDefaultModel(e.currentTarget.value), [setDefaultModel]);
+    const chatContextLengthOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
+        const value = Number.parseInt(e.currentTarget.value);
+        if(isNaN(value)) setChatContextLength('');
+        else setChatContextLength(value);
+    }, [setChatContextLength]);
     const ragEmbeddingModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setRagEmbeddingModel(e.currentTarget.value), [setRagEmbeddingModel]);
     const ragQueryModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setRagQueryModel(e.currentTarget.value), [setRagQueryModel]);
     const ragContextSizeOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
@@ -213,8 +220,10 @@ function Models() {
     const applyHandler = useCallback(async () => {
         if(!workers || !ready) throw new Error('workers not initialized');
 
-        // Save the default model
-        const responseDefaults = await workers.connection.setAiDefaults(defaultModel?defaultModel:null);
+        // Save the default model and chat options
+        const chatContextLengthVal = typeof(chatContextLength)==='number'?chatContextLength:null;
+        console.debug("Chat context: %O, %d", chatContextLength, chatContextLengthVal)
+        const responseDefaults = await workers.connection.setAiDefaults(defaultModel?defaultModel:null, chatContextLengthVal);
         if(responseDefaults.ok !== true) throw new Error("Error saving defaults: " + responseDefaults.err);
 
         const ragContextSizeVal = typeof(ragContextSize)==='number'?ragContextSize:null;
@@ -227,7 +236,7 @@ function Models() {
             ragContextSizeVal, ragDocumentSizeVal, ragOverlapSizeVal);
 
         if(responseRag.ok !== true) throw new Error('Error saving RAG parameters: ' + responseRag.err);
-    }, [workers, ready, defaultModel, ragEmbeddingModel, ragQueryModel, ragContextSize, ragDocumentSize, ragOverlapSize]);
+    }, [workers, ready, defaultModel, chatContextLength, ragEmbeddingModel, ragQueryModel, ragContextSize, ragDocumentSize, ragOverlapSize]);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -236,6 +245,7 @@ function Models() {
                 console.debug("AI Configuration", response);
                 if(!response) throw new Error("Empty response");
                 setDefaultModel(response.default?.model_name || '');
+                setChatContextLength(response.default?.chat_context_length || 4096)
                 setRagEmbeddingModel(response.rag?.model_embedding_name || '');
                 setRagQueryModel(response.rag?.model_query_name || '');
                 setRagContextSize(response.rag?.context_len);
@@ -243,37 +253,44 @@ function Models() {
                 setRagOverlapSize(response.rag?.document_overlap_len);
             })
             .catch(err=>console.error("Error loading configuration", err));
-    }, [workers, ready, setDefaultModel, setRagEmbeddingModel, setRagQueryModel, setRagContextSize, setRagDocumentSize, setRagOverlapSize]);
+    }, [workers, ready, setDefaultModel, setChatContextLength, setRagEmbeddingModel, setRagQueryModel, setRagContextSize, 
+        setRagDocumentSize, setRagOverlapSize]);
 
     return (
         <section className='pt-4'>
             <h2 className='text-lg font-bold'>LLM Models</h2>
 
-            <div className='grid grid-cols-1'>
+            <p className='pb-6'>
+                Model to put to the top of the list. Each instance of ollama can have a different list of models, 
+                but this one will be deployed on all instances and offer the best performance for simple queries.
+            </p>
+
+            <div className='grid grid-cols-1 lg:grid-cols-4 gap-x-4 gap-y-1'>
                 <label htmlFor="default-model">Default model</label>
                 <input id='default-model' type="text" value={defaultModel} onChange={defaultModelOnChange}
                     className='text-white bg-slate-500' />
-                <p className='pb-6'>
-                    Model to put to the top of the list. Each instance of ollama can have a different list of models, 
-                    but this one will be deployed on all instances and offer the best performance for simple queries.
-                </p>
+
+                <label htmlFor='rag-context'>Chat context length</label>
+                <input id='rag-context' type="text" value={chatContextLength} onChange={chatContextLengthOnChange}
+                    className='text-white bg-slate-500' />
+
+                <h3 className='font-bold pt-6 pb-2 lg:col-span-4'>Resource Augmented Generation (RAG)</h3>
+
+                <ul className='pb-6 lg:col-span-4'>
+                    <li>Warning: Changing RAG model parameters requires a reindexing of all documents (use Coup D'Oeil to trigger).</li>
+                    <li>Model to use for RAG embedding (indexing). Leave empty to disable RAG.</li>
+                    <li>Note: changing of RAG chunk and overlap sizes only affects future documents.</li>
+                    <li>To apply to all, trigger reindexing in Coup D'Oeil.</li>
+                </ul>
 
                 <label htmlFor='rag-embedding'>Resource Augmented Generation (RAG) embedding model</label>
                 <input id='rag-embedding' type="text" value={ragEmbeddingModel} onChange={ragEmbeddingModelOnChange}
                     className='text-white bg-slate-500' />
-                <p>
-                    Model to use for RAG embedding (indexing). Leave empty to disable RAG.
-                </p>
-                <p className='pb-6'>
-                    Warning: Changing RAG model parameters requires a reindexing of all documents (use Coup D'Oeil to trigger).
-                </p>
 
                 <label htmlFor='rag-query'>Resource Augmented Generation (RAG) query model</label>
                 <input id='rag-query' type="text" value={ragQueryModel} onChange={ragQueryModelOnChange}
                     className='text-white bg-slate-500' />
-                <p>Model to use for RAG queries.</p>
 
-                <p>Advanced RAG parameteres</p>
                 <label htmlFor='rag-context'>RAG context size</label>
                 <input id='rag-context' type="text" value={ragContextSize} onChange={ragContextSizeOnChange}
                     className='text-white bg-slate-500' />
@@ -285,8 +302,6 @@ function Models() {
                 <label htmlFor='rag-context'>RAG overlap size</label>
                 <input id='rag-context' type="text" value={ragOverlapSize} onChange={ragOverlapSizeOnChange}
                     className='text-white bg-slate-500' />
-
-                <p>Note: changing of RAG chunk and overlap sizes only affects future documents. To apply to all, trigger reindexing in Coup D'Oeil.</p>
             </div>
 
             <div className='pt-2'>

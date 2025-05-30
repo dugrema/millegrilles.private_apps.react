@@ -117,7 +117,7 @@ export type GetModelsResponse = MessageResponse & {models?: LanguageModelType[]}
 
 export type GetAiConfigurationResponse = MessageResponse & {
     ollama_urls?: {urls?: string[]},
-    default?: {model_name?: string},
+    default?: {model_name?: string, chat_context_length?: number},
     rag?: any,
 }
 
@@ -424,9 +424,9 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendCommand({urls}, DOMAINE_AI_LANGUAGE, 'setOllamaUrls');
     }
 
-    async setAiDefaults(defaultModel: string | null) {
+    async setAiDefaults(defaultModel: string | null, chatContextLength: number | null) {
         if(!this.connection) throw new Error("Connection is not initialized");
-        return await this.connection.sendCommand({model_name: defaultModel}, DOMAINE_AI_LANGUAGE, 'setDefaults');
+        return await this.connection.sendCommand({model_name: defaultModel, chat_context_length: chatContextLength}, DOMAINE_AI_LANGUAGE, 'setDefaults');
     }
 
     async setAiRag(
