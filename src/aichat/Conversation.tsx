@@ -35,7 +35,7 @@ type ContentToEncryptType = {
 }
 
 //** Default context size for Ollama */
-const DEFAULT_CONTEXT_SIZE = 4096;
+const DEFAULT_CONTEXT_LENGTH = 4096;
 const MAX_HISTORY_LENGTH = 20;
 
 
@@ -56,6 +56,7 @@ export default function Chat() {
     const newConversation = useChatStore(state=>state.newConversation);
     const setNewConversation = useChatStore(state=>state.setNewConversation);
     const [defaultModel, setDefaultModel] = useState(CONST_DEFAULT_MODEL);
+    const [contextSize, setContextSize] = useState(DEFAULT_CONTEXT_LENGTH);
 
     const setLastConversationMessagesUpdate = useChatStore(state=>state.setLastConversationMessagesUpdate);
     const lastConversationMessagesUpdate = useChatStore(state=>state.lastConversationMessagesUpdate);
@@ -151,9 +152,11 @@ export default function Chat() {
                 console.debug("AI Configuration", response);
                 const defaultModel = response.default?.model_name || CONST_DEFAULT_MODEL;
                 setDefaultModel(defaultModel);
+                const contextSize = response.default?.chat_context_length || DEFAULT_CONTEXT_LENGTH;
+                setContextSize(contextSize);
             })
             .catch(err=>console.error("Error loading configuration", err));
-    }, [workers, ready, setDefaultModel]);
+    }, [workers, ready, setDefaultModel, setContextSize]);
 
     useEffect(()=>{
         if(!userId || !conversationId || !lastConversationMessagesUpdate) return;
@@ -246,7 +249,7 @@ export default function Chat() {
             const contentToEncrypt = {} as ContentToEncryptType;
             if(messages && messages.length > 0) {
                 // Rough estimate of max tokens. This avoids sending data that will just be thrown away in the back-end.
-                const maxSize = 4 * DEFAULT_CONTEXT_SIZE;
+                const maxSize = 4 * contextSize;
                 // Truncate messages - keep at most the last 20
                 const messagesToSend = messages.slice(0, MAX_HISTORY_LENGTH);
                 let size = messages.reduce((acc, item)=>{
@@ -259,7 +262,7 @@ export default function Chat() {
                         size -= removedMessage.content.length;
                     }
                 }
-                // console.debug("History size: %d, %O", size, messagesToSend);
+                console.debug("History size (max: %d): %d, %O", maxSize, size, messagesToSend);
                 contentToEncrypt.messageHistory = messagesToSend.map(item=>{
                     return {role: item.query_role, content: item.content};
                 });
@@ -307,7 +310,7 @@ export default function Chat() {
         .catch(err=>console.error("submitHandler Error sending message ", err))
         .finally(()=>setWaiting(null))
     }, [workers, userId, conversationId, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, 
-        pushUserQuery, userMessageCallback, newConversation, model, navigate, fileAttachments, setFileAttachments]
+        pushUserQuery, userMessageCallback, newConversation, model, contextSize, navigate, fileAttachments, setFileAttachments]
     );
 
     const cancelHandler = useCallback(()=>{
@@ -478,13 +481,6 @@ function ChatBubble(props: MessageRowProps) {
         return messageDate / 1000;
     }, [messageDate]);
 
-    // let messageDateStr = useMemo(()=>{
-    //     if(!messageDate) return '';
-    //     let d = new Date(messageDate);
-    //     let dateString = d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
-    //     return dateString;
-    // }, [messageDate]);
-
     let [roleName, bubbleSide] = useMemo(()=>{
         switch(role) {
             case 'user': return ['User', 'right'];
@@ -494,18 +490,8 @@ function ChatBubble(props: MessageRowProps) {
     }, [role]);
 
     const [contentBlock, thinkBlock] = useMemo(()=>{
-        const THINK_OPEN_SIZE = '<think>'.length;
-        const THINK_CLOSE_SIZE = '</think>'.length;
-        if(content.startsWith('<think>')) {
-            const posEnd = content.indexOf('</think>');
-            if(posEnd < 0) {
-                return [null, content.slice(THINK_OPEN_SIZE)];
-            }
-            const thinkBlock = content.slice(THINK_OPEN_SIZE, posEnd);
-            const contentBlock = content.slice(posEnd + THINK_CLOSE_SIZE);
-            return [contentBlock, thinkBlock];
-        }
-        return [content, null];
+        if(!content) return [null, null];
+        return parseThinkBlocks(content);
     }, [content]);
 
     useEffect(()=>{
@@ -874,4 +860,24 @@ function ThinkBlock(props: ThinkBlockProps) {
             <Markdown remarkPlugins={[remarkGfm]}>{value}</Markdown>
         </div>
     )
+}
+
+function parseThinkBlocks(content: string): [string, string | null] {
+    // Parse all content starting with a <think> tag up to the first "<" encountered.
+    const regex = /(<think>.*[^<]*)/g;
+    const matches = content.match(regex);
+    if(!matches) return [content, null];
+    // console.debug("Content: %O\nMatches: ", content, matches);
+
+    // Remove the </think> tags from the output. The text will be handled by exact match excluding </think>.
+    let output = content.replaceAll('</think>', '');
+    // Go through all matches - they represent <think>... values without the ending </think> element.
+    for(const match of matches) {
+        // Remove the match and po
+        output = output.replace(match, '');
+    }
+    let thinkBlocks = matches.join('\n---\n');
+    thinkBlocks = thinkBlocks.replaceAll('<think>', '').replaceAll('</think>', '');
+    // console.debug("Think blocks: %O\nContent: %O", thinkBlocks, output);
+    return [output, thinkBlocks];
 }
