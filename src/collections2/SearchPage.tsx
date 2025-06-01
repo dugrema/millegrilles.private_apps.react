@@ -18,6 +18,7 @@ function SearchPage() {
 
     const ready = useConnectionStore(state=>state.connectionAuthenticated);
     const userId = useUserBrowsingStore(state=>state.userId);
+    const cuuid = useUserBrowsingStore(state=>state.currentCuuid);
     const searchResults = useUserBrowsingStore(state=>state.searchResults);
     const setSearchResults = useUserBrowsingStore(state=>state.setSearchResults);
     const searchResultsPosition = useUserBrowsingStore(state=>state.searchResultsPosition);
@@ -27,6 +28,8 @@ function SearchPage() {
     const [page, setPage] = useState(searchResultsPosition || 1);
     const [pageLoaded, setPageLoaded] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
+    const [searchScope, setSearchScope] = useState('all');  // all, directory
+    const [searchType, setSearchType] = useState('index');  // index, rag
     
     const query = useMemo(()=>{
         if(!searchParams) return null;
@@ -35,6 +38,13 @@ function SearchPage() {
 
     // Run the search when all parameters are present
     const {data} = useSearchResults();
+
+    const searchScopeOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
+        const scope = e.currentTarget.value;
+        console.debug("Change search scope to: ", scope);
+        setSearchScope(scope);
+    }, [setSearchScope]);
+    const searchTypeOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setSearchType(e.currentTarget.value), [setSearchType]);
 
     useEffect(()=>{
         if(query && data) {
@@ -51,24 +61,33 @@ function SearchPage() {
         setSearchInput(value);
     }, [setSearchInput]);
 
-    const searchHandler = useCallback(async()=>{
+    const indexSearchHandler = useCallback(async()=>{
         // Reset search variables
         setSearchResults(null);
         setSearchResultsPosition(1);
         setPage(1);
         
         if(!searchInput) {
-            setSearchParams(params=>{params.delete('search'); return params;});
+            setSearchParams(params=>{
+                params.delete('search');
+                params.delete('scope');
+                params.delete('cuuid');
+                return params;
+            });
         } else {
-            setSearchParams(params=>{params.set('search', searchInput); return params;});
+            setSearchParams(params=>{
+                params.set('search', searchInput); 
+                if(searchScope === 'directory' && cuuid) {
+                    params.set('scope', searchScope);
+                    params.set('cuuid', cuuid);
+                } else {
+                    params.delete('scope');
+                    params.delete('cuuid');
+                }
+                return params;
+            });
         }
-    }, [searchInput, setSearchParams, setSearchResults, setPage, setSearchResultsPosition]);
-
-    const submitHandler = useCallback((e: FormEvent<HTMLFormElement>)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        searchHandler();
-    }, [searchHandler]);
+    }, [searchInput, searchScope, cuuid, setSearchParams, setSearchResults, setPage, setSearchResultsPosition]);
 
     const queryRagHandler = useCallback(async ()=>{
         if(!workers || !ready) throw new Error('Workers not initialized');
@@ -80,7 +99,12 @@ function SearchPage() {
         setSearchParams(params=>{params.delete('search'); return params;});
 
         if(searchInput) {
-            const encryptedMessage = await workers.encryption.encryptMessageMgs4ForDomain(searchInput, 'ollama_relai');
+            const searchInputDict = {query: searchInput, cuuid: null as string | null};
+            if(cuuid && searchScope === 'directory') {
+                searchInputDict.cuuid = cuuid;
+            }
+            console.debug("Search params (scope: %O): %O", searchScope, searchInputDict);
+            const encryptedMessage = await workers.encryption.encryptMessageMgs4ForDomain(searchInputDict, 'ollama_relai');
             // console.debug("Encrypted message %O", encryptedMessage);
 
             const response = await workers.connection.queryRag(encryptedMessage);
@@ -143,7 +167,19 @@ function SearchPage() {
             console.debug("RAG response and results:", storeResults);
             setSearchResults(storeResults);
         }
-    }, [workers, ready, searchInput, setSearchParams, setSearchResults, setPage, setSearchResultsPosition]);
+    }, [workers, ready, searchInput, searchScope, cuuid, setSearchParams, setSearchResults, setPage, setSearchResultsPosition]);
+
+    const searchHandler = useCallback(async()=>{
+        if(searchType === 'index') return indexSearchHandler();
+        if(searchType === 'rag') return queryRagHandler();
+        throw new Error(`Unknown search type: ${searchType}`);
+    }, [searchType, indexSearchHandler, queryRagHandler]);
+
+    const submitHandler = useCallback((e: FormEvent<HTMLFormElement>)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        searchHandler();
+    }, [searchHandler]);
 
     useEffect(()=>{
         if(pageLoaded || !workers || !ready || !userId) return;
@@ -169,13 +205,30 @@ function SearchPage() {
             <section className='fixed left-0 top-12 pt-1 px-2 w-full'>
                 <form onSubmit={submitHandler}>
                     <div className='grid grid-cols-6 sm:grid-cols-12'>
+                        
                         <input type='text' value={searchInput} onChange={searchInputHandler} autoFocus
-                            className='col-span-4 sm:col-span-10 md:col-span-10 text-black h-6 text-slate-100 bg-slate-500' />
-                        <ActionButton onClick={searchHandler} revertSuccessTimeout={3} className='ml-1 text-center col-span-2 md:col-span-1' mainButton={true}>
+                            className='col-span-12 md:col-span-12 lg:col-span-7 text-black h-6 text-slate-100 bg-slate-500 mr-2' />
+
+                        <div className='col-span-3 sm:col-span-5 lg:col-span-2'>
+                            <label htmlFor='radio-all'>All</label>
+                            <input id='radio-all' name="scope" type="radio" value="all" checked={searchScope==='all'} onChange={searchScopeOnChange} 
+                                className='mx-2' />
+                            <label htmlFor='radio-directory'>Directory</label>
+                            <input id='radio-directory' name="scope" type="radio" value="directory" checked={searchScope==='directory'} onChange={searchScopeOnChange} 
+                                className='mx-2' />
+                        </div>
+
+                        <div className='col-span-3 sm:col-span-5 lg:col-span-2'>
+                            <label htmlFor='radio-index'>Quick</label>
+                            <input id='radio-index' name="searchtype" type="radio" value="index" checked={searchType==='index'} onChange={searchTypeOnChange} 
+                                className='mx-2' />
+                            <label htmlFor='radio-rag'>RAG</label>
+                            <input id='radio-rag' name="searchtype" type="radio" value="rag" checked={searchType==='rag'} onChange={searchTypeOnChange} 
+                                className='mx-2' />
+                        </div>
+
+                        <ActionButton onClick={searchHandler} revertSuccessTimeout={3} className='ml-1 text-center col-span-2 lg:col-span-1' mainButton={true}>
                             Search
-                        </ActionButton>
-                        <ActionButton onClick={queryRagHandler} revertSuccessTimeout={3} className='ml-1 text-center col-span-2 md:col-span-1'>
-                            RAG
                         </ActionButton>
                     </div>
                 </form>
@@ -327,9 +380,11 @@ function useSearchResults(): UseSearchResultsType {
 
     const [fetcherKey, fetcherFunction] = useMemo(()=>{
         const query = searchParams.get('search');
-        if(!workers || !ready || !searchParams || !workers || !query) return [null, null];
-        const fetcherFunction = async (query: string) => workers?.connection.searchFiles(query, CONST_PAGE_SIZE);
-        return [query, fetcherFunction]
+        const cuuid = searchParams.get('cuuid');
+        console.debug("Search params cuuid: ", cuuid);
+        if(!workers || !ready || !searchParams || !workers || !query) return [[null, null], null];
+        const fetcherFunction = async (params: [string, string|null]) => workers?.connection.searchFiles(params[0], params[1], CONST_PAGE_SIZE);
+        return [[query, cuuid], fetcherFunction]
     }, [workers, ready, searchParams]);
     
     const { data, error, isLoading } = useSWR(fetcherKey, fetcherFunction);
