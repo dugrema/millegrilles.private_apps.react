@@ -398,7 +398,7 @@ export default function Chat() {
                         </button>
                         :
                         <button disabled={!ready || !relayAvailable}
-                            className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center' onClick={cancelHandler}>
+                            className='varbtn w-24 inline-block bg-red-700 hover:bg-red-600 active:bg-red-500 text-center' onClick={cancelHandler}>
                                 Cancel
                         </button>
                     }
