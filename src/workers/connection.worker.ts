@@ -370,7 +370,7 @@ export class AppsConnectionWorker extends ConnectionWorker {
         setWaiting(signedMessage.id);
         await messageCallback(signedMessage);
         // Give long wait period - models can take a long time to load.
-        return await this.connection.emitCallbackResponses(signedMessage, streamCallback, {domain: DOMAINE_OLLAMA_RELAI, timeout: 75_000});
+        return await this.connection.emitCallbackResponses(signedMessage, streamCallback, {domain: DOMAINE_OLLAMA_RELAI, timeout: 180_000});
     }
 
     async cancelChatMessage(chatId: string): Promise<MessageResponse> {
