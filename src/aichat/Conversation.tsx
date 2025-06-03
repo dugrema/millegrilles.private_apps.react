@@ -10,8 +10,8 @@ import { useVisibility } from 'reactjs-visibility';
 
 import useWorkers from '../workers/workers';
 import useChatStore, { ChatStoreConversationKey, ChatMessage as StoreChatMessage } from './chatStore';
-
 import useConnectionStore from '../connectionStore';
+
 import { ChatAvailable } from './ChatSummaryHistory';
 import { ChatMessage, ConversationKey, getConversation, getConversationMessages, saveConversation, saveMessagesSync } from './aichatStoreIdb';
 import { Formatters, MessageResponse, SubscriptionMessage } from 'millegrilles.reactdeps.typescript';
@@ -25,6 +25,8 @@ import { filesIdbToBrowsing, TuuidsBrowsingStoreRow } from '../collections2/user
 import { ThumbnailItem } from '../collections2/FilelistPane';
 import { loadTuuid, TuuidsIdbStoreRowType } from '../collections2/idb/collections2StoreIdb';
 import { InitializeUserStore } from '../collections2/AppCollections2';
+
+import { IconCompactDiscSvg } from "../resources/Icons";
 
 const CONST_DEFAULT_MODEL = 'llama3.2:3b-instruct-q8_0';
 
@@ -374,7 +376,7 @@ export default function Chat() {
         <>
             <section className='fixed top-8 mb-10 bottom-64 sm:bottom-52 overflow-y-auto px-4 w-full'>
                 <h1>Conversation</h1>
-                <ViewHistory triggerScrolldown={lastUpdate}>
+                <ViewHistory triggerScrolldown={lastUpdate} waiting={!!waiting}>
                     <div className='font-bold'><ChatAvailable ignoreOk={true} naClassname='text-red-500' /></div>
                 </ViewHistory>
             </section>
@@ -416,9 +418,9 @@ export default function Chat() {
 
 type ChatResponse = {content: string, role: string};
 
-function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNode}) {
+function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNode, waiting: boolean}) {
  
-    let { triggerScrolldown } = props;
+    let { triggerScrolldown, waiting } = props;
 
     let messages = useChatStore(state=>state.messages);
     let currentResponse = useChatStore(state=>state.currentResponse);
@@ -446,8 +448,8 @@ function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNod
     return (
         <div className='text-left w-full pr-4'>
             {messages.map(item=>(<ChatBubble key={''+item.message_id} value={item} />))}
-            {currentResponse?
-                <ChatBubble setVisible={setCurrentVisible} value={{query_role: 'assistant', content: currentResponse, message_id: 'currentresponse'}} />
+            {(currentResponse || waiting)?
+                <ChatBubble setVisible={setCurrentVisible} value={{query_role: 'assistant', content: currentResponse, message_id: 'currentresponse'}} waiting={waiting} />
                 :''
             }
             {props.children}
@@ -456,12 +458,12 @@ function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNod
     )
 }
 
-type MessageRowProps = {value: StoreChatMessage, setVisible?: Dispatch<boolean> | null};
+type MessageRowProps = {value: StoreChatMessage, setVisible?: Dispatch<boolean> | null, waiting?: boolean};
 
 // Src : https://flowbite.com/docs/components/chat-bubble/
 function ChatBubble(props: MessageRowProps) {
 
-    const {setVisible} = props;
+    const {setVisible, waiting} = props;
     const {query_role: role, content, message_date: messageDate, model, tuuids} = props.value;
 
     const { ref, visible } = useVisibility({});
@@ -565,6 +567,13 @@ function ChatBubble(props: MessageRowProps) {
                                 <Markdown remarkPlugins={plugins}>{contentBlock}</Markdown>
                             </div>
                             :<></>
+                        }
+                        {waiting?
+                            <div>
+                                <IconCompactDiscSvg className='w-6 fill-slate-500 inline animate-spin' />
+                            </div>
+                            :
+                            <></>
                         }
                     </div>
                 </div>
