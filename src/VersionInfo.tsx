@@ -3,6 +3,7 @@ import useConnectionStore from "./connectionStore";
 import { useTranslation } from 'react-i18next';
 
 import buildManifest from './manifest.build.json';
+import LogoutIcon from './resources/icons/logout-svgrepo-com.svg';
 
 function VersionInfo() {
     let { t } = useTranslation();
@@ -34,7 +35,13 @@ function PopoverVersion() {
                 <p>{t('labels.applicationVersion')} {version}</p>
                 <p>{t('labels.applicationBuildDate')} {buildDate} (UTC)</p>
                 <p className='break-all'>{t('labels.applicationIdmg')} {idmg}</p>
+                <p className='text-center'>
+                    <a className='underline font-bold mr-6' href='/apps'>Menu</a>
+                    <span className='underline font-bold mr-6 cursor-pointer' onClick={()=>window.location.reload()}>Refresh</span>
+                    <a className='underline font-bold' href='/millegrilles'>Back to portal <img src={LogoutIcon} alt='Go to portal' className='w-7 inline' title='Back to portal' /></a>
+                </p>
             </div>
+            
         </div>
     );
 

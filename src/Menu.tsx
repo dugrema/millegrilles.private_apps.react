@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 
+import LogoutIcon from './resources/icons/logout-svgrepo-com.svg';
 import useConnectionStore from './connectionStore';
 import { useMemo } from 'react';
 
@@ -28,7 +29,9 @@ export default function HeaderMenu(props: MenuProps) {
             </div>
             <div className='hidden md:block'></div>
             <div className='text-right text-lg font-bold underline'>
-                <a href="/millegrilles">Portal</a>
+                <a href="/millegrilles">
+                    <img src={LogoutIcon} alt='Go to portal' className='w-7 inline' title='Back to portal' />
+                </a>
             </div>
         </header>
     )
