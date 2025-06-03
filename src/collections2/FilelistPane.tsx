@@ -591,7 +591,7 @@ export function ThumbnailItem(props: FileItem) {
     return (
         <button ref={ref} className={`top-1 inline-block m-1 relative ${selectionCss}`} onClick={onclickHandler} value={value.tuuid}>
             <p className={`text-sm ${textBreak} font-bold absolute align-center bottom-0 bg-slate-800 w-full bg-opacity-70 px-1 pb-1`}>{value.nom}</p>
-            <div className={`sm:w-full object-cover`}>
+            <div className={`w-8 md:w-full object-cover`}>
                 <img src={imgSrc} alt={'File ' + value.nom} width={sizeEffective} height={sizeEffective} className={imageCss} />
             </div>
         </button>

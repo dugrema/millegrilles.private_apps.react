@@ -374,19 +374,19 @@ export default function Chat() {
 
     return (
         <>
-            <section className='fixed top-8 mb-10 bottom-64 sm:bottom-52 overflow-y-auto px-4 w-full'>
+            <section className='fixed top-9 mb-10 bottom-44 md:bottom-52 overflow-y-auto px-4 w-full'>
                 <h1>Conversation</h1>
                 <ViewHistory triggerScrolldown={lastUpdate} waiting={!!waiting}>
                     <div className='font-bold'><ChatAvailable ignoreOk={true} naClassname='text-red-500' /></div>
                 </ViewHistory>
             </section>
             
-            <div className='grid grid-cols-1 md:grid-cols-3 fixed bottom-0 w-full pl-2 pr-6 mb-8'>
+            <div className='grid grid-cols-1 sm:grid-cols-3 fixed bottom-0 w-full pl-2 pr-6 mb-8'>
                 <ModelPickList value={model} onChange={modelOnChange} defaultModel={defaultModel} />
                 
                 <textarea value={chatInput} onChange={chatInputOnChange} onKeyDown={textareaOnKeyDown} 
                     placeholder='Entrez votre question ici. Exemple : Donne-moi une liste de films sortis en 1980.'
-                    className='text-black rounded-md h-28 sm:h-16 col-span-12' />
+                    className='text-black rounded-md p-0 h-16 sm:p-1 sm:h-16 col-span-12' />
 
                 <div className='w-full col-span-12'>
                     <FileAttachments files={fileAttachments} setFiles={setFileAttachments} />
@@ -501,6 +501,7 @@ function ChatBubble(props: MessageRowProps) {
             setAttachedFiles(null);
             return;
         };
+        if(attachedFiles) return;  // Done
         if(!workers || !ready || !userId) return;
         console.debug("Message tuuids: %O", tuuids);
         Promise.resolve().then(async () => {
@@ -547,7 +548,7 @@ function ChatBubble(props: MessageRowProps) {
 
     if(bubbleSide === 'left') {
         return (
-            <div ref={ref} className="flex items-start gap-2.5 pb-2">
+            <div ref={ref} className="flex items-start gap-2.5 pb-1 md:pb-2">
                 <div className="flex flex-col gap-1 pr-5 lg:pr-20">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
@@ -556,11 +557,11 @@ function ChatBubble(props: MessageRowProps) {
                         </span>
                         {
                             model?
-                            <span className='text-sm font-normal text-gray-400'>{model}</span>
+                            <span className='hidden sm:inline text-sm font-normal text-gray-400'>{model}</span>
                             :<></>
                         }
                     </div>
-                    <div className="flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl">
+                    <div className="flex flex-col leading-1.5 p-1 md:p-2 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl">
                         <ThinkBlock value={thinkBlock} done={!!contentBlock} />
                         {contentBlock?
                             <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
@@ -581,7 +582,7 @@ function ChatBubble(props: MessageRowProps) {
         )
     } else {
         return (
-            <div ref={ref} className="flex items-start gap-2.5 pb-2">
+            <div ref={ref} className="flex items-start gap-2.5 pb-1 md:pb-2">
                 <div className="flex flex-col gap-1 w-full lg:pl-20 items-end">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
@@ -589,13 +590,15 @@ function ChatBubble(props: MessageRowProps) {
                             <Formatters.FormatterDate value={messageDateSecs} />
                         </span>
                     </div>
-                    <div className="flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-s-xl rounded-ee-xl">
+                    <div className="flex flex-col leading-1.5 p-1 md:p-2 border-gray-200 bg-gray-100 rounded-s-xl rounded-ee-xl">
                         <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
                             <Markdown remarkPlugins={plugins}>{content}</Markdown>
                         </div>
-                        <div>
-                            <AttachmentThumbnailsView files={attachedFiles} />
-                        </div>
+                        {attachedFiles?
+                            <div><AttachmentThumbnailsView files={attachedFiles} /></div>
+                            :
+                            <></>
+                        }
                     </div>
                 </div>
             </div>        
@@ -666,7 +669,7 @@ function ModelPickList(props: {value: string, onChange: (e: ChangeEvent<HTMLSele
 
     return (
         <>
-            <label htmlFor='selectModel'>Model</label>
+            <label htmlFor='selectModel' className='hidden sm:inline'>Model</label>
             <select id='selectModel' className='text-black col-span-2 w-full' value={value} onChange={onChange}>
                 {modelElems}
             </select>
@@ -702,7 +705,7 @@ function FileAttachments(props: FileAttachmentsProps) {
 
     return (
         <>
-            <button onClick={open} className='varbtn w-20 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 mb-8'>Add file</button>
+            <button onClick={open} className='varbtn w-20 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 mb-1 md:mb-8'>Add file</button>
             <div className='inline absolute'>
                 <AttachmentThumbnailsEdit files={files} removeFiles={removeFiles} />
             </div>
@@ -728,7 +731,7 @@ function AttachmentThumbnailsView(props: {files: TuuidsBrowsingStoreRow[] | null
         if(!files) return <></>;
         return files.map(item=>{
             return (
-                <a href={`/apps/collections2/f/${item.tuuid}`} target="_blank" rel="noreferrer">
+                <a key={item.tuuid} href={`/apps/collections2/f/${item.tuuid}`} target="_blank" rel="noreferrer">
                     <ThumbnailItem key={item.tuuid} size={200} onClick={onClick} value={item} />
                 </a>
             )
@@ -846,11 +849,11 @@ function ThinkBlock(props: ThinkBlockProps) {
         if(!value) return <></>;  // Not a thinking model.
 
         if(value.trim() === '') {
-            return <p className="px-6 pb-4 text-gray-700">No thoughts.</p>
+            return <p className="pb-1 md:pb-4 text-gray-700">No thoughts.</p>
         }
         
         return (
-            <div className='px-6 pb-4'>
+            <div className='pb-1 md:pb-4'>
                 <button className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center' onClick={()=>setShow(true)}>
                     {done?
                         <span>Thoughts</span>:
@@ -862,7 +865,7 @@ function ThinkBlock(props: ThinkBlockProps) {
     }
 
     return (
-        <div className="text-sm px-6 pb-2 font-normal text-gray-700 dark:text-white markdown mb-6 bg-slate-200"  onClick={()=>setShow(false)}>
+        <div className="text-sm px-6 pb-1 md:pb-2 font-normal text-gray-700 dark:text-white markdown mb-6 bg-slate-200"  onClick={()=>setShow(false)}>
             <button className='btn inline-block bg-slate-300 hover:bg-slate-600 active:bg-slate-500 text-center' onClick={()=>setShow(true)}>
                 Hide
             </button>
