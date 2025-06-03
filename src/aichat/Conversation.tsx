@@ -549,7 +549,7 @@ function ChatBubble(props: MessageRowProps) {
     if(bubbleSide === 'left') {
         return (
             <div ref={ref} className="flex items-start gap-2.5 pb-1 md:pb-2">
-                <div className="flex flex-col gap-1 pr-5 lg:pr-20">
+                <div className="flex flex-col gap-1 pr-5 lg:pr-20 max-w-full">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
                         <span className="text-sm font-normal text-gray-300">
@@ -561,7 +561,7 @@ function ChatBubble(props: MessageRowProps) {
                             :<></>
                         }
                     </div>
-                    <div className="flex flex-col leading-1.5 p-1 md:p-2 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl">
+                    <div className="flex flex-col leading-1.5 p-1 md:p-2 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl overflow-x-clip break-words">
                         <ThinkBlock value={thinkBlock} done={!!contentBlock} />
                         {contentBlock?
                             <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
@@ -583,14 +583,14 @@ function ChatBubble(props: MessageRowProps) {
     } else {
         return (
             <div ref={ref} className="flex items-start gap-2.5 pb-1 md:pb-2">
-                <div className="flex flex-col gap-1 w-full lg:pl-20 items-end">
+                <div className="flex flex-col gap-1 w-full lg:pl-20 items-end max-w-full">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
                         <span className="text-sm font-normal text-gray-300">
                             <Formatters.FormatterDate value={messageDateSecs} />
                         </span>
                     </div>
-                    <div className="flex flex-col leading-1.5 p-1 md:p-2 border-gray-200 bg-gray-100 rounded-s-xl rounded-ee-xl">
+                    <div className="flex flex-col leading-1.5 p-1 md:p-2 border-gray-200 bg-gray-100 rounded-s-xl rounded-ee-xl overflow-x-clip break-words">
                         <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
                             <Markdown remarkPlugins={plugins}>{content}</Markdown>
                         </div>
