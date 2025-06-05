@@ -1,6 +1,6 @@
 {
   "name": "millegrilles.private_apps.react",
-  "version": "2025.2.1",
+  "version": "2025.4.132",
   "private": true,
   "dependencies": {
     "@peculiar/x509": "github:dugrema/peculiar_x509",
