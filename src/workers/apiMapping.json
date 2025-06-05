@@ -18,7 +18,7 @@
         {"domain": "ollama_relai", "action": "ping", "roles": ["ollama_relai"]},
         {"domain": "ollama_relai", "action": "getModels", "roles": ["ollama_relai"]},
         {"domain": "ollama_relai", "action": "queryRag", "timeout": 90},
-        {"domain": "GrosFichiers", "action": "syncDirectory"},
+        {"domain": "GrosFichiers", "action": "syncDirectory", "timeout": 60},
         {"domain": "GrosFichiers", "action": "syncDeletedFiles"},
         {"domain": "GrosFichiers", "action": "searchIndexV2"},
         {"domain": "GrosFichiers", "action": "filesByTuuid"},

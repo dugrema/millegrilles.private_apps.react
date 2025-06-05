@@ -672,7 +672,7 @@ export class AppsConnectionWorker extends ConnectionWorker {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest(
             {cuuid, skip, last_sync: lastSyncDate, contact_id: opts?.contactId}, 
-            DOMAINE_GROSFICHIERS, 'syncDirectory'
+            DOMAINE_GROSFICHIERS, 'syncDirectory', {timeout: 60_000}
         ) as Collections2SyncDirectoryResponse;
     }
 
