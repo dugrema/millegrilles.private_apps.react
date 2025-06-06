@@ -65,7 +65,7 @@ function UrlConfiguration() {
         if(!workers || !ready) return;
         workers.connection.getConfiguration()
             .then(response=>{
-                console.debug("AI Configuration", response);
+                // console.debug("AI Configuration", response);
                 const urls = response.ollama_urls?.urls || [];
                 setUrls(urls);
             })
@@ -222,7 +222,7 @@ function Models() {
 
         // Save the default model and chat options
         const chatContextLengthVal = typeof(chatContextLength)==='number'?chatContextLength:null;
-        console.debug("Chat context: %O, %d", chatContextLength, chatContextLengthVal)
+        // console.debug("Chat context: %O, %d", chatContextLength, chatContextLengthVal)
         const responseDefaults = await workers.connection.setAiDefaults(defaultModel?defaultModel:null, chatContextLengthVal);
         if(responseDefaults.ok !== true) throw new Error("Error saving defaults: " + responseDefaults.err);
 
@@ -242,7 +242,7 @@ function Models() {
         if(!workers || !ready) return;
         workers.connection.getConfiguration()
             .then(response=>{
-                console.debug("AI Configuration", response);
+                // console.debug("AI Configuration", response);
                 if(!response) throw new Error("Empty response");
                 setDefaultModel(response.default?.model_name || '');
                 setChatContextLength(response.default?.chat_context_length || 4096)

@@ -2,6 +2,7 @@ import { IDBPDatabase, openDB as openDbIdb } from 'idb';
 import { encryption, keymaster } from 'millegrilles.cryptography';
 import { AppWorkers } from '../workers/workers';
 import { getDecryptedKeys } from '../MillegrillesIdb';
+import { ChatMessageContent } from './chatStore';
 
 const DB_NAME = 'aichat';
 const STORE_CONVERSATIONS = 'conversations';
@@ -34,8 +35,11 @@ export type ChatMessage = {
     message_id: string,
     decrypted: boolean, 
     query_encrypted?: encryption.EncryptedData,
+    content_type?: string,
     query_role?: string, 
-    content?: string, 
+    // content?: ChatMessageContent, 
+    content?: string | null,
+    thinking?: string | null,
     message_date?: number, 
     model?: string,
 };
@@ -128,7 +132,7 @@ export async function saveConversation(messages: ChatMessage[], conversationKey:
         conversation_id: firstMessage.conversation_id,
         conversation_date: firstMessage.message_date?firstMessage.message_date/1000:new Date().getTime(),
         decrypted: true,
-        subject: firstMessage.content,
+        subject: firstMessage.content || 'No subject',
         conversationKey,
     } as Conversation;
     
@@ -344,7 +348,13 @@ export async function decryptConversationMessages(workers: AppWorkers, userId: s
                 let key = decryptionKeys[cle_id];
                 let cleartext = await workers.encryption.decryptMessage(
                     encryptedQuery.format, key, nonce, encryptedQuery.ciphertext_base64, encryptedQuery.compression);
-                existing.content = new TextDecoder().decode(cleartext);
+                if(existing.content_type === 'json') {
+                    const message = JSON.parse(new TextDecoder().decode(cleartext));
+                    existing.content = message.content;
+                    existing.thinking = message.thinking;
+                } else {
+                    existing.content = new TextDecoder().decode(cleartext);
+                }
                 existing.decrypted = true;
                 messageStoreRw = db.transaction(STORE_CONVERSATION_MESSAGES, 'readwrite').store;
                 await messageStoreRw.put(existing);

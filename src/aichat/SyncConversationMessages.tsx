@@ -188,6 +188,7 @@ async function handleChatExchangeEvent(workers: AppWorkers, userId: string, even
         decrypted: false, 
         query_encrypted,
         query_role: exchangeMessage.query_role,
+        content_type: 'string',
         message_date: exchangeMessage.query_date, 
     };
 
@@ -198,6 +199,7 @@ async function handleChatExchangeEvent(workers: AppWorkers, userId: string, even
         decrypted: false, 
         query_encrypted: reply_encrypted,
         query_role: exchangeMessage.reply_role, 
+        content_type: 'json',
         message_date: exchangeMessage.reply_date, 
         model: exchangeMessage.model,
     };
@@ -208,7 +210,13 @@ async function handleChatExchangeEvent(workers: AppWorkers, userId: string, even
             let contentBytes = await workers.encryption.decryptMessage(
                 query_encrypted.format, decryptionKey.cleSecrete, query_encrypted.nonce, 
                 query_encrypted.ciphertext_base64, query_encrypted.compression);
-            user_query.content = new TextDecoder().decode(contentBytes);
+            if(user_query.content_type === 'json') {
+                const message = JSON.parse(new TextDecoder().decode(contentBytes));
+                user_query.content = message.content;
+                user_query.thinking = message.thinking;
+            } else {
+                user_query.content = new TextDecoder().decode(contentBytes);
+            }
             user_query.decrypted = true;
             // delete user_query.query_encrypted;
         }
@@ -216,7 +224,13 @@ async function handleChatExchangeEvent(workers: AppWorkers, userId: string, even
             let contentBytes = await workers.encryption.decryptMessage(
                 reply_encrypted.format, decryptionKey.cleSecrete, reply_encrypted.nonce, 
                 reply_encrypted.ciphertext_base64, reply_encrypted.compression);
-            assistant_reply.content = new TextDecoder().decode(contentBytes);
+            if(assistant_reply.content_type === 'json') {
+                const message = JSON.parse(new TextDecoder().decode(contentBytes));
+                assistant_reply.content = message.content;
+                assistant_reply.thinking = message.thinking;
+            } else {
+                assistant_reply.content = new TextDecoder().decode(contentBytes);
+            }
             assistant_reply.decrypted = true;
             // delete assistant_reply.query_encrypted;
         }

@@ -24,7 +24,7 @@ export function ModalBrowseAction(props: ModalInformationProps) {
             setModalCuuid(tuuid);
         } else {
             const selectedFile = files?.filter(item=>item.tuuid === tuuid).pop();
-            console.debug("Selected file", selectedFile);
+            // console.debug("Selected file", selectedFile);
             if(selectedFile) selectFiles([selectedFile]);
         }
     }, [setModalCuuid, selectFiles, files]) as FileListPaneOnClickRowType;

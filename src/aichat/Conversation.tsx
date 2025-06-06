@@ -9,7 +9,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useVisibility } from 'reactjs-visibility';
 
 import useWorkers from '../workers/workers';
-import useChatStore, { ChatStoreConversationKey, ChatMessage as StoreChatMessage } from './chatStore';
+import useChatStore, { ChatMessageContent, ChatStoreConversationKey, ChatMessage as StoreChatMessage } from './chatStore';
 import useConnectionStore from '../connectionStore';
 
 import { ChatAvailable } from './ChatSummaryHistory';
@@ -32,7 +32,7 @@ const CONST_DEFAULT_MODEL = 'llama3.2:3b-instruct-q8_0';
 
 
 type ContentToEncryptType = {
-    messageHistory?: {role: string, content: string}[] | null,
+    messageHistory?: {role: string, content?: string | null, thinking?: string | null}[] | null,
     attachmentKeys?: {[key: string]: string},
 }
 
@@ -151,7 +151,7 @@ export default function Chat() {
         if(!workers || !ready) return;
         workers.connection.getConfiguration()
             .then(response=>{
-                console.debug("AI Configuration", response);
+                // console.debug("AI Configuration", response);
                 const defaultModel = response.default?.model_name || CONST_DEFAULT_MODEL;
                 setDefaultModel(defaultModel);
                 const contextSize = response.default?.chat_context_length || DEFAULT_CONTEXT_LENGTH;
@@ -195,7 +195,7 @@ export default function Chat() {
             }
 
             let chatResponse = message as ChatResponse;
-            let content = chatResponse.content;
+            let content = {content: chatResponse.content || '', thinking: chatResponse.thinking || ''};
             if(!conversationId) throw new Error("ConversationId is null");
             try {
                 appendCurrentResponse(conversationId, content);
@@ -255,18 +255,22 @@ export default function Chat() {
                 // Truncate messages - keep at most the last 20
                 const messagesToSend = messages.slice(0, MAX_HISTORY_LENGTH);
                 let size = messages.reduce((acc, item)=>{
-                    return acc + item.content.length;
+                    const content = item.content || '';
+                    const thinking = item.thinking || '';
+                    return acc + content.length + thinking.length;
                 }, 0);
                 // Keep at least 2 messages, remove excess beyond that.
                 while(messagesToSend.length > 2 && size > maxSize) {
                     const removedMessage = messagesToSend.shift();  // Remove oldest message
+                    const content = removedMessage?.content || '';
+                    const thinking = removedMessage?.thinking || '';
                     if(removedMessage?.content) {
-                        size -= removedMessage.content.length;
+                        size -= content.length + thinking.length;
                     }
                 }
-                console.debug("History size (max: %d): %d, %O", maxSize, size, messagesToSend);
+                // console.debug("History size (max: %d): %d, %O", maxSize, size, messagesToSend);
                 contentToEncrypt.messageHistory = messagesToSend.map(item=>{
-                    return {role: item.query_role, content: item.content};
+                    return {role: item.query_role, content: item.content, thinking: item.thinking};
                 });
             }
             if(attachmentKeys) contentToEncrypt.attachmentKeys = attachmentKeys;
@@ -318,7 +322,7 @@ export default function Chat() {
     const cancelHandler = useCallback(()=>{
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!waiting) throw new Error('Not currently waiting on chat response');
-        console.debug("Cancel chat message id", waiting)
+        // console.debug("Cancel chat message id", waiting)
         workers.connection.cancelChatMessage(waiting)
             .then(response=>{
                 if(!response.ok) console.warn("Error cancelling chat: %s", response.err);
@@ -416,7 +420,7 @@ export default function Chat() {
     )
 }
 
-type ChatResponse = {content: string, role: string};
+type ChatResponse = {content: string, thinking?: string | null, role: string};
 
 function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNode, waiting: boolean}) {
  
@@ -448,8 +452,9 @@ function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNod
     return (
         <div className='text-left w-full pr-4'>
             {messages.map(item=>(<ChatBubble key={''+item.message_id} value={item} />))}
-            {(currentResponse || waiting)?
-                <ChatBubble setVisible={setCurrentVisible} value={{query_role: 'assistant', content: currentResponse, message_id: 'currentresponse'}} waiting={waiting} />
+            {(currentResponse.content || currentResponse.thinking || waiting)?
+                <ChatBubble setVisible={setCurrentVisible} 
+                    value={{query_role: 'assistant', content: currentResponse.content || '', thinking: currentResponse.thinking, message_id: 'currentresponse'}} waiting={waiting} />
                 :''
             }
             {props.children}
@@ -464,7 +469,7 @@ type MessageRowProps = {value: StoreChatMessage, setVisible?: Dispatch<boolean> 
 function ChatBubble(props: MessageRowProps) {
 
     const {setVisible, waiting} = props;
-    const {query_role: role, content, message_date: messageDate, model, tuuids} = props.value;
+    const {query_role: role, content, thinking, message_date: messageDate, model, tuuids} = props.value;
 
     const { ref, visible } = useVisibility({});
 
@@ -492,9 +497,10 @@ function ChatBubble(props: MessageRowProps) {
     }, [role]);
 
     const [contentBlock, thinkBlock] = useMemo(()=>{
+        if(thinking) return [content, thinking];  // New format, think block is already separated
         if(!content) return [null, null];
-        return parseThinkBlocks(content);
-    }, [content]);
+        return parseThinkBlocks(content || '');  // Old format
+    }, [content, thinking]);
 
     useEffect(()=>{
         if(!tuuids) {
@@ -503,7 +509,6 @@ function ChatBubble(props: MessageRowProps) {
         };
         if(attachedFiles) return;  // Done
         if(!workers || !ready || !userId) return;
-        console.debug("Message tuuids: %O", tuuids);
         Promise.resolve().then(async () => {
             let files = [] as TuuidsIdbStoreRowType[];
             const missing = [] as string[];
@@ -511,7 +516,6 @@ function ChatBubble(props: MessageRowProps) {
             // Use already loaded files from IDB when possible. Flag missing tuuids.
             for await(const tuuid of tuuids) {
                 const file = await loadTuuid(tuuid, userId);
-                console.debug("Loaded tuuid %s: %O", tuuid, file);
                 if(file) files.push(file);
                 else missing.push(tuuid);
             }
@@ -535,7 +539,7 @@ function ChatBubble(props: MessageRowProps) {
 
             if(files.length > 0) {
                 setAttachedFiles(filesIdbToBrowsing(files));
-                console.debug("Attached files: ", attachedFiles);
+                // console.debug("Attached files: ", attachedFiles);
             } else {
                 setAttachedFiles(null);
             }
@@ -634,7 +638,7 @@ async function saveConversationToIdb(userId: string, conversationId: string, mes
  * @param conversationId 
  * @param message 
  */
-async function saveMessagesToIdb(userId: string, conversationId: string,  messages: StoreChatMessage[]) {
+async function saveMessagesToIdb(userId: string, conversationId: string, messages: StoreChatMessage[]) {
     let messagesIdb = messages.map(item=>({user_id: userId, conversation_id: conversationId, decrypted: true, ...item} as ChatMessage));
     await saveMessagesSync(messagesIdb);
 }

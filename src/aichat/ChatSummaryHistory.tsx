@@ -4,6 +4,7 @@ import { Conversation, deleteConversation, getConversations } from "./aichatStor
 import { Fragment, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import useWorkers from "../workers/workers";
+import ActionButton from "../resources/ActionButton";
 
 function ChatSummaryHistory() {
 
@@ -61,7 +62,7 @@ function ChatHistoryList() {
 
     let [conversations, setConversations] = useState(null as null | Conversation[]);
 
-    let deleteConversationHandler = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
+    let deleteConversationHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>)=>{
         let conversationId = e.currentTarget.value;
         if(workers && userId && conversationId) {
             Promise.resolve().then(async ()=>{
@@ -104,10 +105,10 @@ function ChatHistoryList() {
             return (
                 <Fragment key={item.conversation_id}>
                     <div className='col-span-2 sm:col-span-1'>
-                        <button value={item.conversation_id} onClick={deleteConversationHandler}
+                        <ActionButton value={item.conversation_id} onClick={deleteConversationHandler} confirm={true}
                             className='varbtn w-10 pt-2 pb-2 pl-2 pr-2 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
                                 <i className='fa fa-remove' />
-                        </button>
+                        </ActionButton>
                     </div>
                     <Link to={`/apps/aichat/conversation/${item.conversation_id}`} className='underline text-left col-span-7 sm:col-span-8'>
                         {label}

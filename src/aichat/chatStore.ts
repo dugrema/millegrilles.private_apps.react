@@ -3,7 +3,9 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { ConversationKey } from './aichatStoreIdb';
 
-export type ChatMessage = {message_id: string, query_role: string, content: string, message_date?: number, model?: string | null, tuuids?: string[] | null};
+export type ChatMessageContent = {content?: string | null, thinking?: string | null};
+
+export type ChatMessage = {message_id: string, query_role: string, content: string, thinking?: string | null, message_date?: number, model?: string | null, tuuids?: string[] | null};
 
 export type ChatStoreConversationKey = ConversationKey & {
     secret: Uint8Array,
@@ -14,7 +16,7 @@ export type LanguageModelType = {name: string};
 
 interface ChatStoreState {
     messages: Array<ChatMessage>,
-    currentResponse: string,
+    currentResponse: ChatMessageContent,
     relayAvailable: null | boolean,
     conversationId: null | string,  // Note: this is the key.keyId
     userId: null | string,
@@ -25,7 +27,7 @@ interface ChatStoreState {
     lastConversationMessagesUpdate: number,  // Last time there was a conversation update (ms)
     models: LanguageModelType[],
     isAdmin: boolean,
-    appendCurrentResponse: (conversation_id: string, chunk: string) => void,
+    appendCurrentResponse: (conversation_id: string, chunk: ChatMessageContent) => void,
     pushAssistantResponse: (message_id: string) => void,
     pushUserQuery: (query: string, tuuids?: string[] | null) => void,
     clear: () => void,
@@ -46,7 +48,7 @@ const useChatStore = create<ChatStoreState>()(
     devtools(
         (set) => ({
             messages: [],
-            currentResponse: '',
+            currentResponse: {content: '', thinking: ''},
             relayAvailable: null,
             conversationId: null,
             userId: null,
@@ -61,16 +63,25 @@ const useChatStore = create<ChatStoreState>()(
             appendCurrentResponse: (conversation_id, chunk) => set((state) => {
                 // Check that the conversation was not switched while receiving updates
                 if(state.conversationId !== conversation_id) throw new Error('Wrong conversation id');
-                return { currentResponse: state.currentResponse + chunk }
+                const content = (state.currentResponse.content || '') + (chunk.content || '');
+                const thinking = (state.currentResponse.thinking || '') + (chunk.thinking || '');
+                const currentResponse = {content, thinking};
+                return { currentResponse }
             }),
             pushAssistantResponse: (message_id) => set((state) => { 
                 // Ensure we're not duplicating messages. This can happen if the server exchange event is applied first.
                 let messages = state.messages.filter(item=>item.message_id !== message_id);
                 return {
-                    currentResponse: '', 
+                    currentResponse: {}, 
                     messages: [
                         ...messages, 
-                        {message_id: message_id, query_role: 'assistant', content: state.currentResponse, message_date: Math.floor(new Date().getTime())}
+                        {
+                            message_id: message_id, 
+                            query_role: 'assistant', 
+                            content: state.currentResponse.content || '', 
+                            thinking: state.currentResponse.thinking, 
+                            message_date: Math.floor(new Date().getTime()),
+                        }
                     ] 
                 };
             }),
@@ -81,7 +92,7 @@ const useChatStore = create<ChatStoreState>()(
                 ]
             })),
             clear: () => set(() => ({
-                messages: [], currentResponse: '', conversationId: null,
+                messages: [], currentResponse: {content: '', thinking: ''}, conversationId: null,
                 newConversation: true, conversationReadyToSave: false, key: null,
             })),
             setRelayAvailable: (available) => set(()=>({relayAvailable: available})),
