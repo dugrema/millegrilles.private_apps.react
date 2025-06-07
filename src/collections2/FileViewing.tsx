@@ -12,7 +12,7 @@ import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import VideoConversion from "./VideoConversion";
 import { isVideoMimetype } from "./mimetypes";
 import ActionButton from "../resources/ActionButton";
-import { downloadFile } from "./transferUtils";
+import { downloadFile, openFile } from "./transferUtils";
 import ProgressBar from "./ProgressBar";
 
 export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Uint8Array | null}) {
@@ -423,12 +423,18 @@ function FileViewLayout(props: FileViewLayoutProps) {
     )
 }
 
+const CONST_SUPPORTED_OPEN_TYPES = [
+    'application/pdf', 'application/json', 'application/x-javascript'
+];
+
 function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, isVideo: boolean}) {
     let {file, selectedVideo, setSelectedVideo, loadProgress, isVideo, videoError} = props;
     
     let workers = useWorkers();
     let ready = useConnectionStore(state=>state.connectionAuthenticated);
     let userId = useUserBrowsingStore(state=>state.userId);
+
+    const [fileBlob, setFileBlob] = useState(null as string | null);
 
     let [fuuid, lastPresence, recentVisits] = useMemo(()=>{
         if(!file) return [null, null, null];
@@ -470,6 +476,34 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
         }
     }, [workers, ready, file, userId]);
 
+    const canOpen = useMemo(()=>{
+        const mimetype = (file.fileData?.mimetype || '').toLocaleLowerCase();
+        return CONST_SUPPORTED_OPEN_TYPES.includes(mimetype) || mimetype.startsWith('text/') || mimetype.startsWith('image/');
+    }, [file]);
+
+    const openFileHandler = useCallback(async () => {
+        if(!workers || !ready) throw new Error('workers not initialized');
+        if(!canOpen) throw new Error('File cannot be opened');
+        // console.debug("Open file: ", file);
+        const secretKey = file.secretKey;
+        const fileData = file.fileData;
+        if(!fileData) throw new Error('File contains no data');
+        const {nonce, format} = fileData;
+        if(!fuuid || !nonce || !format) throw new Error('Insufficient information to decrypt file');
+        if(secretKey && nonce && format) {
+            const mimetype = (file.fileData?.mimetype || '').toLocaleLowerCase();
+            const fileBlob = await workers.directory.openFile(fuuid, secretKey, {nonce, format}, mimetype);
+            const fileBlobUrl = URL.createObjectURL(fileBlob);
+            setFileBlob(fileBlobUrl);
+            openFile(fileBlobUrl);
+        }
+    }, [workers, ready, file, fuuid, canOpen, setFileBlob]);
+
+    useEffect(()=>{
+        if(!fileBlob) return;
+        return () => URL.revokeObjectURL(fileBlob);  // Cleanup
+    }, [fileBlob, setFileBlob]);
+
     return (
         <div className='grid grid-cols-6 md:grid-cols-1'>
             {isVideo?
@@ -493,9 +527,16 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
             <p className='col-span-4'>{recentVisits}</p>
             <p className='col-span-6 text-slate-400'>File unique Id</p>
             <p className='col-span-6 break-words text-sm'>{fuuid}</p>
-            <ActionButton onClick={downloadHandler} revertSuccessTimeout={3}>
+            <ActionButton onClick={downloadHandler} revertSuccessTimeout={3} className='btn col-span-3'>
                 Download
             </ActionButton>
+            {canOpen?
+                <ActionButton onClick={openFileHandler} disabled={!ready} className='btn col-span-3'>
+                    Open
+                </ActionButton>
+                :
+                <></>
+            }
         </div>
     );
 }

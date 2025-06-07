@@ -140,13 +140,20 @@ export function downloadFile(filename: string, content: Blob) {
     // File received already, download it now.
     // console.debug("Download handler, content received ", content);
     // const filename = file.decryptedMetadata?.nom || `${file.tuuid}.obj`;
-    let objectUrl = window.URL.createObjectURL(content);
-    let a = document.createElement('a');
+    const objectUrl = window.URL.createObjectURL(content);
+    const a = document.createElement('a');
     a.href = objectUrl;
     if (filename) a.download = filename;
     a.target = '_blank';
     a.click();
     URL.revokeObjectURL(objectUrl);
+}
+
+export function openFile(blobUrl: string) {
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.target = '_blank';
+    a.click();
 }
 
 export async function generateFileUploads(workers: AppWorkers, userId: string, cuuid: string, files: FileList, breadcrumb?: string) {

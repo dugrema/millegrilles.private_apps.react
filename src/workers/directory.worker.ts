@@ -345,7 +345,7 @@ export class DirectoryWorker {
      * @param secretKey Secret key used to decrypt the file
      * @param decryptionInformation Decryption information (nonce, format, etc.)
      */
-    async openFile(fuuid: string, secretKey: Uint8Array, decryptionInformation: messageStruct.MessageDecryption): Promise<Blob> {
+    async openFile(fuuid: string, secretKey: Uint8Array, decryptionInformation: messageStruct.MessageDecryption, mimetype?: string | null): Promise<Blob> {
         let filehost = this.selectedFilehost;
         if(!filehost) throw new Error('No filehost is available');
         if(!filehost.authenticated) throw new Error('Connection to filehost not authenticated');
@@ -373,7 +373,7 @@ export class DirectoryWorker {
             if(value && value.length > 0) {
                 let output = await decipher.update(value);
                 if(output && output.length > 0) {
-                    let blob = new Blob([output]);
+                    const blob = new Blob([output]);
                     blobs.push(blob);
                 }
             }
@@ -382,9 +382,9 @@ export class DirectoryWorker {
         let finalOutput = await decipher.finalize();
         let outputBlob = null as Blob | null;
         if(finalOutput && finalOutput.length > 0) {
-            outputBlob = new Blob([...blobs, finalOutput]);
+            outputBlob = new Blob([...blobs, finalOutput], {type: mimetype || undefined});
         } else {
-            outputBlob = new Blob(blobs);
+            outputBlob = new Blob(blobs, {type: mimetype || undefined});
         }
 
         return outputBlob;
