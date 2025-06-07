@@ -482,6 +482,12 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
     }, [file]);
 
     const openFileHandler = useCallback(async () => {
+        if(fileBlob) {
+            // Reuses the existing URL.
+            // This is a workaround for opening a tab on iOS, needs to be done before await (after that the event gets tainted).
+            openFile(fileBlob);
+            return;
+        }
         if(!workers || !ready) throw new Error('workers not initialized');
         if(!canOpen) throw new Error('File cannot be opened');
         // console.debug("Open file: ", file);
@@ -495,9 +501,9 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
             const fileBlob = await workers.directory.openFile(fuuid, secretKey, {nonce, format}, mimetype);
             const fileBlobUrl = URL.createObjectURL(fileBlob);
             setFileBlob(fileBlobUrl);
-            openFile(fileBlobUrl);
+            openFile(fileBlobUrl);  // Open in same tab
         }
-    }, [workers, ready, file, fuuid, canOpen, setFileBlob]);
+    }, [workers, ready, file, fuuid, canOpen, fileBlob, setFileBlob]);
 
     useEffect(()=>{
         if(!fileBlob) return;
@@ -531,7 +537,7 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
                 Download
             </ActionButton>
             {canOpen?
-                <ActionButton onClick={openFileHandler} disabled={!ready} className='btn col-span-3'>
+                <ActionButton onClick={openFileHandler} disabled={!ready && !fileBlob} className='btn col-span-3' revertSuccessTimeout={1}>
                     Open
                 </ActionButton>
                 :

@@ -147,13 +147,19 @@ export function downloadFile(filename: string, content: Blob) {
     a.target = '_blank';
     a.click();
     URL.revokeObjectURL(objectUrl);
+    a.remove();
 }
 
-export function openFile(blobUrl: string) {
+export function openFile(blobUrl: string, target?: string | null) {
     const a = document.createElement('a');
     a.href = blobUrl;
-    a.target = '_blank';
+    if (target) {
+        a.target = target;
+    } else if(target === undefined) {
+        a.target = '_blank';
+    }
     a.click();
+    a.remove();
 }
 
 export async function generateFileUploads(workers: AppWorkers, userId: string, cuuid: string, files: FileList, breadcrumb?: string) {
