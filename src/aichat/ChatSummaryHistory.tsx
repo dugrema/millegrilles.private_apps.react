@@ -110,9 +110,9 @@ function ChatHistoryList() {
                 dateLimit = param[1];
                 let label = param[0];
                 if(label) {
-                    items.push(<div className='col-span-12 bg-violet-800/25 px-2 mt-2 mb-1'>{label}</div>)
+                    items.push(<div key={label} className='col-span-12 bg-violet-800/25 px-2 mt-2 mb-1'>{label}</div>)
                 } else {
-                    items.push(<div className='col-span-12 bg-violet-800/25 px-2 mt-2 mb-1'>
+                    items.push(<div key={''+dateLimit} className='col-span-12 bg-violet-800/25 px-2 mt-2 mb-1'>
                         <Formatters.FormatterDate value={dateLimit.getTime()/1000} format="yyyy-MM-DD"/>
                     </div>)
                 }
@@ -127,8 +127,9 @@ function ChatHistoryList() {
                                 <i className='fa fa-remove' />
                         </ActionButton>
                     </div>
-                    <Link to={`/apps/aichat/conversation/${conversation.conversation_id}`} className='underline text-left col-span-7 sm:col-span-8'>
-                        {label}
+                    <Link to={`/apps/aichat/conversation/${conversation.conversation_id}`} 
+                        className='underline text-left col-span-7 sm:col-span-8 text-ellipsis line-clamp-2'>
+                        {label} TATA
                     </Link>
                     <div className='col-span-3'>
                         <Formatters.FormatterDate value={conversation.conversation_date} />
@@ -153,11 +154,11 @@ function ChatHistoryList() {
 function determineTimeLabel(now: Date, reference: number): [string | null, Date] {
     const refDate = new Date(reference * 1000);
     const nowLimit = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    console.debug("Ref %O, refdate: %O, nowLimit: %O", reference, refDate, nowLimit);
-    if(refDate > nowLimit) return ['now', nowLimit];
+    // console.debug("Ref %O, refdate: %O, nowLimit: %O", reference, refDate, nowLimit);
+    if(refDate > nowLimit) return ['Today', nowLimit];
 
     const yesterdayLimit = new Date(nowLimit.getTime() - 86_400_000);
-    if(refDate > yesterdayLimit) return ['yesterday', yesterdayLimit];
+    if(refDate > yesterdayLimit) return ['Yesterday', yesterdayLimit];
     
     const dateLimit = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
     return [null, dateLimit];
