@@ -659,8 +659,6 @@ function ModelPickList(props: {value: string, onChange: (e: ChangeEvent<HTMLSele
     const modelElems = useMemo(()=>{
         if(!models) return [<option key='default'>Default</option>];
 
-        console.debug("Models", models);
-
         let copyModels = models.filter(item=>item.capabilities?.includes('completion'));
         copyModels.sort((a,b)=>a.name.localeCompare(b.name));
 
