@@ -125,13 +125,13 @@ function ChatHistoryList() {
                                 <i className='fa fa-remove' />
                         </ActionButton>
                     </div>
+                    <div className='col-span-2 sm:col-span-1'>
+                        <Formatters.FormatterDate value={conversation.conversation_date} format="HH:mm" />
+                    </div>
                     <Link to={`/apps/aichat/conversation/${conversation.conversation_id}`} 
-                        className='underline text-left col-span-7 sm:col-span-8 text-ellipsis line-clamp-2'>
+                        className='underline text-left col-span-8 sm:col-span-10 text-ellipsis line-clamp-2'>
                         {label}
                     </Link>
-                    <div className='col-span-3'>
-                        <Formatters.FormatterDate value={conversation.conversation_date} />
-                    </div>
                 </Fragment>                
             );
         }
