@@ -9,7 +9,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useVisibility } from 'reactjs-visibility';
 
 import useWorkers from '../workers/workers';
-import useChatStore, { ChatMessageContent, ChatStoreConversationKey, ChatMessage as StoreChatMessage } from './chatStore';
+import useChatStore, { ChatStoreConversationKey, ChatMessage as StoreChatMessage } from './chatStore';
 import useConnectionStore from '../connectionStore';
 
 import { ChatAvailable } from './ChatSummaryHistory';
@@ -379,7 +379,6 @@ export default function Chat() {
     return (
         <>
             <section className='fixed top-9 mb-10 bottom-44 md:bottom-52 overflow-y-auto px-4 w-full'>
-                <h1>Conversation</h1>
                 <ViewHistory triggerScrolldown={lastUpdate} waiting={!!waiting}>
                     <div className='font-bold'><ChatAvailable ignoreOk={true} naClassname='text-red-500' /></div>
                 </ViewHistory>

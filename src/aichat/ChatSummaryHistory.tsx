@@ -14,7 +14,6 @@ function ChatSummaryHistory() {
     return (
         <>
             <section>
-                <h2 className='font-bold pt-2 pb-3'>New conversation</h2>
                 <ChatAvailable naClassname='font-bold text-red-500' />
                 <Link to='/apps/aichat/newConversation'
                     className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
@@ -31,7 +30,6 @@ function ChatSummaryHistory() {
             </section>
 
             <section>
-                <h2 className='font-bold pt-4 pb-3'>Conversation history</h2>
                 <ChatHistoryList />
             </section>
         </>
@@ -145,7 +143,7 @@ function ChatHistoryList() {
     if(!conversationsElems) return <p>No conversations yet.</p>;
 
     return (
-        <div className='grid grid-cols-12'>
+        <div className='grid grid-cols-12 gap-y-1'>
             {conversationsElems}
         </div>
     );
