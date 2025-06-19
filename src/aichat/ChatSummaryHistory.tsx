@@ -127,7 +127,7 @@ function ChatHistoryList() {
                     </div>
                     <Link to={`/apps/aichat/conversation/${conversation.conversation_id}`} 
                         className='underline text-left col-span-7 sm:col-span-8 text-ellipsis line-clamp-2'>
-                        {label} TATA
+                        {label}
                     </Link>
                     <div className='col-span-3'>
                         <Formatters.FormatterDate value={conversation.conversation_date} />

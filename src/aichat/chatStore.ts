@@ -12,7 +12,7 @@ export type ChatStoreConversationKey = ConversationKey & {
     encrypted_keys: {[key: string]: string},
 };
 
-export type LanguageModelType = {name: string};
+export type LanguageModelType = {name: string, capabilities?: string[] | null};
 
 interface ChatStoreState {
     messages: Array<ChatMessage>,

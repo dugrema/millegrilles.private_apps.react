@@ -638,12 +638,12 @@ async function saveConversationToIdb(userId: string, conversationId: string, mes
  * @param message 
  */
 async function saveMessagesToIdb(userId: string, conversationId: string, messages: StoreChatMessage[]) {
-    let messagesIdb = messages.map(item=>({user_id: userId, conversation_id: conversationId, decrypted: true, ...item} as ChatMessage));
+    const messagesIdb = messages.map(item=>({user_id: userId, conversation_id: conversationId, decrypted: true, ...item} as ChatMessage));
     await saveMessagesSync(messagesIdb);
 }
 
 function sortMessagesByDate(a: StoreChatMessage, b: StoreChatMessage) {
-    let aDate = a.message_date, bDate = b.message_date;
+    const aDate = a.message_date, bDate = b.message_date;
     if(aDate && bDate) {
         return aDate - bDate;
     }
@@ -652,13 +652,16 @@ function sortMessagesByDate(a: StoreChatMessage, b: StoreChatMessage) {
 
 function ModelPickList(props: {value: string, onChange: (e: ChangeEvent<HTMLSelectElement>)=>void, defaultModel: string}) {
 
-    let {value, onChange, defaultModel} = props;
+    const {value, onChange, defaultModel} = props;
 
-    let models = useChatStore(state=>state.models);
+    const models = useChatStore(state=>state.models);
 
-    let modelElems = useMemo(()=>{
+    const modelElems = useMemo(()=>{
         if(!models) return [<option key='default'>Default</option>];
-        let copyModels = [...models];
+
+        console.debug("Models", models);
+
+        let copyModels = models.filter(item=>item.capabilities?.includes('completion'));
         copyModels.sort((a,b)=>a.name.localeCompare(b.name));
 
         // Move default model at top of list
