@@ -189,8 +189,7 @@ function determineTimeLabel(now: Date, reference: number): [string | null, Date 
     const lastMonthLimit = new Date(lastWeekLimit.getTime() - 31 * 86_400_000);
     if(refDate > lastMonthLimit) return ['Last 4 weeks', lastMonthLimit, true];
 
-    const dateLimit = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
-    if(refDate > dateLimit) return ['Previous year', dateLimit, true];
-
-    return [null, null, true]
+    // Return the year for the current reference.
+    const dateLimit = new Date(refDate.getFullYear(), 0, 1);
+    return [''+refDate.getFullYear(), dateLimit, true];
 }
