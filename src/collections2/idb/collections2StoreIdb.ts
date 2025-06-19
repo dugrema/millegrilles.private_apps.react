@@ -5,6 +5,7 @@ import { UploadJobType } from '../../workers/upload.worker';
 import { GeneratedSecretKeyResult } from '../../workers/encryption';
 import { Collections2AddFileCommand } from '../../workers/connection.worker';
 import { getMimetypeByExtensionMap } from '../mimetypes';
+import { EncryptionBase64Result } from '../../workers/encryptionUtils';
 
 const DB_NAME = 'collections2';
 const STORE_TUUIDS = 'tuuids';
@@ -44,6 +45,9 @@ export type FileData = {
     video?: FileVideoDict,
     audio?: FileAudioData[],
     subtitles?: FileSubtitleData[],
+    language?: string,
+    comments?: EncryptionBase64Result[],
+    tags?: string[],
 }
 
 export type FileImageDict = {[key: string]: FileImageData};
@@ -90,6 +94,9 @@ export type FileSubtitleData = {
     codec_name?: string | null,
 };
 
+export type EncryptedFileComment = {date: number, encrypted_data: EncryptionBase64Result, user_id?: string};
+export type FileComment = {date: number, comment: string, user_id?: string};
+
 export type TuuidsIdbStoreRowType = {
     tuuid: string,
     user_id: string,
@@ -108,6 +115,11 @@ export type TuuidsIdbStoreRowType = {
     derniere_modification: number,
     lastCompleteSyncSec?: number,  // For directories only, last complete sync of content
     supprime?: boolean | null,
+    language?: string | null,
+    comments?: EncryptedFileComment[] | null,
+    tags?: EncryptionBase64Result | null,
+    decryptedComments?: FileComment[],
+    decryptedTags?: string[],
 };
 
 export type LoadDirectoryResultType = {

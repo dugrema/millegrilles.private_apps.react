@@ -166,6 +166,9 @@ export type Collections2FileSyncRow = {
     fuuids_versions?: string[],
     mimetype?: string,
     version_courante?: Collection2FileVersionRow,
+    comments?: EncryptionBase64Result[],
+    language?: string,
+    tags?: string[],
 };
 
 export type Collections2SyncDirectoryResponse = MessageResponse & {
@@ -896,6 +899,11 @@ export class AppsConnectionWorker extends ConnectionWorker {
     async collection2CheckUserAccessFuuids(fuuids: string[]) {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest({fuuids}, DOMAINE_GROSFICHIERS, 'verifierAccesFuuids') as Collection2UserAccessToFuuidsResponse;
+    }
+
+    async collection2AddFileComment(tuuid: string, comment: EncryptionBase64Result, idx?: number | null) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({tuuid, comment, comment_idx: idx}, DOMAINE_GROSFICHIERS, 'updateFileTextContent') as MessageResponse;
     }
 
     async collection2SubscribeCollectionEvents(cuuid: string | null, cb: SubscriptionCallback): Promise<void> {

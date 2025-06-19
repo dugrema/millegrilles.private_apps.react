@@ -4,7 +4,7 @@ import { messageStruct, encryptionMgs4, multiencoding } from 'millegrilles.crypt
 
 import { Collections2FileSyncRow, DecryptedSecretKey, Filehost } from './connection.worker';
 import { AppsEncryptionWorker } from './encryption';
-import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync, deleteFiles } from '../collections2/idb/collections2StoreIdb';
+import { FileData, TuuidDecryptedMetadata, TuuidsIdbStoreRowType, updateFilesIdb, loadDirectory, LoadDirectoryResultType, touchDirectorySync, deleteFiles, FileComment } from '../collections2/idb/collections2StoreIdb';
 
 type ProcessDirectoryChunkOptions = {
     noidb?: boolean,
@@ -62,6 +62,7 @@ export class DirectoryWorker {
                 mimetype: item.mimetype,
                 supprime: item.supprime,
                 supprime_indirect: item.supprime_indirect,
+                language: item.language,
             } as FileData;
 
             let version = item.version_courante;
@@ -92,6 +93,8 @@ export class DirectoryWorker {
                 parent,
                 path_cuuids: item.path_cuuids,
                 fileData,
+                comments: item.comments,
+                tags: item.tags,
                 thumbnailDownloaded: false,
                 date_creation: item.date_creation,
                 derniere_modification: item.derniere_modification,
@@ -108,6 +111,30 @@ export class DirectoryWorker {
             let fuuids = file.fileData?.fuuids_versions;
             let fuuid = (fuuids&&fuuids.length>0)?fuuids[0]:null;
     
+            if(file.comments) {
+                // decryptedComments?: FileComment[],
+                const decryptedComments = [] as FileComment[];
+                for await (const commentWrapper of file.comments) {
+                    const {date, encrypted_data, user_id} = commentWrapper;
+                    const keyId = commentWrapper.encrypted_data.cle_id;
+                    if(!keyId) continue;  // Unknown key
+                    const decryptionKey = keyByCleid[keyId];
+                    const decryptedContent = await encryption.decryptMessage(
+                        encrypted_data.format, decryptionKey.cle_secrete_base64, encrypted_data.nonce, encrypted_data.ciphertext_base64, 
+                        encrypted_data.compression);
+                    const commentString = new TextDecoder().decode(decryptedContent);
+                    const decryptedContentValue = JSON.parse(commentString);
+                    const decryptedComment = {date, comment: decryptedContentValue.comment, user_id} as FileComment;
+                    decryptedComments.push(decryptedComment);
+                }
+                delete file.comments;
+                file.decryptedComments = decryptedComments;
+            }
+
+            if(file.tags) {
+                // decryptedTags?: string[],
+            }
+
             if(encrypted) {
                 let keyId = encrypted.cle_id;
                 let data_chiffre = encrypted.data_chiffre;

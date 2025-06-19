@@ -198,7 +198,7 @@ export function DirectorySyncHandler(props: {tuuid: string | null | undefined, o
             return;
         }
         let content = e.message as Collection2DirectoryUpdateMessage;
-        console.debug("Update breadcrumb with ", content);
+        // console.debug("Update breadcrumb with ", content);
         // updateCollection(workers, userId, updateBreadcrumb, content)
         //     .catch(err=>console.error("Error handling directory content update", err));
     }, [workers, userId]);
@@ -300,7 +300,9 @@ async function synchronizeDirectory(
             return;
         }
         // console.debug("Sync tuuid %s skip %d", tuuid, skip);
-        let response = await workers.connection.syncDirectory(tuuid, skip, syncDate);
+        const response = await workers.connection.syncDirectory(tuuid, skip, syncDate);
+
+        // console.debug("Sync batch response", response);
 
         if(skip === 0) {
             // Keep initial response time for complete sync date

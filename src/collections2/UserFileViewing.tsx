@@ -1,12 +1,19 @@
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import remarkRehype from 'remark-rehype';
+import rehypeKatex from 'rehype-katex';
 
-import { loadTuuid, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
+import { FileComment, loadTuuid, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
 import useUserBrowsingStore from "./userBrowsingStore";
 import { DirectorySyncHandler } from "./UserFileBrowsing";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";
 import { DetailFileViewLayout } from "./FileViewing";
+import ActionButton from "../resources/ActionButton";
+import { Formatters } from "millegrilles.reactdeps.typescript";
 
 function UserFileViewing() {
 
@@ -75,6 +82,10 @@ function UserFileViewing() {
 
             <section className='fixed top-20 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <DetailFileViewLayout file={file} thumbnail={thumbnailBlob} />
+
+                <h2 className='font-bold text-lg pb-2'>Comments</h2>
+                <AddComment file={file} />
+                <FileComments file={file} />
             </section>
             
             <DirectorySyncHandler tuuid={cuuid} />
@@ -145,4 +156,80 @@ function Breadcrumb(props: BreadcrumbProps) {
             {breadcrumbMapped}
         </nav>
     );
+}
+
+type FileCommentsProps = {file: TuuidsIdbStoreRowType | null};
+
+function FileComments(props: FileCommentsProps) {
+    const {file} = props;
+    const comments = file?.decryptedComments;
+
+    const sortedComments = useMemo(()=>{
+        if(!comments) return null;
+        const commentCopy = [...comments];
+        commentCopy.sort((a, b)=>b.date - a.date);
+        return commentCopy;
+    }, [comments]) as FileComment[] | null;
+
+    if(!sortedComments) return <></>;
+
+    const plugins = [remarkMath, remarkGfm, remarkRehype, rehypeKatex];
+
+    const elems = sortedComments.map((item, idx)=>{
+        const contentString = (item.user_id?'':'*System:*\n') + item.comment;
+        return (
+            <div key={''+idx} className='grid grid-cols-12 pb-4'>
+                <p className='col-span-4 lg:col-span-2'>
+                    <Formatters.FormatterDate value={item.date} />
+                </p>
+                <div className='col-span-8 lg:col-span-10 markdown'>
+                    <Markdown remarkPlugins={plugins}>{contentString}</Markdown>
+                </div>
+            </div>
+        )
+    });
+
+    return (
+        <>
+            {elems}
+        </>
+    );
+}
+
+function AddComment(props: FileCommentsProps) {
+
+    const {file} = props;
+
+    const workers = useWorkers();
+    const ready = useConnectionStore(state=>state.workersReady);
+
+    const [comment, setComment] = useState('');
+    const commentOnChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>)=>setComment(e.currentTarget.value), [setComment]);
+
+    const addHandler = useCallback(async () => {
+        if(!workers || !ready) throw new Error('workers not intialized');
+        if(!file?.secretKey) throw new Error('File key not ready');
+        const encryptedComment = await workers.encryption.encryptMessageMgs4ToBase64({comment}, file.secretKey);
+        encryptedComment.cle_id = file.encryptedMetadata?.cle_id;
+        delete encryptedComment.digest;
+        delete encryptedComment.cle;
+        delete encryptedComment.cleSecrete;
+        const response = await workers.connection.collection2AddFileComment(file.tuuid, encryptedComment);
+        if(response.ok !== true) throw new Error('Error adding comment: ' + response.err);
+        
+        // Reset comment
+        setComment('');
+    }, [workers, ready, File, comment, setComment]);
+
+    return (
+        <div className='grid grid-cols-12 px-2 pb-4'>
+            <textarea value={comment} onChange={commentOnChange} 
+                placeholder='Add a comment here.'
+                className='text-black rounded-md p-0 h-24 sm:p-1 sm:h-24 col-span-12 w-full col-span-12 md:col-span-11' />
+            <ActionButton onClick={addHandler} disabled={!ready}
+                className='varbtn w-20 md:w-full bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                    Add
+            </ActionButton>
+        </div>
+    )
 }
