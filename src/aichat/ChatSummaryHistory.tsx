@@ -99,26 +99,45 @@ function ChatHistoryList() {
         })
         sortedConversations = sortedConversations.reverse();
 
-        return sortedConversations.map(item=>{
-            let label = item.subject || item.initial_query || item.cle_id;
+        let dateLimit = new Date();
+        const currentTime = new Date();
 
-            return (
-                <Fragment key={item.conversation_id}>
+        const items = [] as JSX.Element[];
+        for(const conversation of sortedConversations) {
+            if(conversation.conversation_date && new Date(conversation.conversation_date * 1000) < dateLimit) {
+                // Inject divider
+                const param = determineTimeLabel(currentTime, conversation.conversation_date);
+                dateLimit = param[1];
+                let label = param[0];
+                if(label) {
+                    items.push(<div className='col-span-12 bg-violet-800/25 px-2 mt-2 mb-1'>{label}</div>)
+                } else {
+                    items.push(<div className='col-span-12 bg-violet-800/25 px-2 mt-2 mb-1'>
+                        <Formatters.FormatterDate value={dateLimit.getTime()/1000} format="yyyy-MM-DD"/>
+                    </div>)
+                }
+            }
+
+            const label = conversation.subject || conversation.initial_query || conversation.cle_id;
+            items.push(
+                <Fragment key={conversation.conversation_id}>
                     <div className='col-span-2 sm:col-span-1'>
-                        <ActionButton value={item.conversation_id} onClick={deleteConversationHandler} confirm={true}
+                        <ActionButton value={conversation.conversation_id} onClick={deleteConversationHandler} confirm={true}
                             className='varbtn w-10 pt-2 pb-2 pl-2 pr-2 inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 disabled:bg-slate-800'>
                                 <i className='fa fa-remove' />
                         </ActionButton>
                     </div>
-                    <Link to={`/apps/aichat/conversation/${item.conversation_id}`} className='underline text-left col-span-7 sm:col-span-8'>
+                    <Link to={`/apps/aichat/conversation/${conversation.conversation_id}`} className='underline text-left col-span-7 sm:col-span-8'>
                         {label}
                     </Link>
                     <div className='col-span-3'>
-                        <Formatters.FormatterDate value={item.conversation_date} />
+                        <Formatters.FormatterDate value={conversation.conversation_date} />
                     </div>
-                </Fragment>
+                </Fragment>                
             );
-        })
+        }
+
+        return items;
     }, [conversations, deleteConversationHandler]);
 
     if(conversations === null) return <p>Loading...</p>;
@@ -129,4 +148,17 @@ function ChatHistoryList() {
             {conversationsElems}
         </div>
     );
+}
+
+function determineTimeLabel(now: Date, reference: number): [string | null, Date] {
+    const refDate = new Date(reference * 1000);
+    const nowLimit = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    console.debug("Ref %O, refdate: %O, nowLimit: %O", reference, refDate, nowLimit);
+    if(refDate > nowLimit) return ['now', nowLimit];
+
+    const yesterdayLimit = new Date(nowLimit.getTime() - 86_400_000);
+    if(refDate > yesterdayLimit) return ['yesterday', yesterdayLimit];
+    
+    const dateLimit = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+    return [null, dateLimit];
 }

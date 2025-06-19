@@ -424,14 +424,14 @@ type ChatResponse = {content: string, thinking?: string | null, role: string};
 
 function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNode, waiting: boolean}) {
  
-    let { triggerScrolldown, waiting } = props;
+    const { triggerScrolldown, waiting } = props;
 
-    let messages = useChatStore(state=>state.messages);
-    let currentResponse = useChatStore(state=>state.currentResponse);
-    let [currentVisible, setCurrentVisible] = useState(true);
+    const messages = useChatStore(state=>state.messages);
+    const currentResponse = useChatStore(state=>state.currentResponse);
+    const [currentVisible, setCurrentVisible] = useState(true);
     const [loaded, setLoaded] = useState(false);  // Used to load most recent message once
 
-    let refBottom = useRef(null);
+    const refBottom = useRef(null);
 
     useEffect(()=>{
         if(!refBottom || !messages || !currentVisible) return;
