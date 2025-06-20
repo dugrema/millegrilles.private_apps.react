@@ -189,6 +189,7 @@ function Models() {
     const [chatContextLength, setChatContextLength] = useState(4096 as number | string);
     const [ragEmbeddingModel, setRagEmbeddingModel] = useState('');
     const [ragQueryModel, setRagQueryModel] = useState('');
+    const [visionModel, setVisionModel] = useState('');
     const [ragContextSize, setRagContextSize] = useState(4096 as number | string);
     const [ragDocumentSize, setRagDocumentSize] = useState(1000 as number | string);
     const [ragOverlapSize, setRagOverlapSize] = useState(250 as number | string);
@@ -201,6 +202,7 @@ function Models() {
     }, [setChatContextLength]);
     const ragEmbeddingModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setRagEmbeddingModel(e.currentTarget.value), [setRagEmbeddingModel]);
     const ragQueryModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setRagQueryModel(e.currentTarget.value), [setRagQueryModel]);
+    const visionModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setVisionModel(e.currentTarget.value), [setVisionModel]);
     const ragContextSizeOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
         const value = Number.parseInt(e.currentTarget.value);
         if(isNaN(value)) setRagContextSize('');
@@ -233,10 +235,11 @@ function Models() {
         const responseRag = await workers.connection.setAiRag(
             ragEmbeddingModel?ragEmbeddingModel:null, 
             ragQueryModel?ragQueryModel:null, 
+            visionModel?visionModel:null,
             ragContextSizeVal, ragDocumentSizeVal, ragOverlapSizeVal);
 
         if(responseRag.ok !== true) throw new Error('Error saving RAG parameters: ' + responseRag.err);
-    }, [workers, ready, defaultModel, chatContextLength, ragEmbeddingModel, ragQueryModel, ragContextSize, ragDocumentSize, ragOverlapSize]);
+    }, [workers, ready, defaultModel, chatContextLength, ragEmbeddingModel, ragQueryModel, visionModel, ragContextSize, ragDocumentSize, ragOverlapSize]);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -248,12 +251,13 @@ function Models() {
                 setChatContextLength(response.default?.chat_context_length || 4096)
                 setRagEmbeddingModel(response.rag?.model_embedding_name || '');
                 setRagQueryModel(response.rag?.model_query_name || '');
+                setVisionModel(response.rag?.model_vision_name || '');
                 setRagContextSize(response.rag?.context_len);
                 setRagDocumentSize(response.rag?.document_chunk_len);
                 setRagOverlapSize(response.rag?.document_overlap_len);
             })
             .catch(err=>console.error("Error loading configuration", err));
-    }, [workers, ready, setDefaultModel, setChatContextLength, setRagEmbeddingModel, setRagQueryModel, setRagContextSize, 
+    }, [workers, ready, setDefaultModel, setChatContextLength, setRagEmbeddingModel, setRagQueryModel, setVisionModel, setRagContextSize, 
         setRagDocumentSize, setRagOverlapSize]);
 
     return (
@@ -291,6 +295,10 @@ function Models() {
                 <input id='rag-query' type="text" value={ragQueryModel} onChange={ragQueryModelOnChange}
                     className='text-white bg-slate-500' />
 
+                <label htmlFor='rag-query'>Vision model</label>
+                <input id='rag-query' type="text" value={visionModel} onChange={visionModelOnChange}
+                    className='text-white bg-slate-500' />
+
                 <label htmlFor='rag-context'>RAG context size</label>
                 <input id='rag-context' type="text" value={ragContextSize} onChange={ragContextSizeOnChange}
                     className='text-white bg-slate-500' />
@@ -305,7 +313,7 @@ function Models() {
             </div>
 
             <div className='pt-2'>
-                <ActionButton onClick={applyHandler} disabled={!ready}
+                <ActionButton onClick={applyHandler} disabled={!ready} revertSuccessTimeout={3}
                     className='btn inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
                         Apply
                 </ActionButton>

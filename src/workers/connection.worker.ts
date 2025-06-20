@@ -435,6 +435,7 @@ export class AppsConnectionWorker extends ConnectionWorker {
     async setAiRag(
         modelEmbeddingName: string | null,
         modelQueryName: string | null,
+        modelVisionName: string | null,
         contextSize: number | null,
         documentChunkSize: number | null,
         documentOverlapSize: number | null) 
@@ -443,6 +444,7 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendCommand({
             model_embedding_name: modelEmbeddingName,
             model_query_name: modelQueryName,
+            model_vision_name: modelVisionName,
             context_len: contextSize,
             document_chunk_len: documentChunkSize,
             document_overlap_len: documentOverlapSize,

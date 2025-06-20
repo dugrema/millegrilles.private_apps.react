@@ -222,7 +222,7 @@ function AddComment(props: FileCommentsProps) {
         
         // Reset comment
         setComment('');
-    }, [workers, ready, File, comment, setComment]);
+    }, [workers, ready, file, comment, setComment]);
 
     return (
         <div className='grid grid-cols-12 px-2 pb-4'>
