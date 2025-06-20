@@ -95,7 +95,7 @@ export type FileSubtitleData = {
 };
 
 export type EncryptedFileComment = {date: number, encrypted_data: EncryptionBase64Result, user_id?: string};
-export type FileComment = {date: number, comment: string, user_id?: string};
+export type FileComment = {date: number, comment?: string, tags?: string[], user_id?: string};
 
 export type TuuidsIdbStoreRowType = {
     tuuid: string,

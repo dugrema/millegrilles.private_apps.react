@@ -27,7 +27,7 @@
 
 .markdown CODE { padding-left: 0.2rem; padding-right: 0.2rem; }
 
-.markdown a { font-weight: 900; color: rgb(66 56 157); background-color: honeydew ;  text-decoration: underline; }
+.markdown a { font-weight: 900; color: rgb(66 56 157); background-color: rgb(107, 98, 241) ;  text-decoration: underline; }
 
 .markdown p { padding-top: 0.2rem; padding-bottom: 0.2rem; }
 
@@ -36,3 +36,9 @@
     padding-top: 0.3rem; padding-bottom: 0.3rem; padding-left: 0.5rem;
     border-left: 4pt solid rgb(66 56 157); color: rgb(66 56 157);
 }
+
+.markdown H1 { font-weight: 900; font-size: x-large;}
+.markdown H2 { font-weight: 800; font-size: large;}
+.markdown H3 { font-weight: 700;}
+
+.markdown UL { list-style: disc; margin-left: 1rem;}

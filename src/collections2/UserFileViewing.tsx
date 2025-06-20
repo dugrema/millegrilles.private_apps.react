@@ -2,9 +2,7 @@ import { ChangeEvent, MouseEvent, useCallback, useEffect, useMemo, useState } fr
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
 import remarkRehype from 'remark-rehype';
-import rehypeKatex from 'rehype-katex';
 
 import { FileComment, loadTuuid, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
 import useUserBrowsingStore from "./userBrowsingStore";
@@ -173,10 +171,15 @@ function FileComments(props: FileCommentsProps) {
 
     if(!sortedComments) return <></>;
 
-    const plugins = [remarkMath, remarkGfm, remarkRehype, rehypeKatex];
+    const plugins = [remarkGfm, remarkRehype];
 
     const elems = sortedComments.map((item, idx)=>{
-        const contentString = (item.user_id?'':'*System:*\n') + item.comment;
+        let contentString = 'N/A';        
+        if(item.comment) {
+            contentString = (item.user_id?'':'## System generated\n\n') + item.comment;
+        } else if(item.tags) {
+            contentString = '## Tags\n\n ' + item.tags.join(', ');
+        }
         return (
             <div key={''+idx} className='grid grid-cols-12 pb-4'>
                 <p className='col-span-4 lg:col-span-2'>

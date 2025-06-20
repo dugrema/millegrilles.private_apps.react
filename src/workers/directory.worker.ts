@@ -124,7 +124,7 @@ export class DirectoryWorker {
                         encrypted_data.compression);
                     const commentString = new TextDecoder().decode(decryptedContent);
                     const decryptedContentValue = JSON.parse(commentString);
-                    const decryptedComment = {date, comment: decryptedContentValue.comment, user_id} as FileComment;
+                    const decryptedComment = {date, comment: decryptedContentValue.comment, tags: decryptedContentValue.tags, user_id} as FileComment;
                     decryptedComments.push(decryptedComment);
                 }
                 delete file.comments;
