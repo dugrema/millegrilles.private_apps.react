@@ -43,7 +43,7 @@ function UserFileViewing() {
     const updateFileHandler = useCallback(async () => {
         if(!workers || !ready) throw new Error('Workers not initialized');
         if(!tuuid) throw new Error('Tuuid not provided');
-        console.debug("Update file ", tuuid);
+        // console.debug("Update file ", tuuid);
         const response = await workers.connection.getFilesByTuuid([tuuid])
         if(!workers) throw new Error('workers not initialzed');
         if(!userId) throw new Error('User id is null');
@@ -66,7 +66,7 @@ function UserFileViewing() {
         if(!workers || !ready) throw new Error("Workers not initialized");
         if(!tuuid) throw new Error('No file tuuid provided');
         const commentId = e.currentTarget.value;
-        console.debug(`Delete comment ${commentId} of tuuid ${tuuid}`);
+        // console.debug(`Delete comment ${commentId} of tuuid ${tuuid}`);
         const response = await workers.connection.deleteCollection2Comment(tuuid, commentId);
         if(response.ok !== true) throw new Error(`Error deleting comment: ${response.err}`);
         await updateFileHandler();
