@@ -240,6 +240,7 @@ function AddComment(props: FileAddProps) {
     const addHandler = useCallback(async () => {
         if(!workers || !ready) throw new Error('workers not intialized');
         if(!file?.secretKey) throw new Error('File key not ready');
+        if(!comment) throw new Error('No comment / empty comment provided');
         const encryptedComment = await workers.encryption.encryptMessageMgs4ToBase64({comment}, file.secretKey);
         const keyId = file.keyId || file.encryptedMetadata?.cle_id;
         if(!keyId) throw new Error('Missing key id, unable to encrypt comment')
@@ -260,7 +261,7 @@ function AddComment(props: FileAddProps) {
             <textarea value={comment} onChange={commentOnChange} 
                 placeholder='Add a comment here.'
                 className='text-black rounded-md p-0 h-24 sm:p-1 sm:h-24 col-span-12 w-full col-span-12 md:col-span-11' />
-            <ActionButton onClick={addHandler} disabled={!ready} revertSuccessTimeout={3}
+            <ActionButton onClick={addHandler} disabled={!ready || !comment} revertSuccessTimeout={3}
                 className='varbtn w-20 md:w-full bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                     Add
             </ActionButton>
