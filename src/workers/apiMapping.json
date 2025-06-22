@@ -69,7 +69,8 @@
         {"domain": "GrosFichiers", "action": "transcoderVideo"},
         {"domain": "GrosFichiers", "action": "supprimerVideo"},
         {"domain": "GrosFichiers", "action": "recycleItemsV3"},
-        {"domain": "GrosFichiers", "action": "updateFileTextContent"}
+        {"domain": "GrosFichiers", "action": "updateFileTextContent"},
+        {"domain": "GrosFichiers", "action": "deleteFileComment"}
     ],
     "subscriptions": {
         "userDeviceEvents": {

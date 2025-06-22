@@ -112,7 +112,6 @@ export class DirectoryWorker {
             let fuuid = (fuuids&&fuuids.length>0)?fuuids[0]:null;
     
             if(file.comments) {
-                // decryptedComments?: FileComment[],
                 const decryptedComments = [] as FileComment[];
                 for await (const commentWrapper of file.comments) {
                     const {date, encrypted_data, user_id} = commentWrapper;
@@ -124,7 +123,7 @@ export class DirectoryWorker {
                         encrypted_data.compression);
                     const commentString = new TextDecoder().decode(decryptedContent);
                     const decryptedContentValue = JSON.parse(commentString);
-                    const decryptedComment = {date, comment: decryptedContentValue.comment, tags: decryptedContentValue.tags, user_id} as FileComment;
+                    const decryptedComment = {comment_id: commentWrapper.comment_id, date, comment: decryptedContentValue.comment, tags: decryptedContentValue.tags, user_id} as FileComment;
                     decryptedComments.push(decryptedComment);
                 }
                 delete file.comments;

@@ -40,6 +40,38 @@ function UserFileViewing() {
         }
     }, [navigate]);
 
+    const updateFileHandler = useCallback(async () => {
+        if(!workers || !ready) throw new Error('Workers not initialized');
+        if(!tuuid) throw new Error('Tuuid not provided');
+        console.debug("Update file ", tuuid);
+        const response = await workers.connection.getFilesByTuuid([tuuid])
+        if(!workers) throw new Error('workers not initialzed');
+        if(!userId) throw new Error('User id is null');
+        
+        if(response.ok === false) {
+            throw new Error('Error loading file: ' + response.err);
+        }
+        if(response.files?.length === 1 && response.keys?.length === 1) {
+            let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys);
+            // Update file on screen
+            if(files.length === 1) {
+                setFile(files[0])
+            }
+        } else {
+            throw new Error(`Error loading file, mising content or key for tuuid:${tuuid}`);
+        }
+    }, [workers, ready, tuuid]);
+
+    const deleteCommentHandler = useCallback(async (e: MouseEvent<HTMLButtonElement>) => {
+        if(!workers || !ready) throw new Error("Workers not initialized");
+        if(!tuuid) throw new Error('No file tuuid provided');
+        const commentId = e.currentTarget.value;
+        console.debug(`Delete comment ${commentId} of tuuid ${tuuid}`);
+        const response = await workers.connection.deleteCollection2Comment(tuuid, commentId);
+        if(response.ok !== true) throw new Error(`Error deleting comment: ${response.err}`);
+        await updateFileHandler();
+    }, [workers, ready, tuuid, updateFileHandler]);
+
     useEffect(()=>{
         if(tuuid && userId) {
             loadTuuid(tuuid, userId).then(file=>setFile(file))
@@ -51,26 +83,9 @@ function UserFileViewing() {
 
     useEffect(()=>{
         if(!workers || !ready || !userId || !tuuid) return;
-        workers.connection.getFilesByTuuid([tuuid])
-            .then(async response => {
-                if(!workers) throw new Error('workers not initialzed');
-                if(!userId) throw new Error('User id is null');
-                
-                if(response.ok === false) {
-                    throw new Error('Error loading file: ' + response.err);
-                }
-                if(response.files?.length === 1 && response.keys?.length === 1) {
-                    let files = await workers.directory.processDirectoryChunk(workers.encryption, userId, response.files, response.keys);
-                    // Update file on screen
-                    if(files.length === 1) {
-                        setFile(files[0])
-                    }
-                } else {
-                    console.warn("Error loading file, mising content or key for tuuid", tuuid);
-                }
-            })
+        updateFileHandler()
             .catch(err=>console.error("Error loading file %s: %O", tuuid, err));
-    }, [workers, ready, tuuid, userId]);
+    }, [workers, ready, updateFileHandler]);
 
     return (
         <>
@@ -82,8 +97,8 @@ function UserFileViewing() {
                 <DetailFileViewLayout file={file} thumbnail={thumbnailBlob} />
 
                 <h2 className='font-bold text-lg pb-2'>Comments</h2>
-                <AddComment file={file} />
-                <FileComments file={file} />
+                <AddComment file={file} refreshTrigger={updateFileHandler} />
+                <FileComments file={file} deleteHandler={deleteCommentHandler} />
             </section>
             
             <DirectorySyncHandler tuuid={cuuid} />
@@ -156,11 +171,13 @@ function Breadcrumb(props: BreadcrumbProps) {
     );
 }
 
-type FileCommentsProps = {file: TuuidsIdbStoreRowType | null};
+type FileCommentsProps = {file: TuuidsIdbStoreRowType | null, deleteHandler: (commentId: MouseEvent<HTMLButtonElement>)=>Promise<void>};
 
 function FileComments(props: FileCommentsProps) {
-    const {file} = props;
+    const {file, deleteHandler} = props;
     const comments = file?.decryptedComments;
+
+    const ready = useConnectionStore(state=>state.workersReady);
 
     const sortedComments = useMemo(()=>{
         if(!comments) return null;
@@ -181,12 +198,23 @@ function FileComments(props: FileCommentsProps) {
             contentString = '## Tags\n\n ' + item.tags.join(', ');
         }
         return (
-            <div key={''+idx} className='grid grid-cols-12 pb-4'>
+            <div key={item.comment_id} className='grid grid-cols-12 pb-4'>
                 <p className='col-span-4 lg:col-span-2'>
                     <Formatters.FormatterDate value={item.date} />
+                    <span className='lg:hidden'>
+                        <br/>
+                        <ActionButton onClick={deleteHandler} disabled={!ready || !deleteHandler} confirm={true} value={item.comment_id} varwidth={10}>
+                                X
+                        </ActionButton>
+                    </span>
                 </p>
-                <div className='col-span-8 lg:col-span-10 markdown'>
+                <div className='col-span-8 lg:col-span-9 markdown'>
                     <Markdown remarkPlugins={plugins}>{contentString}</Markdown>
+                </div>
+                <div className='hidden lg:block'>
+                    <ActionButton onClick={deleteHandler} disabled={!ready || !deleteHandler} confirm={true} value={item.comment_id} varwidth={10}>
+                            X
+                    </ActionButton>
                 </div>
             </div>
         )
@@ -199,9 +227,11 @@ function FileComments(props: FileCommentsProps) {
     );
 }
 
-function AddComment(props: FileCommentsProps) {
+type FileAddProps = {file: TuuidsIdbStoreRowType | null, refreshTrigger: ()=>Promise<void>};
 
-    const {file} = props;
+function AddComment(props: FileAddProps) {
+
+    const {file, refreshTrigger} = props;
 
     const workers = useWorkers();
     const ready = useConnectionStore(state=>state.workersReady);
@@ -213,7 +243,9 @@ function AddComment(props: FileCommentsProps) {
         if(!workers || !ready) throw new Error('workers not intialized');
         if(!file?.secretKey) throw new Error('File key not ready');
         const encryptedComment = await workers.encryption.encryptMessageMgs4ToBase64({comment}, file.secretKey);
-        encryptedComment.cle_id = file.encryptedMetadata?.cle_id;
+        const keyId = file.keyId || file.encryptedMetadata?.cle_id;
+        if(!keyId) throw new Error('Missing key id, unable to encrypt comment')
+        encryptedComment.cle_id = keyId;
         delete encryptedComment.digest;
         delete encryptedComment.cle;
         delete encryptedComment.cleSecrete;
@@ -222,7 +254,8 @@ function AddComment(props: FileCommentsProps) {
         
         // Reset comment
         setComment('');
-    }, [workers, ready, file, comment, setComment]);
+        if(refreshTrigger) await refreshTrigger()
+    }, [workers, ready, file, comment, setComment, refreshTrigger]);
 
     return (
         <div className='grid grid-cols-12 px-2 pb-4'>

@@ -834,6 +834,11 @@ export class AppsConnectionWorker extends ConnectionWorker {
         ) as MessageResponse;
     }
 
+    async deleteCollection2Comment(tuuid: string, commentId: string) {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({tuuid, comment_id: commentId}, DOMAINE_GROSFICHIERS, 'deleteFileComment') as MessageResponse;
+    }
+
     async getFilehosts() {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendRequest(

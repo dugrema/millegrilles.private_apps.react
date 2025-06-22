@@ -94,8 +94,8 @@ export type FileSubtitleData = {
     codec_name?: string | null,
 };
 
-export type EncryptedFileComment = {date: number, encrypted_data: EncryptionBase64Result, user_id?: string};
-export type FileComment = {date: number, comment?: string, tags?: string[], user_id?: string};
+export type EncryptedFileComment = {comment_id: string, date: number, encrypted_data: EncryptionBase64Result, user_id?: string};
+export type FileComment = {comment_id: string, date: number, comment?: string, tags?: string[], user_id?: string};
 
 export type TuuidsIdbStoreRowType = {
     tuuid: string,
