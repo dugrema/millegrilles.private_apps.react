@@ -197,16 +197,16 @@ function FileComments(props: FileCommentsProps) {
             contentString = '## Tags\n\n ' + item.tags.join(', ');
         }
         return (
-            <div key={item.comment_id} className='grid grid-cols-12 pb-4'>
-                <p className='col-span-4 lg:col-span-2'>
+            <div key={item.comment_id} className='grid grid-cols-3 lg:grid-cols-12 mb-4 hover:bg-violet-600/50'>
+                <p className='col-span-2 lg:col-span-2 bg-violet-800/50 lg:bg-violet-800/25'>
                     <Formatters.FormatterDate value={item.date} />
-                    <span className='lg:hidden'>
-                        <ActionButton onClick={deleteHandler} disabled={!ready || !deleteHandler} confirm={true} value={item.comment_id} varwidth={10}>
-                                X
-                        </ActionButton>
-                    </span>
                 </p>
-                <div className='col-span-8 lg:col-span-9 markdown'>
+                <div className='lg:hidden text-right bg-violet-800/50 lg:bg-violet-800/25'>
+                    <ActionButton onClick={deleteHandler} disabled={!ready || !deleteHandler} confirm={true} value={item.comment_id} varwidth={10}>
+                            X
+                    </ActionButton>
+                </div>
+                <div className='col-span-3 lg:col-span-9 markdown pb-2 lg:pb-1 bg-violet-800/25'>
                     <Markdown remarkPlugins={plugins}>{contentString}</Markdown>
                 </div>
                 <div className='hidden lg:block'>

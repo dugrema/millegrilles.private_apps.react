@@ -535,13 +535,13 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
             <p className='col-span-6 break-words text-sm'>{fuuid}</p>
             <div className='col-span-6'>
                 {canOpen?
-                    <ActionButton onClick={openFileHandler} disabled={!ready && !fileBlob} className='btn col-span-3' revertSuccessTimeout={1}>
+                    <ActionButton onClick={openFileHandler} disabled={!ready && !fileBlob} revertSuccessTimeout={1}>
                         Open
                     </ActionButton>
                     :
                     <></>
                 }
-                <ActionButton onClick={downloadHandler} revertSuccessTimeout={3} className='btn col-span-3'>
+                <ActionButton onClick={downloadHandler} revertSuccessTimeout={3}>
                     Download
                 </ActionButton>
             </div>
