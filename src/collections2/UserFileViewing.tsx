@@ -95,7 +95,6 @@ function UserFileViewing() {
 
             <section className='fixed top-20 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <DetailFileViewLayout file={file} thumbnail={thumbnailBlob} />
-
                 <h2 className='font-bold text-lg pb-2'>Comments</h2>
                 <AddComment file={file} refreshTrigger={updateFileHandler} />
                 <FileComments file={file} deleteHandler={deleteCommentHandler} />
@@ -202,7 +201,6 @@ function FileComments(props: FileCommentsProps) {
                 <p className='col-span-4 lg:col-span-2'>
                     <Formatters.FormatterDate value={item.date} />
                     <span className='lg:hidden'>
-                        <br/>
                         <ActionButton onClick={deleteHandler} disabled={!ready || !deleteHandler} confirm={true} value={item.comment_id} varwidth={10}>
                                 X
                         </ActionButton>
@@ -262,7 +260,7 @@ function AddComment(props: FileAddProps) {
             <textarea value={comment} onChange={commentOnChange} 
                 placeholder='Add a comment here.'
                 className='text-black rounded-md p-0 h-24 sm:p-1 sm:h-24 col-span-12 w-full col-span-12 md:col-span-11' />
-            <ActionButton onClick={addHandler} disabled={!ready}
+            <ActionButton onClick={addHandler} disabled={!ready} revertSuccessTimeout={3}
                 className='varbtn w-20 md:w-full bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
                     Add
             </ActionButton>

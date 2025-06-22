@@ -137,7 +137,7 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Uint8Array | n
 
     return (
         <div className='grid grid-cols-1 md:grid-cols-3 pt-2 px-2'>
-            <div className='flex grow col-span-2 pr-4 max-h-screen md:pb-32 px-1'>
+            <div className='flex grow col-span-2 pr-4 max-h-screen md:pb-8 px-1'>
                 <MediaContentDisplay 
                     file={file} 
                     thumbnailBlobUrl={fullSizeBlobUrl || blobUrl} 
@@ -533,16 +533,18 @@ function FileDetail(props: FileViewLayoutProps & {file: TuuidsIdbStoreRowType, i
             <p className='col-span-4'>{recentVisits}</p>
             <p className='col-span-6 text-slate-400'>File unique Id</p>
             <p className='col-span-6 break-words text-sm'>{fuuid}</p>
-            <ActionButton onClick={downloadHandler} revertSuccessTimeout={3} className='btn col-span-3'>
-                Download
-            </ActionButton>
-            {canOpen?
-                <ActionButton onClick={openFileHandler} disabled={!ready && !fileBlob} className='btn col-span-3' revertSuccessTimeout={1}>
-                    Open
+            <div className='col-span-6'>
+                {canOpen?
+                    <ActionButton onClick={openFileHandler} disabled={!ready && !fileBlob} className='btn col-span-3' revertSuccessTimeout={1}>
+                        Open
+                    </ActionButton>
+                    :
+                    <></>
+                }
+                <ActionButton onClick={downloadHandler} revertSuccessTimeout={3} className='btn col-span-3'>
+                    Download
                 </ActionButton>
-                :
-                <></>
-            }
+            </div>
         </div>
     );
 }
