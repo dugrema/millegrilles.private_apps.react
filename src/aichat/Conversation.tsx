@@ -758,7 +758,7 @@ function AttachmentThumbnailsEdit(props: {files: TuuidsBrowsingStoreRow[] | null
     const fileElems = useMemo(()=>{
         if(!files) return <></>;
         return files.map(item=>{
-            return <ThumbnailItem key={item.tuuid} size={60} onClick={onClick} value={item} />
+            return <ThumbnailItem key={item.tuuid} size={60} onClick={onClick} value={item} tiny={true} />
         })
     }, [files, onClick]);
 
