@@ -137,7 +137,7 @@ function FileMediaLayout(props: FileViewLayoutProps & {thumbnail: Uint8Array | n
 
     return (
         <div className='grid grid-cols-1 md:grid-cols-3 pt-2 px-2'>
-            <div className='flex grow col-span-2 pr-4 max-h-screen md:pb-8 px-1'>
+            <div className='flex grow col-span-2 pr-4 max-h-screen md:pb-32 px-1'>
                 <MediaContentDisplay 
                     file={file} 
                     thumbnailBlobUrl={fullSizeBlobUrl || blobUrl} 

@@ -95,9 +95,11 @@ function UserFileViewing() {
 
             <section className='fixed top-20 left-0 right-0 px-2 bottom-10 overflow-y-auto w-full'>
                 <DetailFileViewLayout file={file} thumbnail={thumbnailBlob} />
-                <h2 className='font-bold text-lg pb-2'>Comments</h2>
-                <AddComment file={file} refreshTrigger={updateFileHandler} />
-                <FileComments file={file} deleteHandler={deleteCommentHandler} />
+                <div className='md:relative md:-top-8 lg:-top-12 xl:-top-28'>
+                    <h2 className='font-bold text-lg pb-2'>Comments</h2>
+                    <AddComment file={file} refreshTrigger={updateFileHandler} />
+                    <FileComments file={file} deleteHandler={deleteCommentHandler} />
+                </div>
             </section>
             
             <DirectorySyncHandler tuuid={cuuid} />
