@@ -16,8 +16,8 @@
 .markdown TABLE TH { border-bottom: 2pt solid rgb(66 56 157); color: rgb(66 56 157); }
 
 .markdown PRE, .markdown CODE {
-    color: white;
-    background-color: black;
+    color: rgb(23, 5, 190);
+    background-color: rgb(224, 220, 255);
     opacity: 0.9;
 }
 
@@ -27,14 +27,15 @@
 
 .markdown CODE { padding-left: 0.2rem; padding-right: 0.2rem; }
 
-.markdown a { font-weight: 900; color: rgb(143, 135, 209); background-color: rgb(35, 29, 107) ;  text-decoration: underline; }
+.markdown a { font-weight: 900; color: rgb(23, 5, 190); background-color: rgb(224, 220, 255) ;  text-decoration: underline; padding: 0.2rem; padding-top: 0.1rem; padding-bottom: 0.1rem;}
 
 .markdown p { padding-top: 0.2rem; padding-bottom: 0.2rem; }
 
 .markdown blockquote { 
     margin-top: 0.2rem; margin-bottom: 0.2rem;
     padding-top: 0.3rem; padding-bottom: 0.3rem; padding-left: 0.5rem;
-    border-left: 4pt solid rgb(66 56 157); color: rgb(66 56 157);
+    border-left: 4pt solid rgb(66 56 157); 
+    color: rgb(66 56 157);
 }
 
 .markdown H1 { font-weight: 900; font-size: x-large;}

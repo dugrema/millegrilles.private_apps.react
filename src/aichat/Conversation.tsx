@@ -59,12 +59,16 @@ export default function Chat() {
     const setNewConversation = useChatStore(state=>state.setNewConversation);
     const [defaultModel, setDefaultModel] = useState(CONST_DEFAULT_MODEL);
     const [contextSize, setContextSize] = useState(DEFAULT_CONTEXT_LENGTH);
+    const models = useChatStore(state=>state.models);
 
     const setLastConversationMessagesUpdate = useChatStore(state=>state.setLastConversationMessagesUpdate);
     const lastConversationMessagesUpdate = useChatStore(state=>state.lastConversationMessagesUpdate);
 
     const [model, setModel] = useState('');
-    const modelOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>setModel(e.currentTarget.value), [setModel]);
+    const modelOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>{
+        const modelName = e.currentTarget.value;
+        setModel(modelName);
+    }, [setModel, setContextSize, models]);
 
     const {conversationId: paramConversationId} = useParams();
 
@@ -72,6 +76,13 @@ export default function Chat() {
         if(relayAvailable === null) return;
         setLastConversationMessagesUpdate(new Date().getTime());
     }, [relayAvailable, setLastConversationMessagesUpdate]);
+
+    useEffect(()=>{
+        if(!model || !models) return;
+        const modelInfo = models.filter(item=>item.name===model).pop();
+        const contextLength = modelInfo?.num_ctx || DEFAULT_CONTEXT_LENGTH;
+        setContextSize(contextLength);
+    }, [models, model, setContextSize]);
 
     // Initialize conversationId
     useEffect(()=>{
@@ -154,8 +165,11 @@ export default function Chat() {
                 // console.debug("AI Configuration", response);
                 const defaultModel = response.default?.model_name || CONST_DEFAULT_MODEL;
                 setDefaultModel(defaultModel);
-                const contextSize = response.default?.chat_context_length || DEFAULT_CONTEXT_LENGTH;
-                setContextSize(contextSize);
+                // const contextSize = response.default?.chat_context_length || DEFAULT_CONTEXT_LENGTH;
+                // if(contextSize > DEFAULT_CONTEXT_LENGTH) {
+                //     console.debug("Context size: ", contextSize);
+                //     setContextSize(contextSize);
+                // }
             })
             .catch(err=>console.error("Error loading configuration", err));
     }, [workers, ready, setDefaultModel, setContextSize]);
