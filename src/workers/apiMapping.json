@@ -92,6 +92,7 @@
         "aiLanguageChatConversationEvents": {
             "exchanges": ["2.prive"],
             "routingKeys": [
+                "evenement.ollama_relai.modelsUpdated",
                 "evenement.ollama_relai.status",
                 "evenement.AiLanguage.{USER_ID}.chatConversation"
             ]

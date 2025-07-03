@@ -49,6 +49,7 @@ const useConnectionStore = create<ConnectionStoreState>()(
             connectionReady: false,
             signatureReady: false,
             connectionAuthenticated: false,
+            modelsUpdated: true,
             mustManuallyAuthenticate: false,
             certificateRemoteVersions: undefined,
             certificateRenewable: false,

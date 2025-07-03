@@ -27,6 +27,8 @@ interface ChatStoreState {
     lastConversationMessagesUpdate: number,  // Last time there was a conversation update (ms)
     models: LanguageModelType[],
     isAdmin: boolean,
+    modelsUpdated: boolean,
+
     appendCurrentResponse: (conversation_id: string, chunk: ChatMessageContent) => void,
     pushAssistantResponse: (message_id: string) => void,
     pushUserQuery: (query: string, tuuids?: string[] | null) => void,
@@ -42,6 +44,7 @@ interface ChatStoreState {
     setLastConversationMessagesUpdate: (lastConversationMessagesUpdate: number) => void,
     setModels: (models: LanguageModelType[]) => void,
     setIsAdmin: (isAdmin: boolean) => void,
+    setModelsUpdated: (modelsUpdated: boolean) => void,
 };
 
 const useChatStore = create<ChatStoreState>()(
@@ -59,6 +62,7 @@ const useChatStore = create<ChatStoreState>()(
             lastConversationMessagesUpdate: 1,
             models: [],
             isAdmin: false,
+            modelsUpdated: true,
 
             appendCurrentResponse: (conversation_id, chunk) => set((state) => {
                 // Check that the conversation was not switched while receiving updates
@@ -126,6 +130,7 @@ const useChatStore = create<ChatStoreState>()(
             setLastConversationMessagesUpdate: (lastConversationMessagesUpdate) => set(()=>({lastConversationMessagesUpdate})),
             setModels: (models) => set(()=>({models})),
             setIsAdmin: (isAdmin) => set(()=>({isAdmin})),
+            setModelsUpdated: (modelsUpdated) => set(() => ({ modelsUpdated })),
         })
     ),
 );

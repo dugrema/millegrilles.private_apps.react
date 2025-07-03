@@ -48,13 +48,14 @@ async function init() {
 
 function ListenConversationChanges() {
 
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let setLastConversationsUpdate = useChatStore(state=>state.setLastConversationsUpdate);
-    let setRelayAvailable = useChatStore(state=>state.setRelayAvailable);
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
+    const setLastConversationsUpdate = useChatStore(state=>state.setLastConversationsUpdate);
+    const setRelayAvailable = useChatStore(state=>state.setRelayAvailable);
+    const setModelsUpdated = useChatStore(state=>state.setModelsUpdated);
 
-    let workers = useWorkers();
+    const workers = useWorkers();
 
-    let [userId, setUserId] = useState('');
+    const [userId, setUserId] = useState('');
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -62,7 +63,7 @@ function ListenConversationChanges() {
         // Get userId from user certificate.
         workers.connection.getMessageFactoryCertificate()
             .then(async certificate => {
-                let userId = certificate.extensions?.userId;
+                const userId = certificate.extensions?.userId;
                 if(!userId) throw new Error("UserId missing from connection certificate");
                 setUserId(userId);
             })
@@ -72,17 +73,21 @@ function ListenConversationChanges() {
         return () => setUserId('');
     }, [workers, ready, setUserId]);
 
-    let refreshConversationListHandler = useCallback(()=>{
+    const refreshConversationListHandler = useCallback(()=>{
         // Force a refresh of the conversation list (when applicable)
         setLastConversationsUpdate(new Date().getTime());
     }, [setLastConversationsUpdate]);
 
-    let chatConversationEventCb = useMemo(()=>{
+    const setModelsUpdatedHandler = useCallback(()=>{
+        setModelsUpdated(true)
+    }, [setModelsUpdated]);
+
+    const chatConversationEventCb = useMemo(()=>{
         if(!workers || !userId) return null;
         return proxy((event: SubscriptionMessage)=>{
-            receiveConversationEvent(workers, userId, event, setRelayAvailable, refreshConversationListHandler);
+            receiveConversationEvent(workers, userId, event, setRelayAvailable, refreshConversationListHandler, setModelsUpdatedHandler);
         })
-    }, [workers, userId, setRelayAvailable, refreshConversationListHandler]);
+    }, [workers, userId, setRelayAvailable, refreshConversationListHandler, setModelsUpdatedHandler]);
 
     useEffect(()=>{
         if(!workers || !ready || !userId || !chatConversationEventCb) return;  // Note ready to sync
@@ -127,11 +132,11 @@ async function syncConversations(workers: AppWorkers, userId: string) {
             }
 
             if(response.done) {
-                let missingKeys = await getMissingConversationKeys(userId);
+                const missingKeys = await getMissingConversationKeys(userId);
 
                 if(missingKeys.length > 0) {
                     // Try to load from server
-                    let keyResponse = await workers.connection.getConversationKeys(missingKeys);
+                    const keyResponse = await workers.connection.getConversationKeys(missingKeys);
                     await handleConversationKeyResponse(workers, keyResponse, userId);
                 }
 
@@ -155,30 +160,36 @@ async function syncConversations(workers: AppWorkers, userId: string) {
 
 function LoadModels() {
 
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let setModels = useChatStore(state=>state.setModels);
+    const workers = useWorkers();
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
+    const setModels = useChatStore(state=>state.setModels);
+    const modelsUpdated = useChatStore(state=>state.modelsUpdated);
+    const setModelsUpdated = useChatStore(state=>state.setModelsUpdated);
 
     useEffect(()=>{
-        if(!ready || !workers) return;
+        if(!ready || !workers || !modelsUpdated) return;
+        setModelsUpdated(false);  // Prevent loop
         workers.connection.getModels()
             .then(response=>{
-                // console.debug("Models response: ", response);
                 if(response.ok !== true) throw new Error("Error receiving models: " + response.err);
                 if(response.models) setModels(response.models);
             })
-            .catch(err=>console.error("Error loading models", err));
-    }, [ready, workers, setModels]);
+            .catch(err=>{
+                console.error("Error loading models", err);
+                // Retry loading models after 10 seconds
+                setTimeout(()=>setModelsUpdated(true), 10_000);
+            });
+    }, [ready, workers, modelsUpdated, setModels, setModelsUpdated]);
 
     return <></>;
 }
 
 function CheckRelayAvailable() {
 
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let relayAvailable = useChatStore(state=>state.relayAvailable);
-    let setRelayAvailable = useChatStore(state=>state.setRelayAvailable);
+    const workers = useWorkers();
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
+    const relayAvailable = useChatStore(state=>state.relayAvailable);
+    const setRelayAvailable = useChatStore(state=>state.setRelayAvailable);
 
     useEffect(()=>{
         if(!ready) {
@@ -191,7 +202,7 @@ function CheckRelayAvailable() {
         workers.connection.pingRelay()
             .then(response=>{
                 // console.debug("Ping response", response);
-                let available = !!response.ok;
+                const available = !!response.ok;
                 setRelayAvailable(available);
             })
             .catch(err=>{
@@ -219,7 +230,7 @@ type OllamaRelaiStatus = {
 function receiveConversationEvent(
     workers: AppWorkers | null, userId: string,
     event: SubscriptionMessage, 
-    setRelayAvailable: (available: boolean)=>void, refreshTrigger: ()=>void, 
+    setRelayAvailable: (available: boolean)=>void, refreshTrigger: ()=>void, setModelsUpdated: ()=>void,
 ) {
     let conversationEvent = event.message as ConversationEvent;
 
@@ -232,6 +243,8 @@ function receiveConversationEvent(
             let message = event.message as OllamaRelaiStatus;
             let available = !!message.available;
             setRelayAvailable(available);
+        } else if(action === 'modelsUpdated') {
+            setModelsUpdated();
         } else {
             console.warn("Received unhandled event for domain ollama_relai ", event);
         }
