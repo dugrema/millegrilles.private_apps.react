@@ -237,10 +237,16 @@ export default function Chat() {
         setWaiting(id);
     }), [setWaiting]);
 
-    const submitHandler = useCallback(() => {
+    const submitHandler = useCallback((e: MouseEvent<HTMLButtonElement> | string) => {
         if(!chatInput.trim()) return;  // No message, nothing to do
         if(!workers) throw new Error('workers not initialized');
         if(!conversationKey) throw new Error('Encryption key is not initialized');
+
+        let actionName = 'chat'
+        if(typeof(e) === 'string') actionName = e;
+        else {
+            actionName = e.currentTarget.value;
+        }
 
         // let newMessage = {'message_id': 'current', 'role': 'user', 'content': chatInput};
         const tuuids = fileAttachments?.map(item=>item.tuuid);
@@ -321,6 +327,7 @@ export default function Chat() {
                 chatCallback, 
                 userMessageCallback,
                 setWaitingCallback,
+                actionName,
             );
             if(!ok) {
                 console.error("Error sending chat message");
@@ -352,7 +359,7 @@ export default function Chat() {
         if(e.key === 'Enter' && !e.shiftKey) {
             e.stopPropagation();
             e.preventDefault();
-            submitHandler();
+            submitHandler('chat');
         }
     }, [submitHandler])
 
@@ -411,10 +418,16 @@ export default function Chat() {
 
                 <div className='text-center col-span-12'>
                     {!waiting?
-                        <button disabled={!ready || !relayAvailable} 
-                            className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900' onClick={submitHandler}>
-                                Send
-                        </button>
+                        <>
+                            <button disabled={!ready || !relayAvailable} value='chat' onClick={submitHandler}
+                                className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
+                                    Send
+                            </button>
+                            <button disabled={!ready || !relayAvailable} value='knowledge_query' onClick={submitHandler}
+                                className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
+                                    Query
+                            </button>
+                        </>
                         :
                         <button disabled={!ready || !relayAvailable}
                             className='varbtn w-24 inline-block bg-red-700 hover:bg-red-600 active:bg-red-500 text-center' onClick={cancelHandler}>

@@ -361,12 +361,14 @@ export class AppsConnectionWorker extends ConnectionWorker {
         streamCallback: (e: MessageResponse)=>Promise<void>, 
         messageCallback: (e: messageStruct.MilleGrillesMessage)=>Promise<void>,
         setWaiting: (e: string)=>void,
+        action?: string,
     ): Promise<boolean> {
         if(!this.connection) throw new Error("Connection is not initialized");
+        if(!action) action = 'chat';
         let signedMessage = await this.connection.createRoutedMessage(
             messageStruct.MessageKind.Command,
             command, 
-            {domaine: DOMAINE_OLLAMA_RELAI, action: 'chat'},
+            {domaine: DOMAINE_OLLAMA_RELAI, action},
         );
         signedMessage.attachements = {history, signature, keys};
         if(!signedMessage.id) throw new Error('Message Id not generated');

@@ -52,6 +52,7 @@
         {"domain": "AiLanguage", "action": "setRag"},
         {"domain": "ollama_relai", "action": "generate", "roles": ["ollama_relai"], "stream": true, "timeout": 180},
         {"domain": "ollama_relai", "action": "chat", "roles": ["ollama_relai"], "stream": true, "timeout": 180},
+        {"domain": "ollama_relai", "action": "knowledge_query", "roles": ["ollama_relai"], "stream": true, "timeout": 180},
         {"domain": "ollama_relai", "action": "cancelChat", "timeout": 5},
         {"domain": "ollama_relai", "action": "model"},
         {"domain": "GrosFichiers", "action": "ajouterContactLocal"},
