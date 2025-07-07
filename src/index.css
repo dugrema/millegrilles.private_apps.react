@@ -38,8 +38,8 @@
     color: rgb(66 56 157);
 }
 
-.markdown H1 { font-weight: 900; font-size: x-large;}
-.markdown H2 { font-weight: 800; font-size: large;}
-.markdown H3 { font-weight: 700;}
+.markdown H1 { font-weight: 900; color: rgb(23, 5, 190); font-size: x-large; padding-top: 1rem; padding-bottom: 0.5rem;}
+.markdown H2 { font-weight: 800; color: rgb(23, 5, 190); font-size: large; padding-top: 0.5rem; padding-bottom: 0.25rem;}
+.markdown H3 { font-weight: 700; color: rgb(23, 5, 190); padding-top: 0.5rem; padding-bottom: 0.25rem;}
 
 .markdown UL { list-style: disc; margin-left: 1rem;}
