@@ -1,18 +1,23 @@
 import { ChangeEvent, Dispatch, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import axios, { AxiosError } from "axios";
-import { Formatters } from "millegrilles.reactdeps.typescript";
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkRehype from 'remark-rehype';
 
+import { Formatters } from "millegrilles.reactdeps.typescript";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore from "./userBrowsingStore";
 import useWorkers from "../workers/workers";
-import { FileImageData, FileVideoData, getCurrentVideoPosition, removeVideoPosition, setVideoPosition, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
+import { FileComment, FileImageData, FileVideoData, getCurrentVideoPosition, removeVideoPosition, setVideoPosition, TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
 import { CONST_VIDEO_MAX_RESOLUTION } from "./Settings";
 import { VIDEO_RESOLUTIONS } from "./picklistValues";
 import VideoConversion from "./VideoConversion";
 import { isVideoMimetype } from "./mimetypes";
 import ActionButton from "../resources/ActionButton";
 import { downloadFile, openFile } from "./transferUtils";
+
+
 import ProgressBar from "./ProgressBar";
 
 export function DetailFileViewLayout(props: {file: TuuidsIdbStoreRowType | null, thumbnail: Uint8Array | null}) {
@@ -958,4 +963,136 @@ export function supportsVideoData(video: FileVideoData): CanPlayTypeResult {
     }
 
     return supported;
+}
+
+type FileAddProps = {file: TuuidsIdbStoreRowType | null, refreshTrigger: ()=>Promise<void>};
+
+function AddComment(props: FileAddProps) {
+
+    const {file, refreshTrigger} = props;
+
+    const workers = useWorkers();
+    const ready = useConnectionStore(state=>state.workersReady);
+
+    const [comment, setComment] = useState('');
+    const commentOnChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>)=>setComment(e.currentTarget.value), [setComment]);
+
+    const addHandler = useCallback(async () => {
+        if(!workers || !ready) throw new Error('workers not intialized');
+        if(!file?.secretKey) throw new Error('File key not ready');
+        if(!comment) throw new Error('No comment / empty comment provided');
+        const encryptedComment = await workers.encryption.encryptMessageMgs4ToBase64({comment}, file.secretKey);
+        const keyId = file.keyId || file.encryptedMetadata?.cle_id;
+        if(!keyId) throw new Error('Missing key id, unable to encrypt comment')
+        encryptedComment.cle_id = keyId;
+        delete encryptedComment.digest;
+        delete encryptedComment.cle;
+        delete encryptedComment.cleSecrete;
+        const response = await workers.connection.collection2AddFileComment(file.tuuid, encryptedComment);
+        if(response.ok !== true) throw new Error('Error adding comment: ' + response.err);
+        
+        // Reset comment
+        setComment('');
+        if(refreshTrigger) await refreshTrigger()
+    }, [workers, ready, file, comment, setComment, refreshTrigger]);
+
+    return (
+        <div className='grid grid-cols-12 px-2 pb-4'>
+            <textarea value={comment} onChange={commentOnChange} 
+                placeholder='Add a comment here.'
+                className='text-black rounded-md p-0 h-24 sm:p-1 sm:h-24 col-span-12 w-full col-span-12 md:col-span-11' />
+            <ActionButton onClick={addHandler} disabled={!ready || !comment} revertSuccessTimeout={3}
+                className='varbtn w-20 md:w-full bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
+                    Add
+            </ActionButton>
+        </div>
+    )
+}
+
+type FileCommentsProps = {file: TuuidsIdbStoreRowType | null, deleteHandler: (commentId: MouseEvent<HTMLButtonElement>)=>Promise<void>};
+
+function FileComments(props: FileCommentsProps) {
+    const {file, deleteHandler} = props;
+    const comments = file?.decryptedComments;
+
+    const ready = useConnectionStore(state=>state.workersReady);
+
+    const sortedComments = useMemo(()=>{
+        if(!comments) return null;
+        const commentCopy = [...comments];
+        commentCopy.sort((a, b)=>b.date - a.date);
+        return commentCopy;
+    }, [comments]) as FileComment[] | null;
+
+    if(!sortedComments) return <></>;
+
+    const plugins = [remarkGfm, remarkRehype];
+
+    const elems = sortedComments.map((item, idx)=>{
+        let contentString = 'N/A';        
+        if(item.comment) {
+            contentString = (item.user_id?'':'## System generated\n\n') + item.comment;
+        } else if(item.tags) {
+            contentString = '## Tags\n\n ' + item.tags.join(', ');
+        }
+        return (
+            <div key={item.comment_id} className='grid grid-cols-3 lg:grid-cols-12 mb-4 hover:bg-violet-600/50'>
+                <p className='col-span-2 lg:col-span-2 bg-violet-800/50 lg:bg-violet-800/25'>
+                    <Formatters.FormatterDate value={item.date} />
+                </p>
+                <div className='lg:hidden text-right bg-violet-800/50 lg:bg-violet-800/25'>
+                    <ActionButton onClick={deleteHandler} disabled={!ready || !deleteHandler} confirm={true} value={item.comment_id} varwidth={10}>
+                            X
+                    </ActionButton>
+                </div>
+                <div className='col-span-3 lg:col-span-9 markdown pb-2 lg:pb-1 bg-violet-800/25'>
+                    <Markdown remarkPlugins={plugins}>{contentString}</Markdown>
+                </div>
+                <div className='hidden lg:block'>
+                    <ActionButton onClick={deleteHandler} disabled={!ready || !deleteHandler} confirm={true} value={item.comment_id} varwidth={10}>
+                            X
+                    </ActionButton>
+                </div>
+            </div>
+        )
+    });
+
+    return (
+        <>
+            {elems}
+        </>
+    );
+}
+
+type ViewFileCommentsProps = {
+    file: TuuidsIdbStoreRowType | null, 
+    thumbnail: Uint8Array | null,
+    updateFileHandler: ()=>Promise<void>, 
+    deleteCommentHandler: (e: MouseEvent<HTMLButtonElement>)=>Promise<void>
+}
+
+export function ViewFileComments(props: ViewFileCommentsProps) {
+    const {file, updateFileHandler, deleteCommentHandler, thumbnail} = props;
+
+    const isMedia = useMemo(()=>{
+        if(thumbnail) return true;
+        if(!file) return false;
+        if(file.fileData?.video || file.fileData?.images) return true;
+        let mimetype = file.fileData?.mimetype;
+        if(mimetype) return isVideoMimetype(mimetype) || supportsAudioFormat(mimetype);
+        return false;
+    }, [file, thumbnail]);
+
+    const cssPadding = useMemo(()=>{
+        if(isMedia) return 'md:relative md:-top-8 lg:-top-12 xl:-top-28';
+        return '';
+    }, [isMedia]);
+
+    return (
+        <div className={cssPadding}>
+            <h2 className='font-bold text-lg pb-2'>Comments</h2>
+            <AddComment file={file} refreshTrigger={updateFileHandler} />
+            <FileComments file={file} deleteHandler={deleteCommentHandler} />
+        </div>
+    );
 }
