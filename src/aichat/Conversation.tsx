@@ -147,16 +147,9 @@ export default function Chat() {
     const pushUserQuery = useChatStore(state=>state.pushUserQuery);
     const clearConversation = useChatStore(state=>state.clear);
 
-    const [chatInput, setChatInput] = useState('');
     const [waiting, setWaiting] = useState(null as string | null);
     const [lastUpdate, setLastUpdate] = useState(0);
-    const [fileAttachments, setFileAttachments] = useState(null as TuuidsBrowsingStoreRow[] | null);
-
-    const chatInputOnChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
-        let value = e.currentTarget.value;
-        setChatInput(value);
-        // setLastUpdate(new Date().getTime());
-    }, [setChatInput]);
+    // const [fileAttachments, setFileAttachments] = useState(null as TuuidsBrowsingStoreRow[] | null);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -237,12 +230,12 @@ export default function Chat() {
         setWaiting(id);
     }), [setWaiting]);
 
-    const submitHandler = useCallback((e: MouseEvent<HTMLButtonElement> | string) => {
-        if(!chatInput.trim()) return;  // No message, nothing to do
+    const submitHandler = useCallback((e: MouseEvent<HTMLButtonElement> | string, chatInput: string, fileAttachments: TuuidsBrowsingStoreRow[] | null) => {
+        if(!chatInput.trim()) return false;  // No message, nothing to do
         if(!workers) throw new Error('workers not initialized');
         if(!conversationKey) throw new Error('Encryption key is not initialized');
 
-        let actionName = 'chat'
+        let actionName = 'chat';
         if(typeof(e) === 'string') actionName = e;
         else {
             actionName = e.currentTarget.value;
@@ -251,9 +244,9 @@ export default function Chat() {
         // let newMessage = {'message_id': 'current', 'role': 'user', 'content': chatInput};
         const tuuids = fileAttachments?.map(item=>item.tuuid);
         pushUserQuery(chatInput, tuuids);
-        // Reset inputs
-        setChatInput('');
-        setFileAttachments(null);
+        // // Reset inputs
+        // setChatInput('');
+        // setFileAttachments(null);
         
         Promise.resolve().then(async () => {
             if(!workers) throw new Error("Workers not initialized"); 
@@ -335,9 +328,11 @@ export default function Chat() {
             navigate(`/apps/aichat/conversation/${conversationId}`);
         })
         .catch(err=>console.error("submitHandler Error sending message ", err))
-        .finally(()=>setWaiting(null))
-    }, [workers, userId, conversationId, conversationKey, messages, chatInput, setChatInput, chatCallback, setWaiting, 
-        pushUserQuery, userMessageCallback, newConversation, model, contextSize, navigate, fileAttachments, setFileAttachments]
+        .finally(()=>setWaiting(null));
+
+        return true;
+    }, [workers, userId, conversationId, conversationKey, messages, chatCallback, setWaiting, 
+        pushUserQuery, userMessageCallback, newConversation, model, contextSize, navigate]
     );
 
     const cancelHandler = useCallback(()=>{
@@ -354,22 +349,13 @@ export default function Chat() {
             });
     }, [workers, ready, waiting]);
 
-    // Submit on ENTER in the textarea
-    let textareaOnKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>)=>{
-        if(e.key === 'Enter' && !e.shiftKey) {
-            e.stopPropagation();
-            e.preventDefault();
-            submitHandler('chat');
-        }
-    }, [submitHandler])
-
     useEffect(()=>{
         // Clear conversation on exit
         return () => {
             clearConversation();
-            setChatInput('');            
+            // setChatInput('');            
         };
-    }, [clearConversation, setChatInput]);
+    }, [clearConversation /*, setChatInput*/]);
 
     useEffect(()=>{
         if(waiting || !conversationReadyToSave) return;
@@ -407,43 +393,88 @@ export default function Chat() {
             
             <div className='grid grid-cols-1 sm:grid-cols-3 fixed bottom-0 w-full pl-2 pr-6 mb-8'>
                 <ModelPickList value={model} onChange={modelOnChange} defaultModel={defaultModel} />
-                
-                <textarea value={chatInput} onChange={chatInputOnChange} onKeyDown={textareaOnKeyDown} 
-                    placeholder='Entrez votre question ici. Exemple : Donne-moi une liste de films sortis en 1980.'
-                    className='text-black rounded-md p-0 h-16 sm:p-1 sm:h-16 col-span-12' />
-
-                <div className='w-full col-span-12'>
-                    <FileAttachments files={fileAttachments} setFiles={setFileAttachments} />
-                </div>
-
-                <div className='text-center col-span-12'>
-                    {!waiting?
-                        <>
-                            <button disabled={!ready || !relayAvailable} value='chat' onClick={submitHandler}
-                                className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
-                                    Send
-                            </button>
-                            <button disabled={!ready || !relayAvailable} value='knowledge_query' onClick={submitHandler}
-                                className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
-                                    Query
-                            </button>
-                        </>
-                        :
-                        <button disabled={!ready || !relayAvailable}
-                            className='varbtn w-24 inline-block bg-red-700 hover:bg-red-600 active:bg-red-500 text-center' onClick={cancelHandler}>
-                                Cancel
-                        </button>
-                    }
-                    <Link to='/apps/aichat' 
-                        className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
-                            Back
-                    </Link>
-                </div>
+                <ChatInput submitHandler={submitHandler} cancelHandler={cancelHandler} waiting={!!waiting} />
             </div>
 
             <SyncConversationMessages />
         </>
     )
+}
+
+type ChatInputProps = {
+    submitHandler: (e: MouseEvent<HTMLButtonElement> | string, chatInput: string, fileAttachments: TuuidsBrowsingStoreRow[] | null) => boolean | null,
+    cancelHandler: ()=>void,
+    waiting: boolean,
+}
+
+function ChatInput(props: ChatInputProps) {
+    const {submitHandler, cancelHandler, waiting} = props;
+
+    const ready = useConnectionStore(state=>state.connectionReady);
+    const relayAvailable = useChatStore(state=>state.relayAvailable);
+
+    const [chatInput, setChatInput] = useState('');
+    const [fileAttachments, setFileAttachments] = useState(null as TuuidsBrowsingStoreRow[] | null);
+    const chatInputOnChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>)=>setChatInput(e.currentTarget.value), [setChatInput]);
+
+    const localSubmitHandler = useCallback((e: MouseEvent<HTMLButtonElement> | string)=>{
+        // Reset inputs
+
+        let queryType = 'chat';
+        if(typeof(e) === 'string') queryType = e;
+        else queryType = e.currentTarget.value;
+
+        const ok = submitHandler(queryType, chatInput, fileAttachments);
+        if(ok) {
+            setChatInput('');
+            setFileAttachments(null);
+        }
+    }, [submitHandler, chatInput, fileAttachments, setChatInput, setFileAttachments]);
+
+    // Submit on ENTER in the textarea
+    let textareaOnKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>)=>{
+        if(e.key === 'Enter' && !e.shiftKey) {
+            e.stopPropagation();
+            e.preventDefault();
+            localSubmitHandler('chat');
+        }
+    }, [localSubmitHandler]);
+
+    return (
+        <>
+            <textarea value={chatInput} onChange={chatInputOnChange} onKeyDown={textareaOnKeyDown} 
+                placeholder='Entrez votre question ici. Exemple : Donne-moi une liste de films sortis en 1980.'
+                className='text-black rounded-md p-0 h-16 sm:p-1 sm:h-16 col-span-12' />
+
+            <div className='w-full col-span-12'>
+                <FileAttachments files={fileAttachments} setFiles={setFileAttachments} />
+            </div>
+
+            <div className='text-center col-span-12'>
+                {!waiting?
+                    <>
+                        <button disabled={!ready || !relayAvailable} value='chat' onClick={localSubmitHandler}
+                            className='varbtn w-24 bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
+                                Send
+                        </button>
+                        <button disabled={!ready || !relayAvailable} value='knowledge_query' onClick={localSubmitHandler}
+                            className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
+                                Query
+                        </button>
+                    </>
+                    :
+                    <button disabled={!ready || !relayAvailable}
+                        className='varbtn w-24 inline-block bg-red-700 hover:bg-red-600 active:bg-red-500 text-center' onClick={cancelHandler}>
+                            Cancel
+                    </button>
+                }
+                <Link to='/apps/aichat' 
+                    className='varbtn w-24 inline-block bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-center'>
+                        Back
+                </Link>
+            </div>
+        </>
+    );
 }
 
 type ChatResponse = {content: string, thinking?: string | null, role: string};
