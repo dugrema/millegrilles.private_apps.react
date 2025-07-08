@@ -241,6 +241,7 @@ export class UploadThreadWorker {
         while(true) {
             // Get next part
             let part = await getUploadPart(uploadId, position);
+            // console.debug("Loaded part %s/%s: %O", uploadId, position, part);
             if(!part) break;  // Done
 
             // Give the browser a chance to offload the part Uint8Array from memory by using a blob
@@ -273,7 +274,16 @@ export class UploadThreadWorker {
                     let axiosErr = err as AxiosError;
                     if(axiosErr.status === 412) {
                         // The part is already uploaded. Just move on to next.
-                        console.debug("part %s already uploaded", position);
+                        // console.warn("axiosErro headers info: %O", axiosErr.response?.headers);
+                        const currentPositionStr = axiosErr.response?.headers['x-current-position'];
+                        const currentPositionInt = Number.parseInt(currentPositionStr);
+                        if(currentPositionInt) {
+                            console.info("Resetting upload position from header value: %s", currentPositionInt);
+                            position = currentPositionInt;
+                            continue;
+                        } else {
+                            console.info("part %s already uploaded", position);
+                        }
                     } else {
                         // Unhandled upload error
                         throw err;
