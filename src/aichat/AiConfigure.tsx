@@ -198,6 +198,8 @@ function Models() {
     const [ragDocumentSize, setRagDocumentSize] = useState(1000 as number | string);
     const [ragOverlapSize, setRagOverlapSize] = useState(250 as number | string);
 
+    const [kiwixWikipediaEnSearch, setKiwixWikipediaEnSearch] = useState('');
+
     const defaultModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setDefaultModel(e.currentTarget.value), [setDefaultModel]);
     const chatContextLengthOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
         const value = Number.parseInt(e.currentTarget.value);
@@ -228,6 +230,8 @@ function Models() {
         else setRagOverlapSize(value);
     }, [setRagOverlapSize]);
 
+    const kiwixWikipediaEnSearchOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setKiwixWikipediaEnSearch(e.currentTarget.value), [setKiwixWikipediaEnSearch]);
+
     const applyHandler = useCallback(async () => {
         if(!workers || !ready) throw new Error('workers not initialized');
 
@@ -250,10 +254,14 @@ function Models() {
         if(responseModels.ok !== true) throw new Error('Error saving model parameters: ' + responseModels.err);
 
         const responseRag = await workers.connection.setAiRag(ragContextSizeVal, ragDocumentSizeVal, ragOverlapSizeVal);
-
         if(responseRag.ok !== true) throw new Error('Error saving RAG parameters: ' + responseRag.err);
+
+        const urls = {kiwixWikipediaEnSearch};
+        const responseUrls = await workers.connection.setAiUrls(urls);
+        if(responseUrls.ok !== true) throw new Error('Error saving URLs: ' + responseRag.err);
     }, [workers, ready, defaultModel, chatContextLength, chatModel, knowledgeModel, embeddingModel, ragQueryModel, visionModel, 
-        ragContextSize, ragDocumentSize, ragOverlapSize]);
+        ragContextSize, ragDocumentSize, ragOverlapSize,
+        kiwixWikipediaEnSearch]);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -273,10 +281,14 @@ function Models() {
                 setRagContextSize(response.rag?.context_len || 4096);
                 setRagDocumentSize(response.rag?.document_chunk_len || 1000);
                 setRagOverlapSize(response.rag?.document_overlap_len || 250);
+
+                // URLs
+                setKiwixWikipediaEnSearch(response.urls?.kiwixWikipediaEnSearch || '')
             })
             .catch(err=>console.error("Error loading configuration", err));
     }, [workers, ready, setDefaultModel, setChatContextLength, setChatModel, setKnowledgeModel, setEmbeddingModel, setRagQueryModel, setVisionModel, setRagContextSize, 
-        setRagDocumentSize, setRagOverlapSize]);
+        setRagDocumentSize, setRagOverlapSize,
+        setKiwixWikipediaEnSearch]);
 
     return (
         <section className='pt-4'>
@@ -342,6 +354,13 @@ function Models() {
                 <label htmlFor='rag-context'>RAG overlap size</label>
                 <input id='rag-context' type="text" value={ragOverlapSize} onChange={ragOverlapSizeOnChange}
                     className='text-white bg-slate-500' />
+
+                <h3 className='font-bold pt-6 pb-2 lg:col-span-4'>URL references</h3>
+
+                <label htmlFor='rag-context'>KIWIX - Wikipedia english search</label>
+                <input id='rag-context' type="text" value={kiwixWikipediaEnSearch} onChange={kiwixWikipediaEnSearchOnChange}
+                    className='lg:col-span-3 text-white bg-slate-500' />
+
             </div>
 
             <div className='pt-2'>

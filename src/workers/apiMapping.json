@@ -50,6 +50,7 @@
         {"domain": "AiLanguage", "action": "setOllamaUrls"},
         {"domain": "AiLanguage", "action": "setDefaults"},
         {"domain": "AiLanguage", "action": "setModels"},
+        {"domain": "AiLanguage", "action": "setUrls"},
         {"domain": "AiLanguage", "action": "setRag"},
         {"domain": "ollama_relai", "action": "generate", "roles": ["ollama_relai"], "stream": true, "timeout": 180},
         {"domain": "ollama_relai", "action": "chat", "roles": ["ollama_relai"], "stream": true, "timeout": 180},

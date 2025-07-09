@@ -120,6 +120,7 @@ export type GetAiConfigurationResponse = MessageResponse & {
     default?: {model_name?: string, chat_context_length?: number},
     models?: {chat_model_name?: string, vision_model_name?: string, knowledge_model_name?: string, embedding_model_name?: string, rag_query_model_name?: string},
     rag?: {context_len?: number, document_chunk_len?: number, document_overlap_len?: number},
+    urls?: {[key: string]: string}
 }
 
 export type DecryptedSecretKey = {
@@ -463,6 +464,12 @@ export class AppsConnectionWorker extends ConnectionWorker {
             document_chunk_len: documentChunkSize,
             document_overlap_len: documentOverlapSize,
         }, DOMAINE_AI_LANGUAGE, 'setRag');
+    }
+
+    async setAiUrls(urls: {[key: string]: string}) 
+    {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({urls}, DOMAINE_AI_LANGUAGE, 'setUrls');
     }
 
     async syncConversationMessages(
