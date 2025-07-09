@@ -187,9 +187,13 @@ function Models() {
 
     const [defaultModel, setDefaultModel] = useState('');
     const [chatContextLength, setChatContextLength] = useState(4096 as number | string);
-    const [ragEmbeddingModel, setRagEmbeddingModel] = useState('');
-    const [ragQueryModel, setRagQueryModel] = useState('');
+
+    const [chatModel, setChatModel] = useState('');
+    const [knowledgeModel, setKnowledgeModel] = useState('');
     const [visionModel, setVisionModel] = useState('');
+    const [embeddingModel, setEmbeddingModel] = useState('');
+    const [ragQueryModel, setRagQueryModel] = useState('');
+
     const [ragContextSize, setRagContextSize] = useState(4096 as number | string);
     const [ragDocumentSize, setRagDocumentSize] = useState(1000 as number | string);
     const [ragOverlapSize, setRagOverlapSize] = useState(250 as number | string);
@@ -200,11 +204,16 @@ function Models() {
         if(isNaN(value)) setChatContextLength('');
         else setChatContextLength(value);
     }, [setChatContextLength]);
-    const ragEmbeddingModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setRagEmbeddingModel(e.currentTarget.value), [setRagEmbeddingModel]);
-    const ragQueryModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setRagQueryModel(e.currentTarget.value), [setRagQueryModel]);
+
+    const chatModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setChatModel(e.currentTarget.value), [setChatModel]);
+    const knowledgeModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setKnowledgeModel(e.currentTarget.value), [setKnowledgeModel]);
     const visionModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setVisionModel(e.currentTarget.value), [setVisionModel]);
+
+    const embeddingModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setEmbeddingModel(e.currentTarget.value), [setEmbeddingModel]);
+    const ragQueryModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setRagQueryModel(e.currentTarget.value), [setRagQueryModel]);
     const ragContextSizeOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
-        const value = Number.parseInt(e.currentTarget.value);
+
+    const value = Number.parseInt(e.currentTarget.value);
         if(isNaN(value)) setRagContextSize('');
         else setRagContextSize(value);
     }, [setRagContextSize]);
@@ -232,14 +241,19 @@ function Models() {
         const ragDocumentSizeVal = typeof(ragDocumentSize)==='number'?ragDocumentSize:null;
         const ragOverlapSizeVal = typeof(ragOverlapSize)==='number'?ragOverlapSize:null;
 
-        const responseRag = await workers.connection.setAiRag(
-            ragEmbeddingModel?ragEmbeddingModel:null, 
+        const responseModels = await workers.connection.setAiModels(
+            chatModel?chatModel:null, 
+            knowledgeModel?knowledgeModel:null, 
+            embeddingModel?embeddingModel:null, 
             ragQueryModel?ragQueryModel:null, 
-            visionModel?visionModel:null,
-            ragContextSizeVal, ragDocumentSizeVal, ragOverlapSizeVal);
+            visionModel?visionModel:null);
+        if(responseModels.ok !== true) throw new Error('Error saving model parameters: ' + responseModels.err);
+
+        const responseRag = await workers.connection.setAiRag(ragContextSizeVal, ragDocumentSizeVal, ragOverlapSizeVal);
 
         if(responseRag.ok !== true) throw new Error('Error saving RAG parameters: ' + responseRag.err);
-    }, [workers, ready, defaultModel, chatContextLength, ragEmbeddingModel, ragQueryModel, visionModel, ragContextSize, ragDocumentSize, ragOverlapSize]);
+    }, [workers, ready, defaultModel, chatContextLength, chatModel, knowledgeModel, embeddingModel, ragQueryModel, visionModel, 
+        ragContextSize, ragDocumentSize, ragOverlapSize]);
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -249,15 +263,19 @@ function Models() {
                 if(!response) throw new Error("Empty response");
                 setDefaultModel(response.default?.model_name || '');
                 setChatContextLength(response.default?.chat_context_length || 4096)
-                setRagEmbeddingModel(response.rag?.model_embedding_name || '');
-                setRagQueryModel(response.rag?.model_query_name || '');
-                setVisionModel(response.rag?.model_vision_name || '');
-                setRagContextSize(response.rag?.context_len);
-                setRagDocumentSize(response.rag?.document_chunk_len);
-                setRagOverlapSize(response.rag?.document_overlap_len);
+
+                setChatModel(response.models?.chat_model_name || '');
+                setKnowledgeModel(response.models?.knowledge_model_name || '');
+                setVisionModel(response.models?.vision_model_name || '');
+                setEmbeddingModel(response.models?.embedding_model_name || '');
+                setRagQueryModel(response.models?.rag_query_model_name || '');
+
+                setRagContextSize(response.rag?.context_len || 4096);
+                setRagDocumentSize(response.rag?.document_chunk_len || 1000);
+                setRagOverlapSize(response.rag?.document_overlap_len || 250);
             })
             .catch(err=>console.error("Error loading configuration", err));
-    }, [workers, ready, setDefaultModel, setChatContextLength, setRagEmbeddingModel, setRagQueryModel, setVisionModel, setRagContextSize, 
+    }, [workers, ready, setDefaultModel, setChatContextLength, setChatModel, setKnowledgeModel, setEmbeddingModel, setRagQueryModel, setVisionModel, setRagContextSize, 
         setRagDocumentSize, setRagOverlapSize]);
 
     return (
@@ -278,26 +296,40 @@ function Models() {
                 <input id='rag-context' type="text" value={chatContextLength} onChange={chatContextLengthOnChange}
                     className='text-white bg-slate-500' />
 
-                <h3 className='font-bold pt-6 pb-2 lg:col-span-4'>Resource Augmented Generation (RAG)</h3>
+                <h3 className='font-bold pt-6 pb-2 lg:col-span-4'>Custom models</h3>
+
+                {/* Custom models */}
+
+                <label htmlFor='rag-embedding'>Chat model</label>
+                <input id='rag-embedding' type="text" value={chatModel} onChange={chatModelOnChange}
+                    className='lg:col-span-3 text-white bg-slate-500' />
+
+                <label htmlFor='rag-embedding'>Knowledge model</label>
+                <input id='rag-embedding' type="text" value={knowledgeModel} onChange={knowledgeModelOnChange}
+                    className='lg:col-span-3 text-white bg-slate-500' />
+
+                <label htmlFor='rag-query'>Vision model</label>
+                <input id='rag-query' type="text" value={visionModel} onChange={visionModelOnChange}
+                    className='lg:col-span-3 text-white bg-slate-500' />
+
+                <label htmlFor='rag-embedding'>Embedding model</label>
+                <input id='rag-embedding' type="text" value={embeddingModel} onChange={embeddingModelOnChange}
+                    className='lg:col-span-3 text-white bg-slate-500' />
+
+                <label htmlFor='rag-query'>Resource Augmented Generation (RAG) query model</label>
+                <input id='rag-query' type="text" value={ragQueryModel} onChange={ragQueryModelOnChange}
+                    className='lg:col-span-3 text-white bg-slate-500' />
+
+                {/* RAG elements */}
+                
+                <h3 className='font-bold pt-6 pb-2 lg:col-span-4'>Resource Augmented Generation (RAG) parameters</h3>
 
                 <ul className='pb-6 lg:col-span-4'>
-                    <li>Warning: Changing RAG model parameters requires a reindexing of all documents (use Coup D'Oeil to trigger).</li>
+                    <li>Warning: Changing embedding model (above) or RAG parameters requires a reindexing of all documents (use Coup D'Oeil to trigger).</li>
                     <li>Model to use for RAG embedding (indexing). Leave empty to disable RAG.</li>
                     <li>Note: changing of RAG chunk and overlap sizes only affects future documents.</li>
                     <li>To apply to all, trigger reindexing in Coup D'Oeil.</li>
                 </ul>
-
-                <label htmlFor='rag-embedding'>Resource Augmented Generation (RAG) embedding model</label>
-                <input id='rag-embedding' type="text" value={ragEmbeddingModel} onChange={ragEmbeddingModelOnChange}
-                    className='text-white bg-slate-500' />
-
-                <label htmlFor='rag-query'>Resource Augmented Generation (RAG) query model</label>
-                <input id='rag-query' type="text" value={ragQueryModel} onChange={ragQueryModelOnChange}
-                    className='text-white bg-slate-500' />
-
-                <label htmlFor='rag-query'>Vision model</label>
-                <input id='rag-query' type="text" value={visionModel} onChange={visionModelOnChange}
-                    className='text-white bg-slate-500' />
 
                 <label htmlFor='rag-context'>RAG context size</label>
                 <input id='rag-context' type="text" value={ragContextSize} onChange={ragContextSizeOnChange}

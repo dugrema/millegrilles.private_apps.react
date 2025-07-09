@@ -28,9 +28,6 @@ import { InitializeUserStore } from '../collections2/AppCollections2';
 
 import { IconCompactDiscSvg } from "../resources/Icons";
 
-const CONST_DEFAULT_MODEL = 'llama3.2:3b-instruct-q8_0';
-
-
 type ContentToEncryptType = {
     messageHistory?: {role: string, content?: string | null, thinking?: string | null}[] | null,
     attachmentKeys?: {[key: string]: string},
@@ -57,7 +54,7 @@ export default function Chat() {
     const setConversationReadyToSave = useChatStore(state=>state.setConversationReadyToSave);
     const newConversation = useChatStore(state=>state.newConversation);
     const setNewConversation = useChatStore(state=>state.setNewConversation);
-    const [defaultModel, setDefaultModel] = useState(CONST_DEFAULT_MODEL);
+    const [defaultModel, setDefaultModel] = useState('');
     const [contextSize, setContextSize] = useState(DEFAULT_CONTEXT_LENGTH);
     const models = useChatStore(state=>state.models);
 
@@ -155,14 +152,7 @@ export default function Chat() {
         if(!workers || !ready) return;
         workers.connection.getConfiguration()
             .then(response=>{
-                // console.debug("AI Configuration", response);
-                const defaultModel = response.default?.model_name || CONST_DEFAULT_MODEL;
-                setDefaultModel(defaultModel);
-                // const contextSize = response.default?.chat_context_length || DEFAULT_CONTEXT_LENGTH;
-                // if(contextSize > DEFAULT_CONTEXT_LENGTH) {
-                //     console.debug("Context size: ", contextSize);
-                //     setContextSize(contextSize);
-                // }
+                setDefaultModel(response.models?.chat_model_name || response.default?.model_name || '');
             })
             .catch(err=>console.error("Error loading configuration", err));
     }, [workers, ready, setDefaultModel, setContextSize]);

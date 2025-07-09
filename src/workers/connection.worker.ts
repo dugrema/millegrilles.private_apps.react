@@ -118,7 +118,8 @@ export type GetModelsResponse = MessageResponse & {models?: LanguageModelType[]}
 export type GetAiConfigurationResponse = MessageResponse & {
     ollama_urls?: {urls?: string[]},
     default?: {model_name?: string, chat_context_length?: number},
-    rag?: any,
+    models?: {chat_model_name?: string, vision_model_name?: string, knowledge_model_name?: string, embedding_model_name?: string, rag_query_model_name?: string},
+    rag?: {context_len?: number, document_chunk_len?: number, document_overlap_len?: number},
 }
 
 export type DecryptedSecretKey = {
@@ -434,19 +435,30 @@ export class AppsConnectionWorker extends ConnectionWorker {
         return await this.connection.sendCommand({model_name: defaultModel, chat_context_length: chatContextLength}, DOMAINE_AI_LANGUAGE, 'setDefaults');
     }
 
-    async setAiRag(
+    async setAiModels(
+        modelChat: string | null,
+        modelKnowledge: string | null,
         modelEmbeddingName: string | null,
         modelQueryName: string | null,
-        modelVisionName: string | null,
+        modelVisionName: string | null)
+    {
+        if(!this.connection) throw new Error("Connection is not initialized");
+        return await this.connection.sendCommand({
+            chat_model_name: modelChat,
+            knowledge_model_name: modelKnowledge,
+            embedding_model_name: modelEmbeddingName,
+            rag_query_model_name: modelQueryName,
+            vision_model_name: modelVisionName,
+        }, DOMAINE_AI_LANGUAGE, 'setModels');
+    }
+
+    async setAiRag(
         contextSize: number | null,
         documentChunkSize: number | null,
         documentOverlapSize: number | null) 
     {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendCommand({
-            model_embedding_name: modelEmbeddingName,
-            model_query_name: modelQueryName,
-            model_vision_name: modelVisionName,
             context_len: contextSize,
             document_chunk_len: documentChunkSize,
             document_overlap_len: documentOverlapSize,
