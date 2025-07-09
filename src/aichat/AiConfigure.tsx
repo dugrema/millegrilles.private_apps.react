@@ -267,7 +267,7 @@ function Models() {
         if(!workers || !ready) return;
         workers.connection.getConfiguration()
             .then(response=>{
-                // console.debug("AI Configuration", response);
+                console.debug("AI Configuration", response);
                 if(!response) throw new Error("Empty response");
                 setDefaultModel(response.default?.model_name || '');
                 setChatContextLength(response.default?.chat_context_length || 4096)
@@ -283,7 +283,7 @@ function Models() {
                 setRagOverlapSize(response.rag?.document_overlap_len || 250);
 
                 // URLs
-                setKiwixWikipediaEnSearch(response.urls?.kiwixWikipediaEnSearch || '')
+                setKiwixWikipediaEnSearch(response.urls?.urls?.kiwixWikipediaEnSearch || '')
             })
             .catch(err=>console.error("Error loading configuration", err));
     }, [workers, ready, setDefaultModel, setChatContextLength, setChatModel, setKnowledgeModel, setEmbeddingModel, setRagQueryModel, setVisionModel, setRagContextSize, 
