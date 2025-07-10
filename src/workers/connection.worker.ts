@@ -118,7 +118,14 @@ export type GetModelsResponse = MessageResponse & {models?: LanguageModelType[]}
 export type GetAiConfigurationResponse = MessageResponse & {
     ollama_urls?: {urls?: string[]},
     default?: {model_name?: string, chat_context_length?: number},
-    models?: {chat_model_name?: string, vision_model_name?: string, knowledge_model_name?: string, embedding_model_name?: string, rag_query_model_name?: string},
+    models?: {
+        chat_model_name?: string, 
+        vision_model_name?: string, 
+        knowledge_model_name?: string, 
+        embedding_model_name?: string, 
+        rag_query_model_name?: string, 
+        summary_model_name?: string,
+    },
     rag?: {context_len?: number, document_chunk_len?: number, document_overlap_len?: number},
     urls?: {urls: {[key: string]: string}}
 }
@@ -441,7 +448,8 @@ export class AppsConnectionWorker extends ConnectionWorker {
         modelKnowledge: string | null,
         modelEmbeddingName: string | null,
         modelQueryName: string | null,
-        modelVisionName: string | null)
+        modelVisionName: string | null,
+        summaryModel: string | null)
     {
         if(!this.connection) throw new Error("Connection is not initialized");
         return await this.connection.sendCommand({
@@ -450,6 +458,7 @@ export class AppsConnectionWorker extends ConnectionWorker {
             embedding_model_name: modelEmbeddingName,
             rag_query_model_name: modelQueryName,
             vision_model_name: modelVisionName,
+            summary_model_name: summaryModel,
         }, DOMAINE_AI_LANGUAGE, 'setModels');
     }
 

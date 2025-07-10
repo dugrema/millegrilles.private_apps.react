@@ -193,6 +193,7 @@ function Models() {
     const [visionModel, setVisionModel] = useState('');
     const [embeddingModel, setEmbeddingModel] = useState('');
     const [ragQueryModel, setRagQueryModel] = useState('');
+    const [summaryModel, setSummaryModel] = useState('');
 
     const [ragContextSize, setRagContextSize] = useState(4096 as number | string);
     const [ragDocumentSize, setRagDocumentSize] = useState(1000 as number | string);
@@ -210,6 +211,7 @@ function Models() {
     const chatModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setChatModel(e.currentTarget.value), [setChatModel]);
     const knowledgeModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setKnowledgeModel(e.currentTarget.value), [setKnowledgeModel]);
     const visionModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setVisionModel(e.currentTarget.value), [setVisionModel]);
+    const summaryModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setSummaryModel(e.currentTarget.value), [setSummaryModel]);
 
     const embeddingModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setEmbeddingModel(e.currentTarget.value), [setEmbeddingModel]);
     const ragQueryModelOnChange = useCallback((e: ChangeEvent<HTMLInputElement>)=>setRagQueryModel(e.currentTarget.value), [setRagQueryModel]);
@@ -250,7 +252,8 @@ function Models() {
             knowledgeModel?knowledgeModel:null, 
             embeddingModel?embeddingModel:null, 
             ragQueryModel?ragQueryModel:null, 
-            visionModel?visionModel:null);
+            visionModel?visionModel:null,
+            summaryModel?summaryModel:null);
         if(responseModels.ok !== true) throw new Error('Error saving model parameters: ' + responseModels.err);
 
         const responseRag = await workers.connection.setAiRag(ragContextSizeVal, ragDocumentSizeVal, ragOverlapSizeVal);
@@ -259,7 +262,7 @@ function Models() {
         const urls = {kiwixWikipediaEnSearch};
         const responseUrls = await workers.connection.setAiUrls(urls);
         if(responseUrls.ok !== true) throw new Error('Error saving URLs: ' + responseRag.err);
-    }, [workers, ready, defaultModel, chatContextLength, chatModel, knowledgeModel, embeddingModel, ragQueryModel, visionModel, 
+    }, [workers, ready, defaultModel, chatContextLength, chatModel, knowledgeModel, embeddingModel, ragQueryModel, visionModel, summaryModel,
         ragContextSize, ragDocumentSize, ragOverlapSize,
         kiwixWikipediaEnSearch]);
 
@@ -277,6 +280,7 @@ function Models() {
                 setVisionModel(response.models?.vision_model_name || '');
                 setEmbeddingModel(response.models?.embedding_model_name || '');
                 setRagQueryModel(response.models?.rag_query_model_name || '');
+                setSummaryModel(response.models?.summary_model_name || '');
 
                 setRagContextSize(response.rag?.context_len || 4096);
                 setRagDocumentSize(response.rag?.document_chunk_len || 1000);
@@ -286,7 +290,9 @@ function Models() {
                 setKiwixWikipediaEnSearch(response.urls?.urls?.kiwixWikipediaEnSearch || '')
             })
             .catch(err=>console.error("Error loading configuration", err));
-    }, [workers, ready, setDefaultModel, setChatContextLength, setChatModel, setKnowledgeModel, setEmbeddingModel, setRagQueryModel, setVisionModel, setRagContextSize, 
+    }, [workers, ready, setDefaultModel, setChatContextLength, 
+        setChatModel, setKnowledgeModel, setEmbeddingModel, setRagQueryModel, setVisionModel, 
+        setRagContextSize, setSummaryModel,
         setRagDocumentSize, setRagOverlapSize,
         setKiwixWikipediaEnSearch]);
 
@@ -330,6 +336,10 @@ function Models() {
 
                 <label htmlFor='rag-query'>Resource Augmented Generation (RAG) query model</label>
                 <input id='rag-query' type="text" value={ragQueryModel} onChange={ragQueryModelOnChange}
+                    className='lg:col-span-3 text-white bg-slate-500' />
+
+                <label htmlFor='rag-query'>Summary model for document indexing</label>
+                <input id='rag-query' type="text" value={summaryModel} onChange={summaryModelOnChange}
                     className='lg:col-span-3 text-white bg-slate-500' />
 
                 {/* RAG elements */}
