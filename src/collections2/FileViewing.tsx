@@ -1081,8 +1081,6 @@ export function ViewFileComments(props: ViewFileCommentsProps) {
         const mimetype = file.fileData?.mimetype || '';
         const isVideo = isVideoMimetype(mimetype);
         const isAudio = supportsAudioFormat(mimetype);
-        console.debug("video: ", isVideo)
-        console.debug("audio: ", isAudio)
         if(mimetype) return [isVideo, isAudio];
         return [false, false];
     }, [file, thumbnail]);
@@ -1092,8 +1090,6 @@ export function ViewFileComments(props: ViewFileCommentsProps) {
         else if(isAudioMedia) return 'md:relative md:-top-2 lg:-top-4 xl:-top-12';
         return '';
     }, [isVisualMedia, isAudioMedia]);
-
-    console.debug("Csspadding", cssPadding)
 
     return (
         <div className={cssPadding}>
