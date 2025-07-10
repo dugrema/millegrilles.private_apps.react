@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, Dispatch, MouseEvent } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, Dispatch, MouseEvent, MutableRefObject } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -373,10 +373,12 @@ export default function Chat() {
 
     }, [waiting, userId, conversationId, conversationReadyToSave, setConversationReadyToSave, messages, conversationKey, newConversation, setNewConversation]);
 
+    const historyViewRef = useRef(null);
+
     return (
         <>
-            <section className='fixed top-9 mb-10 bottom-44 md:bottom-52 overflow-y-auto px-4 w-full'>
-                <ViewHistory triggerScrolldown={lastUpdate} waiting={!!waiting}>
+            <section ref={historyViewRef} className='fixed top-9 mb-10 bottom-44 md:bottom-52 overflow-y-scroll px-4 w-full'>
+                <ViewHistory triggerScrolldown={lastUpdate} waiting={!!waiting} viewRef={historyViewRef}>
                     <div className='font-bold'><ChatAvailable ignoreOk={true} naClassname='text-red-500' /></div>
                 </ViewHistory>
             </section>
@@ -469,56 +471,104 @@ function ChatInput(props: ChatInputProps) {
 
 type ChatResponse = {content: string, thinking?: string | null, role: string};
 
-function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNode, waiting: boolean}) {
+function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNode, waiting: boolean, viewRef: MutableRefObject<any>}) {
  
-    const { triggerScrolldown, waiting } = props;
+    const { triggerScrolldown, waiting, viewRef } = props;
 
     const messages = useChatStore(state=>state.messages);
     const currentResponse = useChatStore(state=>state.currentResponse);
     const [currentVisible, setCurrentVisible] = useState(true);
     const [loaded, setLoaded] = useState(false);  // Used to load most recent message once
 
-    const refBottom = useRef(null);
+    // const refBottom = useRef(null);
 
-    useEffect(()=>{
-        if(!refBottom || !messages || !currentVisible) return;
-        // @ts-ignore
-        refBottom.current?.scrollIntoView({behavior: 'smooth'});
+    // useEffect(()=>{
+    //     if(!refBottom || !messages || !currentVisible) return;
+    //     // @ts-ignore
+    //     refBottom.current?.scrollIntoView({behavior: 'smooth'});
 
-        // Note: currentResponse is needed to make the screen update during the response.
-    }, [refBottom, messages, currentResponse, triggerScrolldown, currentVisible]);
+    //     // Note: currentResponse is needed to make the screen update during the response.
+    // }, [refBottom, messages, currentResponse, triggerScrolldown, currentVisible]);
 
-    // Initial message load
-    useEffect(()=>{
-        if(!refBottom || !messages || loaded) return;
-        setLoaded(true);
-        // @ts-ignore
-        refBottom.current?.scrollIntoView({behavior: 'smooth'});
-    }, [refBottom, messages, loaded, setLoaded])
+    // // Initial message load
+    // useEffect(()=>{
+    //     if(!refBottom || !messages || loaded) return;
+    //     setLoaded(true);
+    //     // @ts-ignore
+    //     refBottom.current?.scrollIntoView({behavior: 'smooth'});
+    // }, [refBottom, messages, loaded, setLoaded])
 
     return (
         <div className='text-left w-full pr-4'>
             {messages.map(item=>(<ChatBubble key={''+item.message_id} value={item} />))}
             {(currentResponse.content || currentResponse.thinking || waiting)?
-                <ChatBubble setVisible={setCurrentVisible} 
+                <ChatBubble
                     value={{query_role: 'assistant', content: currentResponse.content || '', thinking: currentResponse.thinking, message_id: 'currentresponse'}} waiting={waiting} />
                 :''
             }
             {props.children}
-            <div ref={refBottom}></div>
+            <PageBottomLock triggerScrolldown={triggerScrolldown} viewRef={viewRef} />
         </div>
     )
 }
 
-type MessageRowProps = {value: StoreChatMessage, setVisible?: Dispatch<boolean> | null, waiting?: boolean};
+type PageBottomLockProps = {
+    triggerScrolldown: number,
+    viewRef: MutableRefObject<any>,
+}
+
+function PageBottomLock(props: PageBottomLockProps) {
+    const {triggerScrolldown, viewRef} = props;
+
+    const messages = useChatStore(state=>state.messages);
+    const currentResponse = useChatStore(state=>state.currentResponse);
+
+    const { ref: refBottom, visible } = useVisibility({options: {root: viewRef.current, rootMargin: "0px 0px 20px 0px", threshold: 0}});
+    
+    const [currentVisible, setCurrentVisible] = useState(true);
+    const [loaded, setLoaded] = useState(false);  // Used to load most recent message once
+
+    useEffect(()=>{
+        setCurrentVisible(!!visible);
+    }, [visible, setCurrentVisible]);
+
+    useEffect(()=>{
+        if(!refBottom || !messages || !currentResponse || !currentVisible || !viewRef.current || !loaded) return;
+        viewRef.current.scroll({top: viewRef.current.scrollHeight, behavior: 'smooth'});
+        // Note: currentResponse is needed to make the screen update during the response.
+    }, [refBottom, messages, currentResponse, triggerScrolldown, currentVisible, viewRef, loaded]);
+
+    // Initial message load
+    useEffect(()=>{
+        if(!refBottom || !messages || loaded) return;
+        viewRef.current.scroll({top: viewRef.current.scrollHeight});
+        // Give time to load the page, allows moving directly to end (no smooth scrolling)
+        setTimeout(()=>setLoaded(true), 750);
+    }, [refBottom, messages, loaded, setLoaded, viewRef])
+
+    return (
+        <>
+            <div className='mt-4'>
+                <div ref={refBottom} className='text-center'></div>
+            </div>
+        </>
+    )
+}
+
+type MessageRowProps = {
+    value: StoreChatMessage, 
+    //setVisible?: Dispatch<boolean> | null, 
+    waiting?: boolean,
+};
 
 // Src : https://flowbite.com/docs/components/chat-bubble/
 function ChatBubble(props: MessageRowProps) {
 
-    const {setVisible, waiting} = props;
+    // const {setVisible, waiting} = props;
+    const {waiting} = props;
     const {query_role: role, content, thinking, message_date: messageDate, model, tuuids} = props.value;
 
-    const { ref, visible } = useVisibility({});
+    // const { ref, visible } = useVisibility({});
 
     const workers = useWorkers();
     const ready = useConnectionStore(state=>state.connectionAuthenticated);
@@ -526,9 +576,9 @@ function ChatBubble(props: MessageRowProps) {
 
     const [attachedFiles, setAttachedFiles] = useState(null as TuuidsBrowsingStoreRow[] | null);
 
-    useEffect(()=>{
-        if(setVisible) setVisible(!!visible);
-    }, [visible, setVisible])
+    // useEffect(()=>{
+    //     if(setVisible) setVisible(!!visible);
+    // }, [visible, setVisible])
 
     const messageDateSecs = useMemo(()=>{
         if(!messageDate) return undefined;
@@ -599,7 +649,7 @@ function ChatBubble(props: MessageRowProps) {
 
     if(bubbleSide === 'left') {
         return (
-            <div ref={ref} className="flex items-start gap-2.5 pb-1 md:pb-2">
+            <div className="flex items-start gap-2.5 pb-1 md:pb-2">
                 <div className="flex flex-col gap-1 pr-5 lg:pr-20 max-w-full">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
@@ -615,7 +665,7 @@ function ChatBubble(props: MessageRowProps) {
                     <div className="flex flex-col leading-1.5 p-1 md:p-2 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl overflow-x-clip break-words">
                         <ThinkBlock value={thinkBlock} done={!!contentBlock} />
                         {contentBlock?
-                            <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
+                            <div className="text-sm font-normal text-gray-900 dark:text-white markdown chat-bubble">
                                 <Markdown remarkPlugins={plugins}>{contentBlock}</Markdown>
                             </div>
                             :<></>
@@ -633,7 +683,7 @@ function ChatBubble(props: MessageRowProps) {
         )
     } else {
         return (
-            <div ref={ref} className="flex items-start gap-2.5 pb-1 md:pb-2">
+            <div className="flex items-start gap-2.5 pb-1 md:pb-2">
                 <div className="flex flex-col gap-1 w-full lg:pl-20 items-end max-w-full">
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <span className="text-sm font-semibold text-white">{roleName}</span>
@@ -917,7 +967,7 @@ function ThinkBlock(props: ThinkBlockProps) {
     }
 
     return (
-        <div className="text-sm px-6 pb-1 md:pb-2 font-normal text-gray-700 dark:text-white markdown mb-6 bg-slate-200"  onClick={()=>setShow(false)}>
+        <div className="text-sm px-6 pb-1 md:pb-2 font-normal text-gray-700 dark:text-white markdown chat-bubble mb-6 bg-slate-200"  onClick={()=>setShow(false)}>
             <button className='btn inline-block bg-slate-300 hover:bg-slate-600 active:bg-slate-500 text-center' onClick={()=>setShow(true)}>
                 Hide
             </button>
