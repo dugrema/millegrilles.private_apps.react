@@ -1074,19 +1074,26 @@ type ViewFileCommentsProps = {
 export function ViewFileComments(props: ViewFileCommentsProps) {
     const {file, updateFileHandler, deleteCommentHandler, thumbnail} = props;
 
-    const isMedia = useMemo(()=>{
-        if(thumbnail) return true;
-        if(!file) return false;
-        if(file.fileData?.video || file.fileData?.images) return true;
-        let mimetype = file.fileData?.mimetype;
-        if(mimetype) return isVideoMimetype(mimetype) || supportsAudioFormat(mimetype);
-        return false;
+    const [isVisualMedia, isAudioMedia] = useMemo(()=>{
+        if(thumbnail) return [true, false];
+        if(!file) return [false, false];
+        if(file.fileData?.video || file.fileData?.images) return [true, false];
+        const mimetype = file.fileData?.mimetype || '';
+        const isVideo = isVideoMimetype(mimetype);
+        const isAudio = supportsAudioFormat(mimetype);
+        console.debug("video: ", isVideo)
+        console.debug("audio: ", isAudio)
+        if(mimetype) return [isVideo, isAudio];
+        return [false, false];
     }, [file, thumbnail]);
 
     const cssPadding = useMemo(()=>{
-        if(isMedia) return 'md:relative md:-top-8 lg:-top-12 xl:-top-28';
+        if(isVisualMedia) return 'md:relative md:-top-8 lg:-top-12 xl:-top-28';
+        else if(isAudioMedia) return 'md:relative md:-top-2 lg:-top-4 xl:-top-12';
         return '';
-    }, [isMedia]);
+    }, [isVisualMedia, isAudioMedia]);
+
+    console.debug("Csspadding", cssPadding)
 
     return (
         <div className={cssPadding}>
