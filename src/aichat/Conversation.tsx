@@ -42,6 +42,8 @@ export default function Chat() {
     const workers = useWorkers();
     const navigate = useNavigate();
 
+    const historyViewRef = useRef(null);
+
     const relayAvailable = useChatStore(state=>state.relayAvailable);
     const conversationId = useChatStore(state=>state.conversationId);
     const conversationKey = useChatStore(state=>state.key);
@@ -304,6 +306,12 @@ export default function Chat() {
             // setWaiting(true);
             if(!workers) throw new Error("Workers not initialized");
             if(!chatCallback) throw new Error("Chat callback not initialized");
+
+            // @ts-ignore
+            historyViewRef.current?.scroll({top: historyViewRef.current.scrollHeight});
+            // @ts-ignore
+            setTimeout(()=>historyViewRef.current?.scroll({top: historyViewRef.current.scrollHeight, behavior: 'smooth'}), 750);
+
             const ok = await workers.connection.sendChatMessage(
                 command, encryptedMessageHistory, conversationKey.signature, conversationKey.encrypted_keys,
                 // @ts-ignore
@@ -314,15 +322,17 @@ export default function Chat() {
             );
             if(!ok) {
                 console.error("Error sending chat message");
+            } else {
+                navigate(`/apps/aichat/conversation/${conversationId}`);
             }
-            navigate(`/apps/aichat/conversation/${conversationId}`);
         })
         .catch(err=>console.error("submitHandler Error sending message ", err))
         .finally(()=>setWaiting(null));
 
         return true;
     }, [workers, userId, conversationId, conversationKey, messages, chatCallback, setWaiting, 
-        pushUserQuery, userMessageCallback, newConversation, model, contextSize, navigate]
+        pushUserQuery, userMessageCallback, newConversation, model, contextSize, 
+        navigate, historyViewRef]
     );
 
     const cancelHandler = useCallback(()=>{
@@ -372,8 +382,6 @@ export default function Chat() {
         .catch(err=>console.error("Error saving conversation exchange", err));
 
     }, [waiting, userId, conversationId, conversationReadyToSave, setConversationReadyToSave, messages, conversationKey, newConversation, setNewConversation]);
-
-    const historyViewRef = useRef(null);
 
     return (
         <>
@@ -477,26 +485,6 @@ function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNod
 
     const messages = useChatStore(state=>state.messages);
     const currentResponse = useChatStore(state=>state.currentResponse);
-    const [currentVisible, setCurrentVisible] = useState(true);
-    const [loaded, setLoaded] = useState(false);  // Used to load most recent message once
-
-    // const refBottom = useRef(null);
-
-    // useEffect(()=>{
-    //     if(!refBottom || !messages || !currentVisible) return;
-    //     // @ts-ignore
-    //     refBottom.current?.scrollIntoView({behavior: 'smooth'});
-
-    //     // Note: currentResponse is needed to make the screen update during the response.
-    // }, [refBottom, messages, currentResponse, triggerScrolldown, currentVisible]);
-
-    // // Initial message load
-    // useEffect(()=>{
-    //     if(!refBottom || !messages || loaded) return;
-    //     setLoaded(true);
-    //     // @ts-ignore
-    //     refBottom.current?.scrollIntoView({behavior: 'smooth'});
-    // }, [refBottom, messages, loaded, setLoaded])
 
     return (
         <div className='text-left w-full pr-4'>
@@ -507,7 +495,7 @@ function ViewHistory(props: {triggerScrolldown: number, children: React.ReactNod
                 :''
             }
             {props.children}
-            <PageBottomLock triggerScrolldown={triggerScrolldown} viewRef={viewRef} />
+            {viewRef.current?<PageBottomLock triggerScrolldown={triggerScrolldown} viewRef={viewRef} />:<></>}
         </div>
     )
 }
