@@ -118,7 +118,7 @@ function ChatHistoryList() {
                 dateLimit = param[1];
                 fullDate = param[2];
                 let label = param[0];
-                dateFormat = fullDate?'yyyy-MM-DD hh:mm':'hh:mm';
+                dateFormat = fullDate?'yyyy-MM-DD HH:mm':'HH:mm';
                 if(label) {
                     items.push(<div key={label} className='col-span-12 bg-violet-800/25 px-2 mt-2 mb-1'>{label}</div>)
                 } else if(!dateLimit) {
