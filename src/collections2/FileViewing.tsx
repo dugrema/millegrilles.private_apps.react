@@ -395,10 +395,12 @@ function MediaContentDisplay(props: FileViewLayoutProps & {thumbnailBlobUrl: str
         );
     } else if(selectedVideo) {
         return (
-            <button onClick={onClickStart} 
-                className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
-                    Play video
-            </button>
+            <div className='inline-block text-center w-full'>
+                <button onClick={onClickStart} 
+                    className='btn bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
+                        Play video
+                </button>
+            </div>
         );
     } else if(isAudioFile) {
         return <AudioPlayer file={file} />
@@ -1086,8 +1088,8 @@ export function ViewFileComments(props: ViewFileCommentsProps) {
     }, [file, thumbnail]);
 
     const cssPadding = useMemo(()=>{
-        if(isVisualMedia) return 'md:relative md:-top-8 lg:-top-12 xl:-top-28';
-        else if(isAudioMedia) return 'md:relative md:-top-2 lg:-top-4 xl:-top-12';
+        if(isVisualMedia) return 'md:relative md:-top-8 lg:-top-6 xl:-top-8';
+        else if(isAudioMedia) return 'md:relative md:-top-2 lg:-top-6 xl:-top-8';
         return '';
     }, [isVisualMedia, isAudioMedia]);
 
