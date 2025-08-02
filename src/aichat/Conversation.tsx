@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, Dispatch, MouseEvent, MutableRefObject } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, KeyboardEvent, MouseEvent, MutableRefObject } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -8,7 +8,7 @@ import { proxy } from 'comlink';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useVisibility } from 'reactjs-visibility';
 
-import useWorkers from '../workers/workers';
+import useWorkers, { AppWorkers } from '../workers/workers';
 import useChatStore, { ChatStoreConversationKey, ChatMessage as StoreChatMessage } from './chatStore';
 import useConnectionStore from '../connectionStore';
 
@@ -67,7 +67,7 @@ export default function Chat() {
     const modelOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>{
         const modelName = e.currentTarget.value;
         setModel(modelName);
-    }, [setModel, setContextSize, models]);
+    }, [setModel]);
 
     const {conversationId: paramConversationId} = useParams();
 
@@ -225,6 +225,7 @@ export default function Chat() {
     const submitHandler = useCallback((e: MouseEvent<HTMLButtonElement> | string, chatInput: string, fileAttachments: TuuidsBrowsingStoreRow[] | null) => {
         if(!chatInput.trim()) return false;  // No message, nothing to do
         if(!workers) throw new Error('workers not initialized');
+        if(!userId) throw new Error('userId not initialized')
         if(!conversationKey) throw new Error('Encryption key is not initialized');
 
         let actionName = 'chat';
@@ -245,65 +246,69 @@ export default function Chat() {
             if(!conversationKey) throw new Error("Encryption key not initialized");
             if(!conversationId) throw new Error("ConversationId not initialized");
 
-            let attachmentKeys = null as {[key: string]: string} | null;
-            let attachments = null as FileAttachment[] | null;
-            if(fileAttachments && userId) {
-                const result = await prepareAttachments(userId, fileAttachments);
-                attachmentKeys = result.attachmentKeys;
-                attachments = result.attachments;
-            }
+            // let attachmentKeys = null as {[key: string]: string} | null;
+            // let attachments = null as FileAttachment[] | null;
+            // if(fileAttachments && userId) {
+            //     const result = await prepareAttachments(userId, fileAttachments);
+            //     attachmentKeys = result.attachmentKeys;
+            //     attachments = result.attachments;
+            // }
 
-            const contentToEncrypt = {} as ContentToEncryptType;
-            if(messages && messages.length > 0) {
-                // Rough estimate of max tokens. This avoids sending data that will just be thrown away in the back-end.
-                const maxSize = 4 * contextSize;
-                // Truncate messages - keep at most the last 20
-                const messagesToSend = messages.slice(0, MAX_HISTORY_LENGTH);
-                let size = messages.reduce((acc, item)=>{
-                    const content = item.content || '';
-                    const thinking = item.thinking || '';
-                    return acc + content.length + thinking.length;
-                }, 0);
-                // Keep at least 2 messages, remove excess beyond that.
-                while(messagesToSend.length > 2 && size > maxSize) {
-                    const removedMessage = messagesToSend.shift();  // Remove oldest message
-                    const content = removedMessage?.content || '';
-                    const thinking = removedMessage?.thinking || '';
-                    if(removedMessage?.content) {
-                        size -= content.length + thinking.length;
-                    }
-                }
-                // console.debug("History size (max: %d): %d, %O", maxSize, size, messagesToSend);
-                contentToEncrypt.messageHistory = messagesToSend.map(item=>{
-                    return {role: item.query_role, content: item.content, thinking: item.thinking};
-                });
-            }
-            if(attachmentKeys) contentToEncrypt.attachmentKeys = attachmentKeys;
+            // const contentToEncrypt = {} as ContentToEncryptType;
+            // if(messages && messages.length > 0) {
+            //     // Rough estimate of max tokens. This avoids sending data that will just be thrown away in the back-end.
+            //     const maxSize = 4 * contextSize;
+            //     // Truncate messages - keep at most the last 20
+            //     const messagesToSend = messages.slice(0, MAX_HISTORY_LENGTH);
+            //     let size = messages.reduce((acc, item)=>{
+            //         const content = item.content || '';
+            //         const thinking = item.thinking || '';
+            //         return acc + content.length + thinking.length;
+            //     }, 0);
+            //     // Keep at least 2 messages, remove excess beyond that.
+            //     while(messagesToSend.length > 2 && size > maxSize) {
+            //         const removedMessage = messagesToSend.shift();  // Remove oldest message
+            //         const content = removedMessage?.content || '';
+            //         const thinking = removedMessage?.thinking || '';
+            //         if(removedMessage?.content) {
+            //             size -= content.length + thinking.length;
+            //         }
+            //     }
+            //     // console.debug("History size (max: %d): %d, %O", maxSize, size, messagesToSend);
+            //     contentToEncrypt.messageHistory = messagesToSend.map(item=>{
+            //         return {role: item.query_role, content: item.content, thinking: item.thinking};
+            //     });
+            // }
+            // if(attachmentKeys) contentToEncrypt.attachmentKeys = attachmentKeys;
     
-            let encryptedMessageHistory = null as null | EncryptionBase64Result;
-            if(Object.keys(contentToEncrypt).length > 0) {
-                // console.debug("Encrypting content: ", contentToEncrypt);
-                encryptedMessageHistory = await workers.encryption.encryptMessageMgs4ToBase64(contentToEncrypt, conversationKey?.secret);
-                encryptedMessageHistory.cle_id = conversationKey.cle_id;
-                delete encryptedMessageHistory.digest;  // Remove digest, no need for it
-            }
-            let encryptedUserMessage = await workers.encryption.encryptMessageMgs4ToBase64(chatInput, conversationKey?.secret);
-            encryptedUserMessage.cle_id = conversationKey.cle_id;
-            delete encryptedUserMessage.digest;  // Remove digest, no need for it
+            // let encryptedMessageHistory = null as null | EncryptionBase64Result;
+            // if(Object.keys(contentToEncrypt).length > 0) {
+            //     // console.debug("Encrypting content: ", contentToEncrypt);
+            //     encryptedMessageHistory = await workers.encryption.encryptMessageMgs4ToBase64(contentToEncrypt, conversationKey?.secret);
+            //     encryptedMessageHistory.cle_id = conversationKey.cle_id;
+            //     delete encryptedMessageHistory.digest;  // Remove digest, no need for it
+            // }
+            // let encryptedUserMessage = await workers.encryption.encryptMessageMgs4ToBase64(chatInput, conversationKey?.secret);
+            // encryptedUserMessage.cle_id = conversationKey.cle_id;
+            // delete encryptedUserMessage.digest;  // Remove digest, no need for it
 
-            let command: SendChatMessageCommand = {
-                conversation_id: conversationId, 
-                model,
-                role: 'user', 
-                encrypted_content: encryptedUserMessage,
-            };
-            if(attachments) command.attachments = attachments;
+            // let command: SendChatMessageCommand = {
+            //     conversation_id: conversationId, 
+            //     model,
+            //     role: 'user', 
+            //     encrypted_content: encryptedUserMessage,
+            // };
+            // if(attachments) command.attachments = attachments;
 
-            if(newConversation) command.new = true;
-            // console.debug("Chat message ", command);
-
+            // if(newConversation) command.new = true;
+            // // console.debug("Chat message ", command);
+            
             // let attachment = {history: encryptedMessageHistory, key: {signature: conversationKey.signature}};
             // setWaiting(true);
+
+            const [command, encryptedMessageHistory] = await prepareSubmitMessage(
+                workers, userId, newConversation, conversationKey, conversationId, model, chatInput, fileAttachments, messages, contextSize);
+
             if(!workers) throw new Error("Workers not initialized");
             if(!chatCallback) throw new Error("Chat callback not initialized");
 
@@ -332,7 +337,7 @@ export default function Chat() {
         return true;
     }, [workers, userId, conversationId, conversationKey, messages, chatCallback, setWaiting, 
         pushUserQuery, userMessageCallback, newConversation, model, contextSize, 
-        navigate, historyViewRef]
+        navigate, historyViewRef, setWaitingCallback]
     );
 
     const cancelHandler = useCallback(()=>{
@@ -982,4 +987,69 @@ function parseThinkBlocks(content: string): [string, string | null] {
     thinkBlocks = thinkBlocks.replaceAll('<think>', '').replaceAll('</think>', '');
     // console.debug("Think blocks: %O\nContent: %O", thinkBlocks, output);
     return [output, thinkBlocks];
+}
+
+async function prepareSubmitMessage(workers: AppWorkers, userId: string, newConversation: boolean, conversationKey: ChatStoreConversationKey, conversationId: string, 
+    model: string, chatInput: string, fileAttachments: TuuidsBrowsingStoreRow[] | null, messages: StoreChatMessage[], contextSize: number): Promise<[SendChatMessageCommand, null | EncryptionBase64Result]> {
+let attachmentKeys = null as {[key: string]: string} | null;
+    let attachments = null as FileAttachment[] | null;
+    if(fileAttachments && userId) {
+        const result = await prepareAttachments(userId, fileAttachments);
+        attachmentKeys = result.attachmentKeys;
+        attachments = result.attachments;
+    }
+
+    const contentToEncrypt = {} as ContentToEncryptType;
+    if(messages && messages.length > 0) {
+        // Rough estimate of max tokens. This avoids sending data that will just be thrown away in the back-end.
+        const maxSize = 4 * contextSize;
+        // Truncate messages - keep at most the last 20
+        const messagesToSend = messages.slice(0, MAX_HISTORY_LENGTH);
+        let size = messages.reduce((acc, item)=>{
+            const content = item.content || '';
+            // const thinking = item.thinking || '';
+            // return acc + content.length + thinking.length;
+            return acc + content.length;
+        }, 0);
+        // Keep at least 2 messages, remove excess beyond that.
+        while(messagesToSend.length > 2 && size > maxSize) {
+            const removedMessage = messagesToSend.shift();  // Remove oldest message
+            const content = removedMessage?.content || '';
+            // const thinking = removedMessage?.thinking || '';
+            if(removedMessage?.content) {
+                // size -= content.length + thinking.length;
+                size -= content.length;
+            }
+        }
+        // console.debug("History size (max: %d): %d, %O", maxSize, size, messagesToSend);
+        contentToEncrypt.messageHistory = messagesToSend.map(item=>{
+            // return {role: item.query_role, content: item.content, thinking: item.thinking};
+            return {role: item.query_role, content: item.content};
+        });
+    }
+    if(attachmentKeys) contentToEncrypt.attachmentKeys = attachmentKeys;
+
+    let encryptedMessageHistory = null as null | EncryptionBase64Result;
+    if(Object.keys(contentToEncrypt).length > 0) {
+        // console.debug("Encrypting content: ", contentToEncrypt);
+        encryptedMessageHistory = await workers.encryption.encryptMessageMgs4ToBase64(contentToEncrypt, conversationKey?.secret);
+        encryptedMessageHistory.cle_id = conversationKey.cle_id;
+        delete encryptedMessageHistory.digest;  // Remove digest, no need for it
+    }
+    let encryptedUserMessage = await workers.encryption.encryptMessageMgs4ToBase64(chatInput, conversationKey?.secret);
+    encryptedUserMessage.cle_id = conversationKey.cle_id;
+    delete encryptedUserMessage.digest;  // Remove digest, no need for it
+
+    let command: SendChatMessageCommand = {
+        conversation_id: conversationId, 
+        model,
+        role: 'user', 
+        encrypted_content: encryptedUserMessage,
+    };
+    if(attachments) command.attachments = attachments;
+
+    if(newConversation) command.new = true;
+    
+    console.debug("Chat message ", command);
+    return [command, encryptedMessageHistory];
 }
