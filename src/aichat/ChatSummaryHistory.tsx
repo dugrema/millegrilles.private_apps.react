@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import useChatStore from "./chatStore";
 import { Conversation, deleteConversation, getConversations } from "./aichatStoreIdb";
-import { Fragment, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { JSX, Fragment, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import useWorkers from "../workers/workers";
 import ActionButton from "../resources/ActionButton";

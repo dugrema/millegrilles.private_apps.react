@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { JSX, useCallback } from 'react';
 import useWorkers from '../workers/workers';
 import { DeviceReadings } from './senseursPassifsStore';
 

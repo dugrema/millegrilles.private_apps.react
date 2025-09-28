@@ -1,4 +1,4 @@
-import React, { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import React, { JSX, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import ActionButton from "../resources/ActionButton";
 import useTransferStore, { DownloadJobStoreType, DownloadWorkerType } from "./transferStore";

@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import useWorkers from "../workers/workers";
 import useSenseursPassifsStore, { DeviceConfiguration, ProgramConfiguration, ProgramsConfiguration } from "./senseursPassifsStore";
-import { ChangeEvent, Dispatch, MouseEvent, useCallback, useMemo, useState } from "react";
+import { JSX, ChangeEvent, Dispatch, MouseEvent, useCallback, useMemo, useState } from "react";
 import useConnectionStore from "../connectionStore";
 import { v1 as uuidv1 } from 'uuid';
 

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import useUserBrowsingStore, { TuuidsBrowsingStoreRow, ViewMode } from "./userBrowsingStore";
-import { ChangeEvent, Dispatch, DragEvent, MouseEvent, useCallback, useMemo, useRef, useState } from "react";
+import { JSX, ChangeEvent, Dispatch, DragEvent, MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import useConnectionStore from "../connectionStore";
 import useWorkers from "../workers/workers";

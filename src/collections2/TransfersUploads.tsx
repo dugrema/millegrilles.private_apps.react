@@ -3,7 +3,7 @@ import ActionButton from "../resources/ActionButton";
 import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import useUserBrowsingStore from "./userBrowsingStore";
-import React, { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import React, { JSX, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { removeUserUploads, UploadStateEnum } from "./idb/collections2StoreIdb";
 import ProgressBar from "./ProgressBar";
 import useTransferStore, { UploadJobStoreType, UploadWorkerType } from "./transferStore";
