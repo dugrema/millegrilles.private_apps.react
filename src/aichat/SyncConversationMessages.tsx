@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { proxy } from 'comlink';
 
 import { ChatMessage, decryptConversationMessages, getConversation, getConversationMessagesById, openDB, saveMessagesSync, setConversationSyncDate } from "./aichatStoreIdb";
@@ -10,23 +10,31 @@ import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
 import { encryption } from "millegrilles.cryptography";
 import { getDecryptedKeys } from "../MillegrillesIdb";
 
-let promiseIdb: Promise<void> | null = null;
+// var promiseSyncIdb: Promise<void> | null = null;
 
 function SyncConversationMessages() {
 
+    const [promiseIdb, setPromiseIdb] = useState(null as Promise<any> | null);
+    const [loaded, setLoaded] = useState(false);
+
     useEffect(()=>{
         if(!promiseIdb) {
-            promiseIdb = init()
+            const promiseIdbInit = init()
+                .then(()=>{
+                    setLoaded(true);
+                })
                 .catch(err=>{
                     console.error("Error initializing Message IDB ", err);
                     throw err
                 });
+            setPromiseIdb(promiseIdbInit);
             return;
         }
-    }, []);
+    }, [promiseIdb, setPromiseIdb, setLoaded]);
 
     // Throw to prevent screen from rendering. Caught in <React.Suspense> (index.tsx).
-    if(promiseIdb) throw promiseIdb;
+    if(!loaded && promiseIdb) throw promiseIdb;
+    if(!promiseIdb) return <></>;  // Preparing
 
     return (
         <>
@@ -42,7 +50,7 @@ async function init() {
     await openDB(true);
 
     // Remove promise value, will allow screen to render
-    promiseIdb = null;
+    //promiseSyncIdb = null;
 }
 
 function ListenMessageChanges() {

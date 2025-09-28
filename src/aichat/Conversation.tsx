@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef, ChangeEvent, Keyboar
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
-import remarkRehype from 'remark-rehype';
+// import remarkRehype from 'remark-rehype';
 import rehypeKatex from 'rehype-katex';
 import { proxy } from 'comlink';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -491,6 +491,9 @@ type MessageRowProps = {
     waiting?: boolean,
 };
 
+const remarkPlugins = [remarkMath, remarkGfm];
+const rehypePlugins = [rehypeKatex];
+
 // Src : https://flowbite.com/docs/components/chat-bubble/
 function ChatBubble(props: MessageRowProps) {
 
@@ -575,8 +578,6 @@ function ChatBubble(props: MessageRowProps) {
 
     }, [workers, ready, userId, tuuids, attachedFiles, setAttachedFiles]);
 
-    const plugins = [remarkMath, remarkGfm, remarkRehype, rehypeKatex];
-
     if(bubbleSide === 'left') {
         return (
             <div className="flex items-start gap-2.5 pb-1 md:pb-2">
@@ -596,7 +597,7 @@ function ChatBubble(props: MessageRowProps) {
                         <ThinkBlock value={thinkBlock} done={!!contentBlock} />
                         {contentBlock?
                             <div className="text-sm font-normal text-gray-900 dark:text-white markdown chat-bubble">
-                                <Markdown remarkPlugins={plugins}>{contentBlock}</Markdown>
+                                <Markdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>{contentBlock}</Markdown>
                             </div>
                             :<></>
                         }
@@ -623,7 +624,7 @@ function ChatBubble(props: MessageRowProps) {
                     </div>
                     <div className="flex flex-col leading-1.5 p-1 md:p-2 border-gray-200 bg-gray-100 rounded-s-xl rounded-ee-xl overflow-x-clip break-words">
                         <div className="text-sm font-normal text-gray-900 dark:text-white markdown">
-                            <Markdown remarkPlugins={plugins}>{content}</Markdown>
+                            <Markdown remarkPlugins={remarkPlugins}>{content}</Markdown>
                         </div>
                         {attachedFiles?
                             <div><AttachmentThumbnailsView files={attachedFiles} /></div>
