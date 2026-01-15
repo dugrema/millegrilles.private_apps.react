@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { proxy } from 'comlink';
+import { proxy } from "comlink";
 
-import { ChatMessage, decryptConversationMessages, getConversation, getConversationMessagesById, openDB, saveMessagesSync, setConversationSyncDate } from "./aichatStoreIdb";
+import {
+  ChatMessage,
+  decryptConversationMessages,
+  getConversation,
+  getConversationMessagesById,
+  openDB,
+  saveMessagesSync,
+  setConversationSyncDate,
+} from "./aichatStoreIdb";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import useConnectionStore from "../connectionStore";
-import { ConversationSyncResponse } from "../workers/connection.worker";
+import { ConversationSyncResponse } from "../types/connection.types";
 import useChatStore from "./chatStore";
 import { SubscriptionMessage } from "millegrilles.reactdeps.typescript";
 import { encryption } from "millegrilles.cryptography";
@@ -13,247 +21,289 @@ import { getDecryptedKeys } from "../MillegrillesIdb";
 // var promiseSyncIdb: Promise<void> | null = null;
 
 function SyncConversationMessages() {
+  const [promiseIdb, setPromiseIdb] = useState(null as Promise<any> | null);
+  const [loaded, setLoaded] = useState(false);
 
-    const [promiseIdb, setPromiseIdb] = useState(null as Promise<any> | null);
-    const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    if (!promiseIdb) {
+      const promiseIdbInit = init()
+        .then(() => {
+          setLoaded(true);
+        })
+        .catch((err) => {
+          console.error("Error initializing Message IDB ", err);
+          throw err;
+        });
+      setPromiseIdb(promiseIdbInit);
+      return;
+    }
+  }, [promiseIdb, setPromiseIdb, setLoaded]);
 
-    useEffect(()=>{
-        if(!promiseIdb) {
-            const promiseIdbInit = init()
-                .then(()=>{
-                    setLoaded(true);
-                })
-                .catch(err=>{
-                    console.error("Error initializing Message IDB ", err);
-                    throw err
-                });
-            setPromiseIdb(promiseIdbInit);
-            return;
-        }
-    }, [promiseIdb, setPromiseIdb, setLoaded]);
+  // Throw to prevent screen from rendering. Caught in <React.Suspense> (index.tsx).
+  if (!loaded && promiseIdb) throw promiseIdb;
+  if (!promiseIdb) return <></>; // Preparing
 
-    // Throw to prevent screen from rendering. Caught in <React.Suspense> (index.tsx).
-    if(!loaded && promiseIdb) throw promiseIdb;
-    if(!promiseIdb) return <></>;  // Preparing
-
-    return (
-        <>
-            <ListenMessageChanges />
-        </>
-    );
+  return (
+    <>
+      <ListenMessageChanges />
+    </>
+  );
 }
 
 export default SyncConversationMessages;
 
 async function init() {
-    // Initialize/upgrade the database
-    await openDB(true);
+  // Initialize/upgrade the database
+  await openDB(true);
 
-    // Remove promise value, will allow screen to render
-    //promiseSyncIdb = null;
+  // Remove promise value, will allow screen to render
+  //promiseSyncIdb = null;
 }
 
 function ListenMessageChanges() {
+  let conversationId = useChatStore((state) => state.conversationId);
+  let userId = useChatStore((state) => state.userId);
+  let ready = useConnectionStore((state) => state.connectionAuthenticated);
+  let setLastConversationMessagesUpdate = useChatStore(
+    (state) => state.setLastConversationMessagesUpdate,
+  );
 
-    let conversationId = useChatStore(state=>state.conversationId);
-    let userId = useChatStore(state=>state.userId);
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let setLastConversationMessagesUpdate = useChatStore(state=>state.setLastConversationMessagesUpdate);
+  let workers = useWorkers();
 
-    let workers = useWorkers();
+  let chatMessageEventCb = useMemo(() => {
+    if (!userId) return null;
+    return proxy((event: SubscriptionMessage) => {
+      if (!workers) throw new Error("Workers not initialized");
+      if (!userId) throw new Error("userId is null");
+      const trigger = () => {
+        setLastConversationMessagesUpdate(new Date().getTime());
+      };
+      handleChatExchangeEvent(workers, userId, event, trigger);
+    });
+  }, [workers, userId, setLastConversationMessagesUpdate]);
 
-    let chatMessageEventCb = useMemo(()=>{
-        if(!userId) return null;
-        return proxy((event: SubscriptionMessage)=>{
-            if(!workers) throw new Error("Workers not initialized");
-            if(!userId) throw new Error("userId is null");
-            const trigger = ()=>{setLastConversationMessagesUpdate(new Date().getTime());}
-            handleChatExchangeEvent(workers, userId, event, trigger);
-        })
-    }, [workers, userId, setLastConversationMessagesUpdate]);
+  useEffect(() => {
+    if (!workers || !ready || !conversationId || !chatMessageEventCb) return; // Note ready to sync
 
-    useEffect(()=>{
-        if(!workers || !ready || !conversationId || !chatMessageEventCb) return;  // Note ready to sync
+    // Subscribe to changes on categories and groups
+    workers.connection
+      .subscribeChatMessageEvents(conversationId, chatMessageEventCb)
+      .catch((err) =>
+        console.error("Error subscribing to chat message events", err),
+      );
 
-        // Subscribe to changes on categories and groups
-        workers.connection.subscribeChatMessageEvents(conversationId, chatMessageEventCb)
-            .catch(err=>console.error("Error subscribing to chat message events", err));
+    // Sync chat conversations with messages for the user. Save in IDB.
+    syncMessages(workers, conversationId)
+      .then(async () => {
+        console.info("Sync messages done");
+        // Decrypt messages
+        if (workers && conversationId && userId) {
+          await decryptConversationMessages(workers, userId, conversationId);
+        } else {
+          console.error(
+            "Workers not initialized or conversationId null or userId null",
+          );
+        }
+        // Refresh screen
+        setLastConversationMessagesUpdate(new Date().getTime());
+      })
+      .catch((err) => console.error("Error during conversation sync: ", err));
 
-        // Sync chat conversations with messages for the user. Save in IDB.
-        syncMessages(workers, conversationId)
-            .then(async () => {
-                console.info("Sync messages done");
-                // Decrypt messages
-                if(workers && conversationId && userId) {
-                    await decryptConversationMessages(workers, userId, conversationId)
-                } else {
-                    console.error("Workers not initialized or conversationId null or userId null");
-                }
-                // Refresh screen
-                setLastConversationMessagesUpdate(new Date().getTime());
-            })
-            .catch(err=>console.error("Error during conversation sync: ", err));
+    return () => {
+      // Remove listener for document changes on group
+      if (workers && conversationId && chatMessageEventCb) {
+        workers.connection
+          .unsubscribeChatMessageEvents(conversationId, chatMessageEventCb)
+          .catch((err) =>
+            console.error("Error unsubscribing from chat message events", err),
+          );
+      }
+    };
+  }, [
+    workers,
+    ready,
+    conversationId,
+    userId,
+    setLastConversationMessagesUpdate,
+    chatMessageEventCb,
+  ]);
 
-        return () => {
-            // Remove listener for document changes on group
-            if(workers && conversationId && chatMessageEventCb) {
-                workers.connection.unsubscribeChatMessageEvents(conversationId, chatMessageEventCb)
-                    .catch(err=>console.error("Error unsubscribing from chat message events", err));
-            }
-        };
-
-    }, [workers, ready, conversationId, userId, setLastConversationMessagesUpdate, chatMessageEventCb])
-
-    return <></>;
+  return <></>;
 }
 
 async function syncMessages(workers: AppWorkers, conversationId: string) {
+  await new Promise(async (resolve, reject) => {
+    let conversation = await getConversation(conversationId);
+    let lastSync = conversation?.lastSync;
 
-    await new Promise(async (resolve, reject)=>{
-        let conversation = await getConversation(conversationId);
-        let lastSync = conversation?.lastSync;
+    const callback = proxy(async (response: ConversationSyncResponse) => {
+      if (!response.ok) {
+        console.error("Error response from conversation sync: ", response);
+        return reject(response.err);
+      }
 
-        const callback = proxy(async (response: ConversationSyncResponse) => {
-            if(!response.ok) {
-                console.error("Error response from conversation sync: ", response);
-                return reject(response.err);
-            }
-    
-            if(response.messages) {
-                // Save received messages for conversation
-                await saveMessagesSync(response.messages);
-            }
-    
-            if(response.done) {
-                // Save sync date in conversation
-                await setConversationSyncDate(conversationId, response.sync_date);
-                resolve(null);
-            }
-        });
-    
-        try {
-            let initialStreamResponse = await workers.connection.syncConversationMessages(conversationId, callback, lastSync);
-            if(!initialStreamResponse === true) {
-                reject(new Error("Error getting documents for this group"));
-            }
-        } catch(err) {
-            reject(err);
-        }
+      if (response.messages) {
+        // Save received messages for conversation
+        await saveMessagesSync(response.messages);
+      }
 
-    })
+      if (response.done) {
+        // Save sync date in conversation
+        await setConversationSyncDate(conversationId, response.sync_date);
+        resolve(null);
+      }
+    });
 
-    
+    try {
+      let initialStreamResponse =
+        await workers.connection.syncConversationMessages(
+          conversationId,
+          callback,
+          lastSync,
+        );
+      if (!initialStreamResponse === true) {
+        reject(new Error("Error getting documents for this group"));
+      }
+    } catch (err) {
+      reject(err);
+    }
+  });
 }
 
 type ChatExchangeEvent = {
-    cle_id: string,
-    user_id: string,
-    conversation_id: string,
-    model: string,
-    new?: boolean,
-    query_date: number,
-    query_encrypted: encryption.EncryptedData,
-    query_message_id: string,
-    query_role: string,
-    reply_date: number,
-    reply_encrypted: encryption.EncryptedData,
-    reply_message_id: string,
-    reply_role: string,
+  cle_id: string;
+  user_id: string;
+  conversation_id: string;
+  model: string;
+  new?: boolean;
+  query_date: number;
+  query_encrypted: encryption.EncryptedData;
+  query_message_id: string;
+  query_role: string;
+  reply_date: number;
+  reply_encrypted: encryption.EncryptedData;
+  reply_message_id: string;
+  reply_role: string;
 };
 
-async function handleChatExchangeEvent(workers: AppWorkers, userId: string, event: SubscriptionMessage, updateTrigger: ()=>void) {
-    let exchangeMessage = event.message as ChatExchangeEvent;
+async function handleChatExchangeEvent(
+  workers: AppWorkers,
+  userId: string,
+  event: SubscriptionMessage,
+  updateTrigger: () => void,
+) {
+  let exchangeMessage = event.message as ChatExchangeEvent;
 
-    // console.debug("Exchange message: ", exchangeMessage);
+  // console.debug("Exchange message: ", exchangeMessage);
 
-    // Check is messages already exist
-    let conversationId = exchangeMessage.conversation_id;
-    let userQueryMessageId = exchangeMessage.query_message_id;
-    let assistantReplyMessageId = exchangeMessage.reply_message_id;
-    let existingMessages = await getConversationMessagesById([userQueryMessageId, assistantReplyMessageId]);
-    let existingIds = new Set(existingMessages.map(item=>item.message_id));
+  // Check is messages already exist
+  let conversationId = exchangeMessage.conversation_id;
+  let userQueryMessageId = exchangeMessage.query_message_id;
+  let assistantReplyMessageId = exchangeMessage.reply_message_id;
+  let existingMessages = await getConversationMessagesById([
+    userQueryMessageId,
+    assistantReplyMessageId,
+  ]);
+  let existingIds = new Set(existingMessages.map((item) => item.message_id));
 
-    if(existingIds.has(userQueryMessageId) && existingIds.has(assistantReplyMessageId)) {
-        // Both messages already exist in IDB, nothing to do.
-        return;
+  if (
+    existingIds.has(userQueryMessageId) &&
+    existingIds.has(assistantReplyMessageId)
+  ) {
+    // Both messages already exist in IDB, nothing to do.
+    return;
+  }
+
+  let keyId = exchangeMessage.cle_id;
+
+  let decryptionKey = (await getDecryptedKeys([keyId])).pop();
+  if (!decryptionKey && !exchangeMessage.new) {
+    throw new Error(
+      `Unknown decryptionKey ${keyId} for conversation ${conversationId}`,
+    );
+  }
+
+  let query_encrypted = exchangeMessage.query_encrypted;
+  let reply_encrypted = exchangeMessage.reply_encrypted;
+
+  // Save message exchange
+  let user_query: ChatMessage = {
+    user_id: userId,
+    conversation_id: conversationId,
+    message_id: exchangeMessage.query_message_id,
+    decrypted: false,
+    query_encrypted,
+    query_role: exchangeMessage.query_role,
+    content_type: "string",
+    message_date: exchangeMessage.query_date,
+  };
+
+  let assistant_reply: ChatMessage = {
+    user_id: userId,
+    conversation_id: conversationId,
+    message_id: exchangeMessage.reply_message_id,
+    decrypted: false,
+    query_encrypted: reply_encrypted,
+    query_role: exchangeMessage.reply_role,
+    content_type: "json",
+    message_date: exchangeMessage.reply_date,
+    model: exchangeMessage.model,
+  };
+
+  if (decryptionKey) {
+    // Decrypt message
+    if (query_encrypted.nonce) {
+      let contentBytes = await workers.encryption.decryptMessage(
+        query_encrypted.format,
+        decryptionKey.cleSecrete,
+        query_encrypted.nonce,
+        query_encrypted.ciphertext_base64,
+        query_encrypted.compression,
+      );
+      if (user_query.content_type === "json") {
+        const message = JSON.parse(new TextDecoder().decode(contentBytes));
+        user_query.content = message.content;
+        user_query.thinking = message.thinking;
+      } else {
+        user_query.content = new TextDecoder().decode(contentBytes);
+      }
+      user_query.decrypted = true;
+      // delete user_query.query_encrypted;
     }
-
-    let keyId = exchangeMessage.cle_id;
-
-    let decryptionKey = (await getDecryptedKeys([keyId])).pop();
-    if(!decryptionKey && !exchangeMessage.new) {
-        throw new Error(`Unknown decryptionKey ${keyId} for conversation ${conversationId}`);
+    if (reply_encrypted.nonce) {
+      let contentBytes = await workers.encryption.decryptMessage(
+        reply_encrypted.format,
+        decryptionKey.cleSecrete,
+        reply_encrypted.nonce,
+        reply_encrypted.ciphertext_base64,
+        reply_encrypted.compression,
+      );
+      if (assistant_reply.content_type === "json") {
+        const message = JSON.parse(new TextDecoder().decode(contentBytes));
+        assistant_reply.content = message.content;
+        assistant_reply.thinking = message.thinking;
+      } else {
+        assistant_reply.content = new TextDecoder().decode(contentBytes);
+      }
+      assistant_reply.decrypted = true;
+      // delete assistant_reply.query_encrypted;
     }
+    // console.debug("Decrypted content\nUser: %O\nAssistant: %O", user_query, assistant_reply);
+  }
 
-    let query_encrypted = exchangeMessage.query_encrypted;
-    let reply_encrypted = exchangeMessage.reply_encrypted;
+  if (!existingIds.has(userQueryMessageId)) {
+    await saveMessagesSync([user_query]);
+  }
+  if (!existingIds.has(assistantReplyMessageId)) {
+    await saveMessagesSync([assistant_reply]);
+  }
 
-    // Save message exchange
-    let user_query: ChatMessage = {
-        user_id: userId, 
-        conversation_id: conversationId, 
-        message_id: exchangeMessage.query_message_id,
-        decrypted: false, 
-        query_encrypted,
-        query_role: exchangeMessage.query_role,
-        content_type: 'string',
-        message_date: exchangeMessage.query_date, 
-    };
-
-    let assistant_reply: ChatMessage = {
-        user_id: userId, 
-        conversation_id: conversationId, 
-        message_id: exchangeMessage.reply_message_id,
-        decrypted: false, 
-        query_encrypted: reply_encrypted,
-        query_role: exchangeMessage.reply_role, 
-        content_type: 'json',
-        message_date: exchangeMessage.reply_date, 
-        model: exchangeMessage.model,
-    };
-
-    if(decryptionKey) {
-        // Decrypt message
-        if(query_encrypted.nonce) {
-            let contentBytes = await workers.encryption.decryptMessage(
-                query_encrypted.format, decryptionKey.cleSecrete, query_encrypted.nonce, 
-                query_encrypted.ciphertext_base64, query_encrypted.compression);
-            if(user_query.content_type === 'json') {
-                const message = JSON.parse(new TextDecoder().decode(contentBytes));
-                user_query.content = message.content;
-                user_query.thinking = message.thinking;
-            } else {
-                user_query.content = new TextDecoder().decode(contentBytes);
-            }
-            user_query.decrypted = true;
-            // delete user_query.query_encrypted;
-        }
-        if(reply_encrypted.nonce) {
-            let contentBytes = await workers.encryption.decryptMessage(
-                reply_encrypted.format, decryptionKey.cleSecrete, reply_encrypted.nonce, 
-                reply_encrypted.ciphertext_base64, reply_encrypted.compression);
-            if(assistant_reply.content_type === 'json') {
-                const message = JSON.parse(new TextDecoder().decode(contentBytes));
-                assistant_reply.content = message.content;
-                assistant_reply.thinking = message.thinking;
-            } else {
-                assistant_reply.content = new TextDecoder().decode(contentBytes);
-            }
-            assistant_reply.decrypted = true;
-            // delete assistant_reply.query_encrypted;
-        }
-        // console.debug("Decrypted content\nUser: %O\nAssistant: %O", user_query, assistant_reply);
-    }
-
-    if(!existingIds.has(userQueryMessageId)) {
-        await saveMessagesSync([user_query]);
-    }
-    if(!existingIds.has(assistantReplyMessageId)) {
-        await saveMessagesSync([assistant_reply]);
-    }
-
-    if(decryptionKey && (!existingIds.has(userQueryMessageId) || !existingIds.has(assistantReplyMessageId))) {
-        // Update screen
-        updateTrigger();
-    }
+  if (
+    decryptionKey &&
+    (!existingIds.has(userQueryMessageId) ||
+      !existingIds.has(assistantReplyMessageId))
+  ) {
+    // Update screen
+    updateTrigger();
+  }
 }
