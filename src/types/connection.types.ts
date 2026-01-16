@@ -18,6 +18,7 @@ import {
   FileImageDict,
   FileSubtitleData,
   FileVideoDict,
+  FileWebSubtitleData,
 } from "../collections2/idb/collections2Store.types";
 
 /* Types exported from the worker */
@@ -211,6 +212,7 @@ export type Collection2FileVersionRow = {
   video?: FileVideoDict;
   audio?: FileAudioData[];
   subtitles?: FileSubtitleData[];
+  web_subtitles?: FileWebSubtitleData[];
 };
 
 /** Collections2 file sync row */

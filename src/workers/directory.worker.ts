@@ -25,6 +25,7 @@ import {
   TuuidsIdbStoreRowType,
   LoadDirectoryResultType,
 } from "../collections2/idb/collections2Store.types";
+import { inflate } from "pako";
 
 type ProcessDirectoryChunkOptions = {
   noidb?: boolean;
@@ -101,6 +102,7 @@ export class DirectoryWorker {
         fileData.video = version.video;
         fileData.audio = version.audio;
         fileData.subtitles = version.subtitles;
+        fileData.web_subtitles = version.web_subtitles;
         fileData.nonce = version.nonce;
         fileData.format = version.format;
       }
@@ -525,6 +527,22 @@ export class DirectoryWorker {
       });
     } else {
       outputBlob = new Blob(blobs, { type: mimetype || undefined });
+    }
+
+    if (outputBlob) {
+      if (["gz", "deflate"].includes("" + decryptionInformation.compression)) {
+        const decompressedOutput = (finalOutput = inflate(
+          await outputBlob.arrayBuffer(),
+        ));
+        outputBlob = new Blob([decompressedOutput], {
+          type: mimetype || undefined,
+        });
+      } else if (decryptionInformation.compression) {
+        throw new Error(
+          "Unsupported compression format: " +
+            decryptionInformation.compression,
+        );
+      }
     }
 
     return outputBlob;

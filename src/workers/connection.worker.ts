@@ -52,6 +52,7 @@ import {
   EncryptionBase64WithEncryptedKeysResult,
 } from "../workers/encryptionUtils";
 import { TuuidEncryptedMetadata } from "../collections2/idb/collections2Store.types";
+import { AddWebSubtitleCommand } from "../types/collections2.types";
 
 const DOMAINE_CORETOPOLOGIE = "CoreTopologie";
 const DOMAINE_DOCUMENTS = "Documents";
@@ -951,6 +952,38 @@ export class AppsConnectionWorker extends ConnectionWorker {
       { tuuid, comment, comment_idx: idx },
       DOMAINE_GROSFICHIERS,
       "updateFileTextContent",
+    )) as MessageResponse;
+  }
+
+  async collection2AddWebSubtitle(
+    file_fuuid: string,
+    subtitle_fuuid: String,
+    language: String,
+    cle_id: String,
+    format: String,
+    compression?: string,
+    nonce?: string,
+    user_id?: String | null,
+    index?: number | null,
+    label?: string | null,
+  ) {
+    if (!this.connection) throw new Error("Connection is not initialized");
+    const command = {
+      file_fuuid,
+      user_id: user_id ?? undefined,
+      subtitle_fuuid,
+      language,
+      index: index ?? undefined,
+      label: label ?? undefined,
+      cle_id,
+      format,
+      compression,
+      nonce,
+    } as AddWebSubtitleCommand;
+    return (await this.connection.sendCommand(
+      command,
+      DOMAINE_GROSFICHIERS,
+      "addWebSubtitle",
     )) as MessageResponse;
   }
 

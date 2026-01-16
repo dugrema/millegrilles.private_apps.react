@@ -36,6 +36,7 @@ import {
   FileVideoData,
   FileComment,
   TuuidsIdbStoreRowType,
+  FileWebSubtitleData,
 } from "./idb/collections2Store.types";
 
 export function DetailFileViewLayout(props: {
@@ -250,6 +251,8 @@ function FileMediaLayout(
   );
 }
 
+type SubtitleItem = FileWebSubtitleData & { blobUrl: string };
+
 function MediaContentDisplay(
   props: FileViewLayoutProps & {
     thumbnailBlobUrl: string | null;
@@ -274,6 +277,9 @@ function MediaContentDisplay(
   let [playVideo, setPlayVideo] = useState(false);
   let [jwt, setJwt] = useState("");
   let [videoReady, setVideoReady] = useState(false);
+  const [subtitleList, setSubtitleList] = useState(
+    null as SubtitleItem[] | null,
+  );
 
   let [isVideoFile, isAudioFile, isPdf] = useMemo(() => {
     let mimetype = file?.fileData?.mimetype;
@@ -411,6 +417,7 @@ function MediaContentDisplay(
     setSelectedVideo(video);
   }, [file, isVideoFile, selectedVideo, setSelectedVideo, fuuid, videoFuuid]);
 
+  // Load JWT
   useEffect(() => {
     if (!workers || !ready) return;
     if (!playVideo || !file || !selectedVideo) return;
@@ -452,6 +459,50 @@ function MediaContentDisplay(
     setLoadProgress,
   ]);
 
+  // Load web subtitles (VTT)
+  useEffect(() => {
+    if (!ready) return;
+
+    const secretKey = file?.secretKey;
+    const subtitles = file?.fileData?.web_subtitles;
+    if (secretKey && subtitles) {
+      const subtitleList = [] as SubtitleItem[];
+
+      Promise.resolve().then(async () => {
+        for await (const subtitle of subtitles) {
+          console.debug("Loading subtitle %O", subtitle);
+          const vttSubtitle = await workers?.directory.openFile(
+            subtitle.fuuid,
+            secretKey,
+            subtitle,
+          );
+          if (vttSubtitle) {
+            subtitleList.push({
+              ...subtitle,
+              blobUrl: URL.createObjectURL(vttSubtitle),
+            } as SubtitleItem);
+          }
+          // const textVttSubtitle = new TextDecoder().decode(
+          //   await vttSubtitle?.arrayBuffer(),
+          // );
+          // console.debug("Subtitle\n", textVttSubtitle);
+          //
+        }
+        setSubtitleList(subtitleList);
+      });
+
+      return () => {
+        if (subtitleList) {
+          // Cleanup blob urls
+          for (const subtitle of subtitleList) {
+            URL.revokeObjectURL(subtitle.blobUrl);
+          }
+        }
+      };
+    }
+  }, [ready, workers, file, setSubtitleList]);
+
+  // Ensure video exists
   useEffect(() => {
     if (!jwt || !selectedVideo) return;
     // console.debug("Monitor the loading of the video for token %s, selected video: %O", jwt, selectedVideo);
@@ -518,6 +569,7 @@ function MediaContentDisplay(
         mimetypeVideo={selectedVideo.mimetype}
         jwt={jwt}
         thumbnailBlobUrl={thumbnailBlobUrl}
+        subtitles={subtitleList}
       />
     );
   }
@@ -783,10 +835,18 @@ type VideoPlayerProps = {
   mimetypeVideo: string;
   jwt: string | null;
   className?: string | null;
+  subtitles?: SubtitleItem[] | null;
 };
 
 function VideoPlayer(props: VideoPlayerProps) {
-  let { fuuidVideo, mimetypeVideo, thumbnailBlobUrl, jwt, className } = props;
+  let {
+    fuuidVideo,
+    mimetypeVideo,
+    thumbnailBlobUrl,
+    jwt,
+    className,
+    subtitles,
+  } = props;
   let { tuuid } = useParams();
   let userId = useUserBrowsingStore((state) => state.userId);
 
@@ -881,6 +941,17 @@ function VideoPlayer(props: VideoPlayerProps) {
         onEnded={onEnded}
       >
         {videoSrc ? <source src={videoSrc} type={mimetypeVideo} /> : <></>}
+        {subtitles &&
+          subtitles.map((subtitle) => {
+            return (
+              <track
+                kind="subtitles"
+                src={subtitle.blobUrl}
+                srcLang={subtitle.language}
+                label={subtitle.label}
+              />
+            );
+          })}
       </video>
     </>
   );

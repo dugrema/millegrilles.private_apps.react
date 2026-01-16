@@ -1,4 +1,5 @@
 import { messageStruct } from "millegrilles.cryptography";
+import { AddWebSubtitleCommand } from "../../types/collections2.types";
 import { Collections2AddFileCommand } from "../../types/connection.types";
 import { GeneratedSecretKeyResult } from "../../workers/encryption";
 import { EncryptionBase64Result } from "../../workers/encryptionUtils";
@@ -14,9 +15,13 @@ export type TuuidDecryptedMetadata = {
   originalSize?: number;
 };
 
-export type SubtitleIdbType = {
-  tuuid: string;
-  languageCode: string;
+/**
+ * Separate encrypted Web VTT subtitle file available for a video.
+ */
+export type FileSubtitleMediaDataType = messageStruct.MessageDecryption & {
+  fuuid: string;
+  language: string;
+  index?: number | null;
   label?: string | null;
 };
 
@@ -34,6 +39,18 @@ export type FileSubtitleData = {
   language?: string | null;
   title?: string | null;
   codec_name?: string | null;
+};
+
+export type FileWebSubtitleData = {
+  fuuid: string;
+  language: string;
+  index?: number;
+  label?: string;
+  // Encryption parameters
+  cle_id: string;
+  format: string;
+  compression?: string;
+  nonce?: string;
 };
 
 export type FileImageData = messageStruct.MessageDecryption & {
@@ -81,6 +98,7 @@ export type FileData = {
   video?: FileVideoDict;
   audio?: FileAudioData[];
   subtitles?: FileSubtitleData[];
+  web_subtitles?: FileWebSubtitleData[];
   language?: string;
   comments?: EncryptionBase64Result[];
   tags?: string[];

@@ -6,6 +6,8 @@ import {
   DownloadStateEnum,
   FileVideoData,
 } from "./idb/collections2Store.types";
+import { isUint8Array } from "util/types";
+import axios, { AxiosError } from "axios";
 
 /**
  * Helper function to create a file download from an IDB entry.
@@ -250,4 +252,47 @@ export async function generateFileUploads(
     });
     await workers.upload.addUpload(uploadId, file);
   }
+}
+
+export type FileUploadParameters = {
+  format?: string | null;
+  compress?: string | null;
+};
+
+export async function encryptUploadDirect(
+  workers: AppWorkers,
+  file: File,
+  secret: Uint8Array,
+  opts?: FileUploadParameters,
+) {
+  let mimetype = file.type;
+  if (mimetype !== "text/vtt")
+    throw new Error(`Unsupported mimetype: ${mimetype}`);
+
+  // Encrypt content. Submit the encryption as text, this will trigger gzip encoding.
+  const subtitleText = new TextDecoder().decode(await file.arrayBuffer());
+  const encryptedFile = await workers.encryption.encryptMessageMgs4(
+    subtitleText,
+    { key: secret },
+  );
+  console.debug("Encrypted file: ", encryptedFile);
+
+  const digest = encryptedFile.digest;
+  if (!digest) throw new Error("File digest not provided");
+
+  // Upload the file pre-emptively to a filehost. If the process is cancelled, the filehost will purge the file after a while.
+  const fuuid = multiencoding.hashEncode("base58btc", "blake2b-512", digest);
+  await workers.upload.uploadEncryptedFile(fuuid, encryptedFile.ciphertext);
+
+  // Return information to allow the calling process to finish the transaction using this new file.
+  const result = {
+    fuuid,
+    format: encryptedFile.format,
+    nonce: encryptedFile.nonce
+      ? multiencoding.encodeBase64(encryptedFile.nonce)
+      : null,
+    compression: encryptedFile.compression,
+  };
+
+  return result;
 }

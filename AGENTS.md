@@ -33,4 +33,11 @@ The code is split into a set of logical modules, each responsible for a distinct
 - `npm run build` creates a production build under `build/`.  
 - Tests are located in `src/**/__tests__` and run with `npm test`.
 
+## Nomenclature
+
+- collections2 is a file manager application for MilleGrilles.
+- `fuuid` is a unique physical file unique identifier, the file is always encrypted.
+- `tuuid` is a filesystem unique identifier, it can represent a file or a directory in MilleGrilles.
+- `cle_id` is a decryption key identifier.
+
 Feel free to explore the source tree to understand how each module interacts with the others. Happy hacking!

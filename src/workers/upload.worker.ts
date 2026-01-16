@@ -21,6 +21,7 @@ import {
   UploadIdbType,
   UploadStateEnum,
 } from "../collections2/idb/collections2Store.types";
+import axios from "axios";
 
 export type UploadStateCallback = (
   state: UploadStateUpdateType,
@@ -455,6 +456,30 @@ export class AppsUploadWorker {
     let uploadsSendCommand = this.uploadsSendCommand;
     this.uploadsSendCommand = null;
     return uploadsSendCommand;
+  }
+
+  async uploadEncryptedFile(fuuid: string, content: Uint8Array) {
+    if (content.length > 10_000_000)
+      throw new Error("This method is meant for files < 10MB");
+    let partDataBlob = new Blob([content]);
+    const filehostUrl = this.filehost?.url;
+    if (!filehostUrl || !this.filehost?.authenticated)
+      throw new Error("Filehost not ready");
+    const putUrl = `${filehostUrl}/files/${fuuid}`;
+    try {
+      const result = await axios({
+        method: "PUT",
+        url: putUrl,
+        withCredentials: true,
+        data: partDataBlob,
+      });
+      console.debug("PUT to: %s\nResult: %O", putUrl, result);
+      return result.status;
+    } catch (err) {
+      // let axiosErr = err as AxiosError;
+      // Unhandled upload error
+      throw err;
+    }
   }
 
   // TODO - figure out issue with connectionWorker scope
