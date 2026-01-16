@@ -9,15 +9,16 @@ import {
 import { DecryptionKey } from "../MillegrillesIdb";
 import { ChatMessage, Conversation } from "../aichat/aichatStoreIdb";
 import { LanguageModelType } from "../aichat/chatStore";
+import { keymaster } from "millegrilles.cryptography";
+import { messageStruct } from "millegrilles.cryptography";
+
 import {
   TuuidEncryptedMetadata,
   FileAudioData,
   FileImageDict,
   FileSubtitleData,
   FileVideoDict,
-} from "../collections2/idb/collections2StoreIdb";
-import { keymaster } from "millegrilles.cryptography";
-import { messageStruct } from "millegrilles.cryptography";
+} from "../collections2/idb/collections2Store.types";
 
 /* Types exported from the worker */
 export const CONST_MEDIA_STATE_PROBE = "probe";

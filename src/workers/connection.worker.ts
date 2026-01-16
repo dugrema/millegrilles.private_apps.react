@@ -47,11 +47,11 @@ import {
   NotepadNewDocumentType,
   NotepadNewGroupType,
 } from "../notepad/idb/notepadStoreIdb";
-import { TuuidEncryptedMetadata } from "../collections2/idb/collections2StoreIdb";
 import {
   EncryptionBase64Result,
   EncryptionBase64WithEncryptedKeysResult,
 } from "../workers/encryptionUtils";
+import { TuuidEncryptedMetadata } from "../collections2/idb/collections2Store.types";
 
 const DOMAINE_CORETOPOLOGIE = "CoreTopologie";
 const DOMAINE_DOCUMENTS = "Documents";

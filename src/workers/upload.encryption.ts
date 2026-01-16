@@ -9,14 +9,16 @@ import {
   saveUploadJobAddCommand,
   saveUploadJobDecryptionInfo,
   saveUploadPart,
-  TuuidEncryptedMetadata,
   updateUploadJobState,
-  UploadIdbType,
-  UploadStateEnum,
 } from "../collections2/idb/collections2StoreIdb";
 import { AppsEncryptionWorker } from "./encryption";
 import { Collections2AddFileCommand } from "../types/connection.types";
 import { THROTTLE_UPLOAD } from "./encryptionUtils";
+import {
+  TuuidEncryptedMetadata,
+  UploadIdbType,
+  UploadStateEnum,
+} from "../collections2/idb/collections2Store.types";
 
 const CONST_WORKER_ENCRYPTION_LOCK = "worker_encryption";
 

@@ -13,16 +13,18 @@ import {
 } from "../types/connection.types";
 import { AppsEncryptionWorker } from "./encryption";
 import {
-  FileData,
-  TuuidDecryptedMetadata,
-  TuuidsIdbStoreRowType,
   updateFilesIdb,
   loadDirectory,
-  LoadDirectoryResultType,
   touchDirectorySync,
   deleteFiles,
-  FileComment,
 } from "../collections2/idb/collections2StoreIdb";
+import {
+  TuuidDecryptedMetadata,
+  FileData,
+  FileComment,
+  TuuidsIdbStoreRowType,
+  LoadDirectoryResultType,
+} from "../collections2/idb/collections2Store.types";
 
 type ProcessDirectoryChunkOptions = {
   noidb?: boolean;

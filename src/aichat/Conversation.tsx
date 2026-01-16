@@ -53,13 +53,11 @@ import {
   TuuidsBrowsingStoreRow,
 } from "../collections2/userBrowsingStore";
 import { ThumbnailItem } from "../collections2/FilelistPane";
-import {
-  loadTuuid,
-  TuuidsIdbStoreRowType,
-} from "../collections2/idb/collections2StoreIdb";
+import { loadTuuid } from "../collections2/idb/collections2StoreIdb";
 import { InitializeUserStore } from "../collections2/AppCollections2";
 
 import { IconCompactDiscSvg } from "../resources/Icons";
+import { TuuidsIdbStoreRowType } from "../collections2/idb/collections2Store.types";
 
 type ContentToEncryptType = {
   messageHistory?:

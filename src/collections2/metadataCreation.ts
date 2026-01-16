@@ -3,8 +3,8 @@ import {
   KeymasterSaveKeyCommand,
 } from "../types/connection.types";
 import { AppWorkers } from "../workers/workers";
-import { TuuidEncryptedMetadata } from "./idb/collections2StoreIdb";
 import { messageStruct, multiencoding } from "millegrilles.cryptography";
+import { TuuidEncryptedMetadata } from "./idb/collections2Store.types";
 
 export async function createDirectory(
   workers: AppWorkers,

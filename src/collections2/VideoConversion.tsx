@@ -15,7 +15,6 @@ import {
   VIDEO_PROFILES,
   VIDEO_RESOLUTIONS,
 } from "./picklistValues";
-import { TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
 import { Formatters } from "millegrilles.reactdeps.typescript";
 import { FileVideoDataWithItemKey, sortVideoEntries } from "./FileViewing";
 import useConnectionStore from "../connectionStore";
@@ -30,6 +29,8 @@ import useMediaConversionStore, {
 } from "./mediaConversionStore";
 
 import TrashIcon from "../resources/icons/trash-2-svgrepo-com.svg";
+import VideoSubtitles from "./VideoSubtitles";
+import { TuuidsIdbStoreRowType } from "./idb/collections2Store.types";
 
 function VideoConversion(props: {
   file: TuuidsIdbStoreRowType;
@@ -41,6 +42,7 @@ function VideoConversion(props: {
     <>
       <h1 className="text-xl font-bold pb-4">Video conversion</h1>
       <FileDetail file={file} />
+      <Subtitles file={file} />
       <ConversionForm file={file} close={close} />
       <ConversionList file={file} />
       <SyncMediaConversions />
@@ -64,6 +66,15 @@ function FileDetail(props: { file: TuuidsIdbStoreRowType }) {
         {file.fileData?.width} x {file.fileData?.height}
       </p>
     </div>
+  );
+}
+
+function Subtitles(props: { file: TuuidsIdbStoreRowType }) {
+  return (
+    <>
+      <h2 className="text-xl font-medium col-span-3 pt-3 pb-3">Subtitles</h2>
+      <VideoSubtitles file={props.file} />
+    </>
   );
 }
 

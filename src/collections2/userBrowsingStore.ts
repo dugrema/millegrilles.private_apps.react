@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import { TuuidsIdbStoreRowType } from "./idb/collections2StoreIdb";
 import {
   Collection2DirectoryStats,
   Collections2SearchResults,
@@ -8,6 +7,7 @@ import {
   Collections2SharedContactsUser,
 } from "../types/connection.types";
 import { ModalEnum } from "./BrowsingElements";
+import { TuuidsIdbStoreRowType } from "./idb/collections2Store.types";
 // import { NotepadCategoryType, NotepadDocumentType, NotepadGroupType } from './idb/notepadStoreIdb';
 
 export type TuuidsBrowsingStoreRow = {
