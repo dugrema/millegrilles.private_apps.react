@@ -942,15 +942,27 @@ function VideoPlayer(props: VideoPlayerProps) {
       >
         {videoSrc ? <source src={videoSrc} type={mimetypeVideo} /> : <></>}
         {subtitles &&
-          subtitles.map((subtitle) => {
-            return (
-              <track
-                kind="subtitles"
-                src={subtitle.blobUrl}
-                srcLang={subtitle.language}
-                label={subtitle.label}
-              />
-            );
+          subtitles.map((subtitle, idx) => {
+            if (idx === 0) {
+              return (
+                <track
+                  kind="subtitles"
+                  src={subtitle.blobUrl}
+                  srcLang={subtitle.language}
+                  label={subtitle.label || subtitle.language}
+                  default
+                />
+              );
+            } else {
+              return (
+                <track
+                  kind="subtitles"
+                  src={subtitle.blobUrl}
+                  srcLang={subtitle.language}
+                  label={subtitle.label || subtitle.language}
+                />
+              );
+            }
           })}
       </video>
     </>

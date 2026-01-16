@@ -14,9 +14,25 @@ function VideoSubtitles({ file }: VideoSubtitlesProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [language, setLanguage] = useState<string>("en");
 
+  const fuuid = file.fileData?.fuuids_versions?.at(0);
   const existing = file.fileData?.web_subtitles;
 
   const workers = useWorkers();
+
+  const handleDeleteSubtitle = async (
+    e: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    if (!fuuid) throw new Error("File fuuid not provided");
+    console.debug("Delete ", e.currentTarget.value);
+    const subtitleFuuid = e.currentTarget.value;
+    const response = await workers?.connection?.collection2RemovedWebSubtitle(
+      fuuid,
+      subtitleFuuid,
+    );
+    if (!response?.ok) {
+      throw new Error(`Error removing subtitle: ${response?.err}`);
+    }
+  };
 
   const handleAddSubtitle = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -99,6 +115,13 @@ function VideoSubtitles({ file }: VideoSubtitlesProps) {
             {existing.map((sub) => (
               <li key={sub.fuuid}>
                 {sub.label ?? sub.language} ({sub.language})
+                <ActionButton
+                  onClick={handleDeleteSubtitle}
+                  value={sub.fuuid}
+                  confirm={true}
+                >
+                  Delete
+                </ActionButton>
               </li>
             ))}
           </ul>

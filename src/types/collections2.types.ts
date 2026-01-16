@@ -11,3 +11,8 @@ export type AddWebSubtitleCommand = {
   compression?: string;
   nonce?: string;
 };
+
+export type RemoveWebSubtitleCommand = {
+  file_fuuid: String;
+  subtitle_fuuid: String;
+};

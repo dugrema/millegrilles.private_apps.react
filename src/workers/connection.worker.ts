@@ -52,7 +52,10 @@ import {
   EncryptionBase64WithEncryptedKeysResult,
 } from "../workers/encryptionUtils";
 import { TuuidEncryptedMetadata } from "../collections2/idb/collections2Store.types";
-import { AddWebSubtitleCommand } from "../types/collections2.types";
+import {
+  AddWebSubtitleCommand,
+  RemoveWebSubtitleCommand,
+} from "../types/collections2.types";
 
 const DOMAINE_CORETOPOLOGIE = "CoreTopologie";
 const DOMAINE_DOCUMENTS = "Documents";
@@ -984,6 +987,22 @@ export class AppsConnectionWorker extends ConnectionWorker {
       command,
       DOMAINE_GROSFICHIERS,
       "addWebSubtitle",
+    )) as MessageResponse;
+  }
+
+  async collection2RemovedWebSubtitle(
+    file_fuuid: string,
+    subtitle_fuuid: String,
+  ) {
+    if (!this.connection) throw new Error("Connection is not initialized");
+    const command = {
+      file_fuuid,
+      subtitle_fuuid,
+    } as RemoveWebSubtitleCommand;
+    return (await this.connection.sendCommand(
+      command,
+      DOMAINE_GROSFICHIERS,
+      "removeWebSubtitle",
     )) as MessageResponse;
   }
 
