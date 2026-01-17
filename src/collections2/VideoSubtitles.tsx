@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import ActionButton from "../resources/ActionButton";
 import useWorkers from "../workers/workers";
 import { TuuidsIdbStoreRowType } from "./idb/collections2Store.types";
@@ -13,6 +13,51 @@ export interface VideoSubtitlesProps {
 function VideoSubtitles({ file }: VideoSubtitlesProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [language, setLanguage] = useState<string>("en");
+  const [label, setLabel] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Drag & drop helpers
+  const triggerFileSelect = () => fileInputRef.current?.click();
+
+  const isVttFile = (f: File) => {
+    if (f.type === "text/vtt") return true;
+    return f.name.toLowerCase().endsWith(".vtt");
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (!isVttFile(file)) {
+        alert("Only .vtt subtitle files are accepted.");
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    console.debug("Drop", e);
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (!isVttFile(file)) {
+        alert("Only .vtt subtitle files are accepted.");
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+    e.dataTransfer.effectAllowed = "copy";
+  };
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   const fuuid = file.fileData?.fuuids_versions?.at(0);
   const existing = file.fileData?.web_subtitles;
@@ -61,6 +106,9 @@ function VideoSubtitles({ file }: VideoSubtitlesProps) {
       fileUploadResult.format,
       fileUploadResult.compression,
       fileUploadResult.nonce ?? undefined,
+      undefined, // user_id (auto from certificate)
+      undefined, // index, not provided
+      label ?? undefined,
     );
     console.debug("Subtitle add response", response);
 
@@ -71,46 +119,11 @@ function VideoSubtitles({ file }: VideoSubtitlesProps) {
 
   return (
     <div>
-      <h3>Upload Subtitle for {file.decryptedMetadata?.nom}</h3>
-      <form onSubmit={(e) => e.preventDefault()}>
-        <div>
-          <label>
-            Subtitle file:
-            <input
-              type="file"
-              accept=".srt,.vtt,.sub"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  setSelectedFile(e.target.files[0]);
-                }
-              }}
-            />
-          </label>
-        </div>
-        <div>
-          <label>
-            Language:
-            <input
-              type="text"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              placeholder="e.g. en, fr"
-            />
-          </label>
-        </div>
-        <ActionButton
-          onClick={handleAddSubtitle}
-          disabled={!selectedFile}
-          revertSuccessTimeout={3}
-          mainButton={false}
-        >
-          Add Subtitle
-        </ActionButton>
-      </form>
-
       {existing && existing.length > 0 && (
         <div>
-          <h4>Existing Subtitles</h4>
+          <h2 className="text-xl font-medium col-span-6 pt-3 pb-3">
+            Existing Subtitles
+          </h2>
           <ul>
             {existing.map((sub) => (
               <li key={sub.fuuid}>
@@ -127,6 +140,70 @@ function VideoSubtitles({ file }: VideoSubtitlesProps) {
           </ul>
         </div>
       )}
+
+      <form onSubmit={(e) => e.preventDefault()}>
+        <h2 className="text-xl font-medium col-span-6 pt-3 pb-3">
+          Add subtitle
+        </h2>
+
+        <div className="grid grid-cols-1 md:lg:grid-cols-3 xl:grid-cols-4 gap-2">
+          {/* 2️⃣  Language field first */}
+          <label className="flex flex-col">
+            Language:
+            <input
+              type="text"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              placeholder="e.g. en, fr"
+              className="text-black border rounded p-1" // 1️⃣  more contrast
+            />
+          </label>
+
+          <label className="flex flex-col">
+            Label (optional):
+            <input
+              type="text"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Optional, e.g. English, Francais, etc."
+              className="text-black border rounded p-1" // 1️⃣  more contrast
+            />
+          </label>
+
+          {/* 3️⃣  Subtitle file drop zone */}
+          <label className="flex flex-col">Subtitle file:</label>
+          <div
+            className="border-2 border-dashed border-gray-400 rounded p-4 text-center cursor-pointer hover:border-blue-500"
+            onDrop={handleDrop}
+            onDragEnter={handleDragOver}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={triggerFileSelect}
+          >
+            {selectedFile
+              ? `Selected: ${selectedFile.name}`
+              : "Drag & drop a VTT subtitle file here or click to browse"}
+          </div>
+          <input
+            type="file"
+            accept=".vtt"
+            ref={fileInputRef}
+            style={{ display: "none" }}
+            onChange={handleFileSelect}
+          />
+        </div>
+
+        <div className="pt-3">
+          <ActionButton
+            onClick={handleAddSubtitle}
+            disabled={!selectedFile}
+            revertSuccessTimeout={3}
+            mainButton={false}
+          >
+            Add Subtitle
+          </ActionButton>
+        </div>
+      </form>
     </div>
   );
 }

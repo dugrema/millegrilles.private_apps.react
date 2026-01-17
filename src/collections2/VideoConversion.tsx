@@ -71,10 +71,9 @@ function FileDetail(props: { file: TuuidsIdbStoreRowType }) {
 
 function Subtitles(props: { file: TuuidsIdbStoreRowType }) {
   return (
-    <>
-      <h2 className="text-xl font-medium col-span-3 pt-3 pb-3">Subtitles</h2>
+    <div className="pt-6 pb-6">
       <VideoSubtitles file={props.file} />
-    </>
+    </div>
   );
 }
 

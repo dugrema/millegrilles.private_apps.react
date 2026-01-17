@@ -32,6 +32,7 @@ The code is split into a set of logical modules, each responsible for a distinct
 - `npm start` launches the dev server.  
 - `npm run build` creates a production build under `build/`.  
 - Tests are located in `src/**/__tests__` and run with `npm test`.
+- When creating a `e.preventDefault()` call in a javascript event handler, also add `e.stopPropagation()`.
 
 ## Nomenclature
 
