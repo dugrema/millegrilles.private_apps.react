@@ -64,7 +64,11 @@ function ExistingSubtitles({
               {sub.label ? `${sub.label} (${sub.language})` : sub.language}
             </div>
             <div>
-              <ActionButton onClick={downloadSubtitle} value={sub.fuuid}>
+              <ActionButton
+                onClick={downloadSubtitle}
+                value={sub.fuuid}
+                revertSuccessTimeout={3}
+              >
                 Download
               </ActionButton>
               <ActionButton onClick={() => onDelete(sub.fuuid)} confirm={true}>
@@ -221,26 +225,28 @@ function VideoSubtitles({ file }: VideoSubtitlesProps) {
             />
           </label>
 
-          <label className="flex flex-col">Subtitle file:</label>
-          <div
-            className="border-2 border-dashed border-gray-400 rounded p-4 text-center cursor-pointer hover:border-blue-500"
-            onDrop={handleDrop}
-            onDragEnter={handleDragOver}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onClick={triggerFileSelect}
-          >
-            {selectedFile
-              ? `Selected: ${selectedFile.name}`
-              : "Drag & drop a VTT subtitle file here or click to browse"}
-          </div>
-          <input
-            type="file"
-            accept=".vtt"
-            ref={fileInputRef}
-            style={{ display: "none" }}
-            onChange={handleFileSelect}
-          />
+          <label className="flex flex-col">
+            Subtitle file:
+            <div
+              className="border-2 border-dashed border-gray-400 rounded p-1 text-center cursor-pointer hover:border-blue-500"
+              onDrop={handleDrop}
+              onDragEnter={handleDragOver}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onClick={triggerFileSelect}
+            >
+              {selectedFile
+                ? `Selected: ${selectedFile.name}`
+                : "Drop a VTT file or click to browse"}
+            </div>
+            <input
+              type="file"
+              accept=".vtt"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              onChange={handleFileSelect}
+            />
+          </label>
         </div>
 
         <div className="pt-3">

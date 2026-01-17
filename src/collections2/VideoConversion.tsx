@@ -349,7 +349,7 @@ function ConversionForm(props: {
             onChange={subtitlesOnChange}
             className="col-span-2 bg-slate-600 text-slate-300 cursor-pointer rounded-md mb-1"
           >
-            <option value="">Default</option>
+            <option value="">None</option>
             {subtitleList}
           </select>
         ) : (
