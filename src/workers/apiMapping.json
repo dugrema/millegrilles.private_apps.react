@@ -53,6 +53,11 @@
       "action": "getFilehosts",
       "exchange": "1.public"
     },
+    {
+      "domain": "CoreTopologie",
+      "action": "getFilehostForInstance",
+      "exchange": "1.public"
+    },
     { "domain": "GrosFichiers", "action": "verifierAccesFuuids" }
   ],
   "commands": [
