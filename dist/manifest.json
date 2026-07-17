@@ -1,0 +1,50 @@
+{
+  "short_name": "MG Apps",
+  "name": "MilleGrilles Applications",
+  "description": "Set of basic applications for MilleGrilles",
+  "shortcuts": [
+    {
+      "name": "Collections 2",
+      "short_name": "Collections",
+      "description": "File manager",
+      "url": "/apps/collections2",
+      "icons": [{"src": "millegrilles_192.jpg", "sizes": "192x192"}]
+    },
+    {
+      "name": "Notepad",
+      "short_name": "Notepad",
+      "description": "File editor",
+      "url": "/apps/notepad",
+      "icons": [{"src": "millegrilles_192.jpg", "sizes": "192x192"}]
+    },
+    {
+      "name": "Senseurs Passifs",
+      "short_name": "Senseurs Passifs",
+      "description": "Device and microcontroler manager",
+      "url": "/apps/senseurspassifs",
+      "icons": [{"src": "millegrilles_192.jpg", "sizes": "192x192"}]
+    }
+  ],
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "type": "image/jpg",
+      "sizes": "64x64"
+    },
+    {
+      "src": "millegrilles_192.jpg",
+      "type": "image/jpg",
+      "sizes": "192x192"
+    },
+    {
+      "src": "millegrilles_512.jpg",
+      "type": "image/jpg",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/apps",
+  "scope": "/",
+  "display": "fullscreen",
+  "theme_color": "#000000",
+  "background_color": "#3A3F74"
+}

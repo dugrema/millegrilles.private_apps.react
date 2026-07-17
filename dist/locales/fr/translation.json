@@ -1,0 +1,24 @@
+{
+    "millegrilles": "MilleGrilles",
+    "name": "Applications",
+    "title": "MilleGrilles Applications",
+    "labels": {
+        "username": "Nom d'usager",
+        "language": "Langage",
+        "applicationName": "Nom : ",
+        "applicationVersion": "Version : ",
+        "applicationBuildDate": "Date : ",
+        "applicationIdmg": "IDMG : ",
+        "versionInformation": "Information sur la version",
+        "activationCode": "Code d'activation",
+        "changeLanguage": "Changer le langage",
+        "logout": "Quitter"
+    },
+    "buttons": {
+        "next": "Suivant",
+        "cancel": "Annuler",
+        "done": "**Done"
+    },
+    "screens": {
+    }
+}

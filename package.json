@@ -68,16 +68,10 @@
     "zustand": "^5.0.14"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest",
+    "preview": "vite preview"
   },
   "browserslist": {
     "production": [
@@ -93,6 +87,10 @@
   },
   "homepage": "/apps",
   "devDependencies": {
-    "@types/pako": "^2.0.4"
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/pako": "^2.0.4",
+    "@vitejs/plugin-react": "^6.0.3",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
   }
 }
