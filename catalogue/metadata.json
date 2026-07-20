@@ -1,0 +1,33 @@
+{
+  "name": "coupdoeil2",
+  "version": "DEV",
+  "labels": {
+    "en": "Coup D'Oeil 2 - Administration console for MilleGrilles",
+    "fr": "Console d'administration Coup D'Oeil 2 pour MilleGrilles"
+  },
+  "path": "coupdoeil2",
+  "portal": [
+    {
+        "labels": {
+          "fr": "Configuration IA",
+          "en": "AI LLM Configuration"
+        },
+        "path": "/apps/aichat",
+        "admin": true
+      },
+      {
+        "labels": {
+          "fr": "Notepad - Gestionnaire de documents chiffrés et mots de passe.",
+          "en": "Notepad - Encrypted documents and password manager."
+        },
+        "path": "/apps/notepad"
+      },
+      {
+        "labels": {
+          "fr": "Collections 2 - Gestionnaire de fichiers",
+          "en": "Collections 2 - File manager."
+        },
+        "path": "/apps/collections2"
+      }
+  ]
+}
