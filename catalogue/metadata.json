@@ -2,8 +2,8 @@
   "name": "private_apps",
   "version": "DEV",
   "labels": {
-    "en": "Coup D'Oeil 2 - Administration console for MilleGrilles",
-    "fr": "Console d'administration Coup D'Oeil 2 pour MilleGrilles"
+    "en": "Private applications - File manager and documents for MilleGrilles",
+    "fr": "Applications privées - Gestionnaire de fichiers et documents pour MilleGrilles"
   },
   "path": "apps",
   "portal": [
