@@ -6,7 +6,8 @@ import {
   MessageResponse,
   SubscriptionCallback,
 } from "millegrilles.reactdeps.typescript";
-import apiMapping from "../workers/apiMapping.json";
+// import apiMapping from "../workers/apiMapping.json";
+import apiMapping from "@apiMapping-json";
 
 import {
   SendChatMessageCommand,

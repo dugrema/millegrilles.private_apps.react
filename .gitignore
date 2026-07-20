@@ -10,7 +10,11 @@
 
 # production
 /build
+/dist
 /static
+/artifacts
+staging/
+build_assets/
 *.tar.gz
 
 # misc
