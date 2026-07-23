@@ -1,12 +1,13 @@
 {
   "name": "private_apps",
   "version": "DEV",
+  "securite": "2.prive",
   "labels": {
     "en": "Private applications - File manager and documents for MilleGrilles",
     "fr": "Applications privées - Gestionnaire de fichiers et documents pour MilleGrilles"
   },
   "path": "apps",
-  "portal": [
+  "web": [
     {
         "labels": {
           "fr": "Configuration IA",
