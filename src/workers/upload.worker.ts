@@ -275,28 +275,28 @@ export class AppsUploadWorker {
 
     // Note: encryption jobs cannot be recovered - the original content blob does not get saved.
 
-    let filehost = this.filehost;
+    const filehost = this.filehost;
     if (!filehost) {
       console.warn("No filehost available for download");
       return;
     }
-    let filehostUrl = filehost.url;
-    if (!filehostUrl) {
+    if (!filehost.url) {
       console.warn("No filehost url");
       return;
     }
+    const filehostUrl = new URL(filehost.url);
 
     // Upload
     if (this.uploadWorker) {
       if (!this.pauseUploads) {
-        let userId = this.currentUserId;
+        const userId = this.currentUserId;
         if ((await this.uploadWorker.isBusy()) === false) {
-          await this.triggerNextUploadJob(userId, filehostUrl);
+          await this.triggerNextUploadJob(userId, filehostUrl.href);
         } else {
           // Retry quickly, required on chromium to chain jobs
           await new Promise((resolve) => setTimeout(resolve, 2));
           if ((await this.uploadWorker.isBusy()) === false) {
-            await this.triggerNextUploadJob(userId, filehostUrl);
+            await this.triggerNextUploadJob(userId, filehostUrl.href);
           } else {
             console.info("Upload worker busy, will retry");
           }
@@ -312,7 +312,7 @@ export class AppsUploadWorker {
 
   async triggerNextUploadJob(userId: string, filehostUrl: string) {
     // console.debug("trigger jobs uploadWorker not busy")
-    let job = await getNextUploadReadyJob(userId);
+    const job = await getNextUploadReadyJob(userId);
     if (job) {
       if (!job.uploadUrl) {
         // Set the current filehost as upload url
@@ -373,7 +373,7 @@ export class AppsUploadWorker {
   }
 
   async resumeUpload(uploadId: number) {
-    let job = await getUploadJob(uploadId);
+    const job = await getUploadJob(uploadId);
     if (!job) throw new Error("Unknown job ID:" + uploadId);
 
     const CONST_RESUMABLE_STATES = [

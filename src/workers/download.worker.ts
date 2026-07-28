@@ -258,16 +258,16 @@ export class AppsDownloadWorker {
     }
 
     if (!this.currentUserId) return;
-    let filehost = this.filehost;
+    const filehost = this.filehost;
     if (!filehost) {
       console.warn("No filehost available for download");
       return;
     }
-    let filehostUrl = filehost.url;
-    if (!filehostUrl) {
+    if (!filehost.url) {
       console.warn("No filehost url");
       return;
     }
+    const filehostUrl = new URL(filehost.url);
 
     // Downloads
     if (this.downloadWorker) {
@@ -282,11 +282,12 @@ export class AppsDownloadWorker {
           }
           if (job) {
             // Generate download url
-            let url = filehostUrl;
-            if (!url.endsWith("/")) url += "/";
-            url += "files/" + job.fuuid;
+            const url = new URL(filehostUrl.href);
+            // if (!url.endsWith("/")) url += "/";
+            // url += "files/" + job.fuuid;
+            url.pathname += `/files/${job.fuuid}`;
 
-            let downloadJob = { ...job, url };
+            const downloadJob = { ...job, url: url.href };
             //console.debug("Add download job", downloadJob);
             await this.downloadWorker.addJob(downloadJob);
           }

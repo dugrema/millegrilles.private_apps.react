@@ -4,6 +4,7 @@ import {
   messageStruct,
   encryptionMgs4,
   multiencoding,
+  certificates,
 } from "millegrilles.cryptography";
 
 import {
@@ -26,6 +27,7 @@ import {
   LoadDirectoryResultType,
 } from "../collections2/idb/collections2Store.types";
 import { inflate } from "pako";
+import { FicheMillegrille } from "../types/typesfiche";
 
 type ProcessDirectoryChunkOptions = {
   noidb?: boolean;
@@ -367,55 +369,79 @@ export class DirectoryWorker {
     }
   }
 
+  /**
+   * Function that attempts to select a filehost using available information from core and fiche.json.
+   * @param localUrl 
+   * @param filehostId 
+   * @returns 
+   */
   async selectFilehost(localUrl: string, filehostId: string | null) {
     // Check if the local filehost is available first
+    console.debug("Available filehosts: %O", this.filehosts);
     if (!this.filehosts || this.filehosts.length === 0) {
       await this.selectLocalFilehost(localUrl);
       return; // Successful
     }
 
+    let selectedFilehost = null as FilehostDirType | null;
+
     if (this.filehosts.length === 1) {
       // Only one filehost, select and test
-      let filehost = this.filehosts[0];
-      // console.debug("Selecting the only filehost available: ", filehost);
-
-      // Extract url
-      if (filehost.url_external && filehost.tls_external !== "millegrille") {
-        let url = new URL(filehost.url_external);
-        if (!url.pathname.endsWith("filehost")) {
-          url.pathname += "filehost";
-        }
-        filehost.url = url.href;
-      } else {
-        throw new Error(
-          "The only available filehost has no means of accessing it from a browser",
-        );
-      }
-
-      this.selectedFilehost = filehost;
-      return;
+      const filehost = this.filehosts[0];
+      console.debug("Selecting the only filehost available: ", filehost);
+      selectedFilehost = filehost;
     } else if (filehostId) {
       // Try to pick the manually chosen filehost
-      let filehost = this.filehosts
+      const filehost = this.filehosts
         .filter((item) => item.filehost_id === filehostId)
         .pop();
       if (filehost) {
-        // Extract url
-        if (filehost.url_external && filehost.tls_external !== "millegrille") {
-          let url = new URL(filehost.url_external);
-          if (!url.pathname.endsWith("filehost")) {
-            url.pathname += "filehost";
+        // console.debug("Using manually chosen filehost ", filehost);
+        selectedFilehost = filehost;
+      }
+    }
+
+    if(selectedFilehost) {
+      const externalUrl = selectedFilehost.url_external;
+      if(externalUrl) {
+        const url = new URL(externalUrl);
+        url.pathname = "/filehost";
+        selectedFilehost.url = url.href;
+      } else if(selectedFilehost.instance_id) {
+        const instanceId = selectedFilehost.instance_id;
+        const fiche = await loadFiche();
+        console.debug("Loaded fiche", fiche);
+        const instance = fiche.instances?fiche.instances[instanceId]:null;
+        if(instance) {
+          const domaines = instance.domaines;
+          let hostname = null as string | null;
+          if(domaines) {
+            hostname = domaines[0];
           }
-          filehost.url = url.href;
-        } else {
-          throw new Error(
-            "The only available filehost has no means of accessing it from a browser",
-          );
+          const httpsPort = instance.ports['https'];
+          if(hostname && httpsPort) {
+            const externalUrl = new URL(`https://${hostname}:${httpsPort}/filehost`);
+            selectedFilehost.url = externalUrl.href;
+          }
         }
 
-        // console.debug("Using manually chosen filehost ", filehost);
-        this.selectedFilehost = filehost;
-        return;
+        // Try the filehost url
+        if(selectedFilehost.url) {
+          console.debug("Verifying selected filehost at %s", selectedFilehost.url);
+          try {
+            const url = new URL(selectedFilehost.url);
+            url.pathname += "/status";
+            await axios({ url: url.href });
+            console.debug("Selected filehost url OK at: %s", selectedFilehost.url);
+            this.selectedFilehost = selectedFilehost;
+            return;
+          } catch (err: any) {
+            console.info("Error using provided filehost, will attempt fallback: %s", err);
+          }
+        }
+
+      } else {
+        console.info('No valid instance_id/external_url on selected filehost');
       }
     }
 
@@ -432,10 +458,9 @@ export class DirectoryWorker {
   ) {
     let filehost = this.selectedFilehost;
     if (!filehost) throw new Error("No filehost has been selected");
-    let urlString = filehost.url;
-    if (!urlString)
+    if (!filehost.url)
       throw new Error("No URL is available for the selected filehost");
-    let url = new URL(urlString);
+    let url = new URL(filehost.url);
 
     // console.debug("Log into filehost ", filehost);
     let authUrl = new URL(
@@ -481,37 +506,37 @@ export class DirectoryWorker {
     if (!filehost) throw new Error("No filehost is available");
     if (!filehost.authenticated)
       throw new Error("Connection to filehost not authenticated");
-    let url = filehost.url;
-    if (!url) throw new Error("No URL is available for the selected filehost");
+    if (!filehost.url) throw new Error("No URL is available for the selected filehost");
+    const url = new URL(filehost.url);
     if (decryptionInformation.format !== "mgs4")
       throw new Error(
         "Unsupported encryption format: " + decryptionInformation.format,
       );
     if (!decryptionInformation.nonce) throw new Error("Nonce missing");
 
-    let fileUrl = new URL(url + "/files/" + fuuid);
-    let response = await axios({
+    const fileUrl = new URL(url.href + "/files/" + fuuid);
+    const response = await axios({
       method: "GET",
       url: fileUrl.href,
       responseType: "blob",
       withCredentials: true,
     });
 
-    let encryptedBlob = response.data as Blob;
+    const encryptedBlob = response.data as Blob;
 
     // Decrypt file
-    let nonce = multiencoding.decodeBase64(decryptionInformation.nonce);
-    let decipher = await encryptionMgs4.getMgs4Decipher(secretKey, nonce);
+    const nonce = multiencoding.decodeBase64(decryptionInformation.nonce);
+    const decipher = await encryptionMgs4.getMgs4Decipher(secretKey, nonce);
 
     // @ts-ignore
-    let readableStream = encryptedBlob.stream() as ReadableStream;
-    let reader = readableStream.getReader();
-    let blobs = [] as Blob[]; // Save all chunks in blobs, they will get concatenated at finalize.
+    const readableStream = encryptedBlob.stream() as ReadableStream;
+    const reader = readableStream.getReader();
+    const blobs = [] as Blob[]; // Save all chunks in blobs, they will get concatenated at finalize.
     while (true) {
-      let { done, value } = await reader.read();
+      const { done, value } = await reader.read();
       if (done) break;
       if (value && value.length > 0) {
-        let output = await decipher.update(value);
+        const output = await decipher.update(value);
         if (output && output.length > 0) {
           const blob = new Blob([output]);
           blobs.push(blob);
@@ -519,8 +544,8 @@ export class DirectoryWorker {
       }
     }
 
-    let finalOutput = await decipher.finalize();
-    let outputBlob = null as Blob | null;
+    const finalOutput = await decipher.finalize();
+    const outputBlob = null as Blob | null;
     if (finalOutput && finalOutput.length > 0) {
       outputBlob = new Blob([...blobs, finalOutput], {
         type: mimetype || undefined,
@@ -597,6 +622,33 @@ export class DirectoryWorker {
 
     return result;
   }
+}
+
+async function loadFiche(): Promise<FicheMillegrille> {
+  const ficheResponse = await fetch("/fiche.json");
+  if (ficheResponse.status !== 200) {
+    throw new Error(
+      `Loading fiche.json, invalid response (${ficheResponse.status})`,
+    );
+  }
+  const responseContent = await ficheResponse.json() as messageStruct.MilleGrillesMessage;
+
+  const fiche = JSON.parse(responseContent["contenu"]) as FicheMillegrille;
+  const { idmg, ca } = fiche;
+
+  // Verify IDMG with CA
+  const idmgVerif = await certificates.getIdmg(ca);
+  if (idmgVerif !== idmg) throw new Error("Mismatch IDMG/CA certificate");
+
+  console.info("IDMG: ", idmg);
+
+  // Verify the signature.
+  const store = new certificates.CertificateStore(ca);
+  if (!(await store.verifyMessage(responseContent)))
+    throw new Error("While loading fiche.json: signature was rejected."); // Throws Error if invalid
+
+  // Return the content
+  return fiche;
 }
 
 var worker = new DirectoryWorker();

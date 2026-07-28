@@ -9,6 +9,7 @@ import { DirectoryWorker } from "./directory.worker";
 import { AppsDownloadWorker, DownloadStateCallback } from "./download.worker";
 import { AppsUploadWorker, UploadStateCallback } from "./upload.worker";
 import { SharedTransferHandler } from "./sharedTransfer.worker";
+import { FicheMillegrille } from "../types/typesfiche";
 
 export type AppWorkers = {
   connection: Remote<AppsConnectionWorker>;
@@ -153,7 +154,7 @@ async function loadFiche(): Promise<LoadFicheResult> {
   }
   let fiche = await ficheResponse.json();
 
-  let content = JSON.parse(fiche["contenu"]);
+  let content = JSON.parse(fiche["contenu"]) as FicheMillegrille;
   let { idmg, ca, chiffrage } = content;
 
   // Verify IDMG with CA
