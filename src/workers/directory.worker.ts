@@ -376,8 +376,9 @@ export class DirectoryWorker {
    * @returns 
    */
   async selectFilehost(localUrl: string, filehostId: string | null) {
-    // Check if the local filehost is available first
-    console.debug("Available filehosts: %O", this.filehosts);
+
+    // console.debug("Available filehosts: %O", this.filehosts);
+    // If there are no known filehosts, immediately fallback to a local connection
     if (!this.filehosts || this.filehosts.length === 0) {
       await this.selectLocalFilehost(localUrl);
       return; // Successful
@@ -386,9 +387,9 @@ export class DirectoryWorker {
     let selectedFilehost = null as FilehostDirType | null;
 
     if (this.filehosts.length === 1) {
-      // Only one filehost, select and test
+      // Only one known filehost, select and test
       const filehost = this.filehosts[0];
-      console.debug("Selecting the only filehost available: ", filehost);
+      // console.debug("Selecting the only filehost available: ", filehost);
       selectedFilehost = filehost;
     } else if (filehostId) {
       // Try to pick the manually chosen filehost
@@ -402,6 +403,8 @@ export class DirectoryWorker {
     }
 
     if(selectedFilehost) {
+      // A filehost was selected, extract the URL and test
+
       const externalUrl = selectedFilehost.url_external;
       if(externalUrl) {
         const url = new URL(externalUrl);
@@ -410,7 +413,7 @@ export class DirectoryWorker {
       } else if(selectedFilehost.instance_id) {
         const instanceId = selectedFilehost.instance_id;
         const fiche = await loadFiche();
-        console.debug("Loaded fiche", fiche);
+        // console.debug("Loaded fiche", fiche);
         const instance = fiche.instances?fiche.instances[instanceId]:null;
         if(instance) {
           const domaines = instance.domaines;
@@ -427,12 +430,12 @@ export class DirectoryWorker {
 
         // Try the filehost url
         if(selectedFilehost.url) {
-          console.debug("Verifying selected filehost at %s", selectedFilehost.url);
+          // console.debug("Verifying selected filehost at %s", selectedFilehost.url);
           try {
             const url = new URL(selectedFilehost.url);
             url.pathname += "/status";
             await axios({ url: url.href });
-            console.debug("Selected filehost url OK at: %s", selectedFilehost.url);
+            // console.debug("Selected filehost url OK at: %s", selectedFilehost.url);
             this.selectedFilehost = selectedFilehost;
             return;
           } catch (err: any) {
@@ -441,16 +444,12 @@ export class DirectoryWorker {
         }
 
       } else {
-        console.info('No valid instance_id/external_url on selected filehost');
+        console.info('No valid instance_id/external_url on selected filehost, will attempt fallback');
       }
     }
 
-    // Default to local
+    // Falling back to local
     await this.selectLocalFilehost(localUrl);
-
-    // Find a suitable filehost from the list. Ping the status of each to get an idea of the connection speed.
-    //let performance = {} as {[filehostId: string]: number};
-    //TODO
   }
 
   async authenticateFilehost(
