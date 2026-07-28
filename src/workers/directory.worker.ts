@@ -543,8 +543,8 @@ export class DirectoryWorker {
       }
     }
 
-    const finalOutput = await decipher.finalize();
-    const outputBlob = null as Blob | null;
+    let finalOutput = await decipher.finalize();
+    let outputBlob = null as Blob | null;
     if (finalOutput && finalOutput.length > 0) {
       outputBlob = new Blob([...blobs, finalOutput], {
         type: mimetype || undefined,
@@ -555,7 +555,7 @@ export class DirectoryWorker {
 
     if (outputBlob) {
       if (["gz", "deflate"].includes("" + decryptionInformation.compression)) {
-        const decompressedOutput = (finalOutput = inflate(
+        let decompressedOutput = (finalOutput = inflate(
           await outputBlob.arrayBuffer(),
         ));
         outputBlob = new Blob([decompressedOutput], {

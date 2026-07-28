@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-CFwixLRt.js";var t=e();function n(){return(0,t.jsx)(`p`,{children:`Configuration`})}export{n as default};
