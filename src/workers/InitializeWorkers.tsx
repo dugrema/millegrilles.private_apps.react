@@ -87,7 +87,8 @@ function InitializeWorkers() {
                 setUserSessionActive(userStatus === 200);
                 if(username) setUsername(username);
 
-                let result = await initWorkers(connectionCallback, downloadStateUpdateCallback, uploadStateUpdateCallback) as InitWorkersResult;
+                const result = await initWorkers(connectionCallback, downloadStateUpdateCallback, uploadStateUpdateCallback) as InitWorkersResult;
+                // console.debug(`Init workers result ${result}`);
                 // Success.
                 setFiche(result.idmg, result.ca, result.chiffrage);
                 // Set the worker state to ready, allows the remainder of the application to load.

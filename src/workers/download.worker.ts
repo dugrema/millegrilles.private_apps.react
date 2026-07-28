@@ -114,7 +114,8 @@ export class AppsDownloadWorker {
       // Try spawning dedicated sub-workers
       try {
         let downloadThreadWorker = new Worker(
-          new URL("download.worker_thread.ts", import.meta.url),
+          new URL("download.worker_thread.ts", import.meta.url), 
+          {type: 'module'}
         );
         this.downloadWorker = wrap(downloadThreadWorker);
         console.info("Spawned download thread subworker");
@@ -129,6 +130,7 @@ export class AppsDownloadWorker {
       try {
         let decryptionWorker = new Worker(
           new URL("./download.worker_decryption.ts", import.meta.url),
+          {type: 'module'}
         );
         this.decryptionWorker = wrap(decryptionWorker);
         console.info("Spawned download decryption subworker");

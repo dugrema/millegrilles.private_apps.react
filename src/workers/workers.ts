@@ -83,18 +83,23 @@ export async function initWorkers(
   // Set-up the workers
   const serverUrl = new URL(window.location.href);
   serverUrl.pathname = SOCKETIO_PATH;
+  // console.debug(`Initializing connection url to ${serverUrl}`)
   await connection.initialize(serverUrl.href, ca, callback, {
     reconnectionDelay: 7500,
   });
+  // console.debug(`Setting up encryption with CA ${ca}`)
   await encryption.initialize(ca);
+  // console.debug(`Setting up encryption keys ${chiffrage}`)
   await encryption.setEncryptionKeys(chiffrage);
 
   if (sharedTransferHandler) {
+    // console.debug("Using shared transfer handler");
     // Wire transfer callbacks through the shared transfer handler.
     await sharedTransferHandler.addCallbacks(
       uploadStateCallback,
       downloadStateCallback,
     );
+    // console.debug("Setting up shared download worker");
     await download.setup(
       proxy((state) => {
         if (!sharedTransferHandler)
@@ -103,6 +108,7 @@ export async function initWorkers(
       }),
       true,
     );
+    // console.debug("Setting up shared upload worker");
     await upload.setup(
       proxy((state) => {
         if (!sharedTransferHandler)
@@ -113,9 +119,11 @@ export async function initWorkers(
       true,
     );
   } else {
+    // console.debug("Using split transfer handler");
     await download.setup(downloadStateCallback, false);
     await upload.setup(uploadStateCallback, ca, false);
   }
+  // console.debug(`Setting encryption keys with ${chiffrage}`)
   await upload.setEncryptionKeys(chiffrage);
 
   workers = {
@@ -161,8 +169,4 @@ async function loadFiche(): Promise<LoadFicheResult> {
 
   // Return the content
   return { idmg, ca, chiffrage };
-}
-
-export async function connect() {
-  await workers?.connection.connect();
 }

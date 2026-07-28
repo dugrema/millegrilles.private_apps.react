@@ -114,6 +114,7 @@ export class AppsUploadWorker {
       try {
         let uploadThreadWorker = new Worker(
           new URL("./upload.worker_thread", import.meta.url),
+          {type: 'module'}
         );
         this.uploadWorker = wrap(uploadThreadWorker);
       } catch (err) {
@@ -131,6 +132,7 @@ export class AppsUploadWorker {
       try {
         let encryptionThreadWorker = new Worker(
           new URL("./upload.worker_encryption", import.meta.url),
+          {type: 'module'}
         );
         this.encryptionWorker = wrap(encryptionThreadWorker);
       } catch (err) {
