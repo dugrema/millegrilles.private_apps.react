@@ -1,11 +1,12 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command }) => {
-  const isBuild = command === 'build'
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const isBuild = command === 'build';
 
   return {
     resolve: {
@@ -24,5 +25,11 @@ export default defineConfig(({ command }) => {
       tailwindcss(),
     ],
     base: '/apps/',
+    server: {
+      hmr: command === 'serve' && env.VITE_HMR_HOST ? {  // create .env.local file with VITE_HMR_HOST=yourhost
+        host: env.VITE_HMR_HOST,
+        protocol: env.VITE_HMR_PROTOCOL || 'wss',
+      } : undefined,
+    },
   }
 });

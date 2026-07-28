@@ -68,7 +68,7 @@
     "zustand": "^5.0.14"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "test": "vitest",
     "preview": "vite preview"

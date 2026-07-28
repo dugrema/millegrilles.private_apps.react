@@ -41,38 +41,38 @@ export async function initWorkers(
   downloadStateCallback: DownloadStateCallback,
   uploadStateCallback: UploadStateCallback,
 ): Promise<InitWorkersResult> {
-  let { idmg, ca, chiffrage } = await loadFiche();
+  const { idmg, ca, chiffrage } = await loadFiche();
 
-  let connectionWorker = new Worker(
-    new URL("./connection.worker.ts", import.meta.url),
+  const connectionWorker = new Worker(
+    new URL("./connection.worker.ts", import.meta.url), {type: 'module'},
   );
-  let connection = wrap(connectionWorker) as Remote<AppsConnectionWorker>;
+  const connection = wrap(connectionWorker) as Remote<AppsConnectionWorker>;
 
-  let encryptionWorker = new Worker(
-    new URL("./encryption.worker.ts", import.meta.url),
+  const encryptionWorker = new Worker(
+    new URL("./encryption.worker.ts", import.meta.url), {type: 'module'},
   );
-  let encryption = wrap(encryptionWorker) as Remote<AppsEncryptionWorker>;
+  const encryption = wrap(encryptionWorker) as Remote<AppsEncryptionWorker>;
 
-  let directoryWorker = new Worker(
-    new URL("./directory.worker.ts", import.meta.url),
+  const directoryWorker = new Worker(
+    new URL("./directory.worker.ts", import.meta.url), {type: 'module'},
   );
-  let directory = wrap(directoryWorker) as Remote<DirectoryWorker>;
+  const directory = wrap(directoryWorker) as Remote<DirectoryWorker>;
 
-  let uploadWorker = new Worker(
-    new URL("./upload.dedicated.ts", import.meta.url),
+  const uploadWorker = new Worker(
+    new URL("./upload.dedicated.ts", import.meta.url), {type: 'module'},
   );
-  let upload = wrap(uploadWorker) as Remote<AppsUploadWorker>;
+  const upload = wrap(uploadWorker) as Remote<AppsUploadWorker>;
 
   // let downloadWorker = new Worker(new URL('./download.dedicated.ts', import.meta.url));
   // let download = wrap(downloadWorker) as Remote<AppsDownloadWorker>;
   // Using this approach for safari on iOS16.7+. Spawns 2 sub-workers so the impact is limited.
-  let download = new AppsDownloadWorker();
+  const download = new AppsDownloadWorker();
 
   // Optional - a Shared Transfer worker, distributes updates across browser tabs.
   let sharedTransferHandler = null as Remote<SharedTransferHandler> | null;
   if (!!window.SharedWorker) {
-    let sharedTransferWorker = new SharedWorker(
-      new URL("./sharedTransfer.shared.ts", import.meta.url),
+    const sharedTransferWorker = new SharedWorker(
+      new URL("./sharedTransfer.shared.ts", import.meta.url), {type: 'module'},
     );
     sharedTransferHandler = wrap(
       sharedTransferWorker.port,
@@ -81,7 +81,7 @@ export async function initWorkers(
   }
 
   // Set-up the workers
-  let serverUrl = new URL(window.location.href);
+  const serverUrl = new URL(window.location.href);
   serverUrl.pathname = SOCKETIO_PATH;
   await connection.initialize(serverUrl.href, ca, callback, {
     reconnectionDelay: 7500,
