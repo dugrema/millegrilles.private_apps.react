@@ -68,13 +68,13 @@ export function InitializeUserStore() {
  */
 function FilehostManager() {
 
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let filehostAuthenticated = useConnectionStore(state=>state.filehostAuthenticated);
-    let setFilehostAuthenticated = useConnectionStore(state=>state.setFilehostAuthenticated);
-    let filehostId = useConnectionStore(state=>state.filehostId);
-    let setFilehostId = useConnectionStore(state=>state.setFilehostId);
-    let userId = useUserBrowsingStore(state=>state.userId);
+    const workers = useWorkers();
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
+    const filehostAuthenticated = useConnectionStore(state=>state.filehostAuthenticated);
+    const setFilehostAuthenticated = useConnectionStore(state=>state.setFilehostAuthenticated);
+    const filehostId = useConnectionStore(state=>state.filehostId);
+    const setFilehostId = useConnectionStore(state=>state.setFilehostId);
+    const userId = useUserBrowsingStore(state=>state.userId);
 
     // Load pre-selected filehostId from localStorage
     useEffect(()=>{
@@ -90,7 +90,7 @@ function FilehostManager() {
 
     // Trigger a reauthentication for a newly selected filehostId
     useEffect(()=>{
-        console.debug("Changing filehost id to", filehostId);
+        // console.debug("Changing filehost id to", filehostId);
         setFilehostAuthenticated(false);
     }, [filehostId, setFilehostAuthenticated]);
 
@@ -109,9 +109,9 @@ function FilehostManager() {
         }
 
         // Retry every 15 seconds if not authenticated. Reauth every 10 minutes if ok.
-        let intervalMillisecs = filehostAuthenticated?600_000:15_000;
+        const intervalMillisecs = filehostAuthenticated?600_000:15_000;
 
-        let interval = setInterval(()=>{
+        const interval = setInterval(()=>{
             if(!workers) throw new Error('workers not initialized');
             maintainFilehosts(workers, filehostIdInner, setFilehostAuthenticated)
                 .catch(err=>console.error("Error during filehost maintenance", err));
@@ -126,24 +126,24 @@ function FilehostManager() {
 }
 
 async function maintainFilehosts(workers: AppWorkers, filehostId: string | null, setFilehostAuthenticated: (authenticated: boolean)=>void) {
-    let filehostResponse = await workers.connection.getFilehosts();
+    const filehostResponse = await workers.connection.getFilehosts();
     if(!filehostResponse.ok) throw new Error('Error loading filehosts: ' + filehostResponse.err);
 
     // console.debug("maintainFilehost with id:%s, list received: %O", filehostId, filehostResponse);
 
-    let list = filehostResponse.list;
+    const list = filehostResponse.list;
     try {
         if(list) {
             await workers.directory.setFilehostList(list);
-            let localUrl = new URL(window.location.href);
+            const localUrl = new URL(window.location.href);
             localUrl.pathname = ''
             localUrl.search = ''
             await workers.directory.selectFilehost(localUrl.href, filehostId);
 
             // Generate an authentication message
-            let caPem = (await workers.connection.getMessageFactoryCertificate()).pemMillegrille;
+            const caPem = (await workers.connection.getMessageFactoryCertificate()).pemMillegrille;
             if(!caPem) throw new Error('CA certificate not available');
-            let authMessage = await workers.connection.createRoutedMessage(
+            const authMessage = await workers.connection.createRoutedMessage(
                 messageStruct.MessageKind.Command, {}, {domaine: 'filehost', action: 'authenticate'});
             authMessage.millegrille = caPem;
 
@@ -152,8 +152,8 @@ async function maintainFilehosts(workers: AppWorkers, filehostId: string | null,
             setFilehostAuthenticated(true);
 
             // Transfer selected filehost to transfer workers
-            let selectedFilehost = await workers.directory.getSelectedFilehost();
-            console.debug("Selected filehost id: ", selectedFilehost?.filehost_id);
+            const selectedFilehost = await workers.directory.getSelectedFilehost();
+            // console.debug("Selected filehost id: ", selectedFilehost?.filehost_id);
             workers.download.setFilehost(selectedFilehost);
             workers.upload.setFilehost(selectedFilehost);
 
@@ -179,11 +179,11 @@ function TransferStoreSync() {
 }
 
 function SaveCurrentLocation() {
-    let location = useLocation();
-    let userId = useUserBrowsingStore(state=>state.userId);
+    const location = useLocation();
+    const userId = useUserBrowsingStore(state=>state.userId);
     useEffect(()=>{
         let pathname = location.pathname;
-        let search = location.search;
+        const search = location.search;
         if(search) pathname += search;
         localStorage.setItem(`location_${userId}`, pathname);
     }, [location, userId]);

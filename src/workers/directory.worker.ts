@@ -427,24 +427,21 @@ export class DirectoryWorker {
             selectedFilehost.url = externalUrl.href;
           }
         }
+      }
 
-        // Try the filehost url
-        if(selectedFilehost.url) {
-          // console.debug("Verifying selected filehost at %s", selectedFilehost.url);
-          try {
-            const url = new URL(selectedFilehost.url);
-            url.pathname += "/status";
-            await axios({ url: url.href });
-            // console.debug("Selected filehost url OK at: %s", selectedFilehost.url);
-            this.selectedFilehost = selectedFilehost;
-            return;
-          } catch (err: any) {
-            console.info("Error using provided filehost, will attempt fallback: %s", err);
-          }
+      // Try the filehost url
+      if(selectedFilehost.url) {
+        // console.debug("Verifying selected filehost at %s", selectedFilehost.url);
+        try {
+          const url = new URL(selectedFilehost.url);
+          url.pathname += "/status";
+          await axios({ url: url.href });
+          // console.debug("Selected filehost url OK at: %s", selectedFilehost.url);
+          this.selectedFilehost = selectedFilehost;
+          return;
+        } catch (err: any) {
+          console.info("Error using provided filehost, will attempt fallback: %s", err);
         }
-
-      } else {
-        console.info('No valid instance_id/external_url on selected filehost, will attempt fallback');
       }
     }
 
