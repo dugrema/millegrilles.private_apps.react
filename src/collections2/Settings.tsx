@@ -96,23 +96,23 @@ function ResolutionSettings() {
 }
 
 function FilehostConfiguration() {
-  let workers = useWorkers();
-  let ready = useConnectionStore((state) => state.connectionAuthenticated);
-  let userId = useUserBrowsingStore((state) => state.userId);
-  let setFilehostId = useConnectionStore((state) => state.setFilehostId);
+  const workers = useWorkers();
+  const ready = useConnectionStore((state) => state.connectionAuthenticated);
+  const userId = useUserBrowsingStore((state) => state.userId);
+  const setFilehostId = useConnectionStore((state) => state.setFilehostId);
 
-  let [current, setCurrent] = useState("");
-  let currentOnChange = useCallback(
+  const [current, setCurrent] = useState("");
+  const currentOnChange = useCallback(
     (e: ChangeEvent<HTMLSelectElement>) => setCurrent(e.currentTarget.value),
     [setCurrent],
   );
-  let [filehosts, setFilehosts] = useState(null as Filehost[] | null);
+  const [filehosts, setFilehosts] = useState(null as Filehost[] | null);
 
-  let filehostOptions = useMemo(() => {
+  const filehostOptions = useMemo(() => {
     if (!filehosts) return [];
     return filehosts
       .filter(
-        (item) => item.url_external && item.tls_external !== "millegrille",
+        (item) => (item.instance_id || item.url_external) && item.tls_external !== "millegrille",
       )
       .map((item) => {
         return (
@@ -123,7 +123,7 @@ function FilehostConfiguration() {
       });
   }, [filehosts]);
 
-  let changeFilehostHandler = useCallback(async () => {
+  const changeFilehostHandler = useCallback(async () => {
     // Save the filehost to local storage and trigger a reconnection
     localStorage.setItem(`filehost_${userId}`, current);
     setFilehostId(current);
@@ -131,9 +131,11 @@ function FilehostConfiguration() {
 
   useEffect(() => {
     if (!userId) return;
-    let current = localStorage.getItem(`filehost_${userId}`) || "";
-    console.debug("Setting current filehostId to ", current);
-    setCurrent(current);
+    const current = localStorage.getItem(`filehost_${userId}`) || "";
+    if(current) {
+      console.debug("Setting current filehostId to ", current);
+      setCurrent(current);
+    }
   }, [userId, setCurrent]);
 
   useEffect(() => {
