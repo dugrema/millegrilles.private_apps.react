@@ -1061,15 +1061,26 @@ export async function cleanup() {
 
   try {
     let root = await navigator.storage.getDirectory();
-    let downloadDirectory = await root.getDirectoryHandle("downloads");
-    // @ts-ignore
-    for await (let filename of downloadDirectory.values()) {
-      // console.debug("Deleting downloaded file ", filename);
-      await downloadDirectory.removeEntry(filename.name);
+    console.debug("Directory entry: %O", root);
+    for await(const entry of root) {
+      console.debug("Entry %O", entry);
+      const [filename, fileHandle] = entry;
+      if(fileHandle.kind === 'directory') await removeDirectory(fileHandle);
+      root.removeEntry(filename);
     }
-    // console.debug("Deleting downloads directory");
-    await root.removeEntry("downloads");
   } catch (err) {
     console.warn("Error deleting download directory entry: ", err);
+  }
+}
+
+async function removeDirectory(directoryHandle: FileSystemDirectoryHandle ) {
+  console.debug("Recursively removing from %O", directoryHandle);
+  for await (const fileEntry of directoryHandle) {
+    const [filename, fileHandle] = fileEntry;
+    if(fileHandle.kind == 'directory') {
+      await removeDirectory(fileHandle);
+    }
+    console.debug("Removing %s", filename)  
+    await directoryHandle.removeEntry(filename);
   }
 }
