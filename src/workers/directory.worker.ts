@@ -412,21 +412,25 @@ export class DirectoryWorker {
         selectedFilehost.url = url.href;
       } else if(selectedFilehost.instance_id) {
         const instanceId = selectedFilehost.instance_id;
-        const fiche = await loadFiche();
-        // console.debug("Loaded fiche", fiche);
-        const instance = fiche.instances?fiche.instances[instanceId]:null;
-        if(instance) {
-          const domaines = instance.domaines;
-          let hostname = null as string | null;
-          if(domaines) {
-            hostname = domaines[0];
-          }
-          const httpsPort = instance.ports['https'];
-          if(hostname && httpsPort) {
-            const externalUrl = new URL(`https://${hostname}:${httpsPort}/filehost`);
-            selectedFilehost.url = externalUrl.href;
-          }
+        const instanceUrl = await extractInstanceUrl(instanceId);
+        if(instanceUrl) {
+          selectedFilehost.url = instanceUrl.href;
         }
+        // const fiche = await loadFiche();
+        // // console.debug("Loaded fiche", fiche);
+        // const instance = fiche.instances?fiche.instances[instanceId]:null;
+        // if(instance) {
+        //   const domaines = instance.domaines;
+        //   let hostname = null as string | null;
+        //   if(domaines) {
+        //     hostname = domaines[0];
+        //   }
+        //   const httpsPort = instance.ports['https'];
+        //   if(hostname && httpsPort) {
+        //     const externalUrl = new URL(`https://${hostname}:${httpsPort}/filehost`);
+        //     selectedFilehost.url = externalUrl.href;
+        //   }
+        // }
       }
 
       // Try the filehost url
@@ -618,6 +622,25 @@ export class DirectoryWorker {
 
     return result;
   }
+}
+
+async function extractInstanceUrl(instanceId: string): Promise<URL | null> {
+  const fiche = await loadFiche();
+  // console.debug("Loaded fiche", fiche);
+  const instance = fiche.instances?fiche.instances[instanceId]:null;
+  if(instance) {
+    const domaines = instance.domaines;
+    let hostname = null as string | null;
+    if(domaines) {
+      hostname = domaines[0];
+    }
+    const httpsPort = instance.ports['https'];
+    if(hostname && httpsPort) {
+      const externalUrl = new URL(`https://${hostname}:${httpsPort}/filehost`);
+      return externalUrl
+    }
+  }
+  return null;
 }
 
 async function loadFiche(): Promise<FicheMillegrille> {

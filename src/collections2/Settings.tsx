@@ -7,6 +7,8 @@ import useWorkers from "../workers/workers";
 import useConnectionStore from "../connectionStore";
 import { Filehost } from "../types/connection.types";
 import useUserBrowsingStore from "./userBrowsingStore";
+import { FicheMillegrille } from "../types/typesfiche";
+import { certificates, messageStruct } from "millegrilles.cryptography";
 
 function SettingsPage() {
   return (
@@ -107,6 +109,7 @@ function FilehostConfiguration() {
     [setCurrent],
   );
   const [filehosts, setFilehosts] = useState(null as Filehost[] | null);
+  const [urlsByInstanceid, setUrlsByInstanceid] = useState({} as {[key:string]: URL});
 
   const filehostOptions = useMemo(() => {
     if (!filehosts) return [];
@@ -115,13 +118,21 @@ function FilehostConfiguration() {
         (item) => (item.instance_id || item.url_external) && item.tls_external !== "millegrille",
       )
       .map((item) => {
+        let urlExternal = item.url_external;
+        if(!urlExternal && item.instance_id) {
+          const urlValue = urlsByInstanceid[item.instance_id];
+          // console.debug("Mapping %s to urlValue %O", item.instance_id, urlValue);
+          if(urlValue) urlExternal = urlValue.hostname;
+          else urlExternal = item.instance_id;
+        }
+
         return (
           <option key={item.filehost_id} value={item.filehost_id}>
-            {item.url_external}
+            {urlExternal}
           </option>
         );
       });
-  }, [filehosts]);
+  }, [filehosts, urlsByInstanceid]);
 
   const changeFilehostHandler = useCallback(async () => {
     // Save the filehost to local storage and trigger a reconnection
@@ -137,6 +148,13 @@ function FilehostConfiguration() {
       setCurrent(current);
     }
   }, [userId, setCurrent]);
+
+  useEffect(()=>{
+    extractInstanceUrls().then(value=>{
+      console.debug("URL by instance id", value);
+      setUrlsByInstanceid(value)
+    });
+  }, [setUrlsByInstanceid]);
 
   useEffect(() => {
     if (!workers || !ready) return;
@@ -363,4 +381,53 @@ function TestArea() {
       <ActionButton onClick={fsListDownloads}>List downloads</ActionButton>
     </>
   );
+}
+
+async function extractInstanceUrls(): Promise<{[key:string]: URL}> {
+  const fiche = await loadFiche();
+  // console.debug("Loaded fiche", fiche);
+  const urlsByInstanceid = {} as {[key:string]: URL};
+  if(fiche.instances) {
+    for(const instanceId of Object.keys(fiche.instances)) {
+      const instance = fiche.instances[instanceId];
+      const domaines = instance.domaines;
+      let hostname = null as string | null;
+      if(domaines) {
+        hostname = domaines[0];
+      }
+      const httpsPort = instance.ports['https'];
+      if(hostname && httpsPort) {
+        const externalUrl = new URL(`https://${hostname}:${httpsPort}/filehost`);
+        urlsByInstanceid[instanceId] = externalUrl;
+      }  
+    }
+  }
+  return urlsByInstanceid;
+}
+
+async function loadFiche(): Promise<FicheMillegrille> {
+  const ficheResponse = await fetch("/fiche.json");
+  if (ficheResponse.status !== 200) {
+    throw new Error(
+      `Loading fiche.json, invalid response (${ficheResponse.status})`,
+    );
+  }
+  const responseContent = await ficheResponse.json() as messageStruct.MilleGrillesMessage;
+
+  const fiche = JSON.parse(responseContent["contenu"]) as FicheMillegrille;
+  const { idmg, ca } = fiche;
+
+  // Verify IDMG with CA
+  const idmgVerif = await certificates.getIdmg(ca);
+  if (idmgVerif !== idmg) throw new Error("Mismatch IDMG/CA certificate");
+
+  console.info("IDMG: ", idmg);
+
+  // Verify the signature.
+  const store = new certificates.CertificateStore(ca);
+  if (!(await store.verifyMessage(responseContent)))
+    throw new Error("While loading fiche.json: signature was rejected."); // Throws Error if invalid
+
+  // Return the content
+  return fiche;
 }
