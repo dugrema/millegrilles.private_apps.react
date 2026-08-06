@@ -23,10 +23,13 @@ root.render(
     </React.StrictMode>
 );
 
-// Use Vite's import.meta.env.DEV instead of the global variable from index.html
-if (import.meta.env.DEV) {
-    serviceWorkerRegistration.unregister();
-} else {
-    // Assume production
-    serviceWorkerRegistration.register();
-}
+// Troubleshooting issues - unregistering only
+serviceWorkerRegistration.unregister();
+
+// // Use Vite's import.meta.env.DEV instead of the global variable from index.html
+// if (import.meta.env.DEV) {
+//     serviceWorkerRegistration.unregister();
+// } else {
+//     // Assume production
+//     serviceWorkerRegistration.register();
+// }
