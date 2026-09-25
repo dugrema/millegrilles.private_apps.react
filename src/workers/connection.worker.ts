@@ -20,7 +20,7 @@ import {
   NotepadCategoriesResponse,
   NotepadGroupsResponse,
   DecryptionKeyResponse,
-  NotepadDocumentsResponse,
+  NotepadDocumentIdentitiesResponse,
   ConversationSyncResponse,
   GetModelsResponse,
   GetAiConfigurationResponse,
@@ -40,6 +40,7 @@ import {
   Collection2CopyFilesCommand,
   Collections2AddFileCommand,
   Collection2UserAccessToFuuidsResponse,
+  NotepadDocumentsResponse,
 } from "../types/connection.types";
 
 import { DeviceConfiguration } from "../senseurspassifs/senseursPassifsStore";
@@ -494,35 +495,43 @@ export class AppsConnectionWorker extends ConnectionWorker {
   async getNotepadDocumentsForGroup(
     groupId: string,
     supprime?: boolean,
-    dateSync?: number,
   ) {
     if (!this.connection) throw new Error("Connection is not initialized");
     return (await this.connection.sendRequest(
-      { groupe_id: groupId, supprime: !!supprime, date_sync: dateSync },
+      { groupe_id: groupId, supprime: !!supprime },
       DOMAINE_DOCUMENTS,
-      "getDocumentsGroupe",
+      "getGroupDocList",
+    )) as NotepadDocumentIdentitiesResponse;
+  }
+
+  async getDocumentsContent(groupId: string, docIds: string[]) {
+    if (!this.connection) throw new Error("Connection is not initialized");
+    return (await this.connection.sendRequest(
+      { groupe_id: groupId, doc_ids: docIds },
+      DOMAINE_DOCUMENTS,
+      "getDocsContent",
     )) as NotepadDocumentsResponse;
   }
 
-  async getNotepadDocumentsForGroupStreamed(
-    groupId: string,
-    callback: (e: MessageResponse | NotepadDocumentsResponse) => void,
-    supprime?: boolean,
-    dateSync?: number,
-  ) {
-    if (!this.connection) throw new Error("Connection is not initialized");
-    let signedMessage = await this.connection.createRoutedMessage(
-      messageStruct.MessageKind.Request,
-      {
-        groupe_id: groupId,
-        supprime: !!supprime,
-        date_sync: dateSync,
-        stream: true,
-      },
-      { domaine: DOMAINE_DOCUMENTS, action: "getDocumentsGroupe" },
-    );
-    return await this.connection.emitCallbackResponses(signedMessage, callback);
-  }
+  // async getNotepadDocumentsForGroupStreamed(
+  //   groupId: string,
+  //   callback: (e: MessageResponse | NotepadDocumentsResponse) => void,
+  //   supprime?: boolean,
+  //   dateSync?: number,
+  // ) {
+  //   if (!this.connection) throw new Error("Connection is not initialized");
+  //   let signedMessage = await this.connection.createRoutedMessage(
+  //     messageStruct.MessageKind.Request,
+  //     {
+  //       groupe_id: groupId,
+  //       supprime: !!supprime,
+  //       date_sync: dateSync,
+  //       stream: true,
+  //     },
+  //     { domaine: DOMAINE_DOCUMENTS, action: "getDocumentsGroupe" },
+  //   );
+  //   return await this.connection.emitCallbackResponses(signedMessage, callback);
+  // }
 
   // async sendChatMessage(command: any, callback: any): Promise<boolean> {
   //     if(!this.connection) throw new Error("Connection is not initialized");

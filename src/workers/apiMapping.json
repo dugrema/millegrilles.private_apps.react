@@ -14,7 +14,8 @@
       "action": "getClesGroupes",
       "domaines": ["Documents", "MaitreDesCles"]
     },
-    { "domain": "Documents", "action": "getDocumentsGroupe", "stream": true },
+    { "domain": "Documents", "action": "getGroupDocList" },
+    { "domain": "Documents", "action": "getDocsContent" },
     {
       "domain": "AiLanguage",
       "action": "getConversationKeys",

@@ -70,21 +70,29 @@ export type NotepadNewDocumentType = {
     doc_id?: string | null,
 }
 
+/** Identity type is used for sync. Nonce can be used as match for current version. */
+export type NotepadDocumentIdentityType = {
+    doc_id: string,
+    supprime?: boolean,
+    modification_date?: number,
+    nonce?: number,
+}
+
 export type NotepadDocumentType = {
+    doc_id: string,
     user_id: string,
     groupe_id: string,
-    categorie_version: number,
-    doc_id: string,
+    decrypted: boolean,
+    categorie_version?: number,
     cle_id?: string,
-    format: string,
+    format?: string,
     nonce?: string,
     header?: string,
     compression?: string,
-    data_chiffre: string,
+    data_chiffre?: string | null,
     supprime?: boolean,
     label?: string,
     data?: NotepadDocumentData,
-    decrypted?: boolean,
 };
 
 export async function openDB(upgrade?: boolean): Promise<IDBPDatabase> {
@@ -300,40 +308,69 @@ export async function getMissingKeys(userId: string): Promise<Array<string>> {
 }
 
 // Met dirty a true et dechiffre a false si mismatch derniere_modification
-export async function syncDocuments(docs: Array<NotepadDocumentType>, opts?: {groupId?: string, dateSync?: number, userId?: string, deleted?: Array<string>}) {
+export async function syncDocumentIdentitiess(
+    docs: Array<NotepadDocumentIdentityType>, 
+    userId: string, 
+    groupId: string, 
+    deletedDocuments?: Array<string>
+) {
     const db = await openDB();
     const store = db.transaction(STORE_DOCUMENTS, 'readwrite').store;
 
     if(docs) {
-        for await (const infoDoc of docs) {
-            const { doc_id, nonce } = infoDoc
+        for await (const docIdentity of docs) {
+            const { doc_id, nonce } = docIdentity
             const documentDoc = await store.get(doc_id);
             if(documentDoc) {
                 if(nonce !== documentDoc.nonce) {
-                    // Known file but different version.
-                    await store.put({...documentDoc, ...infoDoc, decrypted: false});
+                    // Known file but different version, remove existing values (must getDocument for lazy retrieve)
+                    await store.put({...documentDoc, nonce, data_chiffre: null, data: null, decrypted: false});
                 }
             } else {
-                const user_id = infoDoc.user_id || opts?.userId;
-                if(!user_id) throw new Error("Missing userId");
-                await store.put({...infoDoc, user_id, decrypted: false});
+                await store.put({...docIdentity, user_id: userId, groupe_id: groupId, decrypted: false});
             }
         }
     }
 
-    let deletedDocuments = opts?.deleted;
     if(deletedDocuments) {
         for await (let docId of deletedDocuments) {
             await store.delete(docId);
         }
     }
+}
 
-    if(opts?.groupId && opts?.dateSync) {
-        // Save the last sync date
-        let store = db.transaction(STORE_GROUPS, 'readwrite').store;
-        let group = await store.get(opts.groupId);
-        await store.put({...group, dateSync: opts.dateSync});
+export async function syncDocuments(
+    docs: Array<NotepadDocumentType>, 
+    userId: string, 
+    groupId: string,
+) {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOCUMENTS, 'readwrite').store;
+    for await (const docContent of docs) {
+        const { doc_id, nonce } = docContent
+        const documentDoc = await store.get(doc_id);
+        if(documentDoc) {
+            // Known file but different version, remove existing values (must getDocument for lazy retrieve)
+            await store.put({...documentDoc, ...docContent, user_id: userId, group_id: groupId, decrypted: false});
+        }
     }
+}
+
+/** Returns documents that are not decrypted (dirty) */
+export async function getDirtyDocumentsIdsForGroup(userId: string, groupId: string): Promise<string[]> {
+    const db = await openDB();
+    const store = db.transaction(STORE_DOCUMENTS, 'readonly').store;
+    const index = store.index('useridGroup');
+
+    let docIds = [];
+    let cursor = await index.openCursor([userId, groupId]);
+    while(cursor) {
+        const value = cursor.value as NotepadDocumentType;
+        if(!value.decrypted) docIds.push(value.doc_id);
+        cursor = await cursor.continue();
+    }
+
+    return docIds;
 }
 
 /** Decrypts all encrypted groups using an already downloaded key. */

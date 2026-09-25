@@ -3,6 +3,7 @@ import { MessageResponse } from "millegrilles.reactdeps.typescript";
 import { DeviceReadings } from "../senseurspassifs/senseursPassifsStore";
 import {
   NotepadCategoryType,
+  NotepadDocumentIdentityType,
   NotepadDocumentType,
   NotepadGroupType,
 } from "../notepad/idb/notepadStoreIdb";
@@ -139,11 +140,14 @@ export type DecryptionKeyResponse = MessageResponse & {
 };
 
 /** Notepad documents response */
+export type NotepadDocumentIdentitiesResponse = MessageResponse & {
+  documents?: Array<NotepadDocumentIdentityType>;
+  supprimes?: Array<string>;
+  done: boolean;
+};
+
 export type NotepadDocumentsResponse = MessageResponse & {
   documents?: Array<NotepadDocumentType>;
-  supprimes?: Array<string>;
-  date_sync: number;
-  done: boolean;
 };
 
 /** Conversation sync response */

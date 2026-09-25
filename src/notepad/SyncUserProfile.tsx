@@ -53,13 +53,13 @@ async function init() {
 async function syncCategoriesGroups(workers: AppWorkers, setCategories: (categories: Array<NotepadCategoryType>) => void, setGroups: (groups: Array<NotepadGroupType>) => void) {
 
     // Get userId from user certificate.
-    let certificate = await workers.connection.getMessageFactoryCertificate();
-    let userId = certificate.extensions?.userId;
+    const certificate = await workers.connection.getMessageFactoryCertificate();
+    const userId = certificate.extensions?.userId;
     if(!userId) throw new Error("UserId missing from connection certificate");
 
     try {
         // Sync categories
-        let categoryResponse = await workers.connection.getNotepadUserCategories();
+        const categoryResponse = await workers.connection.getNotepadUserCategories();
         if(categoryResponse.categories) {
             await syncCategories(categoryResponse.categories);
         } else {
@@ -67,7 +67,7 @@ async function syncCategoriesGroups(workers: AppWorkers, setCategories: (categor
         }
         
         // Sync groups
-        let groupResponse = await workers.connection.getNotepadUserGroups();
+        const groupResponse = await workers.connection.getNotepadUserGroups();
         if(groupResponse.groupes) {
             let supprimes = groupResponse.supprimes;
             await syncGroups(groupResponse.groupes, {userId, supprimes});
@@ -76,12 +76,12 @@ async function syncCategoriesGroups(workers: AppWorkers, setCategories: (categor
         }
         
         // Check what keys are missing to decrypt the groups.
-        let requiredKeyIds = await getMissingKeys(userId);
+        const requiredKeyIds = await getMissingKeys(userId);
         if(requiredKeyIds.length > 0) {
             // Get missing group decryption keys
-            let keyResponse = await workers.connection.getGroupKeys(requiredKeyIds);
+            const keyResponse = await workers.connection.getGroupKeys(requiredKeyIds);
             if(keyResponse.ok !== false) {
-                for await (let key of keyResponse.cles) {
+                for await (const key of keyResponse.cles) {
                     await saveDecryptedKey(key.cle_id, key.cle_secrete_base64);
                 }
             } else {
@@ -93,8 +93,8 @@ async function syncCategoriesGroups(workers: AppWorkers, setCategories: (categor
 
     } finally {
         // Always load from database
-        let categoriesIdb = await getUserCategories(userId);
-        let groupsIdb = await getUserGroups(userId, true);
+        const categoriesIdb = await getUserCategories(userId);
+        const groupsIdb = await getUserGroups(userId, true);
         setCategories(categoriesIdb);
         setGroups(groupsIdb);
     }
@@ -104,16 +104,16 @@ async function syncCategoriesGroups(workers: AppWorkers, setCategories: (categor
 /** Listens and updates categories and groups on change. */
 function ListenCategoryGroupChanges() {
 
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
+    const ready = useConnectionStore(state=>state.connectionAuthenticated);
 
-    let workers = useWorkers();
-    let setCategories = useNotepadStore(state=>state.setCategories);
-    let setGroups = useNotepadStore(state=>state.setGroups);
-    let setSyncDone = useNotepadStore(state=>state.setSyncDone);
+    const workers = useWorkers();
+    const setCategories = useNotepadStore(state=>state.setCategories);
+    const setGroups = useNotepadStore(state=>state.setGroups);
+    const setSyncDone = useNotepadStore(state=>state.setSyncDone);
 
-    let updateCategory = useNotepadStore(state=>state.updateCategory);
+    const updateCategory = useNotepadStore(state=>state.updateCategory);
 
-    let [userId, setUserId] = useState('');
+    const [userId, setUserId] = useState('');
 
     useEffect(()=>{
         if(!workers || !ready) return;
@@ -121,7 +121,7 @@ function ListenCategoryGroupChanges() {
         // Get userId from user certificate.
         workers.connection.getMessageFactoryCertificate()
             .then(async certificate => {
-                let userId = certificate.extensions?.userId;
+                const userId = certificate.extensions?.userId;
                 if(!userId) throw new Error("UserId missing from connection certificate");
                 setUserId(userId);
             })
@@ -131,11 +131,11 @@ function ListenCategoryGroupChanges() {
         return () => setUserId('');
     }, [workers, ready, setUserId]);
 
-    let categoryGroupEventCb = useMemo(()=>{
+    const categoryGroupEventCb = useMemo(()=>{
         return proxy((event: SubscriptionMessage)=>{
-            let message = event.message as MessageUpdateCategoryGroup;
+            const message = event.message as MessageUpdateCategoryGroup;
             if(message) {
-                let {group, category, groupe_id, supprime} = message;
+                const {group, category, groupe_id, supprime} = message;
                 if(group) {
                     // Save/update group, fetch key and decrypt.
                     syncGroups([group], {userId})
@@ -144,14 +144,14 @@ function ListenCategoryGroupChanges() {
                             if(!group) throw new Error("Illegal state, group null");
 
                             // Check if the key exists locally
-                            let keyId = group.cle_id || group.ref_hachage_bytes;
+                            const keyId = group.cle_id || group.ref_hachage_bytes;
                             if(!keyId) throw new Error("Missing cle_id/ref_hachage_bytes");
-                            let requiredKeyIds = await getMissingKeys(userId);
+                            const requiredKeyIds = await getMissingKeys(userId);
                             if(requiredKeyIds.includes(keyId)) {
                                 // Fetch missing group key
-                                let keyResponse = await workers.connection.getGroupKeys([keyId]);
+                                const keyResponse = await workers.connection.getGroupKeys([keyId]);
                                 if(keyResponse.ok !== false) {
-                                    for await (let key of keyResponse.cles) {
+                                    for await (const key of keyResponse.cles) {
                                         await saveDecryptedKey(key.cle_id, key.cle_secrete_base64);
                                     }
                                 } else {
@@ -162,7 +162,7 @@ function ListenCategoryGroupChanges() {
                             await decryptGroups(workers, userId);
 
                             // Recover all groups (decrypted) from IDB, and set new list.
-                            let updatedGroups = await getUserGroups(userId, true);
+                            const updatedGroups = await getUserGroups(userId, true);
                             setGroups(updatedGroups);
                         })
                         .catch(err=>console.error("Error saving group event", err));
@@ -182,7 +182,7 @@ function ListenCategoryGroupChanges() {
                         if(supprime) {
                             deleteGroup(groupe_id)
                                 .then(async () => {
-                                    let updatedGroups = await getUserGroups(userId, true);
+                                    const updatedGroups = await getUserGroups(userId, true);
                                     setGroups(updatedGroups);
                                 })
                                 .catch(err=>console.error("Error deleting group", err));
