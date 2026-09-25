@@ -87,6 +87,9 @@ function ListDeletedGroups(props: {value: Array<NotepadGroupType>, onRestore: (e
     let { value, onRestore } = props;
 
     let groupElems = useMemo(()=>{
+        if(value.length === 0) {
+            return <p>No groups are deleted.</p>
+        }
         return value.map(item=>{
             return (
                 <div key={item.groupe_id}>
@@ -105,36 +108,40 @@ function ListDeletedGroups(props: {value: Array<NotepadGroupType>, onRestore: (e
 
 async function loadDeletedGroups(workers: AppWorkers): Promise<[Array<NotepadGroupType>, {[key: string]: string}]> {
 
-    let response = await workers.connection.getNotepadUserGroups(true);
+    const response = await workers.connection.getNotepadUserGroups(true);
     if(response.ok === false) throw new Error(response.err);
+    console.debug("loadDeletedGroups Response", response);
 
     // Recover decryption keys
-    let groups = response.groupes;
-    let groupIds = groups
+    const groups = response.groupes;
+
+    if(groups.length === 0) return [groups, {}];  // Nothing do to
+
+    const groupIds = groups
         .map(item=>item.cle_id || item.ref_hachage_bytes)
         .filter(item=>item) as string[];
-    let keyResponse = await workers.connection.getGroupKeys(groupIds);
+    const keyResponse = await workers.connection.getGroupKeys(groupIds);
     if(keyResponse.ok === false) throw new Error(keyResponse.err);
 
     // Map keys to their keyId
-    let keyDict = {} as {[key: string]: string};
+    const keyDict = {} as {[key: string]: string};
     for(let key of keyResponse.cles) {
         keyDict[key.cle_id] = key.cle_secrete_base64
     }
 
     // Decrypt each group's data
-    for await (let group of groups) {
-        let keyId = group.cle_id || group.ref_hachage_bytes;
+    for await (const group of groups) {
+        const keyId = group.cle_id || group.ref_hachage_bytes;
         if(!keyId) {
             console.warn("Missing group cle_id/ref_hachage_bytes");
             continue;
         }
-        let key = keyDict[keyId];
+        const key = keyDict[keyId];
         if(!key) {
             console.warn("Decryption key not available for groupId ", group.groupe_id);
             continue;
         }
-        let secretKey = multiencoding.decodeBase64Nopad(key);
+        const secretKey = multiencoding.decodeBase64Nopad(key);
 
         let nonce = group.nonce;
         let legacyMode = false;
@@ -150,8 +157,8 @@ async function loadDeletedGroups(workers: AppWorkers): Promise<[Array<NotepadGro
         let ciphertext = group.data_chiffre;
         if(legacyMode) ciphertext = ciphertext.slice(1);  // Remove 'm' multibase marker
     
-        let cleartext = await workers.encryption.decryptMessage(group.format, secretKey, nonce, ciphertext);
-        let jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadGroupData;
+        const cleartext = await workers.encryption.decryptMessage(group.format, secretKey, nonce, ciphertext);
+        const jsonInfo = JSON.parse(new TextDecoder().decode(cleartext)) as NotepadGroupData;
         group.data = jsonInfo;
         group.decrypted = true;
     }
