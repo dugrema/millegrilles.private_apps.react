@@ -436,22 +436,31 @@ function RestoreDocuments(props: {group: NotepadGroupType, close: ()=>void}) {
 }
 
 async function getDeletedDocuments(workers: AppWorkers, group: NotepadGroupType, firstField: string): Promise<Array<NotepadDocumentType>> {
-    let groupId = group.groupe_id;
-    let keyId = group.cle_id || group.ref_hachage_bytes;
+    const groupId = group.groupe_id;
+    const keyId = group.cle_id || group.ref_hachage_bytes;
 
     if(!keyId) throw new Error("Missing cle_id/ref_hachage_bytes from group");
 
-    let deletedDocumentsResponse = await workers.connection.getNotepadDocumentsForGroup(groupId, true);
+    const deletedDocumentIdentitiesResponse = await workers.connection.getNotepadDocumentsForGroup(groupId, true);
+    console.debug("Deleted documents response: ", deletedDocumentIdentitiesResponse);
 
-    let deletedDocuments = deletedDocumentsResponse.documents;
-    if(deletedDocumentsResponse.ok === false || !deletedDocuments) {
-        throw new Error("Error getting deleted documents: " + deletedDocumentsResponse.err);
+    const deletedDocumentIdentities = deletedDocumentIdentitiesResponse.documents;
+    if(deletedDocumentIdentitiesResponse.ok === false || !deletedDocumentIdentities) {
+        throw new Error("Error getting deleted document identities: " + deletedDocumentIdentitiesResponse.err);
     }
+    const docIds = deletedDocumentIdentities.map(item=>item.doc_id);
 
-    let key = (await getDecryptedKeys([keyId])).pop();
+    const key = (await getDecryptedKeys([keyId])).pop();
     if(!key) throw new Error("Unknown group key");
 
-    for await (let doc of deletedDocuments) {
+    // Request full documents
+    const deletedDocumentResponse = await workers.connection.getDocumentsContent(groupId, docIds);
+    if(!deletedDocumentResponse.ok || !deletedDocumentResponse.documents) {
+        throw new Error("Error getting deleted documents: " + deletedDocumentResponse.err);
+    }
+    const deletedDocuments = deletedDocumentResponse.documents;
+
+    for await (const doc of deletedDocuments) {
         let nonce = doc.nonce;
         let legacyMode = false;
         if(!nonce && doc.header) {
@@ -466,8 +475,8 @@ async function getDeletedDocuments(workers: AppWorkers, group: NotepadGroupType,
         let ciphertext = doc.data_chiffre;
         if(legacyMode) ciphertext = ciphertext.slice(1);  // Remove 'm' multibase marker
 
-        let cleartext = await workers.encryption.decryptMessage(doc.format, key.cleSecrete, nonce, ciphertext);
-        let data = JSON.parse(new TextDecoder().decode(cleartext));
+        const cleartext = await workers.encryption.decryptMessage(doc.format, key.cleSecrete, nonce, ciphertext);
+        const data = JSON.parse(new TextDecoder().decode(cleartext));
         doc.data = data;
         doc.label = data[firstField] || doc.doc_id;
         doc.decrypted = true;
