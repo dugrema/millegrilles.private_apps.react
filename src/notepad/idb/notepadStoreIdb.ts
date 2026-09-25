@@ -308,7 +308,7 @@ export async function getMissingKeys(userId: string): Promise<Array<string>> {
 }
 
 // Met dirty a true et dechiffre a false si mismatch derniere_modification
-export async function syncDocumentIdentitiess(
+export async function syncDocumentIdentities(
     docs: Array<NotepadDocumentIdentityType>, 
     userId: string, 
     groupId: string, 

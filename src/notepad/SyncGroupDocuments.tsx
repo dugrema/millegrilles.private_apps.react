@@ -10,7 +10,7 @@ import {
   getUserGroup,
   getUserGroupDocuments,
   NotepadDocumentType,
-  syncDocumentIdentitiess,
+  syncDocumentIdentities,
   syncDocuments,
 } from "./idb/notepadStoreIdb";
 import useNotepadStore from "./notepadStore";
@@ -48,10 +48,11 @@ function SyncGroupDocuments() {
 
       if (message.document) {
         const docId = message.document.doc_id;
-        syncDocumentIdentitiess([message.document], { userId })
+        syncDocumentIdentities([message.document], userId, groupId, null)
           .then(async () => {
             if (workers && groupId) {
-              await decryptGroupDocuments(workers, userId, groupId);
+              await syncDirtyDocumentsFromGroup(workers, userId, groupId);
+              // await decryptGroupDocuments(workers, userId, groupId);
 
               const updatedDoc = await getGroupDocument(docId);
               if (updatedDoc?.decrypted) {
@@ -147,7 +148,7 @@ async function syncGroupDocuments(
   // Map response to IDB
   const documents = groupDocuments.documents || [];
   const supprimes = groupDocuments.supprimes;
-  await syncDocumentIdentitiess(documents, userId, groupId, supprimes);
+  await syncDocumentIdentities(documents, userId, groupId, supprimes);
 
   // Retrieve dirty documents in batches
   await syncDirtyDocumentsFromGroup(workers, userId, groupId);
@@ -170,68 +171,3 @@ async function syncDirtyDocumentsFromGroup(workers: AppWorkers, userId: string, 
     await decryptGroupDocuments(workers, userId, groupId);
   }
 }
-
-// async function syncGroupDocuments(
-//   workers: AppWorkers,
-//   userId: string,
-//   groupId: string,
-//   setGroupDocuments: (groupDocuments: Array<NotepadDocumentType>) => void,
-// ) {
-//   const callback = proxy(
-//     async (response: MessageResponse | NotepadDocumentsResponse) => {
-//       const documentsForGroup = response as NotepadDocumentsResponse;
-//       if (documentsForGroup.ok === false) {
-//         console.warn(
-//           "Error response received on document sync",
-//           documentsForGroup.err,
-//         );
-//         return;
-//       } else if (
-//         documentsForGroup.ok === true &&
-//         documentsForGroup.code === 1
-//       ) {
-//         // Ok, streaming has started.
-//         return;
-//       }
-
-//       const groupDocuments = documentsForGroup.documents;
-//       const dateSync = documentsForGroup.date_sync;
-
-//       if (groupDocuments) {
-//         // Save to IDB
-//         await syncDocuments(groupDocuments, {
-//           userId,
-//           deleted: documentsForGroup.supprimes,
-//           groupId,
-//           dateSync,
-//         });
-//       } else {
-//         console.warn(
-//           "No document list received in document sync batch ",
-//           documentsForGroup,
-//         );
-//       }
-
-//       if (documentsForGroup.done) {
-//         // Decrypt all encrypted documents
-//         await decryptGroupDocuments(workers, userId, groupId);
-//         const groupDocuments = await getUserGroupDocuments(userId, groupId, true);
-//         setGroupDocuments(groupDocuments);
-//       }
-//     },
-//   );
-
-//   const groupIdb = await getUserGroup(groupId);
-//   const previousDateSync = groupIdb?.dateSync;
-
-//   const initialStreamResponse =
-//     await workers.connection.getNotepadDocumentsForGroupStreamed(
-//       groupId,
-//       callback,
-//       undefined,
-//       previousDateSync,
-//     );
-//   if (!initialStreamResponse === true) {
-//     throw new Error("Error getting documents for this group");
-//   }
-// }

@@ -2,7 +2,7 @@ import { ChangeEvent, Dispatch, MouseEvent, useCallback, useEffect, useMemo, use
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import useNotepadStore from "./notepadStore";
-import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewGroupType, syncDocumentIdentitiess } from "./idb/notepadStoreIdb";
+import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewGroupType, syncDocumentIdentities } from "./idb/notepadStoreIdb";
 import useConnectionStore from "../connectionStore";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import { DecryptionKeyIdb, getDecryptedKeys, saveDecryptedKey } from "../MillegrillesIdb";
@@ -401,7 +401,7 @@ function RestoreDocuments(props: {group: NotepadGroupType, close: ()=>void}) {
 
                 if(docToRestore && userId) {
                     // Save to IDB
-                    await syncDocumentIdentitiess([docToRestore], {userId});
+                    await syncDocumentIdentities([docToRestore], {userId});
                     // Update on screen
                     updateDocument(docToRestore);
                 }
