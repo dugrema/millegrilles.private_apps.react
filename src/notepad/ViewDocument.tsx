@@ -194,7 +194,7 @@ function ViewTextField(props: ViewFieldProps) {
 
     return (
         <>
-            <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0'>{field.nom_champ}</label>
+            <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0 text-sm font-medium text-slate-400'>{field.nom_champ}</label>
             <div onClick={copyToClipboard}
                 className={'transition-all col-span-12 sm:col-span-10 break-word cursor-pointer ' + className}>
                     {data}
@@ -224,7 +224,7 @@ function ViewPasswordField(props: ViewFieldProps) {
 
     return (
         <>
-            <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0'>{field.nom_champ}</label>
+            <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0 text-sm font-medium text-slate-400'>{field.nom_champ}</label>
             <div onClick={copyToClipboard}
                 className={'transition-all col-span-12 sm:col-span-10 break-word cursor-pointer ' + className}>
                     {data}
@@ -263,7 +263,7 @@ function ViewUrlField(props: ViewFieldProps) {
 
     return (
         <>
-            <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0'>{field.nom_champ}</label>
+            <label className='col-span-12 sm:col-span-2 pt-2 sm:pt-0 text-sm font-medium text-slate-400'>{field.nom_champ}</label>
             <div onClick={copyToClipboard}
                  className={'transition-all col-span-12 sm:col-span-10 break-word cursor-pointer ' + className}>
                     {data}
