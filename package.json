@@ -1,6 +1,6 @@
 {
   "name": "millegrilles.private_apps.react",
-  "version": "2026.3.0",
+  "version": "2026.6.0",
   "private": true,
   "dependencies": {
     "@peculiar/x509": "2.0.0",
