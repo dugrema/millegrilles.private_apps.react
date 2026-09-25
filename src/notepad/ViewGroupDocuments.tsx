@@ -1,8 +1,8 @@
-import { ChangeEvent, Dispatch, MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, Dispatch, useCallback, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import useNotepadStore from "./notepadStore";
-import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewGroupType, syncDocumentIdentities } from "./idb/notepadStoreIdb";
+import { NotepadDocumentType, NotepadGroupData, NotepadGroupType, NotepadNewGroupType } from "./idb/notepadStoreIdb";
 import useConnectionStore from "../connectionStore";
 import useWorkers, { AppWorkers } from "../workers/workers";
 import { DecryptionKeyIdb, getDecryptedKeys, saveDecryptedKey } from "../MillegrillesIdb";
@@ -11,31 +11,29 @@ import { sortCategories } from "./Categories";
 import { EncryptionResult } from "../workers/encryptionUtils";
 
 function ViewGroupDocuments() {
-
     const params = useParams();
+    const groupId = params.groupId as string;
+    const [editGroup, setEditGroup] = useState(groupId === 'new');
+    const [restoreDocuments, setRestoreDocuments] = useState(false);
 
-    let groupId = params.groupId as string;
-    let [editGroup, setEditGroup] = useState(groupId === 'new');
-    let [restoreDocuments, setRestoreDocuments] = useState(false);
+    const openRestoreDocuments = useCallback(() => setRestoreDocuments(true), []);
+    const closeRestoreDocuments = useCallback(() => setRestoreDocuments(false), []);
 
-    let openRestoreDocuments = useCallback(()=>setRestoreDocuments(true), [setRestoreDocuments]);
-    let closeRestoreDocuments = useCallback(()=>setRestoreDocuments(false), [setRestoreDocuments]);
+    const groups = useNotepadStore(state => state.groups);
 
-    let groups = useNotepadStore(state=>state.groups);
-
-    let group = useMemo(()=>{
-        if(!groups || !groupId) return null;
-        let group = groups.filter(item=>item.groupe_id === groupId).pop();
-        return group || null;
+    const group = useMemo(() => {
+        if (!groups || !groupId) return null;
+        const groupMatch = groups.find(item => item.groupe_id === groupId);
+        return groupMatch || null;
     }, [groups, groupId]);
 
-    if(restoreDocuments && group) {
-        return <RestoreDocuments group={group} close={closeRestoreDocuments} />
-    } else if(editGroup) {
-        return <GroupEdit group={group} edit={setEditGroup} />
+    if (restoreDocuments && group) {
+        return <RestoreDocuments group={group} close={closeRestoreDocuments} />;
+    } else if (editGroup) {
+        return <GroupEdit group={group} edit={setEditGroup} />;
     } else {
-        return <ViewGroup group={group} edit={setEditGroup} restore={openRestoreDocuments} />
-    };
+        return <ViewGroup group={group} edit={setEditGroup} restore={openRestoreDocuments} />;
+    }
 }
 
 export default ViewGroupDocuments;
@@ -43,208 +41,206 @@ export default ViewGroupDocuments;
 type GroupProps = {
     group: NotepadGroupType | null,
     edit: Dispatch<boolean>,
-    restore?: ()=>void,
+    restore?: () => void,
 }
 
 function ViewGroup(props: GroupProps) {
+    const { group, edit, restore } = props;
+    const workers = useWorkers();
+    const navigate = useNavigate();
 
-    let { group, edit, restore } = props;
+    const openEdit = useCallback(() => edit(true), [edit]);
 
-    let workers = useWorkers();
-    let navigate = useNavigate();
-
-    let openEdit = useCallback(()=>edit(true), [edit]);
-
-    let deleteGroup = useCallback(()=>{
-        if(!workers) throw new Error("Workers not initialized");
-        if(!group) throw new Error('Group null');
-        let groupId = group.groupe_id;
+    const deleteGroup = useCallback(() => {
+        if (!workers) throw new Error("Workers not initialized");
+        if (!group) throw new Error('Group null');
+        const groupId = group.groupe_id;
         workers.connection.notepadDeleteGroup(groupId)
-            .then(response=>{
-                if(response.ok) {
+            .then(response => {
+                if (response.ok) {
                     navigate('/apps/notepad');
                 } else {
-                    console.error("Error deleteing group", response.err);
+                    console.error("Error deleting group", response.err);
                 }
             })
-            .catch(err=>console.error("Error deleting group", err));
+            .catch(err => console.error("Error deleting group", err));
     }, [workers, group, navigate]);
 
-    if(!group) return <></>;  // Loading group
+    if (!group) return <div className="p-4 text-slate-400 animate-pulse">Loading group...</div>;
 
     return (
-        <>
-            <nav className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6'>
+        <div className="p-4 max-w-7xl mx-auto">
+            <nav className="flex mb-6">
                 <Link to='/apps/notepad'
-                     className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        Back
+                    className='btn flex items-center text-sm bg-slate-800 hover:bg-slate-700 active:bg-slate-700 px-4 py-2 rounded-md transition-colors'>
+                    <i className='fa fa-arrow-left mr-2' /> Back
                 </Link>
             </nav>
 
-            <h1 className='text-lg font-bold pt-2 pb-4'>{group?.data?.nom_groupe}</h1>
+            <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <h1 className="text-2xl font-bold text-white">{group?.data?.nom_groupe}</h1>
+                <div className="flex flex-wrap gap-2">
+                    <Link to={`/apps/notepad/group/${group.groupe_id}/new`}
+                        className='btn flex items-center text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md transition-colors shadow-sm'>
+                        <i className='fa fa-plus mr-2' /> New document
+                    </Link>
+                    <button onClick={openEdit}
+                        className='btn flex items-center text-sm bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-md transition-colors'>
+                        <i className='fa fa-edit mr-2' /> Edit group
+                    </button>
+                    <button onClick={restore}
+                        className='btn flex items-center text-sm bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-md transition-colors'>
+                        <i className='fa fa-recycle mr-2' /> Restore
+                    </button>
+                    <button onClick={deleteGroup}
+                    className='btn flex items-center text-sm bg-red-900/50 hover:bg-red-800 text-red-200 px-4 py-2 rounded-md transition-colors border border-red-800/50'>
+                        <i className='fa fa-trash mr-2' /> Delete
+                    </button>
+                </div>
+            </header>
 
-            <section className='pb-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6'>
-                <Link to={`/apps/notepad/group/${group.groupe_id}/new`}
-                    className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
-                        New document
-                </Link>
-                <button onClick={openEdit}
-                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        <i className='fa fa-edit'/> Edit group
-                </button>
-                <button onClick={deleteGroup}
-                    className='hidden sm:inline md:hidden btn text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        <i className='fa fa-remove'/> Delete group
-                </button>
-                <button onClick={restore}
-                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        <i className='fa fa-recycle'/> Restore documents
-                </button>
-                <button onClick={deleteGroup}
-                    className='sm:hidden md:inline btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        <i className='fa fa-remove'/> Delete group
-                </button>
-            </section>
-
-            <section className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 pl-2 gap-x-3 pr-4'>
+            <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 <DocumentList />
             </section>
-        </>
+        </div>
     );
-
 }
 
 function DocumentList() {
-    let groupDocuments = useNotepadStore(state=>state.groupDocuments);
+    const groupDocuments = useNotepadStore(state => state.groupDocuments);
 
-    let listElements = useMemo(()=>{
-        if(!groupDocuments) return [];
+    const listElements = useMemo(() => {
+        if (!groupDocuments) return null;
 
-        let sortedGroupDocuments = [...groupDocuments];
-        sortedGroupDocuments.sort(sortGroupDocuments);
-
-        return sortedGroupDocuments.map(groupDoc=>{
+        if (groupDocuments.length === 0) {
             return (
-                <Link key={groupDoc.doc_id} to={`/apps/notepad/group/${groupDoc.groupe_id}/${groupDoc.doc_id}`}
-                    className='varbtn underline font-bold block w-full bg-slate-700 hover:bg-slate-600 active:bg-slate-500 pt-1 pb-1 pl-2 pr-2'>
-                        {groupDoc.label}
-                </Link>
+                <div className="col-span-full flex flex-col items-center justify-center py-20 text-slate-500">
+                    <i className="fa fa-folder-open text-5xl mb-4 opacity-20" />
+                    <p className="text-lg">No documents in this group.</p>
+                </div>
             );
-        });
+        }
+
+        const sortedDocs = [...groupDocuments].sort(sortGroupDocuments);
+
+        return sortedDocs.map(doc => (
+            <Link key={doc.doc_id} to={`/apps/notepad/group/${doc.groupe_id}/${doc.doc_id}`}
+                className='group bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-indigo-500/50 p-4 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md'>
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-200">
+                        <i className="fa fa-file text-indigo-400 text-xl" />
+                    </div>
+                    <span className="text-slate-200 font-medium truncate w-full text-sm sm:text-base">{doc.label || doc.doc_id}</span>
+                    <span className="text-slate-500 text-xs mt-1">{doc.decrypted ? 'Decrypted' : 'Encrypted'}</span>
+                </div>
+            </Link>
+        ));
     }, [groupDocuments]);
 
-    if(!groupDocuments) return (
-        <p>Loading</p>
+    if (!groupDocuments) return (
+        <div className="col-span-full flex items-center justify-center py-20 text-slate-500 animate-pulse">
+            <p>Loading documents...</p>
+        </div>
     );
 
-    return (
-        <>
-            {listElements}
-        </>
-    )
+    return <>{listElements}</>;
 }
 
 function sortGroupDocuments(a: NotepadDocumentType, b: NotepadDocumentType, language?: string) {
     language = language || navigator.languages[0] || navigator.language;
-    let labelA = (a.label || a.doc_id).toLocaleLowerCase();
-    let labelB = (b.label || b.doc_id).toLocaleLowerCase();
-    return labelA.localeCompare(labelB, language, {numeric: true, ignorePunctuation: true});
+    const labelA = (a.label || a.doc_id).toLocaleLowerCase();
+    const labelB = (b.label || b.doc_id).toLocaleLowerCase();
+    return labelA.localeCompare(labelB, language, { numeric: true, ignorePunctuation: true });
 }
 
 function GroupEdit(props: GroupProps) {
+    const { group, edit } = props;
+    const workers = useWorkers();
+    const ready = useConnectionStore(state => state.connectionAuthenticated);
+    const navigate = useNavigate();
+    const params = useParams();
+    const { groupId } = params;
 
-    let { group, edit } = props;
+    const isNewGroup = useMemo(() => groupId === 'new', [groupId]);
 
-    let workers = useWorkers();
+    const [hasChanged, setHasChanged] = useState(false);
+    const [categoryId, setCategoryId] = useState(group?.categorie_id || '');
+    const [editedGroupData, setEditedGroupData] = useState(group?.data || {} as NotepadGroupData);
 
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-
-    let navigate = useNavigate();
-    let params = useParams();
-    let { groupId } = params;
-
-    let newGroupFlag = useMemo(()=>groupId==='new', [groupId]);
-
-    let [hasChanged, setHasChanged] = useState(false);
-    let [categoryId, setCategoryId] = useState(group?.categorie_id || '');
-    let [editedGroupData, setEditedGroupData] = useState(group?.data || {} as NotepadGroupData);
-
-    let onChangeHtml = useCallback((e: ChangeEvent<HTMLInputElement>)=>{
-        let {name, value} = e.currentTarget;
-        let updatedData = {...editedGroupData, [name]: value};
+    const onChangeHtml = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.currentTarget;
+        const updatedData = { ...editedGroupData, [name]: value };
         setEditedGroupData(updatedData);
 
-        // Check if new field or if field value has changed
         // @ts-ignore
-        if(!editedGroupData[name] || editedGroupData[name] !== value) {
+        if (!editedGroupData[name] || editedGroupData[name] !== value) {
             setHasChanged(true);
         }
-    }, [editedGroupData, setEditedGroupData, setHasChanged]);
+    }, [editedGroupData, setHasChanged]);
 
-    let categoryOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>)=>{
-        let value = e.currentTarget.value;
+    const categoryOnChange = useCallback((e: ChangeEvent<HTMLSelectElement>) => {
+        const value = e.currentTarget.value;
         setCategoryId(value);
-        if(value) setHasChanged(true);
-    }, [setCategoryId, setHasChanged]);
+        if (value) setHasChanged(true);
+    }, [setHasChanged]);
 
-    let backHandler = useCallback(()=>{
-        if(newGroupFlag) {
+    const backHandler = useCallback(() => {
+        if (isNewGroup) {
             navigate('/apps/notepad');
         } else {
             navigate(`/apps/notepad/group/${groupId}`);
         }
-        edit(false);  // Close edit mode
-    }, [navigate, groupId, edit, newGroupFlag]);
+        edit(false);
+    }, [navigate, groupId, edit, isNewGroup]);
 
-    let saveGroupHandler = useCallback(()=>{
-        if(!categoryId) throw new Error("Category not selected");
+    const saveGroupHandler = useCallback(() => {
+        if (!categoryId) throw new Error("Category not selected");
 
         // @ts-ignore
-        let keyId = group?(group.cle_id || group.ref_hachage_bytes):null;
-        let commande = {
+        let keyId = group ? (group.cle_id || group.ref_hachage_bytes) : null;
+        const commande = {
             categorie_id: categoryId,
-        } as NotepadNewGroupType
+        } as NotepadNewGroupType;
 
-        if(!newGroupFlag) {
+        if (!isNewGroup) {
             commande.groupe_id = groupId;
-            if(!keyId) throw new Error("Missing cle_id/ref_hachage_bytes from group");
+            if (!keyId) throw new Error("Missing cle_id/ref_hachage_bytes from group");
         }
 
         Promise.resolve().then(async () => {
-            if(!workers) throw new Error("Workers not initialized");
-            
+            if (!workers) throw new Error("Workers not initialized");
+
             let newKey = null as any;
             let key = null as DecryptionKeyIdb | null | undefined;
-            if(!newGroupFlag) {
-                if(!keyId) throw new Error("Missing keyId");
-                let keys = await getDecryptedKeys([keyId]);
+            if (!isNewGroup) {
+                if (!keyId) throw new Error("Missing keyId");
+                const keys = await getDecryptedKeys([keyId]);
                 key = keys.pop();
-                if(!key) throw new Error("Unknown key");
+                if (!key) throw new Error("Unknown key");
             }
 
-            let cleartextData = new TextEncoder().encode(JSON.stringify(editedGroupData));
-
+            const cleartextData = new TextEncoder().encode(JSON.stringify(editedGroupData));
             let encryptedData = null as EncryptionResult | null;
-            if(key) {
-                encryptedData = await workers.encryption.encryptMessageMgs4(cleartextData, {key: key.cleSecrete});
-            } else {
-                encryptedData = await workers.encryption.encryptMessageMgs4(cleartextData, {domain: 'Documents'});
 
-                // Sign the new key command
-                if(encryptedData.cle && encryptedData.cle_id) {
-                    keyId = encryptedData.cle_id
+            if (key) {
+                encryptedData = await workers.encryption.encryptMessageMgs4(cleartextData, { key: key.cleSecrete });
+            } else {
+                encryptedData = await workers.encryption.encryptMessageMgs4(cleartextData, { domain: 'Documents' });
+
+                if (encryptedData.cle && encryptedData.cle_id) {
+                    keyId = encryptedData.cle_id;
                     newKey = await workers.connection.createRoutedMessage(
-                        messageStruct.MessageKind.Command, encryptedData.cle, 
-                        {domaine: 'MaitreDesCles', action: 'ajouterCleDomaines'}
+                        messageStruct.MessageKind.Command, encryptedData.cle,
+                        { domaine: 'MaitreDesCles', action: 'ajouterCleDomaines' }
                     );
                 } else {
                     throw new Error("New key encryption is missing");
                 }
             }
 
-            let ciphertextBase64 = multiencoding.encodeBase64Nopad(encryptedData.ciphertext);
+            const ciphertextBase64 = multiencoding.encodeBase64Nopad(encryptedData.ciphertext);
 
-            let command = {
+            const command = {
                 categorie_id: categoryId,
                 cle_id: keyId,
                 format: encryptedData.format,
@@ -252,228 +248,188 @@ function GroupEdit(props: GroupProps) {
                 data_chiffre: ciphertextBase64,
             } as NotepadNewGroupType;
 
-            if(!newGroupFlag) command.groupe_id = groupId;
+            if (!isNewGroup) command.groupe_id = groupId;
 
-            let result = await workers.connection.notepadSaveGroup(command, newKey);
-            if(result.ok) {
-                // Save the new decryption key locally
-                if(encryptedData.cleSecrete) {
+            const result = await workers.connection.notepadSaveGroup(command, newKey);
+            if (result.ok) {
+                if (encryptedData.cleSecrete) {
                     await saveDecryptedKey(command.cle_id, encryptedData.cleSecrete);
                 }
 
                 // @ts-ignore
-                let responseGroupId = result.group_id as string;
-
-                // Redirect to group page
+                const responseGroupId = result.group_id as string;
                 edit(false);
                 navigate(`/apps/notepad/group/${responseGroupId}`);
             } else {
-                console.error("Error saving document: ", result.err);
+                console.error("Error saving group: ", result.err);
             }
+        }).catch(err => console.error("Error saving group", err));
 
-        })
-        .catch(err=>console.error("Error saving group", err));
-        
-    }, [workers, newGroupFlag, group, categoryId, editedGroupData, groupId, navigate, edit]);
+    }, [workers, isNewGroup, group, categoryId, editedGroupData, groupId, navigate, edit]);
 
     return (
-        <>
-            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6'>
-                <button onClick={backHandler} className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                    Back
-                </button>
-            </div>
+        <div className="p-4 max-w-2xl mx-auto">
+            <button onClick={backHandler} className="btn mb-6 flex items-center text-sm bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md transition-colors">
+                <i className="fa fa-arrow-left mr-2" /> Back
+            </button>
 
-            <section>
-                <h1 className='font-bold text-lg'>Edit group</h1>
-                <div className='grid grid-cols-2 pr-2'>
-                    <label>Category</label>
-                    <div>
-                        <CategoryPicklist value={categoryId} onChange={categoryOnChange} readOnly={!newGroupFlag} />
+            <section className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl mb-8">
+                <h1 className="font-bold text-xl mb-6 text-white">Edit Group</h1>
+                <div className="space-y-6">
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-medium text-slate-400">Category</label>
+                        <CategoryPicklist value={categoryId} onChange={categoryOnChange} readOnly={!isNewGroup} />
                     </div>
-                    <label htmlFor='nameInput'>Name</label>
-                    <input id='nameInput' type='text' name='nom_groupe' value={editedGroupData.nom_groupe || ''} onChange={onChangeHtml} 
-                        className='text-black'/>
+                    <div className="flex flex-col gap-2">
+                        <label htmlFor="nameInput" className="text-sm font-medium text-slate-400">Name</label>
+                        <input id="nameInput" type="text" name="nom_groupe" value={editedGroupData.nom_groupe || ''} onChange={onChangeHtml}
+                            className="bg-slate-900 text-white p-3 rounded-lg border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all" />
+                    </div>
                 </div>
             </section>
 
-            <div className='col-span-12 text-center pt-4'>
+            <div className="flex gap-4">
                 <button onClick={saveGroupHandler} disabled={!ready || !hasChanged}
-                    className='btn inline-block text-center bg-indigo-800 hover:bg-indigo-600 active:bg-indigo-500 disabled:bg-indigo-900'>
-                        Save
+                    className="btn flex-1 text-center bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    Save Changes
                 </button>
                 <button onClick={backHandler}
-                    className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                        Cancel
+                    className="btn flex-1 text-center bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg transition-colors">
+                    Cancel
                 </button>
             </div>
-        </>
+        </div>
     );
-    
 }
 
-function CategoryPicklist(props: {value: string, onChange: (e: ChangeEvent<HTMLSelectElement>)=>void, readOnly?: boolean} ) {
+function CategoryPicklist(props: { value: string, onChange: (e: ChangeEvent<HTMLSelectElement>) => void, readOnly?: boolean }) {
+    const { value, onChange, readOnly } = props;
+    const categories = useNotepadStore(state => state.categories);
 
-    let { value, onChange, readOnly } = props;
-
-    let categories = useNotepadStore(state=>state.categories);
-
-    let categoriesOptions = useMemo(()=>{
-        if(!categories) return [];
-
-        let sortedCategories = [...categories];
-        sortedCategories.sort(sortCategories);
-
-        return sortedCategories.map(cat=>{
-            return (
-                <option key={cat.categorie_id} value={cat.categorie_id}>{cat.nom_categorie}</option>
-            )
-        })
+    const categoriesOptions = useMemo(() => {
+        if (!categories) return [];
+        const sortedCategories = [...categories].sort(sortCategories);
+        return sortedCategories.map(cat => (
+            <option key={cat.categorie_id} value={cat.categorie_id}>{cat.nom_categorie}</option>
+        ));
     }, [categories]);
 
-    let categorySpan = useMemo(()=>{
-        if(!readOnly) return null;
-        let cat = categories.filter(item=>item.categorie_id===value).pop();
-        return <span>{cat?.nom_categorie}</span>
-    }, [readOnly, categories, value])
+    const categorySpan = useMemo(() => {
+        if (!readOnly) return null;
+        const cat = categories?.find(item => item.categorie_id === value);
+        return <span className="text-slate-400">{cat?.nom_categorie}</span>;
+    }, [readOnly, categories, value]);
 
-    if(categorySpan) return categorySpan;
+    if (categorySpan) return categorySpan;
 
     return (
-        <>
-            <select className='text-black w-full' value={value} onChange={onChange}>
-                <option>Select a category</option>
-                {categoriesOptions}
-            </select>
-        </>
+        <select className="bg-slate-900 text-white p-3 rounded-lg border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-full transition-all" value={value} onChange={onChange}>
+            <option value="">Select a category</option>
+            {categoriesOptions}
+        </select>
     );
 }
 
-function RestoreDocuments(props: {group: NotepadGroupType, close: ()=>void}) {
-
-    let { group, close } = props;
+function RestoreDocuments(props: { group: NotepadGroupType, close: () => void }) {
+    const { group, close } = props;
     
-    let workers = useWorkers();
-    let ready = useConnectionStore(state=>state.connectionAuthenticated);
-    let categories = useNotepadStore(state=>state.categories);
-    let updateDocument = useNotepadStore(state=>state.updateDocument);
+    const workers = useWorkers();
+    const ready = useConnectionStore(state => state.connectionAuthenticated);
+    const categories = useNotepadStore(state => state.categories);
+    const updateDocument = useNotepadStore(state => state.updateDocument);
 
-    let [docs, setDocs] = useState(null as null | Array<NotepadDocumentType>);
+    const [docs, setDocs] = useState(null as null | Array<NotepadDocumentType>);
+    const [userId, setUserId] = useState('');
 
-    let [userId, setUserId] = useState('');
-
-    useEffect(()=>{
+    useEffect(() => {
         workers?.connection.getMessageFactoryCertificate()
-            .then(certificate=>{
-                let userId = certificate.extensions?.userId;
-                setUserId(''+userId);
+            .then(certificate => {
+                const uId = certificate.extensions?.userId;
+                setUserId('' + uId);
             })
-            .catch(err=>console.error("Error loading userId", err));
-    }, [workers, setUserId]);
+            .catch(err => console.error("Error loading userId", err));
+    }, [workers]);
 
-    // Get the first field code (used for label).
-    let firstField = useMemo(()=>{
-        if(!categories || !group) return null;
-        let category = categories.filter(item=>item.categorie_id===group.categorie_id).pop();
-
-        let firstField = null;
-        if(category) {
-            firstField = category.champs[0].code_interne;
-        }
-
-        return firstField;
+    const firstField = useMemo(() => {
+        if (!categories || !group) return null;
+        const category = categories.find(item => item.categorie_id === group.categorie_id);
+        return category?.champs[0]?.code_interne || null;
     }, [categories, group]);
 
-    let restoreHandler = useCallback((e: MouseEvent<HTMLButtonElement>)=>{
-        if(!workers || !docs) throw new Error("Workers/docs not initialized");
-        let docId = e.currentTarget.value;
-        let docToRestore = docs.filter(item=>item.doc_id===docId).pop();
-        if(!docToRestore) throw new Error("Document to restore is null");
+    const restoreHandler = useCallback((e: MouseEvent<HTMLButtonElement>) => {
+        if (!workers || !docs) throw new Error("Workers/docs not initialized");
+        const docId = e.currentTarget.value;
+        const docToRestore = docs.filter(item => item.doc_id === docId).pop();
+        if (!docToRestore) throw new Error("Document to restore is null");
 
         workers.connection.notepadRestoreDocument(docId)
             .then(async response => {
-                if(response.ok === false) throw new Error(response.err);
-
-                if(docs) {
-                    let updatedDocs = docs.filter(item=>item.doc_id!==docId);
-                    setDocs(updatedDocs);
-                }
-
-                if(docToRestore && userId) {
-                    // Save to IDB
-                    await syncDocumentIdentities([docToRestore], {userId});
-                    // Update on screen
+                if (response.ok === false) throw new Error(response.err);
+                if (docs) setDocs(docs.filter(item => item.doc_id !== docId));
+                if (docToRestore && userId) {
+                    await syncDocumentIdentities([docToRestore], { userId });
                     updateDocument(docToRestore);
                 }
             })
-            .catch(err=>console.error("Error restoring document", err));
+            .catch(err => console.error("Error restoring document", err));
+    }, [workers, docs, updateDocument, userId]);
 
-    }, [workers, docs, setDocs, updateDocument, userId]);
-
-    useEffect(()=>{
-        if(!ready || !workers || !firstField) return;
-        getDeletedDocuments(workers, group, firstField) 
+    useEffect(() => {
+        if (!ready || !workers || !firstField) return;
+        getDeletedDocuments(workers, group, firstField)
             .then(setDocs)
-            .catch(err=>console.error("Error loading deleted documents", err));
-    }, [workers, ready, group, setDocs, firstField])
+            .catch(err => console.error("Error loading deleted documents", err));
+    }, [workers, ready, group, setDocs, firstField]);
 
     return (
-        <>
-            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6'>
-                <button onClick={close} className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                    Back
-                </button>
-            </div>
+        <div className="p-4 max-w-7xl mx-auto">
+            <button onClick={close} className="btn mb-6 flex items-center text-sm bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md transition-colors">
+                <i className="fa fa-arrow-left mr-2" /> Back
+            </button>
 
-            <section>
-                <h1 className='font-bold text-lg'>Restore documents</h1>
-                <div className='grid grid-cols-1'>
+            <section className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl">
+                <h1 className="font-bold text-xl mb-6 text-white">Restore Documents</h1>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     <ListDeletedDocuments docs={docs} onRestore={restoreHandler} />
                 </div>
             </section>
-        </>
-    )
+        </div>
+    );
 }
 
 async function getDeletedDocuments(workers: AppWorkers, group: NotepadGroupType, firstField: string): Promise<Array<NotepadDocumentType>> {
     const groupId = group.groupe_id;
     const keyId = group.cle_id || group.ref_hachage_bytes;
 
-    if(!keyId) throw new Error("Missing cle_id/ref_hachage_bytes from group");
+    if (!keyId) throw new Error("Missing cle_id/ref_hachage_bytes from group");
 
     const deletedDocumentIdentitiesResponse = await workers.connection.getNotepadDocumentsForGroup(groupId, true);
-    console.debug("Deleted documents response: ", deletedDocumentIdentitiesResponse);
-
-    const deletedDocumentIdentities = deletedDocumentIdentitiesResponse.documents;
-    if(deletedDocumentIdentitiesResponse.ok === false || !deletedDocumentIdentities) {
+    if (deletedDocumentIdentitiesResponse.ok === false || !deletedDocumentIdentitiesResponse.documents) {
         throw new Error("Error getting deleted document identities: " + deletedDocumentIdentitiesResponse.err);
     }
-    const docIds = deletedDocumentIdentities.map(item=>item.doc_id);
+    const docIds = deletedDocumentIdentitiesResponse.documents.map(item => item.doc_id);
 
     const key = (await getDecryptedKeys([keyId])).pop();
-    if(!key) throw new Error("Unknown group key");
+    if (!key) throw new Error("Unknown group key");
 
-    // Request full documents
-    const deletedDocumentResponse = await workers.connection.getDocumentsContent(groupId, docIds);
-    if(!deletedDocumentResponse.ok || !deletedDocumentResponse.documents) {
-        throw new Error("Error getting deleted documents: " + deletedDocumentResponse.err);
+    const deletedDocuments = await workers.connection.getDocumentsContent(groupId, docIds);
+    if (!deletedDocuments.ok || !deletedDocuments.documents) {
+        throw new Error("Error getting deleted documents: " + deletedDocuments.err);
     }
-    const deletedDocuments = deletedDocumentResponse.documents;
 
-    for await (const doc of deletedDocuments) {
+    const docList = deletedDocuments.documents;
+
+    for (const doc of docList) {
         let nonce = doc.nonce;
         let legacyMode = false;
-        if(!nonce && doc.header) {
+        if (!nonce && doc.header) {
             nonce = doc.header.slice(1);  // Remove multibase 'm' marker
             legacyMode = true;
         }
-        if(!nonce) {
-            console.warn("Missing group nonce/header");
-            continue;
-        }
-        
+        if (!nonce) continue;
+
         let ciphertext = doc.data_chiffre;
-        if(legacyMode) ciphertext = ciphertext.slice(1);  // Remove 'm' multibase marker
+        if (legacyMode) ciphertext = ciphertext.slice(1);  // Remove 'm' multibase marker
 
         const cleartext = await workers.encryption.decryptMessage(doc.format, key.cleSecrete, nonce, ciphertext);
         const data = JSON.parse(new TextDecoder().decode(cleartext));
@@ -482,34 +438,29 @@ async function getDeletedDocuments(workers: AppWorkers, group: NotepadGroupType,
         doc.decrypted = true;
     }
 
-    return deletedDocuments;
+    return docList;
 }
 
-function ListDeletedDocuments(props: {docs: Array<NotepadDocumentType> | null, onRestore: (e: MouseEvent<HTMLButtonElement>)=>void}) {
+function ListDeletedDocuments(props: { docs: Array<NotepadDocumentType> | null, onRestore: (e: MouseEvent<HTMLButtonElement>) => void }) {
+    const { docs, onRestore } = props;
 
-    let { docs, onRestore } = props;
-
-    let docElems = useMemo(()=>{
-        if(!docs) return null;
-
-        let docsCopy = [...docs];
-        docsCopy.sort(sortGroupDocuments);
-        
-        return docsCopy.map(item=>{
-            return (
-                <div key={item.doc_id}>
+    const docElems = useMemo(() => {
+        if (!docs) return null;
+        return [...docs]
+            .sort(sortGroupDocuments)
+            .map(item => (
+                <div key={item.doc_id} className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg border border-slate-600/50">
+                    <span className="text-slate-300 text-sm truncate pr-2">{item.label}</span>
                     <button value={item.doc_id} onClick={onRestore}
-                        className='btn inline-block text-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500'>
-                            Restore
+                        className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded transition-colors">
+                        Restore
                     </button>
-                    <span className='pl-2'>{item.label}</span>
                 </div>
-            )
-        });
+            ));
     }, [docs, onRestore]);
 
-    if(!docElems) {
-        return <p>Loading ...</p>;
+    if (!docElems) {
+        return <p className="text-slate-500">Loading ...</p>;
     }
 
     return <>{docElems}</>;
