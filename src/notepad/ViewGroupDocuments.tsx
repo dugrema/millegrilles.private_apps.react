@@ -1,4 +1,4 @@
-import { ChangeEvent, Dispatch, useCallback, useMemo, useState } from "react";
+import { ChangeEvent, Dispatch, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import useNotepadStore from "./notepadStore";
@@ -446,6 +446,10 @@ function ListDeletedDocuments(props: { docs: Array<NotepadDocumentType> | null, 
 
     const docElems = useMemo(() => {
         if (!docs) return null;
+        if(docs.length === 0) {
+            return <p>There are no deleted documents.</p>
+        }
+
         return [...docs]
             .sort(sortGroupDocuments)
             .map(item => (
