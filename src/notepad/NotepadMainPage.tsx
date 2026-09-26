@@ -53,6 +53,10 @@ function DisplayGroupsSection() {
                         className='btn flex items-center text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md transition-colors shadow-sm'>
                         <i className='fa fa-plus mr-2' /> New group
                     </Link>
+                    <Link to='/apps/notepad/restoreGroups'
+                        className='btn flex items-center text-sm bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-md transition-colors'>
+                        <i className='fa fa-recycle mr-2' /> Restore
+                    </Link>
                 </div>
                 <div className="text-center py-20 text-slate-400 bg-slate-800/30 rounded-xl border border-dashed border-slate-700">
                     <i className="fa fa-folder-open text-5xl mb-4 block opacity-20" />
