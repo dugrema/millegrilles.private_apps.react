@@ -47,11 +47,19 @@ function DisplayGroupsSection() {
 
     if (groups.length === 0) {
         return (
-            <div className="text-center py-20 text-slate-400 bg-slate-800/30 rounded-xl border border-dashed border-slate-700">
-                <i className="fa fa-folder-open text-5xl mb-4 block opacity-20" />
-                <p className="text-lg">No groups found.</p>
-                <p className="text-sm text-slate-500 mt-1">Create one to get started!</p>
-            </div>
+            <>
+                <div className='flex flex-wrap gap-2 mb-6'>
+                    <Link to='/apps/notepad/group/new'
+                        className='btn flex items-center text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md transition-colors shadow-sm'>
+                        <i className='fa fa-plus mr-2' /> New group
+                    </Link>
+                </div>
+                <div className="text-center py-20 text-slate-400 bg-slate-800/30 rounded-xl border border-dashed border-slate-700">
+                    <i className="fa fa-folder-open text-5xl mb-4 block opacity-20" />
+                    <p className="text-lg">No groups found.</p>
+                    <p className="text-sm text-slate-500 mt-1">Create one to get started!</p>
+                </div>
+            </>
         );
     }
 
