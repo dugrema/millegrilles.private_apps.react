@@ -275,7 +275,7 @@ function MediaContentDisplay(
   let { videoFuuid, contactId } = useParams();
 
   let [playVideo, setPlayVideo] = useState(false);
-  let [jwt, setJwt] = useState("");
+  let [streamingToken, setStreamingToken] = useState("");
   let [videoReady, setVideoReady] = useState(false);
   const [subtitleList, setSubtitleList] = useState(
     null as SubtitleItem[] | null,
@@ -443,12 +443,12 @@ function MediaContentDisplay(
         // console.debug("Token response: ", response);
         if (response.ok === false) throw new Error(response.err);
         if (response.token) {
-          setJwt(response.token);
+          setStreamingToken(response.token);
         } else {
           throw new Error("No streaming JWT received in server response");
         }
       })
-      .catch((err) => console.error("Error loading JWT", err));
+      .catch((err) => console.error("Error loading streaming token", err));
   }, [
     workers,
     ready,
@@ -456,7 +456,7 @@ function MediaContentDisplay(
     playVideo,
     selectedVideo,
     contactId,
-    setJwt,
+    setStreamingToken,
     setLoadProgress,
   ]);
 
@@ -505,11 +505,11 @@ function MediaContentDisplay(
 
   // Ensure video exists
   useEffect(() => {
-    if (!jwt || !selectedVideo) return;
+    if (!streamingToken || !selectedVideo) return;
     // console.debug("Monitor the loading of the video for token %s, selected video: %O", jwt, selectedVideo);
 
-    let fuuidVideo = selectedVideo.fuuid_video || selectedVideo.fuuid;
-    let videoSrc = `/streams/${fuuidVideo}?jwt=${jwt}`;
+    const fuuidVideo = selectedVideo.fuuid_video || selectedVideo.fuuid;
+    const videoSrc = `/streams/${fuuidVideo}?bt=${streamingToken}`;
     setLoadProgress(1);
 
     Promise.resolve()
@@ -517,14 +517,14 @@ function MediaContentDisplay(
         // console.debug("Check load progress on video ", videoSrc);
         // Put a limit of 60 HEAD query loads (about 5 seconds each)
         for (let loadingCount = 0; loadingCount < 60; loadingCount++) {
-          let result = await axios({
+          const result = await axios({
             method: "HEAD",
             url: videoSrc,
             timeout: 20_000,
           });
           setVideoError(0); // Reset error
           // console.debug("Video load result: ", result.status);
-          let status = result.status;
+          const status = result.status;
           if (status === 200 || status === 206) {
             // Done
             setLoadProgress(100);
@@ -555,7 +555,7 @@ function MediaContentDisplay(
       });
   }, [
     selectedVideo,
-    jwt,
+    streamingToken,
     setLoadProgress,
     setVideoReady,
     setPlayVideo,
@@ -568,7 +568,7 @@ function MediaContentDisplay(
         className={videoCss}
         fuuidVideo={selectedVideo.fuuid_video || selectedVideo.fuuid}
         mimetypeVideo={selectedVideo.mimetype}
-        jwt={jwt}
+        token={streamingToken}
         thumbnailBlobUrl={thumbnailBlobUrl}
         subtitles={subtitleList}
       />
@@ -644,7 +644,7 @@ function FileDetail(
     isVideo: boolean;
   },
 ) {
-  let {
+  const {
     file,
     selectedVideo,
     setSelectedVideo,
@@ -653,13 +653,13 @@ function FileDetail(
     videoError,
   } = props;
 
-  let workers = useWorkers();
-  let ready = useConnectionStore((state) => state.connectionAuthenticated);
-  let userId = useUserBrowsingStore((state) => state.userId);
+  const workers = useWorkers();
+  const ready = useConnectionStore((state) => state.connectionAuthenticated);
+  const userId = useUserBrowsingStore((state) => state.userId);
 
   const [fileBlob, setFileBlob] = useState(null as string | null);
 
-  let [fuuid, lastPresence, recentVisits] = useMemo(() => {
+  const [fuuid, lastPresence, recentVisits] = useMemo(() => {
     if (!file) return [null, null, null];
     let fuuids = file.fileData?.fuuids_versions;
     let fuuid = null;
@@ -834,7 +834,7 @@ type VideoPlayerProps = {
   thumbnailBlobUrl: string | null;
   fuuidVideo: string;
   mimetypeVideo: string;
-  jwt: string | null;
+  token: string | null;
   className?: string | null;
   subtitles?: SubtitleItem[] | null;
 };
@@ -844,7 +844,7 @@ function VideoPlayer(props: VideoPlayerProps) {
     fuuidVideo,
     mimetypeVideo,
     thumbnailBlobUrl,
-    jwt,
+    token,
     className,
     subtitles,
   } = props;
@@ -858,9 +858,9 @@ function VideoPlayer(props: VideoPlayerProps) {
   let [jumpToTimeStamp, setJumpToTimeStamp] = useState(null as number | null);
 
   let videoSrc = useMemo(() => {
-    if (!fuuidVideo || !jwt) return "";
-    return `/streams/${fuuidVideo}?jwt=${jwt}`;
-  }, [fuuidVideo, jwt]);
+    if (!fuuidVideo || !token) return "";
+    return `/streams/${fuuidVideo}?bt=${token}`;
+  }, [fuuidVideo, token]);
 
   let onTimeUpdate = useCallback(
     (e: ChangeEvent<HTMLVideoElement>) => {

@@ -374,9 +374,9 @@ export type Collection2FilehostResponse = MessageResponse & {
 };
 
 /** Collection2 streaming JWT response */
-export type Collection2StreamingJwtResponse = MessageResponse & {
-  jwt_token?: string | null;
-};
+// export type Collection2StreamingJwtResponse = MessageResponse & {
+//   jwt_token?: string | null;
+// };
 export type Collection2StreamingTokenResponse = MessageResponse & {
   token?: string | null;
 };
