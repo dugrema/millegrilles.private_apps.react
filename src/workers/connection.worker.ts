@@ -33,7 +33,6 @@ import {
   Collections2SharedCollections,
   Collection2CreateDirectoryType,
   Collection2FilehostResponse,
-  Collection2StreamingJwtResponse,
   Collection2ConversionJobsResponse,
   Collections2ConvertVideoCommand,
   Collections2ConvertVideoResponse,
@@ -41,6 +40,7 @@ import {
   Collections2AddFileCommand,
   Collection2UserAccessToFuuidsResponse,
   NotepadDocumentsResponse,
+  Collection2StreamingTokenResponse,
 } from "../types/connection.types";
 
 import { DeviceConfiguration } from "../senseurspassifs/senseursPassifsStore";
@@ -876,12 +876,26 @@ export class AppsConnectionWorker extends ConnectionWorker {
     fuuidRef?: string | null,
     contactId?: string | null,
   ) {
+    // throw new Error("Obsolete")
+    // if (!this.connection) throw new Error("Connection is not initialized");
+    // return (await this.connection.sendRequest(
+    //   { fuuid: fuuidVideo, fuuid_ref: fuuidRef, contact_id: contactId },
+    //   DOMAINE_GROSFICHIERS,
+    //   "getJwtStreaming",
+    // )) as Collection2StreamingJwtResponse;
+  }
+
+  async getStreamingToken(
+    tuuid?: string,
+    contactId?: string | null,
+    duration_secs?: number | null,
+  ) {
     if (!this.connection) throw new Error("Connection is not initialized");
-    return (await this.connection.sendRequest(
-      { fuuid: fuuidVideo, fuuid_ref: fuuidRef, contact_id: contactId },
+    return (await this.connection.sendCommand(
+      { tuuid, contact_id: contactId, duration_secs },
       DOMAINE_GROSFICHIERS,
-      "getJwtStreaming",
-    )) as Collection2StreamingJwtResponse;
+      "createStreamToken",
+    )) as Collection2StreamingTokenResponse;
   }
 
   async collections2GetConversionJobs() {

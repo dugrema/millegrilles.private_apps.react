@@ -427,22 +427,23 @@ function MediaContentDisplay(
     setVideoReady(false);
     setLoadProgress(0);
 
-    // Get JWT
-    let fuuidVideo = selectedVideo.fuuid_video;
-    let fuuidRef = null as string | null;
-    if (fuuidVideo) {
-      fuuidRef = selectedVideo.fuuid;
-    } else {
-      fuuidVideo = selectedVideo.fuuid;
-    }
+    // Get streaming token
+    const tuuid = file.tuuid;
+    // let fuuidVideo = selectedVideo.fuuid_video;
+    // let fuuidRef = null as string | null;
+    // if (fuuidVideo) {
+    //   fuuidRef = selectedVideo.fuuid;
+    // } else {
+    //   fuuidVideo = selectedVideo.fuuid;
+    // }
 
     workers.connection
-      .getStreamingJwt(fuuidVideo, fuuidRef, contactId)
+      .getStreamingToken(tuuid, contactId)
       .then((response) => {
-        // console.debug("JWT response: ", response);
+        // console.debug("Token response: ", response);
         if (response.ok === false) throw new Error(response.err);
-        if (response.jwt_token) {
-          setJwt(response.jwt_token);
+        if (response.token) {
+          setJwt(response.token);
         } else {
           throw new Error("No streaming JWT received in server response");
         }

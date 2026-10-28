@@ -4,9 +4,6 @@
     "exchange": "2.prive"
   },
   "requests": [
-    { "domain": "SenseursPassifs", "action": "getAppareilsUsager" },
-    { "domain": "SenseursPassifs", "action": "getStatistiquesSenseur" },
-    { "domain": "SenseursPassifs", "action": "getConfigurationUsager" },
     { "domain": "Documents", "action": "getCategoriesUsager" },
     { "domain": "Documents", "action": "getGroupesUsager" },
     {
@@ -16,25 +13,6 @@
     },
     { "domain": "Documents", "action": "getGroupDocList" },
     { "domain": "Documents", "action": "getDocsContent" },
-    {
-      "domain": "AiLanguage",
-      "action": "getConversationKeys",
-      "domaines": ["AiLanguage", "MaitreDesCles"]
-    },
-    { "domain": "AiLanguage", "action": "syncConversations", "stream": true },
-    {
-      "domain": "AiLanguage",
-      "action": "syncConversationMessages",
-      "stream": true
-    },
-    { "domain": "AiLanguage", "action": "getConfiguration" },
-    { "domain": "ollama_relai", "action": "ping", "roles": ["ollama_relai"] },
-    {
-      "domain": "ollama_relai",
-      "action": "getModels",
-      "roles": ["ollama_relai"]
-    },
-    { "domain": "ollama_relai", "action": "queryRag", "timeout": 90 },
     { "domain": "GrosFichiers", "action": "syncDirectory", "timeout": 60 },
     { "domain": "GrosFichiers", "action": "syncDeletedFiles" },
     { "domain": "GrosFichiers", "action": "searchIndexV2" },
@@ -47,7 +25,6 @@
       "action": "getInfoStatistiques",
       "timeout": 30
     },
-    { "domain": "GrosFichiers", "action": "getJwtStreaming" },
     { "domain": "GrosFichiers", "action": "requeteJobsVideo" },
     {
       "domain": "CoreTopologie",
@@ -62,13 +39,6 @@
     { "domain": "GrosFichiers", "action": "verifierAccesFuuids" }
   ],
   "commands": [
-    { "domain": "SenseursPassifs", "action": "challengeAppareil" },
-    { "domain": "SenseursPassifs", "action": "signerAppareil" },
-    { "domain": "SenseursPassifs", "action": "majAppareil" },
-    { "domain": "SenseursPassifs", "action": "supprimerAppareil" },
-    { "domain": "SenseursPassifs", "action": "restaurerAppareil" },
-    { "domain": "SenseursPassifs", "action": "majConfigurationUsager" },
-    { "domain": "senseurspassifs_relai", "action": "commandeAppareil" },
     { "domain": "Documents", "action": "sauvegarderDocument" },
     { "domain": "Documents", "action": "sauvegarderGroupeUsager" },
     { "domain": "Documents", "action": "sauvegarderCategorieUsager" },
@@ -76,35 +46,6 @@
     { "domain": "Documents", "action": "recupererDocument" },
     { "domain": "Documents", "action": "supprimerGroupe" },
     { "domain": "Documents", "action": "recupererGroupe" },
-    { "domain": "AiLanguage", "action": "deleteChatConversation" },
-    { "domain": "AiLanguage", "action": "setOllamaUrls" },
-    { "domain": "AiLanguage", "action": "setDefaults" },
-    { "domain": "AiLanguage", "action": "setModels" },
-    { "domain": "AiLanguage", "action": "setUrls" },
-    { "domain": "AiLanguage", "action": "setRag" },
-    {
-      "domain": "ollama_relai",
-      "action": "generate",
-      "roles": ["ollama_relai"],
-      "stream": true,
-      "timeout": 180
-    },
-    {
-      "domain": "ollama_relai",
-      "action": "chat",
-      "roles": ["ollama_relai"],
-      "stream": true,
-      "timeout": 180
-    },
-    {
-      "domain": "ollama_relai",
-      "action": "knowledge_query",
-      "roles": ["ollama_relai"],
-      "stream": true,
-      "timeout": 180
-    },
-    { "domain": "ollama_relai", "action": "cancelChat", "timeout": 5 },
-    { "domain": "ollama_relai", "action": "model" },
     { "domain": "GrosFichiers", "action": "ajouterContactLocal" },
     { "domain": "GrosFichiers", "action": "supprimerContacts" },
     { "domain": "GrosFichiers", "action": "partagerCollections" },
@@ -123,17 +64,10 @@
     { "domain": "GrosFichiers", "action": "updateFileTextContent" },
     { "domain": "GrosFichiers", "action": "deleteFileComment" },
     { "domain": "GrosFichiers", "action": "addWebSubtitle" },
-    { "domain": "GrosFichiers", "action": "removeWebSubtitle" }
+    { "domain": "GrosFichiers", "action": "removeWebSubtitle" },
+    { "domain": "GrosFichiers", "action": "createStreamToken" }
   ],
   "subscriptions": {
-    "userDeviceEvents": {
-      "exchanges": ["2.prive"],
-      "routingKeys": [
-        "evenement.SenseursPassifs.{USER_ID}.lectureConfirmee",
-        "evenement.SenseursPassifs.{USER_ID}.majAppareil",
-        "evenement.SenseursPassifs.{USER_ID}.presenceAppareil"
-      ]
-    },
     "notepadCatGroupEvents": {
       "exchanges": ["2.prive"],
       "routingKeys": ["evenement.Documents.{USER_ID}.updateCatGroup"]
@@ -142,20 +76,6 @@
       "exchanges": ["2.prive"],
       "routingKeys": [
         "evenement.Documents.{USER_ID}_{groupe_id}.updateGroupDocument"
-      ]
-    },
-    "aiLanguageChatConversationEvents": {
-      "exchanges": ["2.prive"],
-      "routingKeys": [
-        "evenement.ollama_relai.modelsUpdated",
-        "evenement.ollama_relai.status",
-        "evenement.AiLanguage.{USER_ID}.chatConversation"
-      ]
-    },
-    "aiLanguageChatMessageEvents": {
-      "exchanges": ["2.prive"],
-      "routingKeys": [
-        "evenement.AiLanguage.{USER_ID}_{conversation_id}.chatMessageExchange"
       ]
     },
     "collection2CollectionEvents": {

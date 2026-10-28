@@ -377,6 +377,9 @@ export type Collection2FilehostResponse = MessageResponse & {
 export type Collection2StreamingJwtResponse = MessageResponse & {
   jwt_token?: string | null;
 };
+export type Collection2StreamingTokenResponse = MessageResponse & {
+  token?: string | null;
+};
 
 /** Enum for job status */
 export enum EtatJobEnum {
