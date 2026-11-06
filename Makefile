@@ -65,7 +65,7 @@ package: build
 deploy: package
 	@echo "==> Deploying artifact $(ARCHIVE_NAME).$(VERSION_FULL).tar.gz"
 	@rsync "$(ARTIFACTS_DIR)/$(ARCHIVE_NAME).$(VERSION_FULL).tar.gz" ${DEPLOY_RSYNC_WEBAPP_DEST}/private_apps
-	${DEPLOY_CATALOGUE_UPDATE_COMMAND} --baseurl https://libs.millegrilles.com/archives/private_apps --archive "archives/private_apps/$(ARCHIVE_NAME).$(VERSION_FULL).tar.gz"
+	${DEPLOY_CATALOGUE_UPDATE_COMMAND} --baseurl ${DEPLOY_ARCHIVE_URL}/private_apps --archive "archives/private_apps/$(ARCHIVE_NAME).$(VERSION_FULL).tar.gz"
 
 
 # Clean up build artifacts
